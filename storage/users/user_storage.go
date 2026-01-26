@@ -193,6 +193,17 @@ func (s Storage) Get(username string) (*User, error) {
 	return u, err
 }
 
+func (s Storage) GetByID(id int64) (*User, error) {
+	u, err := s.stmtUserGetById.run(id)
+	switch err {
+	case sql.ErrNoRows:
+		return nil, nil
+	case nil:
+		u.h = s
+	}
+	return u, err
+}
+
 func (s Storage) List() ([]User, error) {
 	users, err := s.stmtUserList.run()
 	if err == nil {
