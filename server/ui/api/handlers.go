@@ -15,12 +15,22 @@ import (
 
 type handlers struct {
 	storage *storage.Storage
+	users   *users.Storage
 }
 
 var EchoError = server.EchoError
 
-func RegisterHandlers(e *echo.Echo, storage *storage.Storage, a auth.Provider) {
-	h := handlers{storage: storage}
+func RegisterHandlers(e *echo.Echo, storage *storage.Storage, userStorage *users.Storage, a auth.Provider) {
+	h := handlers{
+		storage: storage,
+		users:   userStorage,
+	}
+
+	// OAuth2 endpoints (no authentication required)
+	oauth2 := oauth2Handlers{users: userStorage}
+	e.POST("/oauth2/device/code", oauth2.oauth2DeviceCode, a.GetRateLimiterMiddleware())
+	e.POST("/oauth2/device/token", oauth2.oauth2DeviceToken, a.GetRateLimiterMiddleware())
+
 	g := e.Group("/v1")
 	g.Use(authUser(a))
 

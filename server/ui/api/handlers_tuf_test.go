@@ -24,7 +24,6 @@ func TestApiTufRoot(t *testing.T) {
 	// Before TUF is initialized there is no root metadata.
 	tc.GET("/tuf/root.json", 404)
 
-	require.Nil(t, tc.fs.Auth.InitHmacSecret())
 	require.Nil(t, tc.fs.Tuf.InitTuf())
 
 	// The latest root.json is returned and is valid v1 root metadata.

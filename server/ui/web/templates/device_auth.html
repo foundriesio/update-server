@@ -1,0 +1,16 @@
+{{ template "header" .}}
+    <section class="content-section">
+      <h2>Activate</h2>
+      <p>A user or device is requesting access to your account. Please enter the code shown on your device.</p>
+      
+      <form method="GET" action="/auth/confirm-activation">
+        <label for="user_code">
+          User Code
+          <input type="text" id="user_code" name="user_code" value="{{.UserCode}}" placeholder="XXXX-XXXX" required autofocus>
+        </label>
+        
+        <button type="submit">Next</button>
+      </form>
+    </section>
+
+{{ template "footer"}}
