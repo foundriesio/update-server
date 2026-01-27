@@ -220,3 +220,120 @@ func TestGc(t *testing.T) {
 	require.Nil(t, err)
 	require.Nil(t, u2)
 }
+
+func TestOAuth2DeviceFlow(t *testing.T) {
+	tmpdir := t.TempDir()
+	dbFile := filepath.Join(tmpdir, "sql.db")
+	db, err := storage.NewDb(dbFile)
+	require.Nil(t, err)
+	fs, err := storage.NewFs(tmpdir)
+	require.Nil(t, err)
+	require.Nil(t, fs.Auth.InitHmacSecret())
+
+	users, err := NewStorage(db, fs)
+	require.Nil(t, err)
+	require.NotNil(t, users)
+
+	u := User{
+		Username:      "testuser",
+		Password:      "passwordhash",
+		Email:         "testuser@example.com",
+		AllowedScopes: ScopeDevicesRU,
+	}
+	err = users.Create(&u)
+	require.Nil(t, err)
+
+	// Test creating device authorization
+	now := time.Now().Unix()
+	expiresAt := now + 600     // 10 minutes
+	tokenExpires := now + 3600 // 1 hour
+	scopes := "devices:read"
+
+	deviceCode, userCode, err := users.CreateDeviceAuth(expiresAt, tokenExpires, scopes)
+	require.Nil(t, err)
+
+	// Test getting device auth by device code
+	auth, err := users.GetDeviceAuthByDeviceCode(deviceCode)
+	require.Nil(t, err)
+	require.NotNil(t, auth)
+	require.Equal(t, deviceCode, auth.DeviceCode)
+	require.Equal(t, userCode, auth.UserCode)
+	require.Equal(t, expiresAt, auth.ExpiresAt)
+	require.Equal(t, tokenExpires, auth.TokenExpires)
+	require.Equal(t, scopes, auth.Scopes)
+	require.Nil(t, auth.UserID)
+	require.False(t, auth.Authorized)
+	require.False(t, auth.Denied)
+
+	// Test getting device auth by user code
+	auth2, err := users.GetDeviceAuthByUserCode(userCode)
+	require.Nil(t, err)
+	require.NotNil(t, auth2)
+	require.Equal(t, deviceCode, auth2.DeviceCode)
+	require.Equal(t, userCode, auth2.UserCode)
+
+	// Test getting non-existent device auth
+	auth3, err := users.GetDeviceAuthByDeviceCode("nonexistent")
+	require.Nil(t, err)
+	require.Nil(t, auth3)
+
+	auth4, err := users.GetDeviceAuthByUserCode("ZZZZ-ZZZZ")
+	require.Nil(t, err)
+	require.Nil(t, auth4)
+
+	// Test approving authorization
+	err = u.ApproveAuthorization(deviceCode, "test token description", ScopeDevicesR)
+	require.Nil(t, err)
+
+	auth5, err := users.GetDeviceAuthByDeviceCode(deviceCode)
+	require.Nil(t, err)
+	require.NotNil(t, auth5)
+	require.True(t, auth5.Authorized)
+	require.False(t, auth5.Denied)
+	require.NotNil(t, auth5.UserID)
+	require.Equal(t, u.id, *auth5.UserID)
+	require.Equal(t, "test token description", auth5.TokenDescription)
+
+	// Create another device auth for deny test
+	deviceCode2, _, err := users.CreateDeviceAuth(expiresAt, tokenExpires, scopes)
+	require.Nil(t, err)
+
+	// Test denying authorization
+	err = u.DenyDeviceAuth(deviceCode2)
+	require.Nil(t, err)
+
+	auth6, err := users.GetDeviceAuthByDeviceCode(deviceCode2)
+	require.Nil(t, err)
+	require.NotNil(t, auth6)
+	require.False(t, auth6.Authorized)
+	require.True(t, auth6.Denied)
+	require.Nil(t, auth6.UserID)
+
+	// Test deleting expired device auth entries
+	expiredExpiresAt := now - 600
+	deviceCode3, _, err := users.CreateDeviceAuth(expiredExpiresAt, tokenExpires, scopes)
+	require.Nil(t, err)
+
+	// Verify it exists
+	auth7, err := users.GetDeviceAuthByDeviceCode(deviceCode3)
+	require.Nil(t, err)
+	require.NotNil(t, auth7)
+
+	// Delete expired entries
+	err = users.DeleteExpiredDeviceAuth(now)
+	require.Nil(t, err)
+
+	// Verify expired entry is gone
+	auth8, err := users.GetDeviceAuthByDeviceCode(deviceCode3)
+	require.Nil(t, err)
+	require.Nil(t, auth8)
+
+	// Verify non-expired entries still exist
+	auth9, err := users.GetDeviceAuthByDeviceCode(deviceCode)
+	require.Nil(t, err)
+	require.NotNil(t, auth9)
+
+	auth10, err := users.GetDeviceAuthByDeviceCode(deviceCode2)
+	require.Nil(t, err)
+	require.NotNil(t, auth10)
+}
