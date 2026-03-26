@@ -126,6 +126,7 @@ type Storage struct {
 	stmtDeviceGetLabels  stmtDeviceGetLabels
 	stmtDeviceList       map[OrderBy]stmtDeviceList
 	stmtDeniedDeviceList stmtDeniedDeviceList
+	stmtDevicePut        stmtDevicePut
 	stmtUndenyDevice     stmtUndenyDevice
 	stmtDeviceSetLabels  stmtDeviceSetLabels
 	stmtDeviceSetUpdate  stmtDeviceSetUpdate
@@ -210,6 +211,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtUndenyDevice,
 		&handle.stmtDeviceSetLabels,
 		&handle.stmtDeviceSetUpdate,
+		&handle.stmtDevicePut,
 		&handle.stmtUpdateInsert,
 		&handle.stmtUpdateList,
 	); err != nil {
@@ -350,6 +352,10 @@ var clearingEventTypes = []string{"EcuInstallationCompleted", "CertRotationCompl
 // ListUpdates returns a map of tag to updates. If the tag is empty, it returns all tags.
 func (s Storage) ListUpdates(tag string) (map[string][]Update, error) {
 	return s.stmtUpdateList.run(tag)
+}
+
+func (s Storage) DeviceCreate(uuid, pubkey string, labels Labels) error {
+	return s.stmtDevicePut.run(uuid, pubkey, labels)
 }
 
 func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[string]any, error) {
@@ -801,6 +807,24 @@ func (s *stmtDeviceDelete) Init(db storage.DbHandle) (err error) {
 
 func (s *stmtDeviceDelete) run(uuid string) error {
 	_, err := s.Stmt.Exec(uuid)
+	return err
+}
+
+type stmtDevicePut storage.DbStmt
+
+func (s *stmtDevicePut) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiDevicePut", `
+		INSERT INTO devices (uuid, pubkey, labels, deleted, last_seen, created_at)
+		VALUES (?, ?, ?, false, 0, unixepoch())`)
+	return
+}
+
+func (s *stmtDevicePut) run(uuid, pubkey string, labels Labels) error {
+	labelsJson, err := json.Marshal(labels)
+	if err != nil {
+		return fmt.Errorf("unexpected error marshalling labels to JSON: %w", err)
+	}
+	_, err = s.Stmt.Exec(uuid, pubkey, labelsJson)
 	return err
 }
 

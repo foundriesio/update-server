@@ -160,12 +160,42 @@ func (h handlers) deviceCreate(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Uuid is required")
 	}
 
-	cert, _, err := genCert(req.Uuid, req.Csr, h.ca)
+	cert, csr, err := genCert(req.Uuid, req.Csr, h.ca)
 	if err != nil {
 		return EchoError(c, err, http.StatusBadRequest, err.Error())
 	}
 
+	labels := map[string]string{}
+	if len(req.Name) > 0 {
+		labels["name"] = req.Name
+		if !validateLabelValue(req.Name) {
+			return EchoError(c, fmt.Errorf("invalid name label value: %s", req.Name), http.StatusBadRequest, "Invalid name label value")
+		}
+	}
+	if len(req.Group) > 0 {
+		labels["group"] = req.Group
+		groups, err := h.storage.GetKnownDeviceGroupNames()
+		if err != nil {
+			return EchoError(c, err, http.StatusInternalServerError, err.Error())
+		}
+		if !slices.Contains(groups, req.Group) {
+			return EchoError(c, fmt.Errorf("invalid group: %s", req.Group), http.StatusBadRequest, "Invalid group")
+		}
+	}
+
+	pubkey, err := pubkey(csr)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to extract public key from CSR")
+	}
+
 	sotaBytes := genSotaToml(req, h.ca.DgUrl)
+
+	if err := h.storage.DeviceCreate(req.Uuid, pubkey, labels); err != nil {
+		if storage.IsDbError(err, storage.ErrDbConstraintUnique) {
+			return EchoError(c, err, http.StatusConflict, "Device already exists")
+		}
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to create device")
+	}
 
 	resp := DeviceCreateResponse{
 		RootCrt:   h.ca.RootCert,
@@ -197,6 +227,18 @@ func genCert(uuid, csr string, ca *DeviceCa) ([]byte, *x509.CertificateRequest, 
 
 	cert, err := ca.SignCsr(req)
 	return cert, req, err
+}
+
+func pubkey(csr *x509.CertificateRequest) (string, error) {
+	derBytes, err := x509.MarshalPKIXPublicKey(csr.PublicKey)
+	if err != nil {
+		return "", err
+	}
+	block := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: derBytes,
+	}
+	return string(pem.EncodeToMemory(block)), nil
 }
 
 func genSotaToml(req DeviceCreateRequest, urlBase string) []byte {
