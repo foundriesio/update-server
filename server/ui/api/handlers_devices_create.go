@@ -5,13 +5,17 @@ package api
 
 import (
 	"crypto"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/foundriesio/update-server/storage"
 	"github.com/labstack/echo/v4"
@@ -92,6 +96,33 @@ func LoadDeviceCa(fs *storage.FsHandle) (*DeviceCa, error) {
 	}, nil
 }
 
+func (ca DeviceCa) SignCsr(csr *x509.CertificateRequest) ([]byte, error) {
+	if !slices.Equal(ca.CaCert.Subject.OrganizationalUnit, csr.Subject.OrganizationalUnit) {
+		return nil, fmt.Errorf("CSR OU %v does not match CA OU %v", csr.Subject.OrganizationalUnit, ca.CaCert.Subject.OrganizationalUnit)
+	}
+	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate serial number: %w", err)
+	}
+	template := x509.Certificate{
+		SerialNumber:          serial,
+		Subject:               csr.Subject,
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(7300 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  false,
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, &template, ca.CaCert, csr.PublicKey, ca.CaKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes}), nil
+}
+
 type SotaToml map[string]map[string]string
 
 type DeviceCreateRequest struct {
@@ -126,5 +157,38 @@ func (h handlers) deviceCreate(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Uuid is required")
 	}
 
-	return nil
+	cert, _, err := genCert(req.Uuid, req.Csr, h.ca)
+	if err != nil {
+		return EchoError(c, err, http.StatusBadRequest, err.Error())
+	}
+
+	resp := DeviceCreateResponse{
+		RootCrt:   h.ca.RootCert,
+		ClientPem: string(cert),
+	}
+	return c.JSON(http.StatusCreated, resp)
+}
+
+func genCert(uuid, csr string, ca *DeviceCa) ([]byte, *x509.CertificateRequest, error) {
+	block, _ := pem.Decode([]byte(csr))
+	if block == nil {
+		return nil, nil, fmt.Errorf("invalid CSR PEM encoding")
+	}
+	if block.Type != "CERTIFICATE REQUEST" {
+		return nil, nil, fmt.Errorf("invalid CSR PEM encoding: %s", block.Type)
+	}
+	req, err := x509.ParseCertificateRequest(block.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid CSR: %w", err)
+	}
+	if err := req.CheckSignature(); err != nil {
+		return nil, nil, fmt.Errorf("CSR signature verification failed: %w", err)
+	}
+
+	if uuid != req.Subject.CommonName {
+		return nil, nil, fmt.Errorf("CSR CommonName must match the requested UUID: %s != %s", req.Subject.CommonName, uuid)
+	}
+
+	cert, err := ca.SignCsr(req)
+	return cert, req, err
 }
