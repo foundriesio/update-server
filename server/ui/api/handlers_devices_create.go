@@ -4,15 +4,18 @@
 package api
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -162,9 +165,12 @@ func (h handlers) deviceCreate(c echo.Context) error {
 		return EchoError(c, err, http.StatusBadRequest, err.Error())
 	}
 
+	sotaBytes := genSotaToml(req, h.ca.DgUrl)
+
 	resp := DeviceCreateResponse{
 		RootCrt:   h.ca.RootCert,
 		ClientPem: string(cert),
+		SotaToml:  string(sotaBytes),
 	}
 	return c.JSON(http.StatusCreated, resp)
 }
@@ -191,4 +197,66 @@ func genCert(uuid, csr string, ca *DeviceCa) ([]byte, *x509.CertificateRequest, 
 
 	cert, err := ca.SignCsr(req)
 	return cert, req, err
+}
+
+func genSotaToml(req DeviceCreateRequest, urlBase string) []byte {
+	if len(req.SotaConfigDir) == 0 {
+		req.SotaConfigDir = "/var/sota"
+	}
+
+	sota := SotaToml{
+		"tls": {
+			"server":      urlBase,
+			"ca_source":   "file",
+			"pkey_source": "file",
+			"cert_source": "file",
+		},
+		"provision": {
+			"server":                  urlBase,
+			"primary_ecu_hardware_id": req.HardwareId,
+		},
+		"uptane": {
+			"repo_server": urlBase + "/repo",
+			"key_source":  "file",
+		},
+		"pacman": {
+			"type":               "ostree",
+			"compose_apps_proxy": urlBase + "/app-proxy-url",
+			"ostree_server":      urlBase + "/ostree",
+			"packages_file":      "/usr/package.manifest",
+		},
+		"storage": {
+			"type": "sqlite",
+			"path": req.SotaConfigDir,
+		},
+		"import": {
+			"tls_cacert_path":     filepath.Join(req.SotaConfigDir, "root.crt"),
+			"tls_pkey_path":       filepath.Join(req.SotaConfigDir, "pkey.pem"),
+			"tls_clientcert_path": filepath.Join(req.SotaConfigDir, "client.pem"),
+		},
+	}
+
+	// merge overrides
+	for section, kv := range req.Overrides {
+		if _, ok := sota[section]; !ok {
+			sota[section] = map[string]string{}
+		}
+		maps.Copy(sota[section], kv)
+	}
+
+	var buf bytes.Buffer
+	for section, kv := range sota {
+		fmt.Fprintf(&buf, "[%s]\n", section)
+		for k, v := range kv {
+			if len(v) == 0 {
+				fmt.Fprintf(&buf, "# %s disabled\n", k)
+			} else if v[0] == '"' {
+				fmt.Fprintf(&buf, "%s = %s\n", k, v)
+			} else {
+				fmt.Fprintf(&buf, "%s = \"%s\"\n", k, v)
+			}
+		}
+		fmt.Fprintln(&buf)
+	}
+	return buf.Bytes()
 }
