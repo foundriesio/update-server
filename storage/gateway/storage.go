@@ -18,6 +18,7 @@ type (
 	FsHandle = storage.FsHandle
 
 	AppsStates        = storage.AppsStates
+	ConfigFile        = storage.ConfigFile
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
 )
 

@@ -951,7 +951,60 @@ func TestApiDeviceDelete(t *testing.T) {
 	tc.GET("/devices/del-device", 404)
 }
 
-func TestApiUploadConfigs(t *testing.T) {
+func TestApiConfigsFactory(t *testing.T) {
+	tc := NewTestClient(t)
+	const (
+		validConfig1  = `{"test":{"Value":"test config1"}}`
+		validConfig2  = `{"test2":{"Value":"test config2"}}`
+		invalidConfig = `{"test":{"Value1":"test config"}}`
+	)
+
+	t.Run("Default user scopes", func(t *testing.T) {
+		tc.GET("/configs/factory", 403)
+		tc.GET("/configs/factory/history", 403)
+		tc.PUT("/configs/factory", 403, validConfig1)
+	})
+
+	tc.u.AllowedScopes = users.ScopeDevicesR
+	t.Run("Read-only user scopes", func(t *testing.T) {
+		assert.Equal(t, []byte(nil), tc.GET("/configs/factory", 204))
+		assert.Equal(t, "[]\n", string(tc.GET("/configs/factory/history", 200)))
+		tc.PUT("/configs/factory", 403, validConfig1)
+		tc.u.AllowedScopes = users.ScopeDevicesRU
+		tc.PUT("/configs/factory", 403, validConfig1)
+		tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesR
+		tc.PUT("/configs/factory", 403, validConfig1)
+		tc.u.AllowedScopes = users.ScopeDevicesR | users.ScopeUpdatesRU
+		tc.PUT("/configs/factory", 403, validConfig1)
+	})
+
+	tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesRU
+	t.Run("Upload valid config", func(t *testing.T) {
+		tc.PUT("/configs/factory", 204, validConfig1)
+		assert.Equal(t, validConfig1+"\n", string(tc.GET("/configs/factory", 200)))
+		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig1), string(tc.GET("/configs/factory/history", 200)))
+	})
+
+	t.Run("Update valid config", func(t *testing.T) {
+		tc.PUT("/configs/factory", 204, validConfig2)
+		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
+		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+	})
+
+	t.Run("Update invalid config", func(t *testing.T) {
+		tc.PUT("/configs/factory", 400, invalidConfig)
+		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
+		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+	})
+
+	t.Run("Update same config", func(t *testing.T) {
+		tc.PUT("/configs/factory", 204, validConfig2)
+		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
+		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+	})
+}
+
+func TestApiConfigsUpload(t *testing.T) {
 	tc := NewTestClient(t)
 
 	// Extensive testing of the upload logic is a part of the storage/api tests.

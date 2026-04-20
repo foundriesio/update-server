@@ -11,15 +11,13 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/labstack/echo/v4"
+
+	storage "github.com/foundriesio/dg-satellite/storage/gateway"
 )
 
 const sotaOverride = "z-50-fioctl.toml"
 
-type ConfigFile struct {
-	Value       string
-	Unencrypted *bool    `json:"Unencrypted,omitempty"`
-	OnChanged   []string `json:"OnChanged,omitempty"`
-}
+type ConfigFile = storage.ConfigFile
 
 // @Summary Get device's current configuration
 // @Produce json

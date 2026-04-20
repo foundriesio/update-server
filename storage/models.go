@@ -40,6 +40,12 @@ type DeviceStatus struct {
 	DeviceTime    string `json:"deviceTime"`
 }
 
+type ConfigFile struct {
+	Value       string   `json:"Value"`
+	Unencrypted *bool    `json:"Unencrypted,omitempty"`
+	OnChanged   []string `json:"OnChanged,omitempty"`
+}
+
 var evtIdToStatus = map[string]string{
 	"MetadataUpdateCompleted":  "Metadata update completed",
 	"EcuDownloadStarted":       "Download started",

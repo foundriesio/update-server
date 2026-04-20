@@ -24,6 +24,7 @@ type (
 	FsHandle = storage.FsHandle
 
 	AppsStates        = storage.AppsStates
+	ConfigFile        = storage.ConfigFile
 	DeviceStatus      = storage.DeviceStatus
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
 
@@ -39,6 +40,8 @@ const (
 	OrderByDeviceNameDesc    OrderBy = "name-desc"
 	OrderByDeviceUuidAsc     OrderBy = "uuid-asc"
 	OrderByDeviceUuidDesc    OrderBy = "uuid-desc"
+
+	ConfigHistoryLimit int = 10
 )
 
 var orderByDeviceMap = map[OrderBy]string{
@@ -426,6 +429,19 @@ func (s Storage) TailRolloutsLog(tag, updateName string, isProd bool, stop stora
 		fs = s.fs.Updates.Prod.Logs
 	}
 	return fs.TailFileLines(tag, updateName, storage.LogRolloutsFile, stop)
+}
+
+func (s Storage) ReadFactoryConfigHistory(latest int) ([]string, error) {
+	return s.fs.Configs.ReadFactoryConfigHistory(latest)
+}
+
+func (s Storage) SaveFactoryConfig(content string) error {
+	if err := s.fs.Configs.WriteFactoryConfig(content); err != nil {
+		return err
+	} else if err = s.fs.Configs.PurgeFactoryConfigHistory(ConfigHistoryLimit); err != nil {
+		slog.Error("Failed to clean factory config history", "error", err)
+	}
+	return nil
 }
 
 func (s Storage) UploadConfigs(payload io.Reader) (err error) {
