@@ -149,6 +149,68 @@ func (h *handlers) groupConfigsPut(c echo.Context) error {
 	}
 }
 
+// @Summary Read latest device configs
+// @Description Requires scopes: devices:read
+// @Tags    Config
+// @Produce json
+// @Param   uuid path string true "Device uuid"
+// @Success 200 {object} ConfigFileSet
+// @Router  /configs/device/{uuid} [get]
+func (h *handlers) deviceConfigsGet(c echo.Context) error {
+	return h.handleDevice(c, func(device *Device) error {
+		if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1); err != nil {
+			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
+		} else if len(history) > 0 {
+			return c.JSON(http.StatusOK, json.RawMessage(history[0]))
+		} else {
+			return c.NoContent(http.StatusNoContent)
+		}
+	})
+}
+
+// @Summary Read device configs history
+// @Description Requires scopes: devices:read
+// @Tags    Config
+// @Produce json
+// @Param   uuid path string true "Device uuid"
+// @Success 200 {array} ConfigFileSet
+// @Router  /configs/device/{uuid}/history [get]
+func (h *handlers) deviceConfigsHistory(c echo.Context) error {
+	return h.handleDevice(c, func(device *Device) error {
+		if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, ConfigHistoryLimit); err != nil {
+			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
+		} else {
+			return c.JSON(http.StatusOK, configHistoryToJson(history))
+		}
+	})
+}
+
+// @Summary Save device configs, replacing current value
+// @Description Requires scopes: devices:read-update, updates:read-update
+// @Tags    Config
+// @Accept  json
+// @Param   uuid path string true "Device uuid"
+// @Param   data body ConfigFileSet true "Factory config files"
+// @Success 204
+// @Router  /configs/device/{uuid} [put]
+func (h *handlers) deviceConfigsPut(c echo.Context) error {
+	return h.handleDevice(c, func(device *Device) error {
+		if cfg, err := validateConfigSet(c); err != nil {
+			return err // EchoError is used internally
+		} else if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1); err != nil {
+			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
+		} else if len(history) > 0 && string(cfg) == history[0] {
+			// No change - no need to create a new history item.
+			return c.NoContent(http.StatusNoContent)
+		} else if err = h.storage.SaveDeviceConfig(device.Uuid, string(cfg)); err != nil {
+			return EchoError(c, err, http.StatusInternalServerError, "Failed to save device config history")
+		} else {
+			// New history item created.
+			return c.NoContent(http.StatusNoContent)
+		}
+	})
+}
+
 // @Summary Upload factory/group/device configs from an archive
 // @Description Requires scopes: devices:read-update, updates:read-update
 // @Tags    Config

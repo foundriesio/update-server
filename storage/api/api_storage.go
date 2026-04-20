@@ -470,6 +470,19 @@ func (s Storage) SaveGroupConfig(name, content string) error {
 	return nil
 }
 
+func (s Storage) ReadDeviceConfigHistory(uuid string, latest int) ([]string, error) {
+	return s.fs.Configs.ReadDeviceConfigHistory(uuid, latest)
+}
+
+func (s Storage) SaveDeviceConfig(uuid, content string) error {
+	if err := s.fs.Configs.WriteDeviceConfig(uuid, content); err != nil {
+		return err
+	} else if err = s.fs.Configs.PurgeDeviceConfigHistory(uuid, ConfigHistoryLimit); err != nil {
+		slog.Error("Failed to clean device config history", "uuid", uuid, "error", err)
+	}
+	return nil
+}
+
 func (s Storage) UploadConfigs(payload io.Reader) (err error) {
 	return s.fs.Configs.SaveUpload(payload, func(cleanupErr error) {
 		// This is not critical - log and let the "real" error/success return below.
