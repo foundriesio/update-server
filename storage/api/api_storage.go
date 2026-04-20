@@ -457,6 +457,19 @@ func (s Storage) SaveFactoryConfig(content string) error {
 	return nil
 }
 
+func (s Storage) ReadGroupConfigHistory(name string, latest int) ([]string, error) {
+	return s.fs.Configs.ReadGroupConfigHistory(name, latest)
+}
+
+func (s Storage) SaveGroupConfig(name, content string) error {
+	if err := s.fs.Configs.WriteGroupConfig(name, content); err != nil {
+		return err
+	} else if err = s.fs.Configs.PurgeGroupConfigHistory(name, ConfigHistoryLimit); err != nil {
+		slog.Error("Failed to clean group config history", "group", name, "error", err)
+	}
+	return nil
+}
+
 func (s Storage) UploadConfigs(payload io.Reader) (err error) {
 	return s.fs.Configs.SaveUpload(payload, func(cleanupErr error) {
 		// This is not critical - log and let the "real" error/success return below.

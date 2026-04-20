@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 
 	"github.com/labstack/echo/v4"
 
@@ -70,6 +71,78 @@ func (h *handlers) factoryConfigsPut(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)
 	} else if err = h.storage.SaveFactoryConfig(string(cfg)); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to save factory config history")
+	} else {
+		// New history item created.
+		return c.NoContent(http.StatusNoContent)
+	}
+}
+
+// @Summary Read latest group configs
+// @Description Requires scopes: devices:read
+// @Tags    Config
+// @Produce json
+// @Param   name path string true "Group name"
+// @Success 200 {object} ConfigFileSet
+// @Router  /configs/group/{name} [get]
+func (h *handlers) groupConfigsGet(c echo.Context) error {
+	group := c.Param("name")
+	if history, err := h.storage.ReadGroupConfigHistory(group, 1); err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
+	} else if len(history) > 0 {
+		return c.JSON(http.StatusOK, json.RawMessage(history[0]))
+	} else if knownGroups, err := h.storage.GetKnownDeviceGroupNames(); err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to get known group names")
+	} else if slices.Contains(knownGroups, group) {
+		return c.NoContent(http.StatusNoContent)
+	} else {
+		return c.NoContent(http.StatusNotFound)
+	}
+}
+
+// @Summary Read group configs history
+// @Description Requires scopes: devices:read
+// @Tags    Config
+// @Produce json
+// @Param   name path string true "Group name"
+// @Success 200 {array} ConfigFileSet
+// @Router  /configs/group/{name}/history [get]
+func (h *handlers) groupConfigsHistory(c echo.Context) error {
+	group := c.Param("name")
+	if history, err := h.storage.ReadGroupConfigHistory(group, ConfigHistoryLimit); err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
+	} else if len(history) > 0 {
+		return c.JSON(http.StatusOK, configHistoryToJson(history))
+	} else if knownGroups, err := h.storage.GetKnownDeviceGroupNames(); err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to get known group names")
+	} else if slices.Contains(knownGroups, group) {
+		return c.JSON(http.StatusOK, configHistoryToJson(nil))
+	} else {
+		return c.NoContent(http.StatusNotFound)
+	}
+}
+
+// @Summary Save group configs, replacing current value
+// @Description Requires scopes: devices:read-update, updates:read-update
+// @Tags    Config
+// @Accept  json
+// @Param   name path string true "Group name"
+// @Param   data body ConfigFileSet true "Factory config files"
+// @Success 204
+// @Router  /configs/group/{name} [put]
+func (h *handlers) groupConfigsPut(c echo.Context) error {
+	group := c.Param("name")
+	if !validateLabelValue(group) {
+		err := fmt.Errorf("group value must match a given regexp: %s", validLabelValueRegex)
+		return EchoError(c, err, http.StatusBadRequest, err.Error())
+	} else if cfg, err := validateConfigSet(c); err != nil {
+		return err // EchoError is used internally
+	} else if history, err := h.storage.ReadGroupConfigHistory(group, 1); err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
+	} else if len(history) > 0 && string(cfg) == history[0] {
+		// No change - no need to create a new history item.
+		return c.NoContent(http.StatusNoContent)
+	} else if err = h.storage.SaveGroupConfig(group, string(cfg)); err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to save group config history")
 	} else {
 		// New history item created.
 		return c.NoContent(http.StatusNoContent)
