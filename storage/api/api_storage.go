@@ -405,7 +405,20 @@ func (s Storage) RolloverRolloutJournal(isProd bool) error {
 }
 
 func (s Storage) GetKnownDeviceGroupNames() ([]string, error) {
-	return s.stmtDeviceGetGroups.run()
+	if dbNames, err := s.stmtDeviceGetGroups.run(); err != nil {
+		return nil, err
+	} else if fsNames, err := s.fs.Configs.ReadGroupNames(); err != nil {
+		return nil, err
+	} else {
+		// Reuse fsNames for the final result, using search-and-sort-in-place technique.
+		// Golang warrants that dir entry names are sorted alphabetically.
+		for _, name := range dbNames {
+			if idx, has := slices.BinarySearch(fsNames, name); !has {
+				fsNames = slices.Insert(fsNames, idx, name)
+			}
+		}
+		return fsNames, nil
+	}
 }
 
 func (s Storage) GetKnownDeviceLabelNames() ([]string, error) {

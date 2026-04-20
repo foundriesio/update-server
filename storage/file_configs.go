@@ -6,8 +6,10 @@ package storage
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -74,6 +76,24 @@ func (s ConfigsFsHandle) PurgeFactoryConfigHistory(keepLatest int) error {
 		return fmt.Errorf("unexpected error purging factory config history: %w", err)
 	}
 	return nil
+}
+
+func (s ConfigsFsHandle) ReadGroupNames() ([]string, error) {
+	if entries, err := os.ReadDir(filepath.Join(s.root, ConfigsGroupDir)); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return []string{}, nil
+		}
+		return nil, err
+	} else {
+		// There should be only dir names, but make a sanity check just in case.
+		names := make([]string, 0, len(entries))
+		for _, e := range entries {
+			if e.IsDir() {
+				names = append(names, e.Name())
+			}
+		}
+		return names, nil
+	}
 }
 
 func (s ConfigsFsHandle) ReadGroupConfig(name string) (content string, timestamp int64, err error) {

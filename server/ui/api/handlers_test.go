@@ -437,6 +437,14 @@ func TestApiDeviceLabelsPatch(t *testing.T) {
 	tc.PATCH("/devices/test-device-2/labels", 200, data, headers...)
 	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
 	assert.Equal(t, []string{"new", "test"}, groups)
+
+	// Group names can also go from the group configs stored in the file system.
+	// These are always returned, even if the underlying config was effectively zeroed, as we still keep config history.
+	require.Nil(t, tc.fs.Configs.WriteGroupConfig("test", "anything"))
+	require.Nil(t, tc.fs.Configs.WriteGroupConfig("cfg", "anything"))
+	require.Nil(t, tc.fs.Configs.WriteGroupConfig("ok", ""))
+	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
+	assert.Equal(t, []string{"cfg", "new", "ok", "test"}, groups)
 }
 
 func TestApiDeviceLabelsPut(t *testing.T) {
