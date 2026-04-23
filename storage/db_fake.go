@@ -27,6 +27,14 @@ func (d DbHandle) Close() error {
 	return nil
 }
 
+func (d DbHandle) Query(query string, args ...any) (*sql.Rows, error) {
+	return nil, nil
+}
+
+func (d DbHandle) QueryRow(query string, args ...any) *sql.Row {
+	return nil
+}
+
 func (d DbHandle) Prepare(name, query string) (stmt *sql.Stmt, err error) {
 	return nil, nil
 }

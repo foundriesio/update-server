@@ -222,3 +222,141 @@ func TestUploadConfigs(t *testing.T) {
 		}
 	})
 }
+
+func TestDeviceListLabelFilters(t *testing.T) {
+	tmpdir := t.TempDir()
+	dbFile := filepath.Join(tmpdir, "sql.db")
+	db, err := storage.NewDb(dbFile)
+	require.Nil(t, err)
+	fs, err := storage.NewFs(tmpdir)
+	require.Nil(t, err)
+
+	s, err := NewStorage(db, fs)
+	require.Nil(t, err)
+
+	dg, err := gateway.NewStorage(db, fs)
+	require.Nil(t, err)
+
+	// Create three devices
+	_, err = dg.DeviceCreate("dev-1", "pk1", false)
+	require.Nil(t, err)
+	_, err = dg.DeviceCreate("dev-2", "pk2", false)
+	require.Nil(t, err)
+	_, err = dg.DeviceCreate("dev-3", "pk3", false)
+	require.Nil(t, err)
+
+	// Set labels via PatchDeviceLabels
+	strPtr := func(s string) *string { return &s }
+	require.Nil(t, s.PatchDeviceLabels(map[string]*string{
+		"env": strPtr("production"), "region": strPtr("us-east"),
+	}, []string{"dev-1"}))
+	require.Nil(t, s.PatchDeviceLabels(map[string]*string{
+		"env": strPtr("staging"), "region": strPtr("us-west"),
+	}, []string{"dev-2"}))
+	require.Nil(t, s.PatchDeviceLabels(map[string]*string{
+		"env": strPtr("production"), "region": strPtr("eu-central"),
+	}, []string{"dev-3"}))
+
+	opts := DeviceListOpts{Limit: 100, OrderBy: OrderByDeviceUuidAsc}
+
+	t.Run("no filters returns all", func(t *testing.T) {
+		devices, count, err := s.DevicesList(opts)
+		require.Nil(t, err)
+		assert.Equal(t, 3, count)
+		assert.Equal(t, 3, len(devices))
+	})
+
+	t.Run("eq filter", func(t *testing.T) {
+		o := opts
+		o.LabelFilters = []LabelFilter{
+			{Label: "env", Value: "production", Comparison: LabelCmpEqual},
+		}
+		devices, count, err := s.DevicesList(o)
+		require.Nil(t, err)
+		assert.Equal(t, 2, count)
+		require.Equal(t, 2, len(devices))
+		assert.Equal(t, "dev-1", devices[0].Uuid)
+		assert.Equal(t, "dev-3", devices[1].Uuid)
+	})
+
+	t.Run("ne filter", func(t *testing.T) {
+		o := opts
+		o.LabelFilters = []LabelFilter{
+			{Label: "env", Value: "production", Comparison: LabelCmpNotEqual},
+		}
+		devices, count, err := s.DevicesList(o)
+		require.Nil(t, err)
+		assert.Equal(t, 1, count)
+		require.Equal(t, 1, len(devices))
+		assert.Equal(t, "dev-2", devices[0].Uuid)
+	})
+
+	t.Run("contains filter", func(t *testing.T) {
+		o := opts
+		o.LabelFilters = []LabelFilter{
+			{Label: "region", Value: "us", Comparison: LabelCmpContains},
+		}
+		devices, count, err := s.DevicesList(o)
+		require.Nil(t, err)
+		assert.Equal(t, 2, count)
+		require.Equal(t, 2, len(devices))
+		assert.Equal(t, "dev-1", devices[0].Uuid)
+		assert.Equal(t, "dev-2", devices[1].Uuid)
+	})
+
+	t.Run("ncontains filter", func(t *testing.T) {
+		o := opts
+		o.LabelFilters = []LabelFilter{
+			{Label: "region", Value: "us", Comparison: LabelCmpNotContains},
+		}
+		devices, count, err := s.DevicesList(o)
+		require.Nil(t, err)
+		assert.Equal(t, 1, count)
+		require.Equal(t, 1, len(devices))
+		assert.Equal(t, "dev-3", devices[0].Uuid)
+	})
+
+	t.Run("multiple filters AND", func(t *testing.T) {
+		o := opts
+		o.LabelFilters = []LabelFilter{
+			{Label: "env", Value: "production", Comparison: LabelCmpEqual},
+			{Label: "region", Value: "eu", Comparison: LabelCmpContains},
+		}
+		devices, count, err := s.DevicesList(o)
+		require.Nil(t, err)
+		assert.Equal(t, 1, count)
+		require.Equal(t, 1, len(devices))
+		assert.Equal(t, "dev-3", devices[0].Uuid)
+	})
+
+	t.Run("filter on missing label returns none for eq", func(t *testing.T) {
+		o := opts
+		o.LabelFilters = []LabelFilter{
+			{Label: "nonexistent", Value: "anything", Comparison: LabelCmpEqual},
+		}
+		devices, count, err := s.DevicesList(o)
+		require.Nil(t, err)
+		assert.Equal(t, 0, count)
+		assert.Equal(t, 0, len(devices))
+	})
+
+	t.Run("invalid comparison returns error", func(t *testing.T) {
+		o := opts
+		o.LabelFilters = []LabelFilter{
+			{Label: "env", Value: "x", Comparison: "bad"},
+		}
+		_, _, err := s.DevicesList(o)
+		require.NotNil(t, err)
+		assert.Contains(t, err.Error(), "invalid label comparison")
+	})
+
+	t.Run("invalid label key returns error", func(t *testing.T) {
+		o := opts
+		o.LabelFilters = []LabelFilter{
+			{Label: "bad key!", Value: "x", Comparison: LabelCmpEqual},
+		}
+		_, _, err := s.DevicesList(o)
+		require.NotNil(t, err)
+		assert.Contains(t, err.Error(), "invalid label filter key")
+	})
+}

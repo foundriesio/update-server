@@ -52,6 +52,14 @@ func (d DbHandle) Close() error {
 	return d.db.Close()
 }
 
+func (d DbHandle) Query(query string, args ...any) (*sql.Rows, error) {
+	return d.db.Query(query, args...)
+}
+
+func (d DbHandle) QueryRow(query string, args ...any) *sql.Row {
+	return d.db.QueryRow(query, args...)
+}
+
 func (d DbHandle) Prepare(name, query string) (stmt *sql.Stmt, err error) {
 	if stmt, err = d.db.Prepare(query); err != nil {
 		err = fmt.Errorf("unable to prepare '%s' statement: %w", name, err)
