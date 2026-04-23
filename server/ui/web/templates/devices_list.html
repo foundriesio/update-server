@@ -2,43 +2,81 @@
     <section class="content-section">
       <h2>{{.Title}}</h2>
 
+      <input type="search" id="labels" name="labels" placeholder="Search eg. name.contains.foo"> 
+      <p class="filter-help"><small>Comparisons: <code>eq</code> (equal), <code>ne</code> (not equal), <code>contains</code>, <code>ncontains</code> (not contains)</small></p>
+      <script>
+      // Populate the labels input with current label query params on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        var labelsInput = document.getElementById('labels');
+          // Set input value from query params
+          var params = new URLSearchParams(window.location.search);
+          var labelsArr = [];
+          params.forEach(function(value, key) {
+            if (key == "label") {
+              labelsArr.push(value);
+            }
+          });
+          if (labelsArr.length > 0) {
+            labelsInput.value = labelsArr.join(' ');
+          }
+
+          // When Enter is pressed in the labels input, update query params and reload
+          labelsInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              var labels = labelsInput.value.trim();
+              var params = new URLSearchParams(window.location.search);
+              [...params.keys()].forEach(k => { if (k == "label") params.delete(k); });
+              // Add new label params from space-delimited input
+              if (labels.length > 0) {
+                labels.split(/\s+/).forEach(function(label) {
+                  params.set("label", label);
+                });
+              }
+              // Keep other params (sort, page, etc)
+              window.location.search = params.toString();
+            }
+          });
+      });
+      </script>
+
       <table class="striped">
         <thead>
           <tr>
             <th class="sortable">
               {{ if eq .Sort "uuid-asc" }}
-                <a href="/devices?sort=uuid-desc" title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=uuid-desc{{labelParams .LabelFilters}}" title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "uuid-desc" }}
-                <a href="/devices?sort=uuid-asc" title="Sorted descending, click for ascending">UUID <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=uuid-asc{{labelParams .LabelFilters}}" title="Sorted descending, click for ascending">UUID <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=uuid-asc" title="Sort by UUID">UUID <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=uuid-asc{{labelParams .LabelFilters}}" title="Sort by UUID">UUID <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th class="sortable">
               {{ if eq .Sort "name-asc" }}
-                <a href="/devices?sort=name-desc" title="Sorted ascending, click for descending">Name <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=name-desc{{labelParams .LabelFilters}}" title="Sorted ascending, click for descending">Name <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "name-desc" }}
-                <a href="/devices?sort=name-asc" title="Sorted descending, click for ascending">Name <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=name-asc{{labelParams .LabelFilters}}" title="Sorted descending, click for ascending">Name <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=name-asc" title="Sort by Name">Name <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=name-asc{{labelParams .LabelFilters}}" title="Sort by Name">Name <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th class="sortable">
               {{ if eq .Sort "created-at-asc" }}
-                <a href="/devices?sort=created-at-desc" title="Sorted ascending, click for descending">Created at <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=created-at-desc{{labelParams .LabelFilters}}" title="Sorted ascending, click for descending">Created at <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "created-at-desc" }}
-                <a href="/devices?sort=created-at-asc" title="Sorted descending, click for ascending">Created at <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=created-at-asc{{labelParams .LabelFilters}}" title="Sorted descending, click for ascending">Created at <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=created-at-asc" title="Sort by Created at">Created at <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=created-at-asc{{labelParams .LabelFilters}}" title="Sort by Created at">Created at <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th class="sortable">
               {{ if eq .Sort "last-seen-asc" }}
-                <a href="/devices?sort=last-seen-desc" title="Sorted ascending, click for descending">Last seen <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=last-seen-desc{{labelParams .LabelFilters}}" title="Sorted ascending, click for descending">Last seen <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "last-seen-desc" }}
-                <a href="/devices?sort=last-seen-asc" title="Sorted descending, click for ascending">Last seen <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=last-seen-asc{{labelParams .LabelFilters}}" title="Sorted descending, click for ascending">Last seen <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=last-seen-asc" title="Sort by Last seen">Last seen <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=last-seen-asc{{labelParams .LabelFilters}}" title="Sort by Last seen">Last seen <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th>Target</th>
@@ -77,15 +115,15 @@
       <nav>
         <div>
           {{ if .HasPrev }}
-            <a href="/devices?page=1{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">&laquo; First</a>
-            <a href="/devices?page={{sub .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">&larr; Previous</a>
+            <a href="/devices?page=1{{if .Sort}}&amp;sort={{.Sort}}{{end}}{{labelParams .LabelFilters}}" role="button">&laquo; First</a>
+            <a href="/devices?page={{sub .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}{{labelParams .LabelFilters}}" role="button">&larr; Previous</a>
           {{ end }}
         </div>
         <span>Showing page {{.Page}} of {{.TotalPages}} pages.</span>
         <div>
           {{ if .HasNext }}
-            <a href="/devices?page={{add .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">Next &rarr;</a>
-            <a href="/devices?page={{.TotalPages}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">Last &raquo;</a>
+            <a href="/devices?page={{add .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}{{labelParams .LabelFilters}}" role="button">Next &rarr;</a>
+            <a href="/devices?page={{.TotalPages}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}{{labelParams .LabelFilters}}" role="button">Last &raquo;</a>
           {{ end }}
         </div>
       </nav>
