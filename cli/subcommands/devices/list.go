@@ -41,9 +41,10 @@ var listCmd = &cobra.Command{
 		if err := validateSortBy(sortBy); err != nil {
 			return err
 		}
+		labelFilters, _ := cmd.Flags().GetStringSlice("label")
 		page, _ := cmd.Flags().GetInt("page")
 		api := api.CtxGetApi(cmd.Context())
-		listDevices(api.Devices(), columns, page, sortBy)
+		listDevices(api.Devices(), columns, page, sortBy, labelFilters)
 		return nil
 	},
 }
@@ -63,6 +64,9 @@ func init() {
 		"Comma-separated list of columns to display (available: "+colmnsStr+")")
 	listCmd.Flags().IntP("page", "p", 1, "Page number to display")
 	listCmd.Flags().StringP("sort", "s", "", "Sort order for devices ("+sortStr+")")
+	listCmd.Flags().StringSliceP("label", "l", nil,
+		"Filter by label in the format key.comparison.value (e.g. env.eq.production).\n"+
+			"Comparisons: eq, ne, contains, ncontains. Can be repeated for AND logic.")
 }
 
 func validateSortBy(sortBy string) error {
@@ -85,8 +89,8 @@ func validateColumns(columnsStr string) ([]string, error) {
 	return columns, nil
 }
 
-func listDevices(dapi api.DeviceApi, columns []string, page int, sortBy string) {
-	devices, hasMore, totalPages, err := dapi.ListPage(page, defaultPageLimit, sortBy)
+func listDevices(dapi api.DeviceApi, columns []string, page int, sortBy string, labelFilters []string) {
+	devices, hasMore, totalPages, err := dapi.ListPage(page, defaultPageLimit, sortBy, labelFilters)
 	cobra.CheckErr(err)
 
 	headers := make([]string, 0, len(columns))
