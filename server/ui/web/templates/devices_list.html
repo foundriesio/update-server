@@ -2,42 +2,138 @@
     <section class="content-section">
       <h2>{{.Title}}</h2>
 
-      <input type="search" id="labels" name="labels" placeholder="Search eg. name.contains.foo"> 
-      <p class="filter-help"><small>Comparisons: <code>eq</code> (equal), <code>ne</code> (not equal), <code>contains</code>, <code>ncontains</code> (not contains)</small></p>
+      <div class="filter-input-wrap">
+        <input type="search" id="labels" name="labels" placeholder="Filter: label.comparison.value (e.g. name.contains.foo)" autocomplete="off">
+        <div id="acDropdown" class="ac-dropdown"></div>
+      </div>
       <script>
-      // Populate the labels input with current label query params on page load
-      document.addEventListener('DOMContentLoaded', function() {
-        var labelsInput = document.getElementById('labels');
-          // Set input value from query params
-          var params = new URLSearchParams(window.location.search);
-          var labelsArr = [];
-          params.forEach(function(value, key) {
-            if (key == "label") {
-              labelsArr.push(value);
-            }
-          });
-          if (labelsArr.length > 0) {
-            labelsInput.value = labelsArr.join(' ');
-          }
+      (function() {
+        var knownLabels = [{{range $i, $l := .KnownLabels}}{{if $i}},{{end}}"{{$l}}"{{end}}];
+        var comparisons = ["eq", "ne", "contains", "ncontains"];
+        var input = document.getElementById('labels');
+        var dropdown = document.getElementById('acDropdown');
+        var activeIdx = -1;
 
-          // When Enter is pressed in the labels input, update query params and reload
-          labelsInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
+        // Populate from current query params on load
+        var params = new URLSearchParams(window.location.search);
+        var existing = [];
+        params.forEach(function(v, k) { if (k === "label") existing.push(v); });
+        if (existing.length > 0) input.value = existing.join(' ');
+
+        // Get the token the cursor is currently inside
+        function currentToken() {
+          var val = input.value;
+          var pos = input.selectionStart;
+          var before = val.substring(0, pos);
+          var start = before.lastIndexOf(' ') + 1;
+          var afterCursor = val.indexOf(' ', pos);
+          var end = afterCursor === -1 ? val.length : afterCursor;
+          return { text: val.substring(start, end), start: start, end: end };
+        }
+
+        function getSuggestions(token) {
+          var parts = token.split('.');
+          if (parts.length <= 1) {
+            // Typing the label key
+            var prefix = parts[0].toLowerCase();
+            return knownLabels
+              .filter(function(l) { return l.toLowerCase().indexOf(prefix) !== -1; })
+              .map(function(l) { return { display: l, fill: l + '.' }; });
+          } else if (parts.length === 2) {
+            // Typing the comparison
+            var prefix = parts[1].toLowerCase();
+            var base = parts[0] + '.';
+            return comparisons
+              .filter(function(c) { return c.indexOf(prefix) !== -1; })
+              .map(function(c) { return { display: parts[0] + '.' + c, fill: base + c + '.' }; });
+          }
+          return [];
+        }
+
+        function renderDropdown(items) {
+          activeIdx = -1;
+          if (items.length === 0) { dropdown.style.display = 'none'; return; }
+          dropdown.innerHTML = '';
+          items.forEach(function(item, i) {
+            var div = document.createElement('div');
+            div.className = 'ac-item';
+            div.textContent = item.display;
+            div.addEventListener('mousedown', function(e) {
               e.preventDefault();
-              var labels = labelsInput.value.trim();
-              var params = new URLSearchParams(window.location.search);
-              [...params.keys()].forEach(k => { if (k == "label") params.delete(k); });
-              // Add new label params from space-delimited input
-              if (labels.length > 0) {
-                labels.split(/\s+/).forEach(function(label) {
-                  params.set("label", label);
-                });
-              }
-              // Keep other params (sort, page, etc)
-              window.location.search = params.toString();
-            }
+              pickItem(item);
+            });
+            dropdown.appendChild(div);
           });
-      });
+          dropdown.style.display = 'block';
+        }
+
+        function pickItem(item) {
+          var tok = currentToken();
+          var val = input.value;
+          input.value = val.substring(0, tok.start) + item.fill + val.substring(tok.end);
+          var newPos = tok.start + item.fill.length;
+          input.setSelectionRange(newPos, newPos);
+          input.focus();
+          showSuggestions();
+        }
+
+        function highlightItem(idx) {
+          var items = dropdown.querySelectorAll('.ac-item');
+          items.forEach(function(el, i) {
+            el.classList.toggle('ac-active', i === idx);
+          });
+        }
+
+        function showSuggestions() {
+          var tok = currentToken();
+          var items = getSuggestions(tok.text);
+          renderDropdown(items);
+        }
+
+        input.addEventListener('input', showSuggestions);
+        input.addEventListener('focus', showSuggestions);
+        input.addEventListener('blur', function() {
+          setTimeout(function() { dropdown.style.display = 'none'; }, 150);
+        });
+
+        input.addEventListener('keydown', function(e) {
+          var items = dropdown.querySelectorAll('.ac-item');
+          if (dropdown.style.display === 'block' && items.length > 0) {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              activeIdx = (activeIdx + 1) % items.length;
+              highlightItem(activeIdx);
+              return;
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              activeIdx = (activeIdx - 1 + items.length) % items.length;
+              highlightItem(activeIdx);
+              return;
+            } else if (e.key === 'Tab' || (e.key === 'Enter' && activeIdx >= 0)) {
+              e.preventDefault();
+              var suggs = getSuggestions(currentToken().text);
+              if (activeIdx >= 0 && activeIdx < suggs.length) {
+                pickItem(suggs[activeIdx]);
+              } else if (suggs.length > 0) {
+                pickItem(suggs[0]);
+              }
+              return;
+            }
+          }
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            dropdown.style.display = 'none';
+            var labels = input.value.trim();
+            var p = new URLSearchParams(window.location.search);
+            [...p.keys()].forEach(function(k) { if (k === "label") p.delete(k); });
+            p.delete("page");
+            if (labels.length > 0) {
+              labels.split(/\s+/).forEach(function(l) { p.append("label", l); });
+            }
+            window.location.search = p.toString();
+          }
+        });
+      })();
       </script>
 
       <table class="striped">
