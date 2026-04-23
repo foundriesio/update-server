@@ -326,6 +326,67 @@ func TestApiDeviceList(t *testing.T) {
 
 }
 
+func TestApiDeviceListLabelFilters(t *testing.T) {
+	tc := NewTestClient(t)
+	tc.u.AllowedScopes = users.ScopeDevicesRU
+
+	// Create 3 devices with labels
+	_, err := tc.gw.DeviceCreate("dev-1", "pk1", false)
+	require.Nil(t, err)
+	_, err = tc.gw.DeviceCreate("dev-2", "pk2", false)
+	require.Nil(t, err)
+	_, err = tc.gw.DeviceCreate("dev-3", "pk3", false)
+	require.Nil(t, err)
+
+	headers := []string{"content-type", "application/json"}
+	tc.PATCH("/devices/dev-1/labels", 200,
+		`{"upserts":{"env":"production","region":"us-east"}}`, headers...)
+	tc.PATCH("/devices/dev-2/labels", 200,
+		`{"upserts":{"env":"staging","region":"us-west"}}`, headers...)
+	tc.PATCH("/devices/dev-3/labels", 200,
+		`{"upserts":{"env":"production","region":"eu-central"}}`, headers...)
+
+	var devices []apiStorage.DeviceListItem
+
+	// eq filter
+	data := tc.GET("/devices?order-by=uuid-asc&label=env.eq.production", 200)
+	require.Nil(t, json.Unmarshal(data, &devices))
+	require.Len(t, devices, 2)
+	assert.Equal(t, "dev-1", devices[0].Uuid)
+	assert.Equal(t, "dev-3", devices[1].Uuid)
+
+	// ne filter
+	data = tc.GET("/devices?order-by=uuid-asc&label=env.ne.production", 200)
+	require.Nil(t, json.Unmarshal(data, &devices))
+	require.Len(t, devices, 1)
+	assert.Equal(t, "dev-2", devices[0].Uuid)
+
+	// contains filter
+	data = tc.GET("/devices?order-by=uuid-asc&label=region.contains.us", 200)
+	require.Nil(t, json.Unmarshal(data, &devices))
+	require.Len(t, devices, 2)
+	assert.Equal(t, "dev-1", devices[0].Uuid)
+	assert.Equal(t, "dev-2", devices[1].Uuid)
+
+	// ncontains filter
+	data = tc.GET("/devices?order-by=uuid-asc&label=region.ncontains.us", 200)
+	require.Nil(t, json.Unmarshal(data, &devices))
+	require.Len(t, devices, 1)
+	assert.Equal(t, "dev-3", devices[0].Uuid)
+
+	// multiple filters (AND)
+	data = tc.GET("/devices?order-by=uuid-asc&label=env.eq.production&label=region.contains.eu", 200)
+	require.Nil(t, json.Unmarshal(data, &devices))
+	require.Len(t, devices, 1)
+	assert.Equal(t, "dev-3", devices[0].Uuid)
+
+	// bad format returns 400
+	tc.GET("/devices?label=bad-format", 400)
+
+	// invalid comparison returns 400
+	tc.GET("/devices?label=env.invalid.val", 400)
+}
+
 func TestApiDeviceGet(t *testing.T) {
 	tc := NewTestClient(t)
 	tc.GET("/devices/foo", 403)
