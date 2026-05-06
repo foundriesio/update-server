@@ -35,10 +35,14 @@ func getJsonWithHeaders(ctx context.Context, resource string, result any) (http.
 		}
 	}()
 
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return resp.Header, json.NewDecoder(resp.Body).Decode(result)
+	case http.StatusNoContent:
+		return resp.Header, nil
+	default:
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("unexpected status code: HTTP_%d: %s", resp.StatusCode, string(body))
 	}
 
-	return resp.Header, json.NewDecoder(resp.Body).Decode(result)
 }

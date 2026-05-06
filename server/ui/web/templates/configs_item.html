@@ -1,0 +1,39 @@
+{{ define "configs-item" }}
+      <h4>Files:</h4>
+      <table class="striped">
+         <tbody>
+           {{ range $name, $val := . }}
+           <tr>
+             <td style="min-width: 20em;">{{ $name }}</td>
+             <td style="min-width: 5em; text-align: right;">
+               {{ if gt (len $val.OnChanged) 0 }}
+               <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range $val.OnChanged }}&#xa;{{.}}{{ end }}"></i>
+               {{ end }}
+               {{ if deref $val.Unencrypted }}
+               <i class="icontip floppy" aria-label="View file content" onclick="this.nextElementSibling.showModal()"></i>
+               <dialog class="file-content">
+                 <article>
+                   <header>
+                     <h3>File "{{ $name }}" content:</h3>
+                     <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">x</button>
+                   </header>
+                   <p>{{ $val.Value }}</p>
+                   <button autofocus onclick="this.closest('dialog').close()">Close</button>
+                 </article>
+               </dialog>
+               {{ else }}
+               <i class="icontip lock-closed" aria-label="File content is encrypted"></i>
+               {{ end }}
+             </td>
+           </tr>
+           {{ end }}
+         </tbody>
+      </table>
+{{ end }}
+
+{{ template "header" .}}
+    <section class="content-section">
+      <h2>{{.Title}}</h2>
+      {{ template "configs-item" .Configs }}
+    </section>
+{{ template "footer"}}

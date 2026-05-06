@@ -6,6 +6,7 @@ package templates
 import (
 	"embed"
 	"html/template"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -26,6 +27,13 @@ func init() {
 			return a - b
 		},
 		"contains": strings.Contains,
+		"deref": func(v any) any {
+			// Used to convert e.g. *bool to bool in config_item.html.
+			if val := reflect.ValueOf(v); val.Kind() == reflect.Ptr && !val.IsNil() {
+				return val.Elem().Interface()
+			}
+			return v
+		},
 	}
 
 	Templates = template.Must(template.New("").Funcs(funcMap).ParseFS(Assets, "*.html", "*.css"))

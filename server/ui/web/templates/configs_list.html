@@ -1,0 +1,24 @@
+{{ template "header" .}}
+    <section class="content-section">
+      <h2>{{.Title}}</h2>
+      {{ template "configs-item" .Configs }}
+    </section>
+    {{ $groupsPerPage := 20 }}
+    <section class="content-section">
+      <h2>Groups</h2>
+      <table class="striped">
+        <thead>
+          <tr>
+            <th>UUID</th>
+          </tr>
+        </thead>
+        <tbody id="groups-table">
+          {{ range $i, $val := .Groups }}
+          <tr>
+            <td><a href="/configs/group/{{ $val }}">{{ $val }}</a></td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </section>
+{{ template "footer"}}

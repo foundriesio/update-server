@@ -1,0 +1,52 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+
+package web
+
+import (
+	"fmt"
+
+	"github.com/foundriesio/dg-satellite/server/ui/api"
+	"github.com/labstack/echo/v4"
+)
+
+func (h handlers) configsList(c echo.Context) error {
+	var (
+		configs api.ConfigFileSet
+		groups  []string
+	)
+	if err := getJson(c.Request().Context(), "/v1/configs/factory", &configs); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	if err := getJson(c.Request().Context(), "/v1/known-labels/device-groups", &groups); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
+	ctx := struct {
+		baseCtx
+		Configs api.ConfigFileSet
+		Groups  []string
+	}{
+		baseCtx: h.baseCtx(c, "Global Configs", "configs"),
+		Configs: configs,
+		Groups:  groups,
+	}
+	return h.templates.ExecuteTemplate(c.Response(), "configs_list.html", ctx)
+}
+
+func (h handlers) configsGroupItem(c echo.Context) error {
+	var configs api.ConfigFileSet
+	group := c.Param("name")
+	if err := getJson(c.Request().Context(), "/v1/configs/group/"+group, &configs); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	ctx := struct {
+		baseCtx
+		Configs api.ConfigFileSet
+	}{
+		baseCtx: h.baseCtx(c, fmt.Sprintf("Group \"%s\" Configs", group), "configs"),
+		Configs: configs,
+	}
+	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
+
+}

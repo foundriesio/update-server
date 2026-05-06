@@ -41,6 +41,8 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	e.GET("/", h.index, h.requireSession)
 	e.GET("/css/:filename", h.css)
 	e.GET("/auth/logout", h.authLogout, h.requireSession)
+	e.GET("/configs", h.configsList, h.requireSession, h.requireScope(users.ScopeDevicesR))
+	e.GET("/configs/group/:name", h.configsGroupItem, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices", h.devicesList, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid", h.devicesGet, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid/apps-states", h.devicesAppsStates, h.requireSession, h.requireScope(users.ScopeDevicesR))
@@ -109,6 +111,7 @@ type navItem struct {
 func (h handlers) genNavItems(selected string) []navItem {
 	navItems := []navItem{
 		{Title: "Devices", Href: "/devices", Selected: selected == "devices"},
+		{Title: "Configs", Href: "/configs", Selected: selected == "configs"},
 		{Title: "Updates", Href: "/updates", Selected: selected == "updates"},
 		{Title: "Users", Href: "/users", Selected: selected == "users"},
 	}
