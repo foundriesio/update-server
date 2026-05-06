@@ -241,6 +241,10 @@ dialog.file-content p {
   overflow: scroll;
 }
 
+.hidden {
+ display: none !important;
+}
+
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-body: #11191f;

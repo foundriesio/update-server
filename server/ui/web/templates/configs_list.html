@@ -9,7 +9,12 @@
       <table class="striped">
         <thead>
           <tr>
-            <th>UUID</th>
+            <th class="sortable">
+              <a class="groups-header" href="#" role="button"
+                 title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
+              <a class="groups-header hidden" href="#" role="button"
+                 title="Sorted descending, click for ascending">UUID <span class="sort-active">▼</span></a>
+            </th>
           </tr>
         </thead>
         <tbody id="groups-table">
@@ -20,5 +25,25 @@
           {{ end }}
         </tbody>
       </table>
+      <script type="module">
+        const $ = document.querySelector.bind(document),
+              $$ = document.querySelectorAll.bind(document);
+
+        /* Groups Sorting */
+        function groupsFlipSort() {
+          // Flip sort header.
+          $$('.groups-header').forEach(el => el.classList.toggle('hidden'));
+          // Move each row to the bottom, starting from the original top
+          const tbl = $('#groups-table');
+          Array.from(tbl.rows).reverse().forEach(row => tbl.appendChild(row));
+        }
+
+        $$('.groups-header').forEach(el => {
+          el.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            groupsFlipSort();
+          });
+        });
+      </script>
     </section>
 {{ template "footer"}}
