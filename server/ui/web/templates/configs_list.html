@@ -19,12 +19,25 @@
         </thead>
         <tbody id="groups-table">
           {{ range $i, $val := .Groups }}
-          <tr>
+          <tr{{ if ge $i $groupsPerPage }} class="hidden"{{ end }}>
             <td><a href="/configs/group/{{ $val }}">{{ $val }}</a></td>
           </tr>
           {{ end }}
         </tbody>
       </table>
+      {{ if gt (len .Groups) $groupsPerPage }}
+      <nav>
+          <span>
+          <a id="groups-page-first" class="groups-nav hidden" href="#" role="button">&laquo; First</a>
+          <a id="groups-page-prev" class="groups-nav hidden" href="#" role="button">&larr; Previous</a>
+        </span>
+        <span>&nbsp;Showing page <span id="groups-page">1</span> of <span id="groups-page-total"></span>.&nbsp;</span>
+        <span>
+          <a id="groups-page-next" class="groups-nav" href="#" role="button">Next &rarr;</a>
+          <a id="groups-page-last" class="groups-nav" href="#" role="button">Last &raquo;</a>
+        </span>
+      </nav>
+      {{ end }}
       <script type="module">
         const $ = document.querySelector.bind(document),
               $$ = document.querySelectorAll.bind(document);
@@ -36,6 +49,7 @@
           // Move each row to the bottom, starting from the original top
           const tbl = $('#groups-table');
           Array.from(tbl.rows).reverse().forEach(row => tbl.appendChild(row));
+          if (groupsTotalPages > 1) { updatePageTable() }
         }
 
         $$('.groups-header').forEach(el => {
@@ -44,6 +58,63 @@
             groupsFlipSort();
           });
         });
+
+        /* Groups Paging */
+        const groupsPerPage = {{ $groupsPerPage }},
+              groupsTotal = {{ len .Groups }},
+              groupsTotalPages = Math.ceil(groupsTotal / groupsPerPage);
+
+        let groupsPage = 1;
+
+        function updatePageNum(el) {
+          switch (el.id) {
+          case 'groups-page-first':
+            groupsPage = 1;
+            break;
+          case 'groups-page-prev':
+            groupsPage -= 1;
+            break;
+          case 'groups-page-next':
+            groupsPage += 1;
+            break;
+          case 'groups-page-last':
+            groupsPage = groupsTotalPages;
+            break;
+          default:
+            console.log('unknown page nav id', el.id);
+            break;
+          }
+        }
+
+        function updatePageNav() {
+          $('#groups-page').textContent = groupsPage;
+          $('#groups-page-first').classList.toggle('hidden', groupsPage === 1);
+          $('#groups-page-prev').classList.toggle('hidden', groupsPage === 1);
+          $('#groups-page-next').classList.toggle('hidden', groupsPage === groupsTotalPages);
+          $('#groups-page-last').classList.toggle('hidden', groupsPage === groupsTotalPages);
+        }
+
+        function updatePageTable() {
+          const end = groupsPage * groupsPerPage,
+                start = end - groupsPerPage,
+                tbl = $('#groups-table');
+          Array.from(tbl.rows).forEach((row, index) => {
+            row.classList.toggle('hidden', index < start || index >= end);
+          });
+        }
+
+        if (groupsTotalPages > 1) {
+          $('#groups-page-total').textContent = groupsTotalPages;
+
+          $$('.groups-nav').forEach(el => {
+            el.addEventListener('click', (ev) => {
+              ev.preventDefault();
+              updatePageNum(el);
+              updatePageNav();
+              updatePageTable();
+            });
+          });
+        }
       </script>
     </section>
 {{ template "footer"}}
