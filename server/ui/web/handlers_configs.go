@@ -50,3 +50,24 @@ func (h handlers) configsGroupItem(c echo.Context) error {
 	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
 
 }
+
+func (h handlers) configsDeviceItem(c echo.Context) error {
+	uuid := c.Param("uuid")
+	var device api.Device
+	if err := getJson(c.Request().Context(), "/v1/devices/"+uuid, &device); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	var configs api.ConfigFileSet
+	if err := getJson(c.Request().Context(), "/v1/configs/device/"+uuid, &configs); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	ctx := struct {
+		baseCtx
+		Configs api.ConfigFileSet
+	}{
+		baseCtx: h.baseCtx(c, fmt.Sprintf("Device \"%s\" Configs", uuid), "devices"),
+		Configs: configs,
+	}
+	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
+
+}
