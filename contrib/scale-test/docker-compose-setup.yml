@@ -1,0 +1,14 @@
+services:
+  register:
+    build:
+      context: ../..
+      dockerfile: ./contrib/scale-test/Dockerfile
+    command:
+      - /contrib/scale-test/setup.sh
+      - --datadir
+      - /data
+      - --num-devices
+      - "${NUM_DEVICES:-5000}"
+    volumes:
+      - ../../contrib:/contrib
+      - ${DATA_DIR:-./scale-test-data}:/data
