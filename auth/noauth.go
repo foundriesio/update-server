@@ -8,6 +8,7 @@ package auth
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/foundriesio/dg-satellite/storage"
 	"github.com/foundriesio/dg-satellite/storage/users"
@@ -43,6 +44,10 @@ func (p noauthProvider) GetUser(c echo.Context) (*users.User, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+	cookie, err := c.Cookie(CsrfCookieName)
+	if err != nil || cookie.Value == "" {
+		SetCsrfCookie(c, time.Now().Add(24*time.Hour))
 	}
 	return user, nil
 }
