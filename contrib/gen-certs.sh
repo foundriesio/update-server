@@ -5,6 +5,7 @@
 FACTORY="dg-satellite-fake"
 HOSTNAME=$(hostname)
 NUM_DEVICES="1"
+RUN="go run github.com/foundriesio/dg-satellite/cmd/server"
 
 while [ $# -gt 0 ]; do
     case $1 in
@@ -22,6 +23,10 @@ while [ $# -gt 0 ]; do
             ;;
         --num-devices)
             NUM_DEVICES=$2
+            shift 2
+            ;;
+        --run)
+            RUN=$2
             shift 2
             ;;
         *)
@@ -46,7 +51,7 @@ echo "Hostname: $HOSTNAME"
 
 echo "## Generating TLS CSR"
 cd ${DG_DIR}
-go run github.com/foundriesio/dg-satellite/cmd/server --datadir ${DATA_DIR} create-csr --dnsname ${HOSTNAME} --factory ${FACTORY}
+$RUN --datadir ${DATA_DIR} create-csr --dnsname ${HOSTNAME} --factory ${FACTORY}
 
 cd ${DATA_DIR}/certs
 
@@ -77,19 +82,28 @@ cp factory_ca.pem cas.pem
 cd ..
 mkdir fake-devices
 
-for x in $(seq $NUM_DEVICES) ; do
-	name="device-$x"
-	mkdir fake-devices/${name}
-	openssl ecparam -genkey -name prime256v1 | openssl ec -out fake-devices/${name}/pkey.pem
+# ca.ext is identical for every device; write it once
+cat >ca.ext <<EOF
+keyUsage=keyCertSign
+extendedKeyUsage=critical, clientAuth
+basicConstraints=CA:TRUE
+EOF
 
-	cat >device.cnf <<EOF
+create_device() {
+	local x=$1
+	local name="device-$x"
+	mkdir fake-devices/${name}
+	openssl ecparam -genkey -name prime256v1 | openssl ec -out fake-devices/${name}/pkey.pem 2>/dev/null
+
+	# write cnf into the device dir to avoid collisions between parallel jobs
+	cat >fake-devices/${name}/device.cnf <<EOF
 [req]
 prompt = no
 distinguished_name = dn
 req_extensions = ext
 
 [dn]
-CN=$(uuidgen)
+CN=$(openssl rand -hex 16 | sed 's/\(........\)\(....\)\(....\)\(....\)\(............\)/\1-\2-\3-\4-\5/')
 OU=${FACTORY}
 
 [ext]
@@ -97,22 +111,31 @@ keyUsage=critical, digitalSignature
 extendedKeyUsage=critical, clientAuth
 EOF
 
-	openssl req -new -config device.cnf -key fake-devices/${name}/pkey.pem -out device.csr
-	rm device.cnf
+	openssl req -new -config fake-devices/${name}/device.cnf \
+		-key fake-devices/${name}/pkey.pem -out fake-devices/${name}/device.csr 2>/dev/null
+	rm fake-devices/${name}/device.cnf
 
-	cat >ca.ext <<EOF
-keyUsage=keyCertSign
-extendedKeyUsage=critical, clientAuth
-basicConstraints=CA:TRUE
-EOF
-	openssl x509 -req -days 3650 -in device.csr -CAcreateserial \
-		-extfile ca.ext -CAkey ./certs/factory_ca.key -CA ./certs/factory_ca.pem -out fake-devices/${name}/client.pem
-	rm ca.ext device.csr
+	# use -set_serial instead of -CAcreateserial to avoid shared .srl file races
+	openssl x509 -req -days 3650 -in fake-devices/${name}/device.csr -set_serial $x \
+		-extfile ca.ext -CAkey ./certs/factory_ca.key -CA ./certs/factory_ca.pem \
+		-out fake-devices/${name}/client.pem 2>/dev/null
+	rm fake-devices/${name}/device.csr
 	cp certs/factory_ca.pem fake-devices/${name}/root.crt
-    echo $HOSTNAME > fake-devices/${name}/dghostname
+	echo $HOSTNAME > fake-devices/${name}/dghostname
+}
+
+PARALLEL_JOBS=$(nproc)
+for x in $(seq $NUM_DEVICES) ; do
+	create_device $x &
+	while [[ $(jobs -r -p | wc -l) -ge $PARALLEL_JOBS ]]; do
+		wait -n 2>/dev/null || true
+	done
 done
+wait
+
+rm ca.ext
 
 echo
 echo "## Generate TLS cert"
 cd ${DG_DIR}
-go run github.com/foundriesio/dg-satellite/cmd/server --datadir ${DATA_DIR} sign-csr --cakey ${DATA_DIR}/certs/factory_ca.key --cacert ${DATA_DIR}/certs/factory_ca.pem
+$RUN --datadir ${DATA_DIR} sign-csr --cakey ${DATA_DIR}/certs/factory_ca.key --cacert ${DATA_DIR}/certs/factory_ca.pem
