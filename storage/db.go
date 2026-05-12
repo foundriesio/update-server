@@ -36,10 +36,16 @@ func NewDb(dbfile string) (*DbHandle, error) {
 	if _, err := os.Stat(dbfile); err != nil {
 		newDb = errors.Is(err, os.ErrNotExist)
 	}
-	db, err := sql.Open("sqlite3", dbfile)
+	// _busy_timeout: retry for up to 5s instead of immediately returning SQLITE_BUSY.
+	// _journal_mode=WAL: allows concurrent readers while a write is in progress.
+	dsn := dbfile + "?_busy_timeout=5000&_journal_mode=WAL"
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
 	}
+	// A single writer connection prevents writer-vs-writer lock contention.
+	// Readers share the WAL file and are not blocked by this limit.
+	db.SetMaxOpenConns(1)
 	if newDb {
 		if err := createTables(db); err != nil {
 			return nil, err
