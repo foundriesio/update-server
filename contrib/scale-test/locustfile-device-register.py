@@ -21,12 +21,16 @@ Optional env vars:
 
 import os
 import queue
+import threading
 
-from locust import HttpUser, constant, events, task
+import gevent
+from locust import HttpUser, between, constant, events, tag, task
 
 
 _DEVICE_DIR = os.environ.get("DEVICE_DIR", "/data/fake-devices")
 _NUM_DEVICES = int(os.environ.get("NUM_DEVICES", "5000"))
+_API_HOST = os.environ.get("API_HOST", "http://dg-sat:8080")
+_ADMIN_TOKEN_FILE = os.environ.get("ADMIN_TOKEN_FILE", "/data/auth/admin_token.txt")
 
 # Finite queue of device indices. Once exhausted, no new users are spawned.
 _device_queue: queue.Queue = queue.Queue()
@@ -41,12 +45,18 @@ class DeviceUser(HttpUser):
     # quickly and Locust reports accurate throughput numbers.
     wait_time = constant(0)
 
+    # Tracks how many DeviceUser instances are still active.
+    _active_lock = threading.Lock()
+    _active_count = 0
+
     def on_start(self) -> None:
         try:
             idx = _device_queue.get_nowait()
         except queue.Empty:
             self.stop()
             return
+        with DeviceUser._active_lock:
+            DeviceUser._active_count += 1
         device_path = os.path.join(_DEVICE_DIR, f"device-{idx}")
 
         cert = os.path.join(device_path, "client.pem")
@@ -64,6 +74,7 @@ class DeviceUser(HttpUser):
         self.client.verify = ca
         self._device_idx = idx
 
+    @tag("register")
     @task
     def register(self) -> None:
         """
@@ -73,7 +84,31 @@ class DeviceUser(HttpUser):
         with self.client.get("/device", catch_response=True, name="/device [register]") as resp:
             if not resp.ok:
                 resp.failure(f"device-{self._device_idx} {resp.status_code}: {resp.text}")
+        with DeviceUser._active_lock:
+            DeviceUser._active_count -= 1
+            all_done = DeviceUser._active_count == 0 and _device_queue.empty()
         self.stop()
+        if all_done:
+            gevent.spawn(self.environment.runner.quit)
+
+class ApiListUser(HttpUser):
+    """Simulates a REST API client listing a page of devices."""
+
+    wait_time = between(0.5, 1.5)
+
+    def on_start(self) -> None:
+        # Override the --host CLI arg which applies to all HttpUser subclasses.
+        self.client.base_url = _API_HOST
+        with open(_ADMIN_TOKEN_FILE) as f:
+            token = f.read().strip()
+        self.client.headers["Authorization"] = f"Bearer {token}"
+
+    @tag("list-devices")
+    @task
+    def list_devices(self) -> None:
+        with self.client.get("/v1/devices?limit=100", catch_response=True, name="/v1/devices [list]") as resp:
+            if not resp.ok:
+                resp.failure(f"list devices {resp.status_code}: {resp.text}")
 
 
 @events.init_command_line_parser.add_listener
@@ -90,4 +125,16 @@ def add_custom_args(parser, **_kwargs):
         default=str(_NUM_DEVICES),
         type=int,
         help="Number of fake devices available under --device-dir.",
+    )
+    parser.add_argument(
+        "--api-host",
+        env_var="API_HOST",
+        default=_API_HOST,
+        help="Base URL for the REST API (used by ApiListUser).",
+    )
+    parser.add_argument(
+        "--admin-token-file",
+        env_var="ADMIN_TOKEN_FILE",
+        default=_ADMIN_TOKEN_FILE,
+        help="Path to file containing the admin API token.",
     )
