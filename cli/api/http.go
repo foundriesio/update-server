@@ -45,15 +45,17 @@ func parseLinkRel(linkHeader, rel string) (string, bool) {
 }
 
 func (a Api) GetWithHeaders(resource string, result any, opts ...HttpOption) (http.Header, error) {
-	body, headers, err := a.getStreamHeaders(resource, opts...)
+	resp, err := a.get(resource, opts...)
 	if err != nil {
 		return nil, err
 	}
-	defer a.closeHttpBody(body)
-	if err := json.NewDecoder(body).Decode(result); err != nil {
-		return nil, err
+	defer a.closeHttpBody(resp.Body)
+	if resp.ContentLength != 0 {
+		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+			return nil, err
+		}
 	}
-	return headers, nil
+	return resp.Header, nil
 }
 
 func (a Api) Get(resource string, result any, opts ...HttpOption) error {
@@ -62,31 +64,31 @@ func (a Api) Get(resource string, result any, opts ...HttpOption) error {
 }
 
 func (a Api) GetStream(resource string, opts ...HttpOption) (io.ReadCloser, error) {
-	body, _, err := a.getStreamHeaders(resource, opts...)
-	return body, err
+	resp, err := a.get(resource, opts...)
+	return resp.Body, err
 }
 
-func (a Api) getStreamHeaders(resource string, opts ...HttpOption) (io.ReadCloser, http.Header, error) {
+func (a Api) get(resource string, opts ...HttpOption) (*http.Response, error) {
 	var options httpOptions
 	options.apply(opts)
 	url := a.URL + resource
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header = options.header
 
 	resp, err := a.Client.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		defer a.closeHttpBody(resp.Body)
-		return nil, nil, a.handleHttpError(resp)
+		return nil, a.handleHttpError(resp)
 	}
 	// Return the response without closing the body - caller must close it
-	return resp.Body, resp.Header, nil
+	return resp, nil
 }
 
 func (a Api) Delete(resource string, opts ...HttpOption) error {
