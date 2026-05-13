@@ -965,6 +965,7 @@ func TestApiConfigsFactory(t *testing.T) {
 		validConfig1  = `{"test":{"Value":"test config1"}}`
 		validConfig2  = `{"test2":{"Value":"test config2"}}`
 		invalidConfig = `{"test":{"Value1":"test config"}}`
+		sotaConfig    = `{"z-50-fioctl.toml":{"Value":"[pacman]"}}`
 	)
 
 	t.Run("Default user scopes", func(t *testing.T) {
@@ -1010,6 +1011,12 @@ func TestApiConfigsFactory(t *testing.T) {
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
 	})
+
+	t.Run("Update sota override", func(t *testing.T) {
+		tc.PUT("/configs/factory", 400, sotaConfig)
+		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
+		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+	})
 }
 
 func TestApiConfigsGroup(t *testing.T) {
@@ -1019,6 +1026,7 @@ func TestApiConfigsGroup(t *testing.T) {
 		validConfig2  = `{"test2":{"Value":"test config2"}}`
 		validConfig3  = `{"test":{"Value":"other config"}}`
 		invalidConfig = `{"test":{"Value1":"test config"}}`
+		sotaConfig    = `{"z-50-fioctl.toml":{"Value":"[pacman]"}}`
 	)
 
 	t.Run("Default user scopes", func(t *testing.T) {
@@ -1078,6 +1086,14 @@ func TestApiConfigsGroup(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
 	})
 
+	t.Run("Update sota override", func(t *testing.T) {
+		tc.PUT("/configs/group/foo", 204, sotaConfig)
+		assert.Equal(t, sotaConfig+"\n", string(tc.GET("/configs/group/foo", 200)))
+		assert.Equal(t,
+			fmt.Sprintf("[%s,%s,%s]\n", sotaConfig, validConfig2, validConfig1),
+			string(tc.GET("/configs/group/foo/history", 200)))
+	})
+
 	t.Run("Known group names", func(t *testing.T) {
 		assert.Equal(t, "[\"bar\",\"foo\"]\n", string(tc.GET("/known-labels/device-groups", 200)))
 	})
@@ -1090,6 +1106,7 @@ func TestApiConfigsDevice(t *testing.T) {
 		validConfig2  = `{"test2":{"Value":"test config2"}}`
 		validConfig3  = `{"test":{"Value":"other config"}}`
 		invalidConfig = `{"test":{"Value1":"test config"}}`
+		sotaConfig    = `{"z-50-fioctl.toml":{"Value":"[pacman]"}}`
 	)
 
 	_, err := tc.gw.DeviceCreate("foo", "pubkey1", true)
@@ -1150,6 +1167,14 @@ func TestApiConfigsDevice(t *testing.T) {
 		tc.GET("/configs/device/noo", 404)
 		tc.GET("/configs/device/noo/history", 404)
 		tc.PUT("/configs/device/noo", 404, validConfig3)
+	})
+
+	t.Run("Update sota override", func(t *testing.T) {
+		tc.PUT("/configs/device/foo", 204, sotaConfig)
+		assert.Equal(t, sotaConfig+"\n", string(tc.GET("/configs/device/foo", 200)))
+		assert.Equal(t,
+			fmt.Sprintf("[%s,%s,%s]\n", sotaConfig, validConfig2, validConfig1),
+			string(tc.GET("/configs/device/foo/history", 200)))
 	})
 }
 

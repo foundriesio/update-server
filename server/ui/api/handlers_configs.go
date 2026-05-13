@@ -62,7 +62,7 @@ func (h *handlers) factoryConfigsHistory(c echo.Context) error {
 // @Success 204
 // @Router  /configs/factory [put]
 func (h *handlers) factoryConfigsPut(c echo.Context) error {
-	if cfg, err := validateConfigSet(c); err != nil {
+	if cfg, err := validateConfigSet(c, true); err != nil {
 		return err // EchoError is used internally
 	} else if history, err := h.storage.ReadFactoryConfigHistory(1); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read factory config history")
@@ -134,7 +134,7 @@ func (h *handlers) groupConfigsPut(c echo.Context) error {
 	if !validateLabelValue(group) {
 		err := fmt.Errorf("group value must match a given regexp: %s", validLabelValueRegex)
 		return EchoError(c, err, http.StatusBadRequest, err.Error())
-	} else if cfg, err := validateConfigSet(c); err != nil {
+	} else if cfg, err := validateConfigSet(c, false); err != nil {
 		return err // EchoError is used internally
 	} else if history, err := h.storage.ReadGroupConfigHistory(group, 1); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
@@ -195,7 +195,7 @@ func (h *handlers) deviceConfigsHistory(c echo.Context) error {
 // @Router  /configs/device/{uuid} [put]
 func (h *handlers) deviceConfigsPut(c echo.Context) error {
 	return h.handleDevice(c, func(device *Device) error {
-		if cfg, err := validateConfigSet(c); err != nil {
+		if cfg, err := validateConfigSet(c, false); err != nil {
 			return err // EchoError is used internally
 		} else if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
@@ -254,7 +254,7 @@ func configHistoryToJson(history []string) []json.RawMessage {
 	return res
 }
 
-func validateConfigSet(c echo.Context) ([]byte, error) {
+func validateConfigSet(c echo.Context, denySotaOverride bool) ([]byte, error) {
 	// We only need to validate config files, and return the original body (save on serialization)
 	body := c.Request().Body
 	defer body.Close() //nolint:errcheck
@@ -267,6 +267,12 @@ func validateConfigSet(c echo.Context) ([]byte, error) {
 	var configs ConfigFileSet
 	if err = dec.Decode(&configs); err != nil {
 		return nil, EchoError(c, err, http.StatusBadRequest, "Failed to parse request body")
+	}
+	if denySotaOverride {
+		if _, ok := configs[storage.ConfigSotaOverride]; ok {
+			err = fmt.Errorf("a '%s' is not allowed for global configs", storage.ConfigSotaOverride)
+			return nil, EchoError(c, err, http.StatusBadRequest, err.Error())
+		}
 	}
 	return res, nil
 }

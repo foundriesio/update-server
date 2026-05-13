@@ -43,6 +43,7 @@ const (
 	ConfigsGroupDir    = "group"
 	ConfigsDeviceDir   = "device"
 	ConfigsJournalFile = ".journal"
+	ConfigSotaOverride = "z-50-fioctl.toml"
 
 	// Per device files/dirs
 	AktomlFile          = "aktoml"

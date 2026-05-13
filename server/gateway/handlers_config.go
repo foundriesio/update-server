@@ -15,8 +15,6 @@ import (
 	storage "github.com/foundriesio/dg-satellite/storage/gateway"
 )
 
-const sotaOverride = "z-50-fioctl.toml"
-
 type ConfigFile = storage.ConfigFile
 
 // @Summary Get device's current configuration
@@ -58,7 +56,7 @@ func (h handlers) configGet(c echo.Context) error {
 			return EchoError(c, err, http.StatusInternalServerError, "failed to parse config JSON")
 		}
 		for k, v := range cfg {
-			if k == sotaOverride {
+			if k == storage.ConfigSotaOverride {
 				if err = pacmanCfg.merge(v.Value); err != nil {
 					return EchoError(c, err, http.StatusInternalServerError, "failed to parse sota toml config")
 				}
@@ -67,7 +65,7 @@ func (h handlers) configGet(c echo.Context) error {
 		}
 	}
 	if !pacmanCfg.empty() {
-		if files[sotaOverride].Value, err = pacmanCfg.encode(); err != nil {
+		if files[storage.ConfigSotaOverride].Value, err = pacmanCfg.encode(); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "failed to encode merged sota toml config")
 		}
 	}

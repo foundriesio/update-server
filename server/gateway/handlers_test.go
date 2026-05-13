@@ -420,7 +420,7 @@ func TestConfigSota(t *testing.T) {
 	marshalSota := func(cfg string) string {
 		jsonCfg, e := json.Marshal(cfg)
 		require.Nil(t, e)
-		return fmt.Sprintf(`{"%s":{"Value":%s}}`, sotaOverride, string(jsonCfg))
+		return fmt.Sprintf(`{"%s":{"Value":%s}}`, storage.ConfigSotaOverride, string(jsonCfg))
 	}
 
 	cfg := marshalSota("[pacman]\ntags='factory'\napps='factory'\n[madman]\nfoo='bar'\n")

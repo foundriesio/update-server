@@ -42,6 +42,7 @@ const (
 	OrderByDeviceUuidDesc    OrderBy = "uuid-desc"
 
 	ConfigHistoryLimit int = 10
+	ConfigSotaOverride     = storage.ConfigSotaOverride
 )
 
 var orderByDeviceMap = map[OrderBy]string{

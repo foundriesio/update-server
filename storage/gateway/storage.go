@@ -49,6 +49,9 @@ const (
 	TufTimestampFile = storage.TufTimestampFile
 	TufSnapshotFile  = storage.TufSnapshotFile
 	TufTargetsFile   = storage.TufTargetsFile
+
+	// Per config class files/dirs
+	ConfigSotaOverride = storage.ConfigSotaOverride
 )
 
 type Storage struct {
