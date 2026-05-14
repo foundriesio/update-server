@@ -6,12 +6,14 @@ package api
 import (
 	"io"
 
+	"github.com/foundriesio/dg-satellite/storage"
 	models "github.com/foundriesio/dg-satellite/storage/api"
 )
 
 type (
-	ConfigFile    = models.ConfigFile
-	ConfigFileSet = map[string]ConfigFile
+	ConfigFile     = models.ConfigFile
+	ConfigFileSet  = map[string]ConfigFile
+	AppliedConfigs = storage.AppliedConfigs
 )
 
 type ConfigsApi struct {
@@ -22,6 +24,8 @@ type SpecificConfigsApi struct {
 	api *Api
 	uri string
 }
+
+type DeviceConfigsApi struct{ SpecificConfigsApi }
 
 func (a *Api) Configs() ConfigsApi {
 	return ConfigsApi{api: a}
@@ -35,8 +39,8 @@ func (a ConfigsApi) Group(name string) SpecificConfigsApi {
 	return SpecificConfigsApi{api: a.api, uri: "/v1/configs/group/" + name}
 }
 
-func (a ConfigsApi) Device(uuid string) SpecificConfigsApi {
-	return SpecificConfigsApi{api: a.api, uri: "/v1/configs/device/" + uuid}
+func (a ConfigsApi) Device(uuid string) DeviceConfigsApi {
+	return DeviceConfigsApi{SpecificConfigsApi: SpecificConfigsApi{api: a.api, uri: "/v1/configs/device/" + uuid}}
 }
 
 func (a ConfigsApi) ListGroups() (names []string, err error) {
@@ -56,5 +60,16 @@ func (a SpecificConfigsApi) Get() (res ConfigFileSet, err error) {
 
 func (a SpecificConfigsApi) Put(configs ConfigFileSet) (err error) {
 	_, err = a.api.Put(a.uri, configs)
+	return
+}
+
+func (a DeviceConfigsApi) GetApplied() (result *AppliedConfigs, err error) {
+	var applied AppliedConfigs
+	if err = a.api.Get(a.uri+"/applied", &applied); err != nil {
+		return
+	}
+	if applied.AppliedAt != 0 {
+		result = &applied
+	}
 	return
 }
