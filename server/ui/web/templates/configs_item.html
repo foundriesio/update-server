@@ -34,6 +34,11 @@
 {{ template "header" .}}
     <section class="content-section">
       <h2>{{.Title}}</h2>
+      {{ if .AppliedAt }}<p>Applied at: <strong>{{ .AppliedAt }}</strong></p>{{ end }}
+      {{ if .Configs }}
       {{ template "configs-item" .Configs }}
+      {{ else }}
+      <p><em>No configuration has been applied to this device yet.</em></p>
+      {{ end }}
     </section>
 {{ template "footer"}}
