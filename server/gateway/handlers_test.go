@@ -442,8 +442,27 @@ foo = "bar"
 apps = "device"
 tags = "group"
 `)
+	beforeRequest := time.Now().Unix()
 	serverCfg := strings.Trim(string(tc.GET("/config", 200)), "\n")
 	require.Equal(t, mergedCfg, serverCfg)
+
+	// Verify that the applied config envelope was persisted.
+	raw, err := tc.fs.Devices.ReadFile(tc.uuid, storage.ConfigAppliedFile)
+	require.Nil(t, err)
+	var applied baseStorage.AppliedConfigs
+	require.Nil(t, json.Unmarshal([]byte(raw), &applied))
+	assert.GreaterOrEqual(t, applied.AppliedAt, beforeRequest)
+	assert.LessOrEqual(t, applied.AppliedAt, time.Now().Unix())
+	require.Contains(t, applied.Files, storage.ConfigSotaOverride)
+	// The merged TOML value stored in the envelope should match what the server sent.
+	assert.Equal(t, mergedCfg, fmt.Sprintf(`{"%s":{"Value":%s}}`,
+		storage.ConfigSotaOverride,
+		func() string {
+			b, e := json.Marshal(applied.Files[storage.ConfigSotaOverride].Value)
+			require.Nil(t, e)
+			return string(b)
+		}()),
+	)
 }
 
 func TestInfo(t *testing.T) {

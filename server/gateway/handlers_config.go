@@ -71,6 +71,9 @@ func (h handlers) configGet(c echo.Context) error {
 		}
 	}
 	c.Response().Header().Set("Date", cts.Format(time.RFC1123))
+	if err := d.SaveAppliedConfigs(files); err != nil {
+		log.Warn("Failed to save applied config", "device", d.Uuid, "error", err)
+	}
 	return c.JSON(http.StatusOK, files)
 }
 

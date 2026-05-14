@@ -37,9 +37,10 @@ const (
 	CertsTlsPemFile = storage.CertsTlsPemFile
 
 	// Per device files/dirs
-	AktomlFile  = storage.AktomlFile
-	HwInfoFile  = storage.HwInfoFile
-	NetInfoFile = storage.NetInfoFile
+	ConfigAppliedFile = storage.ConfigAppliedFile
+	AktomlFile        = storage.AktomlFile
+	HwInfoFile        = storage.HwInfoFile
+	NetInfoFile       = storage.NetInfoFile
 
 	EventsPrefix = storage.EventsPrefix
 	StatesPrefix = storage.StatesPrefix
@@ -156,6 +157,18 @@ func (d Device) GetAppsFilePath(file string) string {
 	} else {
 		return d.storage.fs.Updates.Ci.Apps.FilePath(d.Tag, d.UpdateName, file)
 	}
+}
+
+func (d Device) SaveAppliedConfigs(files map[string]*storage.ConfigFile) error {
+	envelope := storage.AppliedConfigs{
+		AppliedAt: time.Now().Unix(),
+		Files:     files,
+	}
+	bytes, err := json.Marshal(envelope)
+	if err != nil {
+		return err
+	}
+	return d.storage.fs.Devices.WriteFile(d.Uuid, storage.ConfigAppliedFile, string(bytes))
 }
 
 func (d Device) GetOstreeFilePath(file string) string {
