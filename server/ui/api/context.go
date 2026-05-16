@@ -5,6 +5,7 @@ package api
 
 import (
 	"github.com/foundriesio/dg-satellite/context"
+	"github.com/foundriesio/dg-satellite/storage/users"
 )
 
 type (
@@ -19,6 +20,7 @@ var (
 
 const (
 	ctxKeyProd ctxKey = iota
+	ctxKeyUser
 )
 
 func CtxGetIsProd(ctx Context) bool {
@@ -27,4 +29,12 @@ func CtxGetIsProd(ctx Context) bool {
 
 func CtxWithIsProd(ctx Context, isProd bool) Context {
 	return context.WithValue(ctx, ctxKeyProd, isProd)
+}
+
+func CtxGetUser(ctx Context) *users.User {
+	return ctx.Value(ctxKeyUser).(*users.User)
+}
+
+func CtxWithUser(ctx Context, user *users.User) Context {
+	return context.WithValue(ctx, ctxKeyUser, user)
 }
