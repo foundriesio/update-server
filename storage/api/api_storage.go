@@ -25,6 +25,7 @@ type (
 
 	AppsStates        = storage.AppsStates
 	ConfigFile        = storage.ConfigFile
+	ConfigFileSet     = storage.ConfigFileSet
 	AppliedConfigs    = storage.AppliedConfigs
 	DeviceStatus      = storage.DeviceStatus
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
@@ -465,8 +466,8 @@ func (s Storage) ReadFactoryConfigHistory(latest int) ([]string, error) {
 	return s.fs.Configs.ReadFactoryConfigHistory(latest)
 }
 
-func (s Storage) SaveFactoryConfig(content string) error {
-	if err := s.fs.Configs.WriteFactoryConfig(content); err != nil {
+func (s Storage) SaveFactoryConfig(content, username, reason string) error {
+	if err := s.fs.Configs.WriteFactoryConfig(content, username, reason); err != nil {
 		return err
 	} else if err = s.fs.Configs.PurgeFactoryConfigHistory(ConfigHistoryLimit); err != nil {
 		slog.Error("Failed to clean factory config history", "error", err)
@@ -478,8 +479,8 @@ func (s Storage) ReadGroupConfigHistory(name string, latest int) ([]string, erro
 	return s.fs.Configs.ReadGroupConfigHistory(name, latest)
 }
 
-func (s Storage) SaveGroupConfig(name, content string) error {
-	if err := s.fs.Configs.WriteGroupConfig(name, content); err != nil {
+func (s Storage) SaveGroupConfig(name, content, username, reason string) error {
+	if err := s.fs.Configs.WriteGroupConfig(name, content, username, reason); err != nil {
 		return err
 	} else if err = s.fs.Configs.PurgeGroupConfigHistory(name, ConfigHistoryLimit); err != nil {
 		slog.Error("Failed to clean group config history", "group", name, "error", err)
@@ -491,8 +492,8 @@ func (s Storage) ReadDeviceConfigHistory(uuid string, latest int) ([]string, err
 	return s.fs.Configs.ReadDeviceConfigHistory(uuid, latest)
 }
 
-func (s Storage) SaveDeviceConfig(uuid, content string) error {
-	if err := s.fs.Configs.WriteDeviceConfig(uuid, content); err != nil {
+func (s Storage) SaveDeviceConfig(uuid, content, username, reason string) error {
+	if err := s.fs.Configs.WriteDeviceConfig(uuid, content, username, reason); err != nil {
 		return err
 	} else if err = s.fs.Configs.PurgeDeviceConfigHistory(uuid, ConfigHistoryLimit); err != nil {
 		slog.Error("Failed to clean device config history", "uuid", uuid, "error", err)

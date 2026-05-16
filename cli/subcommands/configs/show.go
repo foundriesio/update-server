@@ -37,7 +37,7 @@ func showConfigs(capi api.SpecificConfigsApi) {
 	printConfigs(cfg)
 }
 
-func printConfigs(configs api.ConfigFileSet) {
+func printConfigs(configs api.ConfigFileMap) {
 	fmt.Println("Files:")
 	for name, file := range configs {
 		if len(file.OnChanged) == 0 {

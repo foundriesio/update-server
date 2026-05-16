@@ -63,7 +63,8 @@ var setCmd = &cobra.Command{
 		api := getSpecificApi(cmd)
 		raw, _ := cmd.Flags().GetBool("raw")
 		replace, _ := cmd.Flags().GetBool("replace")
-		return setConfigs(api, args, raw, replace)
+		reason, _ := cmd.Flags().GetString("reason")
+		return setConfigs(api, args, raw, replace, reason)
 	},
 }
 
@@ -72,14 +73,16 @@ func init() {
 	addSpecificFlags(setCmd)
 	setCmd.Flags().BoolP("raw", "", false, "Use raw configuration file.")
 	setCmd.Flags().BoolP("replace", "", false, "Replace existing config rather than merge it.")
+	setCmd.Flags().StringP("reason", "m", "", "Add a message to store as the \"reason\" for this change")
 }
 
-func setConfigs(capi api.SpecificConfigsApi, files []string, raw, replace bool) error {
+func setConfigs(capi api.SpecificConfigsApi, files []string, raw, replace bool, reason string) error {
 	var (
 		cfg  api.ConfigFileSet
 		data []byte
 		err  error
 	)
+	cfg.Reason = reason
 	unencrypted := true
 	if raw {
 		if raw && len(files) != 1 {
@@ -92,9 +95,9 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, raw, replace bool) 
 			data, err = os.ReadFile(path)
 		}
 		cobra.CheckErr(err)
-		cobra.CheckErr(json.Unmarshal(data, &cfg))
+		cobra.CheckErr(json.Unmarshal(data, &cfg.Files))
 	} else {
-		cfg = make(api.ConfigFileSet, len(files))
+		cfg.Files = make(map[string]api.ConfigFile, len(files))
 		for _, keyval := range files {
 			parts := strings.SplitN(keyval, "=", 2)
 			if len(parts) != 2 {
@@ -109,7 +112,7 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, raw, replace bool) 
 				cobra.CheckErr(err)
 				content = string(data)
 			}
-			cfg[name] = api.ConfigFile{Value: content, Unencrypted: &unencrypted}
+			cfg.Files[name] = api.ConfigFile{Value: content, Unencrypted: &unencrypted}
 		}
 	}
 	if !replace {
@@ -118,8 +121,8 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, raw, replace bool) 
 		existing, err := capi.Get()
 		cobra.CheckErr(err)
 		for name, val := range existing {
-			if _, ok := cfg[name]; !ok {
-				cfg[name] = val
+			if _, ok := cfg.Files[name]; !ok {
+				cfg.Files[name] = val
 			}
 		}
 	}

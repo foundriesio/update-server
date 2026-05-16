@@ -60,10 +60,10 @@ func (s ConfigsFsHandle) ReadFactoryConfigHistory(latest int) (contents []string
 	return
 }
 
-func (s ConfigsFsHandle) WriteFactoryConfig(content string) error {
+func (s ConfigsFsHandle) WriteFactoryConfig(content, username, reason string) error {
 	if h, err := s.factoryLocalHandle(true); err != nil {
 		return err
-	} else if err = h.writeConfig(content); err != nil {
+	} else if err = h.writeConfig(content, username, reason); err != nil {
 		return fmt.Errorf("unexpected error writing factory config: %w", err)
 	}
 	return nil
@@ -114,10 +114,10 @@ func (s ConfigsFsHandle) ReadGroupConfigHistory(name string, latest int) (conten
 	return
 }
 
-func (s ConfigsFsHandle) WriteGroupConfig(name, content string) error {
+func (s ConfigsFsHandle) WriteGroupConfig(name, content, username, reason string) error {
 	if h, err := s.groupLocalHandle(name, true); err != nil {
 		return err
-	} else if err = h.writeConfig(content); err != nil {
+	} else if err = h.writeConfig(content, username, reason); err != nil {
 		return fmt.Errorf("unexpected error writing group config for %s: %w", name, err)
 	}
 	return nil
@@ -150,10 +150,10 @@ func (s ConfigsFsHandle) ReadDeviceConfigHistory(uuid string, latest int) (conte
 	return
 }
 
-func (s ConfigsFsHandle) WriteDeviceConfig(uuid, content string) error {
+func (s ConfigsFsHandle) WriteDeviceConfig(uuid, content, username, reason string) error {
 	if h, err := s.deviceLocalHandle(uuid, true); err != nil {
 		return err
-	} else if err = h.writeConfig(content); err != nil {
+	} else if err = h.writeConfig(content, username, reason); err != nil {
 		return fmt.Errorf("unexpected error writing device config for %s: %w", uuid, err)
 	}
 	return nil
@@ -226,6 +226,8 @@ type configsFsHandle struct {
 type configJournalItem struct {
 	name      string
 	timestamp int64
+	username  string
+	reason    string
 }
 
 func (s configsFsHandle) readConfig() (content string, timestamp int64, err error) {
@@ -241,7 +243,7 @@ func (s configsFsHandle) readConfig() (content string, timestamp int64, err erro
 	return
 }
 
-func (s configsFsHandle) writeConfig(content string) error {
+func (s configsFsHandle) writeConfig(content, username, reason string) error {
 	// A file based 2-phase commit: write to file and then to journal.
 	// If either write fails - config write operation is considered as failed.
 	// Any orphan config files will be eventually cleaned by purgeHistory.
@@ -249,7 +251,7 @@ func (s configsFsHandle) writeConfig(content string) error {
 	if err := s.writeFile(name, content, defaultFileAccess); err != nil {
 		return fmt.Errorf("failed to save config file %s: %w", name, err)
 	}
-	line := fmt.Sprintf("%s:%x\n", name, clock.Now().Unix())
+	line := fmt.Sprintf("%s:%x:%s:%s\n", name, clock.Now().Unix(), username, reason)
 	if err := s.appendFile(ConfigsJournalFile, line, defaultFileAccess); err != nil {
 		_ = s.deleteFile(name, true) // Silence cleanup errors - nothing we can do here.
 		return fmt.Errorf("failed to write journal for config file %s: %w", name, err)
@@ -313,15 +315,20 @@ func (s configsFsHandle) readJournal() ([]configJournalItem, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read journal file: %w", err)
 		}
-		parts := strings.Split(line, ":")
-		if len(parts) != 2 {
+		parts := strings.SplitN(line, ":", 4)
+		if len(parts) < 2 {
 			return nil, fmt.Errorf("failed to parse journal item %s: wrong format", line)
 		}
 		ts, err := strconv.ParseInt(parts[1], 16, 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse journal item %s: wrong format", line)
 		}
-		items = append(items, configJournalItem{parts[0], ts})
+		var username, reason string
+		if len(parts) > 3 { // backward compatible with 2-element history
+			username = parts[2]
+			reason = parts[3]
+		}
+		items = append(items, configJournalItem{parts[0], ts, username, reason})
 	}
 	return items, nil
 }

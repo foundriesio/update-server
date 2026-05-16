@@ -440,9 +440,9 @@ func TestApiDeviceLabelsPatch(t *testing.T) {
 
 	// Group names can also go from the group configs stored in the file system.
 	// These are always returned, even if the underlying config was effectively zeroed, as we still keep config history.
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("test", "anything"))
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("cfg", "anything"))
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("ok", ""))
+	require.Nil(t, tc.fs.Configs.WriteGroupConfig("test", "anything", "", ""))
+	require.Nil(t, tc.fs.Configs.WriteGroupConfig("cfg", "anything", "bob", "regular reason"))
+	require.Nil(t, tc.fs.Configs.WriteGroupConfig("ok", "", "alice", "test:colon:in:reason"))
 	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
 	assert.Equal(t, []string{"cfg", "new", "ok", "test"}, groups)
 }
@@ -967,55 +967,64 @@ func TestApiConfigsFactory(t *testing.T) {
 		invalidConfig = `{"test":{"Value1":"test config"}}`
 		sotaConfig    = `{"z-50-fioctl.toml":{"Value":"[pacman]"}}`
 	)
+	reason := "test reason"
+	put := func(code int, cfg string) {
+		tc.PUT("/configs/factory", code, fmt.Sprintf(`{"Reason":"%s","Files":%s}`, reason, cfg))
+	}
 
 	t.Run("Default user scopes", func(t *testing.T) {
 		tc.GET("/configs/factory", 403)
 		tc.GET("/configs/factory/history", 403)
-		tc.PUT("/configs/factory", 403, validConfig1)
+		put(403, validConfig1)
 	})
 
 	tc.u.AllowedScopes = users.ScopeDevicesR
 	t.Run("Read-only user scopes", func(t *testing.T) {
 		assert.Equal(t, []byte(nil), tc.GET("/configs/factory", 204))
 		assert.Equal(t, "[]\n", string(tc.GET("/configs/factory/history", 200)))
-		tc.PUT("/configs/factory", 403, validConfig1)
+		put(403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesRU
-		tc.PUT("/configs/factory", 403, validConfig1)
+		put(403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesR
-		tc.PUT("/configs/factory", 403, validConfig1)
+		put(403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesR | users.ScopeUpdatesRU
-		tc.PUT("/configs/factory", 403, validConfig1)
+		put(403, validConfig1)
 	})
 
 	tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesRU
 	t.Run("Upload valid config", func(t *testing.T) {
-		tc.PUT("/configs/factory", 204, validConfig1)
+		put(204, validConfig1)
 		assert.Equal(t, validConfig1+"\n", string(tc.GET("/configs/factory", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig1), string(tc.GET("/configs/factory/history", 200)))
 	})
 
 	t.Run("Update valid config", func(t *testing.T) {
-		tc.PUT("/configs/factory", 204, validConfig2)
+		put(204, validConfig2)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
-		tc.PUT("/configs/factory", 400, invalidConfig)
+		put(400, invalidConfig)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
-		tc.PUT("/configs/factory", 204, validConfig2)
+		put(204, validConfig2)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
 	})
 
 	t.Run("Update sota override", func(t *testing.T) {
-		tc.PUT("/configs/factory", 400, sotaConfig)
+		put(400, sotaConfig)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+	})
+
+	reason = strings.Repeat("A", 201)
+	t.Run("Reason too long", func(t *testing.T) {
+		put(400, validConfig1)
 	})
 }
 
@@ -1028,30 +1037,34 @@ func TestApiConfigsGroup(t *testing.T) {
 		invalidConfig = `{"test":{"Value1":"test config"}}`
 		sotaConfig    = `{"z-50-fioctl.toml":{"Value":"[pacman]"}}`
 	)
+	reason := "test reason"
+	put := func(url string, code int, cfg string) {
+		tc.PUT(url, code, fmt.Sprintf(`{"Reason":"%s","Files":%s}`, reason, cfg))
+	}
 
 	t.Run("Default user scopes", func(t *testing.T) {
 		tc.GET("/configs/group/foo", 403)
 		tc.GET("/configs/group/foo/history", 403)
-		tc.PUT("/configs/group/foo", 403, validConfig1)
+		put("/configs/group/foo", 403, validConfig1)
 	})
 
 	tc.u.AllowedScopes = users.ScopeDevicesR
 	t.Run("Read-only user scopes", func(t *testing.T) {
 		tc.GET("/configs/group/foo", 404)
 		tc.GET("/configs/group/foo/history", 404)
-		tc.PUT("/configs/group/foo", 403, validConfig1)
+		put("/configs/group/foo", 403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesRU
-		tc.PUT("/configs/group/foo", 403, validConfig1)
+		put("/configs/group/foo", 403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesR
-		tc.PUT("/configs/group/foo", 403, validConfig1)
+		put("/configs/group/foo", 403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesR | users.ScopeUpdatesRU
-		tc.PUT("/configs/group/foo", 403, validConfig1)
+		put("/configs/group/foo", 403, validConfig1)
 	})
 
 	tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesRU
 	t.Run("Upload valid config", func(t *testing.T) {
-		tc.PUT("/configs/group/foo", 204, validConfig1)
-		tc.PUT("/configs/group/bar", 204, validConfig3)
+		put("/configs/group/foo", 204, validConfig1)
+		put("/configs/group/bar", 204, validConfig3)
 		assert.Equal(t, validConfig1+"\n", string(tc.GET("/configs/group/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
 		assert.Equal(t, validConfig3+"\n", string(tc.GET("/configs/group/bar", 200)))
@@ -1061,7 +1074,7 @@ func TestApiConfigsGroup(t *testing.T) {
 	})
 
 	t.Run("Update valid config", func(t *testing.T) {
-		tc.PUT("/configs/group/foo", 204, validConfig2)
+		put("/configs/group/foo", 204, validConfig2)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/group/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
 		assert.Equal(t, validConfig3+"\n", string(tc.GET("/configs/group/bar", 200)))
@@ -1069,29 +1082,34 @@ func TestApiConfigsGroup(t *testing.T) {
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
-		tc.PUT("/configs/group/foo", 400, invalidConfig)
+		put("/configs/group/foo", 400, invalidConfig)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/group/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
-		tc.PUT("/configs/group/foo", 204, validConfig2)
+		put("/configs/group/foo", 204, validConfig2)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/group/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
 	})
 
 	t.Run("Update bad group name", func(t *testing.T) {
-		tc.PUT("/configs/group/foo%20bar", 400, validConfig2)
+		put("/configs/group/foo%20bar", 400, validConfig2)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/group/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
 	})
 
 	t.Run("Update sota override", func(t *testing.T) {
-		tc.PUT("/configs/group/foo", 204, sotaConfig)
+		put("/configs/group/foo", 204, sotaConfig)
 		assert.Equal(t, sotaConfig+"\n", string(tc.GET("/configs/group/foo", 200)))
 		assert.Equal(t,
 			fmt.Sprintf("[%s,%s,%s]\n", sotaConfig, validConfig2, validConfig1),
 			string(tc.GET("/configs/group/foo/history", 200)))
+	})
+
+	reason = strings.Repeat("A", 201)
+	t.Run("Reason too long", func(t *testing.T) {
+		put("/configs/group/foo", 400, validConfig1)
 	})
 
 	t.Run("Known group names", func(t *testing.T) {
@@ -1108,6 +1126,10 @@ func TestApiConfigsDevice(t *testing.T) {
 		invalidConfig = `{"test":{"Value1":"test config"}}`
 		sotaConfig    = `{"z-50-fioctl.toml":{"Value":"[pacman]"}}`
 	)
+	reason := "test reason"
+	put := func(url string, code int, cfg string) {
+		tc.PUT(url, code, fmt.Sprintf(`{"Reason":"%s","Files":%s}`, reason, cfg))
+	}
 
 	_, err := tc.gw.DeviceCreate("foo", "pubkey1", true)
 	require.Nil(t, err)
@@ -1117,26 +1139,26 @@ func TestApiConfigsDevice(t *testing.T) {
 	t.Run("Default user scopes", func(t *testing.T) {
 		tc.GET("/configs/device/foo", 403)
 		tc.GET("/configs/device/foo/history", 403)
-		tc.PUT("/configs/device/foo", 403, validConfig1)
+		put("/configs/device/foo", 403, validConfig1)
 	})
 
 	tc.u.AllowedScopes = users.ScopeDevicesR
 	t.Run("Read-only user scopes", func(t *testing.T) {
 		tc.GET("/configs/device/foo", 204)
 		tc.GET("/configs/device/foo/history", 200)
-		tc.PUT("/configs/device/foo", 403, validConfig1)
+		put("/configs/device/foo", 403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesRU
-		tc.PUT("/configs/device/foo", 403, validConfig1)
+		put("/configs/device/foo", 403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesR
-		tc.PUT("/configs/device/foo", 403, validConfig1)
+		put("/configs/device/foo", 403, validConfig1)
 		tc.u.AllowedScopes = users.ScopeDevicesR | users.ScopeUpdatesRU
-		tc.PUT("/configs/device/foo", 403, validConfig1)
+		put("/configs/device/foo", 403, validConfig1)
 	})
 
 	tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesRU
 	t.Run("Upload valid config", func(t *testing.T) {
-		tc.PUT("/configs/device/foo", 204, validConfig1)
-		tc.PUT("/configs/device/bar", 204, validConfig3)
+		put("/configs/device/foo", 204, validConfig1)
+		put("/configs/device/bar", 204, validConfig3)
 		assert.Equal(t, validConfig1+"\n", string(tc.GET("/configs/device/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig1), string(tc.GET("/configs/device/foo/history", 200)))
 		assert.Equal(t, validConfig3+"\n", string(tc.GET("/configs/device/bar", 200)))
@@ -1144,7 +1166,7 @@ func TestApiConfigsDevice(t *testing.T) {
 	})
 
 	t.Run("Update valid config", func(t *testing.T) {
-		tc.PUT("/configs/device/foo", 204, validConfig2)
+		put("/configs/device/foo", 204, validConfig2)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/device/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/device/foo/history", 200)))
 		assert.Equal(t, validConfig3+"\n", string(tc.GET("/configs/device/bar", 200)))
@@ -1152,13 +1174,13 @@ func TestApiConfigsDevice(t *testing.T) {
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
-		tc.PUT("/configs/device/foo", 400, invalidConfig)
+		put("/configs/device/foo", 400, invalidConfig)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/device/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/device/foo/history", 200)))
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
-		tc.PUT("/configs/device/foo", 204, validConfig2)
+		put("/configs/device/foo", 204, validConfig2)
 		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/device/foo", 200)))
 		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/device/foo/history", 200)))
 	})
@@ -1166,15 +1188,20 @@ func TestApiConfigsDevice(t *testing.T) {
 	t.Run("Inexistent device", func(t *testing.T) {
 		tc.GET("/configs/device/noo", 404)
 		tc.GET("/configs/device/noo/history", 404)
-		tc.PUT("/configs/device/noo", 404, validConfig3)
+		put("/configs/device/noo", 404, validConfig3)
 	})
 
 	t.Run("Update sota override", func(t *testing.T) {
-		tc.PUT("/configs/device/foo", 204, sotaConfig)
+		put("/configs/device/foo", 204, sotaConfig)
 		assert.Equal(t, sotaConfig+"\n", string(tc.GET("/configs/device/foo", 200)))
 		assert.Equal(t,
 			fmt.Sprintf("[%s,%s,%s]\n", sotaConfig, validConfig2, validConfig1),
 			string(tc.GET("/configs/device/foo/history", 200)))
+	})
+
+	reason = strings.Repeat("A", 201)
+	t.Run("Reason too long", func(t *testing.T) {
+		put("/configs/device/foo", 400, validConfig1)
 	})
 }
 

@@ -291,7 +291,7 @@ func TestConfig(t *testing.T) {
 
 	// Added factory configs
 	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(
-		`{"foo":{"Value":"foo content"},"bar":{"Value":"bar content","OnChanged":["/bin/bar"]}}`))
+		`{"foo":{"Value":"foo content"},"bar":{"Value":"bar content","OnChanged":["/bin/bar"]}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 2, len(cfg))
 	checkConfig("foo", "foo content")
@@ -301,7 +301,7 @@ func TestConfig(t *testing.T) {
 
 	// Added device configs - override one factory config, adds one more
 	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid,
-		`{"bar":{"Value":"bar device"},"baz":{"Value":"baz device"}}`))
+		`{"bar":{"Value":"bar device"},"baz":{"Value":"baz device"}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 3, len(cfg))
 	checkConfig("foo", "foo content")
@@ -312,9 +312,9 @@ func TestConfig(t *testing.T) {
 
 	// Added group configs, group not set
 	require.Nil(t, tc.fs.Configs.WriteGroupConfig("first",
-		`{"baz":{"Value":"first baz"},"toe":{"Value":"first toe"}}`))
+		`{"baz":{"Value":"first baz"},"toe":{"Value":"first toe"}}`, "", ""))
 	require.Nil(t, tc.fs.Configs.WriteGroupConfig("second",
-		`{"bar":{"Value":"second bar"},"baz":{"Value":"second baz"}}`))
+		`{"bar":{"Value":"second bar"},"baz":{"Value":"second baz"}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 3, len(cfg))
 	checkConfig("foo", "foo content")
@@ -362,7 +362,7 @@ func TestConfig(t *testing.T) {
 
 	// Changed device config - remove one factory/group override, keep another group override, add one more config
 	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid,
-		`{"ooh":{"Value":"ooh device"},"baz":{"Value":"baz device"}}`))
+		`{"ooh":{"Value":"ooh device"},"baz":{"Value":"baz device"}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 4, len(cfg))
 	checkConfig("foo", "foo content")
@@ -374,7 +374,7 @@ func TestConfig(t *testing.T) {
 
 	// Changed group config - remove factory override, add one more config
 	require.Nil(t, tc.fs.Configs.WriteGroupConfig("second",
-		`{"tip":{"Value":"second tip","OnChanged":["/big/tip"]},"baz":{"Value":"second baz"}}`))
+		`{"tip":{"Value":"second tip","OnChanged":["/big/tip"]},"baz":{"Value":"second baz"}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 5, len(cfg))
 	checkConfig("foo", "foo content")
@@ -387,7 +387,7 @@ func TestConfig(t *testing.T) {
 
 	// Changed factory config - remove one config
 	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(
-		`{"bar":{"Value":"bar content","OnChanged":["/bin/bar"]}}`))
+		`{"bar":{"Value":"bar content","OnChanged":["/bin/bar"]}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 4, len(cfg))
 	checkConfig("bar", "bar content", "/bin/bar")
@@ -424,11 +424,11 @@ func TestConfigSota(t *testing.T) {
 	}
 
 	cfg := marshalSota("[pacman]\ntags='factory'\napps='factory'\n[madman]\nfoo='bar'\n")
-	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(cfg))
+	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(cfg, "", ""))
 	cfg = marshalSota("[pacman]\ntags='group'\n[madman]\nbar='baz'\n")
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("group", cfg))
+	require.Nil(t, tc.fs.Configs.WriteGroupConfig("group", cfg, "", ""))
 	cfg = marshalSota("[pacman]\napps='device'\n[badman]\nfoo='bar'\n")
-	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid, cfg))
+	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid, cfg, "", ""))
 
 	// TOML library uses double-quotes for values, sorts everything alphabetically, and puts spaces around equality.
 	mergedCfg := marshalSota(`[badman]

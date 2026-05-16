@@ -51,11 +51,12 @@ var updatesCmd = &cobra.Command{
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := getSpecificApi(cmd)
+		reason, _ := cmd.Flags().GetString("reason")
 		apps, tag, err := validateUpdatesArgs(cmd)
 		if err != nil {
 			return err
 		}
-		setUpdates(api, apps, tag)
+		setUpdates(api, apps, tag, reason)
 		return nil
 	},
 }
@@ -65,9 +66,12 @@ func init() {
 	addSpecificFlags(updatesCmd)
 	updatesCmd.Flags().StringP("apps", "", "", "A comma-separated list of apps to run on the device.")
 	updatesCmd.Flags().StringP("tag", "", "", "A tag to follow on the device.")
+	updatesCmd.Flags().StringP("reason", "m",
+		"Override aktualizr-lite update configuration",
+		"Add a message to store as the \"reason\" for this change")
 }
 
-func setUpdates(capi api.SpecificConfigsApi, apps, tag string) {
+func setUpdates(capi api.SpecificConfigsApi, apps, tag, reason string) {
 	cfg, err := capi.Get()
 	cobra.CheckErr(err)
 
@@ -124,7 +128,7 @@ func setUpdates(capi api.SpecificConfigsApi, apps, tag string) {
 		Unencrypted: &unencrypted,
 		OnChanged:   []string{sotaOverrideOnChanged},
 	}
-	cobra.CheckErr(capi.Put(cfg))
+	cobra.CheckErr(capi.Put(api.ConfigFileSet{Files: cfg, Reason: reason}))
 }
 
 var (

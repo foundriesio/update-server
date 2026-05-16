@@ -37,7 +37,7 @@ func getDeviceApplied(a api.DeviceConfigsApi) {
 	}
 	appliedAt := time.Unix(applied.AppliedAt, 0)
 	fmt.Printf("Applied at: %s\n", appliedAt.Format(time.RFC1123))
-	cfg := make(api.ConfigFileSet, len(applied.Files))
+	cfg := make(api.ConfigFileMap, len(applied.Files))
 	for k, v := range applied.Files {
 		cfg[k] = *v
 	}
