@@ -71,6 +71,10 @@ func setUpdates(capi api.SpecificConfigsApi, apps, tag string) {
 	cfg, err := capi.Get()
 	cobra.CheckErr(err)
 
+	if cfg == nil {
+		cfg = make(map[string]api.ConfigFile)
+	}
+
 	const (
 		sotaOverride          = "z-50-fioctl.toml"
 		sotaOverrideOnChanged = "/usr/share/fioconfig/handlers/aktualizr-toml-update"
