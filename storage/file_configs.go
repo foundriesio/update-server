@@ -42,18 +42,18 @@ type ConfigsFsHandle struct {
 	baseFsHandle
 }
 
-func (s ConfigsFsHandle) ReadFactoryConfig() (content string, timestamp int64, err error) {
+func (s ConfigsFsHandle) ReadFactoryConfig() (cfg *ConfigFileSet, err error) {
 	h, _ := s.factoryLocalHandle(false)
-	content, timestamp, err = h.readConfig()
+	cfg, err = h.readConfig()
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading factory config: %w", err)
 	}
 	return
 }
 
-func (s ConfigsFsHandle) ReadFactoryConfigHistory(latest int) (contents []string, err error) {
+func (s ConfigsFsHandle) ReadFactoryConfigHistory(latest int) (history []*ConfigFileSet, err error) {
 	h, _ := s.factoryLocalHandle(false)
-	contents, err = h.readHistory(latest)
+	history, err = h.readHistory(latest)
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading factory config history: %w", err)
 	}
@@ -96,18 +96,18 @@ func (s ConfigsFsHandle) ReadGroupNames() ([]string, error) {
 	}
 }
 
-func (s ConfigsFsHandle) ReadGroupConfig(name string) (content string, timestamp int64, err error) {
+func (s ConfigsFsHandle) ReadGroupConfig(name string) (cfg *ConfigFileSet, err error) {
 	h, _ := s.groupLocalHandle(name, false)
-	content, timestamp, err = h.readConfig()
+	cfg, err = h.readConfig()
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading group config for %s: %w", name, err)
 	}
 	return
 }
 
-func (s ConfigsFsHandle) ReadGroupConfigHistory(name string, latest int) (contents []string, err error) {
+func (s ConfigsFsHandle) ReadGroupConfigHistory(name string, latest int) (history []*ConfigFileSet, err error) {
 	h, _ := s.groupLocalHandle(name, false)
-	contents, err = h.readHistory(latest)
+	history, err = h.readHistory(latest)
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading group config history for %s: %w", name, err)
 	}
@@ -132,18 +132,18 @@ func (s ConfigsFsHandle) PurgeGroupConfigHistory(name string, keepLatest int) er
 	return nil
 }
 
-func (s ConfigsFsHandle) ReadDeviceConfig(uuid string) (content string, timestamp int64, err error) {
+func (s ConfigsFsHandle) ReadDeviceConfig(uuid string) (cfg *ConfigFileSet, err error) {
 	h, _ := s.deviceLocalHandle(uuid, false)
-	content, timestamp, err = h.readConfig()
+	cfg, err = h.readConfig()
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading device config for %s: %w", uuid, err)
 	}
 	return
 }
 
-func (s ConfigsFsHandle) ReadDeviceConfigHistory(uuid string, latest int) (contents []string, err error) {
+func (s ConfigsFsHandle) ReadDeviceConfigHistory(uuid string, latest int) (history []*ConfigFileSet, err error) {
 	h, _ := s.deviceLocalHandle(uuid, false)
-	contents, err = h.readHistory(latest)
+	history, err = h.readHistory(latest)
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading device config history for %s: %w", uuid, err)
 	}
@@ -230,17 +230,13 @@ type configJournalItem struct {
 	reason    string
 }
 
-func (s configsFsHandle) readConfig() (content string, timestamp int64, err error) {
-	var journal []configJournalItem
-	if journal, err = s.readJournal(); err == nil && len(journal) > 0 {
+func (s configsFsHandle) readConfig() (*ConfigFileSet, error) {
+	journal, err := s.readJournal()
+	if err == nil && len(journal) > 0 {
 		latest := journal[len(journal)-1]
-		if content, err = s.readFile(latest.name, false); err != nil {
-			err = fmt.Errorf("failed to read config file %s: %w", latest.name, err)
-		} else {
-			timestamp = latest.timestamp
-		}
+		return s.readConfigFiles(latest)
 	}
-	return
+	return nil, err
 }
 
 func (s configsFsHandle) writeConfig(content, username, reason string) error {
@@ -259,24 +255,23 @@ func (s configsFsHandle) writeConfig(content, username, reason string) error {
 	return nil
 }
 
-func (s configsFsHandle) readHistory(latest int) ([]string, error) {
-	names, err := s.readJournalNames()
+func (s configsFsHandle) readHistory(latest int) ([]*ConfigFileSet, error) {
+	journal, err := s.readJournal()
 	if err != nil {
 		return nil, err
 	}
-	if len(names) == 0 {
+	if len(journal) == 0 {
 		return nil, nil
 	}
-	if len(names) > latest {
-		names = names[len(names)-latest:]
+	if len(journal) > latest {
+		journal = journal[len(journal)-latest:]
 	}
-	slices.Reverse(names) // Return the latest config as the first item.
-	configs := make([]string, 0, len(names))
-	for _, name := range names {
-		if content, err := s.readFile(name, false); err != nil {
-			return nil, fmt.Errorf("failed to read config file %s: %w", name, err)
-		} else {
-			configs = append(configs, content)
+	// Return the latest config as the first item.
+	slices.Reverse(journal)
+	configs := make([]*ConfigFileSet, len(journal))
+	for idx, info := range journal {
+		if configs[idx], err = s.readConfigFiles(info); err != nil {
+			return nil, err
 		}
 	}
 	return configs, nil
@@ -305,6 +300,19 @@ func (s configsFsHandle) purgeHistory(keepLatest int) (err error) {
 				break
 			}
 		}
+	}
+	return
+}
+
+func (s configsFsHandle) readConfigFiles(info configJournalItem) (cfg *ConfigFileSet, err error) {
+	cfg = &ConfigFileSet{
+		Reason:    info.reason,
+		CreatedAt: info.timestamp,
+		CreatedBy: info.username,
+	}
+	if cfg.RawFiles, err = s.readFile(info.name, false); err != nil {
+		err = fmt.Errorf("failed to read config file %s: %w", info.name, err)
+		cfg = nil
 	}
 	return
 }

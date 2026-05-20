@@ -103,6 +103,33 @@ func (c testClient) assertNotDone(done <-chan bool) {
 	}
 }
 
+func (c testClient) assertConfigs(response []byte, reason, files string) {
+	var cfg configFileSet
+	require.Nil(c.t, json.Unmarshal(response, &cfg))
+	assert.Equal(c.t, files, string(cfg.Files))
+	assert.Equal(c.t, reason, cfg.Reason)
+	assert.Equal(c.t, c.u.Username, cfg.CreatedBy)
+	assert.LessOrEqual(c.t, time.Now().Add(-time.Second).Unix(), cfg.CreatedAt)
+}
+
+func (c testClient) assertConfigsHistory(response []byte, reason string, files ...string) {
+	require.LessOrEqual(c.t, 1, len(files))
+	var history []configFileSet
+	require.Nil(c.t, json.Unmarshal(response, &history))
+	assert.Equal(c.t, len(files), len(history))
+	for idx, cfg := range history {
+		if idx >= len(files) {
+			break
+		}
+		assert.Equal(c.t, files[idx], string(cfg.Files))
+		if idx == 0 {
+			assert.Equal(c.t, reason, cfg.Reason)
+			assert.Equal(c.t, c.u.Username, cfg.CreatedBy)
+			assert.LessOrEqual(c.t, time.Now().Add(-time.Second).Unix(), cfg.CreatedAt)
+		}
+	}
+}
+
 func (c testClient) GET(resource string, status int, headers ...string) []byte {
 	req := httptest.NewRequest(http.MethodGet, "/v1"+resource, nil)
 	c.marshalHeaders(headers, req)
@@ -994,32 +1021,32 @@ func TestApiConfigsFactory(t *testing.T) {
 	tc.u.AllowedScopes = users.ScopeDevicesRU | users.ScopeUpdatesRU
 	t.Run("Upload valid config", func(t *testing.T) {
 		put(204, validConfig1)
-		assert.Equal(t, validConfig1+"\n", string(tc.GET("/configs/factory", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig1), string(tc.GET("/configs/factory/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig1)
 	})
 
 	t.Run("Update valid config", func(t *testing.T) {
 		put(204, validConfig2)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
 		put(400, invalidConfig)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
 		put(204, validConfig2)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update sota override", func(t *testing.T) {
 		put(400, sotaConfig)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/factory", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/factory/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
 	})
 
 	reason = strings.Repeat("A", 201)
@@ -1065,46 +1092,42 @@ func TestApiConfigsGroup(t *testing.T) {
 	t.Run("Upload valid config", func(t *testing.T) {
 		put("/configs/group/foo", 204, validConfig1)
 		put("/configs/group/bar", 204, validConfig3)
-		assert.Equal(t, validConfig1+"\n", string(tc.GET("/configs/group/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
-		assert.Equal(t, validConfig3+"\n", string(tc.GET("/configs/group/bar", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig3), string(tc.GET("/configs/group/bar/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, validConfig1)
+		tc.assertConfigs(tc.GET("/configs/group/bar", 200), reason, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/group/bar/history", 200), reason, validConfig3)
 		tc.GET("/configs/group/noo", 404)
 		tc.GET("/configs/group/noo/history", 404)
 	})
 
 	t.Run("Update valid config", func(t *testing.T) {
 		put("/configs/group/foo", 204, validConfig2)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/group/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
-		assert.Equal(t, validConfig3+"\n", string(tc.GET("/configs/group/bar", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig3), string(tc.GET("/configs/group/bar/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigs(tc.GET("/configs/group/bar", 200), reason, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/group/bar/history", 200), reason, validConfig3)
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
 		put("/configs/group/foo", 400, invalidConfig)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/group/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
 		put("/configs/group/foo", 204, validConfig2)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/group/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update bad group name", func(t *testing.T) {
 		put("/configs/group/foo%20bar", 400, validConfig2)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/group/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/group/foo/history", 200)))
 	})
 
 	t.Run("Update sota override", func(t *testing.T) {
 		put("/configs/group/foo", 204, sotaConfig)
-		assert.Equal(t, sotaConfig+"\n", string(tc.GET("/configs/group/foo", 200)))
-		assert.Equal(t,
-			fmt.Sprintf("[%s,%s,%s]\n", sotaConfig, validConfig2, validConfig1),
-			string(tc.GET("/configs/group/foo/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, sotaConfig)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, sotaConfig, validConfig2, validConfig1)
 	})
 
 	reason = strings.Repeat("A", 201)
@@ -1159,30 +1182,30 @@ func TestApiConfigsDevice(t *testing.T) {
 	t.Run("Upload valid config", func(t *testing.T) {
 		put("/configs/device/foo", 204, validConfig1)
 		put("/configs/device/bar", 204, validConfig3)
-		assert.Equal(t, validConfig1+"\n", string(tc.GET("/configs/device/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig1), string(tc.GET("/configs/device/foo/history", 200)))
-		assert.Equal(t, validConfig3+"\n", string(tc.GET("/configs/device/bar", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig3), string(tc.GET("/configs/device/bar/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/device/foo", 200), reason, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history", 200), reason, validConfig1)
+		tc.assertConfigs(tc.GET("/configs/device/bar", 200), reason, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history", 200), reason, validConfig3)
 	})
 
 	t.Run("Update valid config", func(t *testing.T) {
 		put("/configs/device/foo", 204, validConfig2)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/device/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/device/foo/history", 200)))
-		assert.Equal(t, validConfig3+"\n", string(tc.GET("/configs/device/bar", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s]\n", validConfig3), string(tc.GET("/configs/device/bar/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/device/foo", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigs(tc.GET("/configs/device/bar", 200), reason, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history", 200), reason, validConfig3)
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
 		put("/configs/device/foo", 400, invalidConfig)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/device/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/device/foo/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/device/foo", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
 		put("/configs/device/foo", 204, validConfig2)
-		assert.Equal(t, validConfig2+"\n", string(tc.GET("/configs/device/foo", 200)))
-		assert.Equal(t, fmt.Sprintf("[%s,%s]\n", validConfig2, validConfig1), string(tc.GET("/configs/device/foo/history", 200)))
+		tc.assertConfigs(tc.GET("/configs/device/foo", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Inexistent device", func(t *testing.T) {
@@ -1192,11 +1215,9 @@ func TestApiConfigsDevice(t *testing.T) {
 	})
 
 	t.Run("Update sota override", func(t *testing.T) {
-		put("/configs/device/foo", 204, sotaConfig)
-		assert.Equal(t, sotaConfig+"\n", string(tc.GET("/configs/device/foo", 200)))
-		assert.Equal(t,
-			fmt.Sprintf("[%s,%s,%s]\n", sotaConfig, validConfig2, validConfig1),
-			string(tc.GET("/configs/device/foo/history", 200)))
+		put("/configs/device/bar", 204, sotaConfig)
+		tc.assertConfigs(tc.GET("/configs/device/bar", 200), reason, sotaConfig)
+		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history", 200), reason, sotaConfig, validConfig3)
 	})
 
 	reason = strings.Repeat("A", 201)

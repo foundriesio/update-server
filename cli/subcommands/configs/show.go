@@ -6,6 +6,7 @@ package configs
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -34,12 +35,19 @@ func init() {
 func showConfigs(capi api.SpecificConfigsApi) {
 	cfg, err := capi.Get()
 	cobra.CheckErr(err)
-	printConfigs(cfg)
+	if cfg.CreatedAt == 0 && len(cfg.Files) == 0 {
+		// Files can be empty when configs were deleted, but CreatedAt is always set if there were any changes.
+		fmt.Println("No configuration has been created yet.")
+		return
+	}
+	fmt.Printf("Reason: %s\n", cfg.Reason)
+	fmt.Printf("Created At: %s\n", time.Unix(cfg.CreatedAt, 0).UTC().Format(time.RFC3339))
+	fmt.Printf("Created By: %s\n", cfg.CreatedBy)
+	printConfigs(cfg.Files)
 }
 
-func printConfigs(configs api.ConfigFileMap) {
-	fmt.Println("Files:")
-	for name, file := range configs {
+func printConfigs(cfg map[string]api.ConfigFile) {
+	for name, file := range cfg {
 		if len(file.OnChanged) == 0 {
 			fmt.Printf("\t%s\n", name)
 		} else {

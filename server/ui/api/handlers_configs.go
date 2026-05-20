@@ -19,7 +19,6 @@ import (
 type (
 	ConfigFile     = storage.ConfigFile
 	ConfigFileSet  = storage.ConfigFileSet
-	ConfigFileMap  = map[string]ConfigFile // temporary struct for swagger responses
 	AppliedConfigs = storage.AppliedConfigs
 )
 
@@ -29,13 +28,13 @@ const ConfigHistoryLimit = storage.ConfigHistoryLimit
 // @Description Requires scopes: devices:read
 // @Tags    Config
 // @Produce json
-// @Success 200 {object} ConfigFileMap
+// @Success 200 {object} ConfigFileSet
 // @Router  /configs/factory [get]
 func (h *handlers) factoryConfigsGet(c echo.Context) error {
 	if history, err := h.storage.ReadFactoryConfigHistory(1); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read factory config history")
 	} else if len(history) > 0 {
-		return c.JSON(http.StatusOK, json.RawMessage(history[0]))
+		return c.JSON(http.StatusOK, configItemToJson(history[0]))
 	} else {
 		return c.NoContent(http.StatusNoContent)
 	}
@@ -45,7 +44,7 @@ func (h *handlers) factoryConfigsGet(c echo.Context) error {
 // @Description Requires scopes: devices:read
 // @Tags    Config
 // @Produce json
-// @Success 200 {array} ConfigFileMap
+// @Success 200 {array} ConfigFileSet
 // @Router  /configs/factory/history [get]
 func (h *handlers) factoryConfigsHistory(c echo.Context) error {
 	if history, err := h.storage.ReadFactoryConfigHistory(ConfigHistoryLimit); err != nil {
@@ -68,7 +67,7 @@ func (h *handlers) factoryConfigsPut(c echo.Context) error {
 		return err // EchoError is used internally
 	} else if history, err := h.storage.ReadFactoryConfigHistory(1); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read factory config history")
-	} else if len(history) > 0 && string(cfg) == history[0] {
+	} else if len(history) > 0 && string(cfg) == history[0].RawFiles {
 		// No change - no need to create a new history item.
 		return c.NoContent(http.StatusNoContent)
 	} else if err = h.storage.SaveFactoryConfig(string(cfg), user.Username, reason); err != nil {
@@ -84,14 +83,14 @@ func (h *handlers) factoryConfigsPut(c echo.Context) error {
 // @Tags    Config
 // @Produce json
 // @Param   name path string true "Group name"
-// @Success 200 {object} ConfigFileMap
+// @Success 200 {object} ConfigFileSet
 // @Router  /configs/group/{name} [get]
 func (h *handlers) groupConfigsGet(c echo.Context) error {
 	group := c.Param("name")
 	if history, err := h.storage.ReadGroupConfigHistory(group, 1); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
 	} else if len(history) > 0 {
-		return c.JSON(http.StatusOK, json.RawMessage(history[0]))
+		return c.JSON(http.StatusOK, configItemToJson(history[0]))
 	} else if knownGroups, err := h.storage.GetKnownDeviceGroupNames(); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to get known group names")
 	} else if slices.Contains(knownGroups, group) {
@@ -106,7 +105,7 @@ func (h *handlers) groupConfigsGet(c echo.Context) error {
 // @Tags    Config
 // @Produce json
 // @Param   name path string true "Group name"
-// @Success 200 {array} ConfigFileMap
+// @Success 200 {array} ConfigFileSet
 // @Router  /configs/group/{name}/history [get]
 func (h *handlers) groupConfigsHistory(c echo.Context) error {
 	group := c.Param("name")
@@ -141,7 +140,7 @@ func (h *handlers) groupConfigsPut(c echo.Context) error {
 		return err // EchoError is used internally
 	} else if history, err := h.storage.ReadGroupConfigHistory(group, 1); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
-	} else if len(history) > 0 && string(cfg) == history[0] {
+	} else if len(history) > 0 && string(cfg) == history[0].RawFiles {
 		// No change - no need to create a new history item.
 		return c.NoContent(http.StatusNoContent)
 	} else if err = h.storage.SaveGroupConfig(group, string(cfg), user.Username, reason); err != nil {
@@ -157,14 +156,14 @@ func (h *handlers) groupConfigsPut(c echo.Context) error {
 // @Tags    Config
 // @Produce json
 // @Param   uuid path string true "Device uuid"
-// @Success 200 {object} ConfigFileMap
+// @Success 200 {object} ConfigFileSet
 // @Router  /configs/device/{uuid} [get]
 func (h *handlers) deviceConfigsGet(c echo.Context) error {
 	return h.handleDevice(c, func(device *Device) error {
 		if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
 		} else if len(history) > 0 {
-			return c.JSON(http.StatusOK, json.RawMessage(history[0]))
+			return c.JSON(http.StatusOK, configItemToJson(history[0]))
 		} else {
 			return c.NoContent(http.StatusNoContent)
 		}
@@ -198,7 +197,7 @@ func (h *handlers) deviceAppliedConfigsGet(c echo.Context) error {
 // @Tags    Config
 // @Produce json
 // @Param   uuid path string true "Device uuid"
-// @Success 200 {array} ConfigFileMap
+// @Success 200 {array} ConfigFileSet
 // @Router  /configs/device/{uuid}/history [get]
 func (h *handlers) deviceConfigsHistory(c echo.Context) error {
 	return h.handleDevice(c, func(device *Device) error {
@@ -225,7 +224,7 @@ func (h *handlers) deviceConfigsPut(c echo.Context) error {
 			return err // EchoError is used internally
 		} else if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
-		} else if len(history) > 0 && string(cfg) == history[0] {
+		} else if len(history) > 0 && string(cfg) == history[0].RawFiles {
 			// No change - no need to create a new history item.
 			return c.NoContent(http.StatusNoContent)
 		} else if err = h.storage.SaveDeviceConfig(device.Uuid, string(cfg), user.Username, reason); err != nil {
@@ -272,10 +271,20 @@ One of them should be moved to the configs directory at '%s'.`,
 	}
 }
 
-func configHistoryToJson(history []string) []json.RawMessage {
-	res := make([]json.RawMessage, len(history))
+type configFileSet struct {
+	ConfigFileSet
+	// Avoids unmarshalling Files into a map, and then marshalling them back.
+	Files json.RawMessage `json:"Files"`
+}
+
+func configItemToJson(cfg *ConfigFileSet) *configFileSet {
+	return &configFileSet{*cfg, json.RawMessage(cfg.RawFiles)}
+}
+
+func configHistoryToJson(history []*ConfigFileSet) []*configFileSet {
+	res := make([]*configFileSet, len(history))
 	for i, cfg := range history {
-		res[i] = json.RawMessage(cfg)
+		res[i] = configItemToJson(cfg)
 	}
 	return res
 }

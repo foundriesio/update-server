@@ -12,7 +12,6 @@ import (
 
 type (
 	ConfigFile     = models.ConfigFile
-	ConfigFileMap  = map[string]ConfigFile // temporary struct for get response
 	ConfigFileSet  = models.ConfigFileSet
 	AppliedConfigs = storage.AppliedConfigs
 )
@@ -54,7 +53,7 @@ func (a ConfigsApi) Upload(r io.Reader, opts ...HttpOption) (err error) {
 	return
 }
 
-func (a SpecificConfigsApi) Get() (res ConfigFileMap, err error) {
+func (a SpecificConfigsApi) Get() (res ConfigFileSet, err error) {
 	err = a.api.Get(a.uri, &res)
 	return
 }

@@ -81,10 +81,10 @@ func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 		return h.handleUnexpected(c, err)
 	}
 
-	var configs api.ConfigFileMap
+	var configs map[string]api.ConfigFile
 	var appliedAt string
 	if applied.AppliedAt != 0 {
-		configs = make(api.ConfigFileMap, len(applied.Files))
+		configs = make(map[string]api.ConfigFile, len(applied.Files))
 		for k, v := range applied.Files {
 			configs[k] = *v
 		}
@@ -93,7 +93,7 @@ func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 
 	ctx := struct {
 		baseCtx
-		Configs   api.ConfigFileMap
+		Configs   map[string]api.ConfigFile
 		AppliedAt string
 	}{
 		baseCtx:   h.baseCtx(c, fmt.Sprintf("Device \"%s\" Applied Config", uuid), "devices"),

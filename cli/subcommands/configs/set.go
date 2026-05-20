@@ -120,7 +120,7 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, raw, replace bool, 
 		// But it is a good start which requires the least effort.
 		existing, err := capi.Get()
 		cobra.CheckErr(err)
-		for name, val := range existing {
+		for name, val := range existing.Files {
 			if _, ok := cfg.Files[name]; !ok {
 				cfg.Files[name] = val
 			}

@@ -47,8 +47,12 @@ type ConfigFile struct {
 }
 
 type ConfigFileSet struct {
-	Files  map[string]ConfigFile `json:"Files"`
-	Reason string                `json:"Reason,omitempty"`
+	// Storage returns RawFiles, but API returns parsed Files.
+	RawFiles  string                `json:"-"`
+	Files     map[string]ConfigFile `json:"Files"`
+	Reason    string                `json:"Reason,omitempty"`
+	CreatedAt int64                 `json:"CreatedAt,omitempty"`
+	CreatedBy string                `json:"CreatedBy,omitempty"`
 }
 
 // AppliedConfigs wraps the merged config sent to a device along with

@@ -75,8 +75,8 @@ func setUpdates(capi api.SpecificConfigsApi, apps, tag, reason string) {
 	cfg, err := capi.Get()
 	cobra.CheckErr(err)
 
-	if cfg == nil {
-		cfg = make(map[string]api.ConfigFile)
+	if cfg.Files == nil {
+		cfg.Files = make(map[string]api.ConfigFile)
 	}
 
 	const (
@@ -84,7 +84,7 @@ func setUpdates(capi api.SpecificConfigsApi, apps, tag, reason string) {
 		sotaOverrideOnChanged = "/usr/share/fioconfig/handlers/aktualizr-toml-update"
 	)
 	var sotaFile api.ConfigFile
-	for name, val := range cfg {
+	for name, val := range cfg.Files {
 		if name == sotaOverride {
 			sotaFile = val
 			break
@@ -123,12 +123,12 @@ func setUpdates(capi api.SpecificConfigsApi, apps, tag, reason string) {
 		return
 	}
 	unencrypted := true
-	cfg[sotaOverride] = api.ConfigFile{
+	cfg.Files[sotaOverride] = api.ConfigFile{
 		Value:       newSotaContent,
 		Unencrypted: &unencrypted,
 		OnChanged:   []string{sotaOverrideOnChanged},
 	}
-	cobra.CheckErr(capi.Put(api.ConfigFileSet{Files: cfg, Reason: reason}))
+	cobra.CheckErr(capi.Put(api.ConfigFileSet{Files: cfg.Files, Reason: reason}))
 }
 
 var (

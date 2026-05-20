@@ -1,4 +1,4 @@
-{{ define "configs-item" }}
+{{ define "configs-item-files" }}
       <h4>Files:</h4>
       <table class="striped">
          <tbody>
@@ -31,6 +31,13 @@
       </table>
 {{ end }}
 
+{{ define "configs-item" }}
+      <p><b>Reason:</b> {{.Reason}}</p>
+      <p><b>Created At:</b> {{tsToString .CreatedAt}}</p>
+      <p><b>Created By:</b> {{.CreatedBy}}</p>
+      {{ template "configs-item-files" .Files }}
+{{ end}}
+
 {{ template "header" .}}
     <section class="content-section">
       <h2>{{.Title}}</h2>
@@ -44,7 +51,7 @@
       <h2>{{.Title}}</h2>
       {{ if .Configs }}
       <p>Applied at: <strong>{{ .AppliedAt }}</strong></p>
-      {{ template "configs-item" .Configs }}
+      {{ template "configs-item-files" .Configs }}
       {{ else }}
       <p><em>No configuration has been applied to this device yet.</em></p>
       {{ end }}
