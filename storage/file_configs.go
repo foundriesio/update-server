@@ -42,15 +42,6 @@ type ConfigsFsHandle struct {
 	baseFsHandle
 }
 
-func (s ConfigsFsHandle) ReadFactoryConfig() (cfg *ConfigFileSet, err error) {
-	h, _ := s.factoryLocalHandle(false)
-	cfg, err = h.readConfig()
-	if err != nil {
-		err = fmt.Errorf("unexpected error reading factory config: %w", err)
-	}
-	return
-}
-
 func (s ConfigsFsHandle) ReadFactoryConfigHistory(latest int) (history []*ConfigFileSet, err error) {
 	h, _ := s.factoryLocalHandle(false)
 	history, err = h.readHistory(latest)
@@ -96,15 +87,6 @@ func (s ConfigsFsHandle) ReadGroupNames() ([]string, error) {
 	}
 }
 
-func (s ConfigsFsHandle) ReadGroupConfig(name string) (cfg *ConfigFileSet, err error) {
-	h, _ := s.groupLocalHandle(name, false)
-	cfg, err = h.readConfig()
-	if err != nil {
-		err = fmt.Errorf("unexpected error reading group config for %s: %w", name, err)
-	}
-	return
-}
-
 func (s ConfigsFsHandle) ReadGroupConfigHistory(name string, latest int) (history []*ConfigFileSet, err error) {
 	h, _ := s.groupLocalHandle(name, false)
 	history, err = h.readHistory(latest)
@@ -130,15 +112,6 @@ func (s ConfigsFsHandle) PurgeGroupConfigHistory(name string, keepLatest int) er
 		return fmt.Errorf("unexpected error purging group config history for %s: %w", name, err)
 	}
 	return nil
-}
-
-func (s ConfigsFsHandle) ReadDeviceConfig(uuid string) (cfg *ConfigFileSet, err error) {
-	h, _ := s.deviceLocalHandle(uuid, false)
-	cfg, err = h.readConfig()
-	if err != nil {
-		err = fmt.Errorf("unexpected error reading device config for %s: %w", uuid, err)
-	}
-	return
 }
 
 func (s ConfigsFsHandle) ReadDeviceConfigHistory(uuid string, latest int) (history []*ConfigFileSet, err error) {
@@ -228,15 +201,6 @@ type configJournalItem struct {
 	timestamp int64
 	username  string
 	reason    string
-}
-
-func (s configsFsHandle) readConfig() (*ConfigFileSet, error) {
-	journal, err := s.readJournal()
-	if err == nil && len(journal) > 0 {
-		latest := journal[len(journal)-1]
-		return s.readConfigFiles(latest)
-	}
-	return nil, err
 }
 
 func (s configsFsHandle) writeConfig(content, username, reason string) error {
