@@ -34,6 +34,7 @@ func RegisterHandlers(e *echo.Echo, storage *storage.Storage, a auth.Provider) {
 	g.GET("/configs/group/:name/history", h.groupConfigsHistory, requireScope(users.ScopeDevicesR))
 	g.GET("/configs/device/:uuid", h.deviceConfigsGet, requireScope(users.ScopeDevicesR))
 	g.PUT("/configs/device/:uuid", h.deviceConfigsPut, requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU))
+	g.GET("/configs/device/:uuid/applied", h.deviceAppliedConfigsGet, requireScope(users.ScopeDevicesR))
 	g.GET("/configs/device/:uuid/history", h.deviceConfigsHistory, requireScope(users.ScopeDevicesR))
 	g.GET("/devices", h.deviceList, requireScope(users.ScopeDevicesR))
 	g.GET("/devices/:uuid", h.deviceGet, requireScope(users.ScopeDevicesR))

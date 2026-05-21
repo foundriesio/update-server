@@ -25,6 +25,7 @@ type (
 
 	AppsStates        = storage.AppsStates
 	ConfigFile        = storage.ConfigFile
+	AppliedConfigs    = storage.AppliedConfigs
 	DeviceStatus      = storage.DeviceStatus
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
 
@@ -299,6 +300,21 @@ func (s Storage) DeviceGet(uuid string) (*Device, error) {
 	}
 
 	return &d, nil
+}
+
+func (s Storage) ReadAppliedConfigs(uuid string) (*storage.AppliedConfigs, error) {
+	raw, err := s.fs.Devices.ReadFile(uuid, storage.ConfigAppliedFile)
+	if err != nil {
+		return nil, err
+	}
+	if raw == "" {
+		return nil, nil
+	}
+	var applied storage.AppliedConfigs
+	if err := json.Unmarshal([]byte(raw), &applied); err != nil {
+		return nil, fmt.Errorf("failed to parse applied config: %w", err)
+	}
+	return &applied, nil
 }
 
 var clearingEventTypes = []string{"EcuInstallationCompleted", "CertRotationCompleted", "MetadataUpdateCompleted"}

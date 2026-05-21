@@ -46,6 +46,7 @@ const (
 	ConfigSotaOverride = "z-50-fioctl.toml"
 
 	// Per device files/dirs
+	ConfigAppliedFile   = "config-applied"
 	AktomlFile          = "aktoml"
 	HwInfoFile          = "hardware-info"
 	NetInfoFile         = "network-info"

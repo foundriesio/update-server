@@ -1178,6 +1178,48 @@ func TestApiConfigsDevice(t *testing.T) {
 	})
 }
 
+func TestApiConfigsDeviceApplied(t *testing.T) {
+	tc := NewTestClient(t)
+
+	_, err := tc.gw.DeviceCreate("foo", "pubkey1", false)
+	require.Nil(t, err)
+
+	tc.u.AllowedScopes = users.ScopeDevicesR
+
+	t.Run("No applied config yet", func(t *testing.T) {
+		tc.GET("/configs/device/foo/applied", 204)
+	})
+
+	t.Run("Inexistent device", func(t *testing.T) {
+		tc.GET("/configs/device/noo/applied", 404)
+	})
+
+	t.Run("Default user scopes", func(t *testing.T) {
+		tc.u.AllowedScopes = 0
+		tc.GET("/configs/device/foo/applied", 403)
+		tc.u.AllowedScopes = users.ScopeDevicesR
+	})
+
+	// Write an applied config as the gateway would after delivering config to a device.
+	device, err := tc.gw.DeviceGet("foo")
+	require.Nil(t, err)
+	cfg := map[string]*storage.ConfigFile{
+		"test": {Value: "hello"},
+	}
+	beforeApply := time.Now().Unix()
+	require.Nil(t, device.SaveAppliedConfigs(cfg))
+
+	t.Run("Returns applied config envelope", func(t *testing.T) {
+		body := tc.GET("/configs/device/foo/applied", 200)
+		var applied storage.AppliedConfigs
+		require.Nil(t, json.Unmarshal(body, &applied))
+		assert.GreaterOrEqual(t, applied.AppliedAt, beforeApply)
+		assert.LessOrEqual(t, applied.AppliedAt, time.Now().Unix())
+		require.Contains(t, applied.Files, "test")
+		assert.Equal(t, "hello", applied.Files["test"].Value)
+	})
+}
+
 func TestApiConfigsUpload(t *testing.T) {
 	tc := NewTestClient(t)
 

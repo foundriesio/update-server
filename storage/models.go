@@ -46,6 +46,13 @@ type ConfigFile struct {
 	OnChanged   []string `json:"OnChanged,omitempty"`
 }
 
+// AppliedConfigs wraps the merged config sent to a device along with
+// the Unix timestamp (seconds) at which it was delivered.
+type AppliedConfigs struct {
+	AppliedAt int64                  `json:"applied_at"`
+	Files     map[string]*ConfigFile `json:"config"`
+}
+
 var evtIdToStatus = map[string]string{
 	"MetadataUpdateCompleted":  "Metadata update completed",
 	"EcuDownloadStarted":       "Download started",

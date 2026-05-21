@@ -18,8 +18,9 @@ import (
 )
 
 type (
-	ConfigFile    = storage.ConfigFile
-	ConfigFileSet = map[string]ConfigFile
+	ConfigFile     = storage.ConfigFile
+	ConfigFileSet  = map[string]ConfigFile
+	AppliedConfigs = storage.AppliedConfigs
 )
 
 const ConfigHistoryLimit = storage.ConfigHistoryLimit
@@ -165,6 +166,28 @@ func (h *handlers) deviceConfigsGet(c echo.Context) error {
 		} else {
 			return c.NoContent(http.StatusNoContent)
 		}
+	})
+}
+
+// @Summary Read the applied configuration last sent to a device
+// @Description Returns the merged config (factory + group + device) that was most recently
+// @Description delivered to the device, along with the Unix timestamp when it was applied.
+// @Description Requires scopes: devices:read
+// @Tags    Config
+// @Produce json
+// @Param   uuid path string true "Device UUID"
+// @Success 200 {object} AppliedConfigs
+// @Router  /configs/device/{uuid}/applied [get]
+func (h *handlers) deviceAppliedConfigsGet(c echo.Context) error {
+	return h.handleDevice(c, func(device *Device) error {
+		envelope, err := h.storage.ReadAppliedConfigs(device.Uuid)
+		if err != nil {
+			return EchoError(c, err, http.StatusInternalServerError, "Failed to read applied config")
+		}
+		if envelope == nil {
+			return c.NoContent(http.StatusNoContent)
+		}
+		return c.JSON(http.StatusOK, envelope)
 	})
 }
 
