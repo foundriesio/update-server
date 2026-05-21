@@ -27,6 +27,7 @@ venv: .venv/bin/activate
 .venv/bin/activate: requirements.txt
 	python3 -m venv .venv
 	.venv/bin/pip install -r requirements.txt
+	.venv/bin/playwright install chromium
 
 run: download venv
 	.venv/bin/pytest -s -v test_connection.py
