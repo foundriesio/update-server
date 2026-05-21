@@ -22,6 +22,10 @@ DG_SAT_URL = (
     "https://github.com/foundriesio/dg-satellite/releases/download/v0.7/"
     "dg-sat-linux-amd64"
 )
+SATCLI_URL = (
+    "https://github.com/foundriesio/dg-satellite/releases/download/v0.7/"
+    "satcli-linux-amd64"
+)
 FIOUP_DEB_URL = (
     "https://github.com/foundriesio/fioup/releases/download/v1.3.3/"
     "fioup_1.3.3_amd64.deb"
@@ -242,6 +246,37 @@ def debian_image(preflight) -> Path:
     dest = CACHE_DIR / "debian-trixie.qcow2"
     _download(DEBIAN_IMAGE_URL, dest)
     return dest
+
+
+@pytest.fixture(scope="session")
+def satcli_bin(preflight) -> Path:
+    dest = CACHE_DIR / "satcli"
+    _download(SATCLI_URL, dest)
+    dest.chmod(0o755)
+    return dest
+
+
+@pytest.fixture(scope="session")
+def registered_device(dg_satellite_server, fioup_vm) -> dict:
+    """Run fioup check-in and wait for the device to appear in dg-satellite."""
+    print("\n[setup] Running fioup check-in ...", flush=True)
+    out, _ = fioup_vm.run("fioup check", check=False)
+
+    try:
+        resp = requests.get(
+            f"http://localhost:{SERVER_UI_PORT}/v1/devices", timeout=5
+        )
+        resp.raise_for_status()
+        devices = resp.json()
+        if devices and devices[0].get("last-seen", 0) > 0:
+            device = devices[0]
+            print(f"[setup] Device registered: {device['uuid']}", flush=True)
+            return device
+    except requests.exceptions.RequestException as exc:
+        print(f"[setup] failed to checkin with: {out}", flush=True)
+        pytest.fail(f"dg-satellite /v1/devices request failed: {exc}")
+
+    raise RuntimeError("Device did not appear in dg-satellite")
 
 
 @pytest.fixture(scope="session")
