@@ -1,5 +1,6 @@
 """pytest fixtures for dg-satellite + fioup e2e tests."""
 
+import json
 import shutil
 import socket
 import subprocess
@@ -26,6 +27,10 @@ SATCLI_URL = (
     "https://github.com/foundriesio/dg-satellite/releases/download/v0.7/"
     "satcli-linux-amd64"
 )
+COMPOSECTL_URL = (
+    "https://github.com/foundriesio/composeapp/releases/download/v96.2.1/"
+    "composectl_96.2.1_linux_amd64"
+)
 FIOUP_DEB_URL = (
     "https://github.com/foundriesio/fioup/releases/download/v1.3.3/"
     "fioup_1.3.3_amd64.deb"
@@ -35,6 +40,37 @@ DEBIAN_IMAGE_URL = (
     "https://cloud.debian.org/images/cloud/trixie/latest/"
     "debian-13-genericcloud-amd64.qcow2"
 )
+
+APP_IMAGE = (
+    "hub.foundries.io/lmp/shellhttpd"
+    "@sha256:589b63dd3ab24a016472145101858fc5124970c10ef5cabfb8d877b90e198603"
+)
+
+TARGETS_JSON = {
+    "signed": {
+        "_type": "Targets",
+        "expires": "2027-05-18T18:27:37Z",
+        "targets": {
+            "intel-corei7-64-lmp-149": {
+                "custom": {
+                    "createdAt": "2026-05-18T17:02:38Z",
+                    "docker_compose_apps": {
+                        "shellhttpd": {"uri": APP_IMAGE},
+                    },
+                    "hardwareIds": ["intel-corei7-64"],
+                    "name": "intel-corei7-64-lmp",
+                    "tags": ["main"],
+                    "version": "149",
+                },
+                "hashes": {
+                    "sha256": "21934ac6e1a74084e8e06009af0539969e5812456d1c65e230c7f094efe931e5"
+                },
+                "length": 0,
+            }
+        },
+        "version": 42,
+    }
+}
 
 SOTA_TOML = """\
 [import]
@@ -254,6 +290,48 @@ def satcli_bin(preflight) -> Path:
     _download(SATCLI_URL, dest)
     dest.chmod(0o755)
     return dest
+
+
+@pytest.fixture(scope="session")
+def composectl_bin(preflight) -> Path:
+    dest = CACHE_DIR / "composectl"
+    _download(COMPOSECTL_URL, dest)
+    dest.chmod(0o755)
+    return dest
+
+
+@pytest.fixture(scope="session")
+def sample_update(composectl_bin) -> Path:
+    """Build the OTA update artifact in .cache/update/ (cached across sessions).
+
+    Structure:
+      .cache/update/tuf/targets.json   – TUF Targets metadata
+      .cache/update/apps/              – OCI app bundle from composectl pull
+    """
+    update_dir = CACHE_DIR / "update"
+    apps_dir = update_dir / "apps"
+    tuf_dir = update_dir / "tuf"
+
+    if apps_dir.exists() and any(apps_dir.iterdir()):
+        return update_dir
+
+    tuf_dir.mkdir(parents=True, exist_ok=True)
+    apps_dir.mkdir(parents=True, exist_ok=True)
+
+    (tuf_dir / "targets.json").write_text(json.dumps(TARGETS_JSON, indent=3))
+
+    print("\n[setup] Pulling app content via composectl (may take a while) ...", flush=True)
+    subprocess.run(
+        [
+            "docker", "run", "--rm",
+            "-v", f"{apps_dir}:/apps",
+            "-v", f"{composectl_bin}:/composectl",
+            TOOLS_IMAGE,
+            "/composectl", "pull", "-i", "/apps", "-s", "/apps", APP_IMAGE,
+        ],
+        check=True,
+    )
+    return update_dir
 
 
 @pytest.fixture(scope="session")

@@ -5,7 +5,7 @@ CACHE := .cache
 docker-build:
 	docker build -t dg-sat-e2e-tools .
 
-download: docker-build $(CACHE)/dg-sat $(CACHE)/fioup.deb $(CACHE)/debian-trixie.qcow2
+download: docker-build $(CACHE)/dg-sat $(CACHE)/fioup.deb $(CACHE)/debian-trixie.qcow2 $(CACHE)/composectl
 
 $(CACHE)/dg-sat:
 	mkdir -p $(CACHE)
@@ -22,6 +22,12 @@ $(CACHE)/debian-trixie.qcow2:
 	mkdir -p $(CACHE)
 	curl -fL -o $@ \
 	  https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2
+
+$(CACHE)/composectl:
+	mkdir -p $(CACHE)
+	curl -fsSL -o $@ \
+	  https://github.com/foundriesio/composeapp/releases/download/v96.2.1/composectl_96.2.1_linux_amd64
+	chmod +x $@
 
 venv: .venv/bin/activate
 .venv/bin/activate: requirements.txt
