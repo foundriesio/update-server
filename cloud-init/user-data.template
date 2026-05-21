@@ -1,0 +1,10 @@
+#cloud-config
+users:
+  - name: root
+    ssh_authorized_keys:
+      - {ssh_public_key}
+    lock_passwd: false
+write_files:
+  - path: /etc/hosts
+    append: true
+    content: "10.0.2.2 dg-satellite\n"
