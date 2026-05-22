@@ -1,6 +1,7 @@
 """pytest fixtures for dg-satellite + fioup e2e tests."""
 
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -290,6 +291,27 @@ def satcli_bin(preflight) -> Path:
     _download(SATCLI_URL, dest)
     dest.chmod(0o755)
     return dest
+
+
+def _run_satcli(satcli_bin: Path, home: Path, *args) -> str:
+    result = subprocess.run(
+        [str(satcli_bin), *args],
+        check=True, capture_output=True, text=True,
+        env={**os.environ, "HOME": str(home)},
+    )
+    return result.stdout
+
+
+SERVER_URL = "http://localhost:8080"
+
+
+@pytest.fixture(scope="session")
+def satcli(satcli_bin, dg_satellite_server):
+    """Log in once and return a callable that runs satcli subcommands."""
+    home = dg_satellite_server / "satcli-home"
+    (home / ".config").mkdir(exist_ok=True, parents=True)
+    _run_satcli(satcli_bin, home, "login", "--token", "doesnotmatter", "pytestfixture", SERVER_URL)
+    return lambda *args: _run_satcli(satcli_bin, home, *args)
 
 
 @pytest.fixture(scope="session")
