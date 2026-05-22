@@ -37,6 +37,12 @@ venv: .venv/bin/activate
 
 run: download venv
 	.venv/bin/pytest -s -v test_connection.py
+	.venv/bin/pytest -s -v test_satcli.py
+	.venv/bin/pytest -s -v test_updates.py
+	.venv/bin/pytest -s -v test_remote_actions.py
+	.venv/bin/pytest -s -v test_webui.py
+	.venv/bin/pytest -s -v test_webui_settings.py
+	.venv/bin/pytest -s -v test_e2e_update_flow.py
 
 clean:
 	rm -rf .cache __pycache__ .pytest_cache

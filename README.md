@@ -1,4 +1,4 @@
-# dg-sat-e2e
+# dg-satellite-e2e
 
 End-to-end tests for [dg-satellite](https://github.com/foundriesio/dg-satellite). The suite spins up a real `dg-satellite` server, optionally boots a Debian VM via QEMU with `fioup`, and drives the system through a Playwright browser and the `satcli` CLI.
 
