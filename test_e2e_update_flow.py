@@ -5,7 +5,7 @@ UPDATE_NAME = "e2e-update"
 ROLLOUT_NAME = "e2e-rollout"
 
 
-def test_full_update_flow(satcli, sample_update, registered_device, fioup_vm):
+def test_full_update_flow(satcli, satcli_tail, sample_update, registered_device, fioup_vm):
     uuid = registered_device["uuid"]
 
     # Upload the update artifact
@@ -21,13 +21,23 @@ def test_full_update_flow(satcli, sample_update, registered_device, fioup_vm):
     # Trigger the update on the device and wait for it to complete
     fioup_vm.run("fioup update")
 
+    # Tail the rollout in a background thread before triggering the update
+    stop_tail = satcli_tail(
+        #"updates", "tail", "ci", "main", UPDATE_NAME, "--rollout", ROLLOUT_NAME,
+        "updates", "tail", "ci", "main", UPDATE_NAME,
+    )
+
     # Verify update events are recorded for the device
     out = satcli("devices", "updates", uuid)
     lines = out.splitlines()
     out = satcli("devices", "updates", uuid, lines[1].strip())
 
+
     # Verify the shellhttpd compose app is running on the device
     docker_out, _ = fioup_vm.run("docker ps")
     assert "shellhttpd" in docker_out, f"shellhttpd container not running:\n{docker_out}"
+    assert "EcuInstallationCompleted(intel-corei7-64-lmp-149) -> Succeeded" in out, f"Update evens do not show successful installation:\n{docker_out}"
 
-    assert "EcuInstallationCompleted(intel-corei7-64-lmp-149) -> Succeeded" in out, "Update evens do not show successful installation" 
+    # Stop the tail and collect everything that was streamed
+    out = stop_tail()
+    assert '"status":"Installation completed; succeeded"' in out, f"Tail did not show successful installation event:\n{out}"

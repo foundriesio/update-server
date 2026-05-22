@@ -7,6 +7,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -312,6 +313,45 @@ def satcli(satcli_bin, dg_satellite_server):
     (home / ".config").mkdir(exist_ok=True, parents=True)
     _run_satcli(satcli_bin, home, "login", "--token", "doesnotmatter", "pytestfixture", SERVER_URL)
     return lambda *args: _run_satcli(satcli_bin, home, *args)
+
+
+@pytest.fixture(scope="session")
+def satcli_tail(satcli_bin, dg_satellite_server):
+    """Return a factory that starts a satcli subcommand in a background thread.
+
+    Usage::
+
+        stop = satcli_tail("updates", "tail", ...)
+        # ... do work ...
+        output = stop()   # terminates the process and returns collected stdout
+    """
+    home = dg_satellite_server / "satcli-home"
+
+    def _start(*args):
+        buf = []
+        proc = subprocess.Popen(
+            [str(satcli_bin), *args],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True,
+            env={**os.environ, "HOME": str(home)},
+        )
+
+        def _reader():
+            for line in proc.stdout:
+                buf.append(line)
+
+        t = threading.Thread(target=_reader, daemon=True)
+        t.start()
+
+        def stop():
+            proc.terminate()
+            proc.wait(timeout=10)
+            t.join(timeout=5)
+            return "".join(buf)
+
+        return stop
+
+    return _start
 
 
 @pytest.fixture(scope="session")
