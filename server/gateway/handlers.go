@@ -35,7 +35,12 @@ func RegisterHandlers(e *echo.Echo, storage *storage.Storage, url string) {
 	mtls := e.Group("/")
 	mtls.Use(
 		h.authDevice,
-		middleware.BodyLimit("100K"), // After TLS authentication but before we read headers.
+		middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{ // After TLS authentication but before we read headers.
+			Skipper: func(c echo.Context) bool {
+				return c.Path() == "/tests/:testid/:path" // testArtifact can take large uploads
+			},
+			Limit: "100K",
+		}),
 		h.checkinDevice,
 	)
 
