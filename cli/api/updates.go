@@ -36,7 +36,7 @@ func (u UpdatesApi) Get(tag, updateName string) ([]string, error) {
 }
 
 func (u UpdatesApi) Tail(tag, updateName string) (io.ReadCloser, error) {
-	endpoint := "/v1/updates/" + u.Type + "/" + tag + "/" + updateName
+	endpoint := "/v1/updates/" + u.Type + "/" + tag + "/" + updateName + "/tail"
 	return u.api.GetStream(endpoint)
 }
 
@@ -53,7 +53,7 @@ func (u UpdatesApi) CreateRollout(tag, updateName, rollout string, data Rollout)
 }
 
 func (u UpdatesApi) TailRollout(tag, updateName, rollout string) (io.ReadCloser, error) {
-	endpoint := "/v1/updates/" + u.Type + "/" + tag + "/" + updateName + "/rollouts/" + rollout
+	endpoint := "/v1/updates/" + u.Type + "/" + tag + "/" + updateName + "/rollouts/" + rollout + "/tail"
 	return u.api.GetStream(endpoint)
 }
 

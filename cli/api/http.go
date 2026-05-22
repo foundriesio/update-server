@@ -65,6 +65,9 @@ func (a Api) Get(resource string, result any, opts ...HttpOption) error {
 
 func (a Api) GetStream(resource string, opts ...HttpOption) (io.ReadCloser, error) {
 	resp, err := a.get(resource, opts...)
+	if resp == nil {
+		return nil, err
+	}
 	return resp.Body, err
 }
 
