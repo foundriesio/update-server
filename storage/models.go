@@ -58,8 +58,8 @@ type ConfigFileSet struct {
 // AppliedConfigs wraps the merged config sent to a device along with
 // the Unix timestamp (seconds) at which it was delivered.
 type AppliedConfigs struct {
-	Files     map[string]*ConfigFile `json:"config"`
-	AppliedAt int64                  `json:"applied_at"`
+	Files     map[string]ConfigFile `json:"config"`
+	AppliedAt int64                 `json:"applied_at"`
 }
 
 var evtIdToStatus = map[string]string{

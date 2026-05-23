@@ -63,13 +63,7 @@ func (a SpecificConfigsApi) Put(configs ConfigFileSet) (err error) {
 	return
 }
 
-func (a DeviceConfigsApi) GetApplied() (result *AppliedConfigs, err error) {
-	var applied AppliedConfigs
-	if err = a.api.Get(a.uri+"/applied", &applied); err != nil {
-		return
-	}
-	if applied.AppliedAt != 0 {
-		result = &applied
-	}
+func (a DeviceConfigsApi) GetApplied() (res AppliedConfigs, err error) {
+	err = a.api.Get(a.uri+"/applied", &res)
 	return
 }

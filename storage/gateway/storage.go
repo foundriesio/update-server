@@ -159,7 +159,7 @@ func (d Device) GetAppsFilePath(file string) string {
 	}
 }
 
-func (d Device) SaveAppliedConfigs(files map[string]*storage.ConfigFile) error {
+func (d Device) SaveAppliedConfigs(files map[string]ConfigFile) error {
 	envelope := storage.AppliedConfigs{
 		AppliedAt: time.Now().Unix(),
 		Files:     files,

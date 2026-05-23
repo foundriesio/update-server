@@ -1251,7 +1251,7 @@ func TestApiConfigsDeviceApplied(t *testing.T) {
 	// Write an applied config as the gateway would after delivering config to a device.
 	device, err := tc.gw.DeviceGet("foo")
 	require.Nil(t, err)
-	cfg := map[string]*storage.ConfigFile{
+	cfg := map[string]storage.ConfigFile{
 		"test": {Value: "hello"},
 	}
 	beforeApply := time.Now().Unix()

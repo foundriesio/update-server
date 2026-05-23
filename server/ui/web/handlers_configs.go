@@ -5,10 +5,8 @@ package web
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/foundriesio/dg-satellite/server/ui/api"
-	storage "github.com/foundriesio/dg-satellite/storage"
 	"github.com/labstack/echo/v4"
 )
 
@@ -76,29 +74,17 @@ func (h handlers) configsDeviceItem(c echo.Context) error {
 
 func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 	uuid := c.Param("uuid")
-	var applied storage.AppliedConfigs
+	var applied api.AppliedConfigs
 	if err := getJson(c.Request().Context(), "/v1/configs/device/"+uuid+"/applied", &applied); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
-	var configs map[string]api.ConfigFile
-	var appliedAt string
-	if applied.AppliedAt != 0 {
-		configs = make(map[string]api.ConfigFile, len(applied.Files))
-		for k, v := range applied.Files {
-			configs[k] = *v
-		}
-		appliedAt = time.Unix(applied.AppliedAt, 0).UTC().Format(time.RFC1123)
-	}
-
 	ctx := struct {
 		baseCtx
-		Configs   map[string]api.ConfigFile
-		AppliedAt string
+		Configs api.AppliedConfigs
 	}{
-		baseCtx:   h.baseCtx(c, fmt.Sprintf("Device \"%s\" Applied Config", uuid), "devices"),
-		Configs:   configs,
-		AppliedAt: appliedAt,
+		baseCtx: h.baseCtx(c, fmt.Sprintf("Device \"%s\" Applied Config", uuid), "devices"),
+		Configs: applied,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "applied_configs_item.html", ctx) // defined inside configs_item.html
 }
