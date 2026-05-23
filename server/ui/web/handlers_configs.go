@@ -100,5 +100,5 @@ func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 		Configs:   configs,
 		AppliedAt: appliedAt,
 	}
-	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
+	return h.templates.ExecuteTemplate(c.Response(), "applied_configs_item.html", ctx) // defined inside configs_item.html
 }
