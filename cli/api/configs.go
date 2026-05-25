@@ -4,6 +4,7 @@
 package api
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/foundriesio/dg-satellite/storage"
@@ -55,6 +56,12 @@ func (a ConfigsApi) Upload(r io.Reader, opts ...HttpOption) (err error) {
 
 func (a SpecificConfigsApi) Get() (res ConfigFileSet, err error) {
 	err = a.api.Get(a.uri, &res)
+	return
+}
+
+func (a SpecificConfigsApi) GetHistory(limit int, showFiles bool) (res []ConfigFileSet, err error) {
+	uri := a.uri + fmt.Sprintf("/history?limit=%d&show-files=%t", limit, showFiles)
+	err = a.api.Get(uri, &res)
 	return
 }
 

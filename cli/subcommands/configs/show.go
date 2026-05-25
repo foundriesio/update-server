@@ -40,10 +40,14 @@ func showConfigs(capi api.SpecificConfigsApi) {
 		fmt.Println("No configuration has been created yet.")
 		return
 	}
+	printConfigsInfo(cfg)
+	printConfigs(cfg.Files)
+}
+
+func printConfigsInfo(cfg api.ConfigFileSet) {
 	fmt.Printf("Reason: %s\n", cfg.Reason)
 	fmt.Printf("Created At: %s\n", time.Unix(cfg.CreatedAt, 0).UTC().Format(time.RFC3339))
 	fmt.Printf("Created By: %s\n", cfg.CreatedBy)
-	printConfigs(cfg.Files)
 }
 
 func printConfigs(cfg map[string]api.ConfigFile) {
