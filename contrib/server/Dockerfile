@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/golang:1.24 AS builder
+FROM public.ecr.aws/docker/library/golang:1.25 AS builder
 
 # hack for building on QC managed laptops
 RUN --mount=target=/ctx \
