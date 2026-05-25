@@ -1022,38 +1022,42 @@ func TestApiConfigsFactory(t *testing.T) {
 	t.Run("Upload valid config", func(t *testing.T) {
 		put(204, validConfig1)
 		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?show-files=true", 200), reason, validConfig1)
 	})
 
 	t.Run("Update valid config", func(t *testing.T) {
 		put(204, validConfig2)
 		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?show-files=true", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
 		put(400, invalidConfig)
 		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?show-files=true", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
 		put(204, validConfig2)
 		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?show-files=true", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update sota override", func(t *testing.T) {
 		put(400, sotaConfig)
 		tc.assertConfigs(tc.GET("/configs/factory", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?show-files=true", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("History limit", func(t *testing.T) {
-		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=0", 200), reason, validConfig2, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=5", 200), reason, validConfig2, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=1", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=0&show-files=true", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=5&show-files=true", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=1&show-files=true", 200), reason, validConfig2)
 		tc.GET("/configs/factory/history?limit=11", 400)
+
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=0", 200), reason, "", "")
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=5", 200), reason, "", "")
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=1", 200), reason, "")
 	})
 
 	reason = strings.Repeat("A", 201)
@@ -1100,9 +1104,9 @@ func TestApiConfigsGroup(t *testing.T) {
 		put("/configs/group/foo", 204, validConfig1)
 		put("/configs/group/bar", 204, validConfig3)
 		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?show-files=true", 200), reason, validConfig1)
 		tc.assertConfigs(tc.GET("/configs/group/bar", 200), reason, validConfig3)
-		tc.assertConfigsHistory(tc.GET("/configs/group/bar/history", 200), reason, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/group/bar/history?show-files=true", 200), reason, validConfig3)
 		tc.GET("/configs/group/noo", 404)
 		tc.GET("/configs/group/noo/history", 404)
 	})
@@ -1110,21 +1114,21 @@ func TestApiConfigsGroup(t *testing.T) {
 	t.Run("Update valid config", func(t *testing.T) {
 		put("/configs/group/foo", 204, validConfig2)
 		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?show-files=true", 200), reason, validConfig2, validConfig1)
 		tc.assertConfigs(tc.GET("/configs/group/bar", 200), reason, validConfig3)
-		tc.assertConfigsHistory(tc.GET("/configs/group/bar/history", 200), reason, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/group/bar/history?show-files=true", 200), reason, validConfig3)
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
 		put("/configs/group/foo", 400, invalidConfig)
 		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?show-files=true", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
 		put("/configs/group/foo", 204, validConfig2)
 		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?show-files=true", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update bad group name", func(t *testing.T) {
@@ -1134,15 +1138,20 @@ func TestApiConfigsGroup(t *testing.T) {
 	t.Run("Update sota override", func(t *testing.T) {
 		put("/configs/group/foo", 204, sotaConfig)
 		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, sotaConfig)
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, sotaConfig, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?show-files=true", 200), reason, sotaConfig, validConfig2, validConfig1)
 	})
 
 	t.Run("History limit", func(t *testing.T) {
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=0", 200), reason, sotaConfig, validConfig2, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=5", 200), reason, sotaConfig, validConfig2, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=2", 200), reason, sotaConfig, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=1", 200), reason, sotaConfig)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=0&show-files=true", 200), reason, sotaConfig, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=5&show-files=true", 200), reason, sotaConfig, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=2&show-files=true", 200), reason, sotaConfig, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=1&show-files=true", 200), reason, sotaConfig)
 		tc.GET("/configs/group/foo/history?limit=11", 400)
+
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=0", 200), reason, "", "", "")
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=5", 200), reason, "", "", "")
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=2", 200), reason, "", "")
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=1", 200), reason, "")
 	})
 
 	reason = strings.Repeat("A", 201)
@@ -1198,29 +1207,29 @@ func TestApiConfigsDevice(t *testing.T) {
 		put("/configs/device/foo", 204, validConfig1)
 		put("/configs/device/bar", 204, validConfig3)
 		tc.assertConfigs(tc.GET("/configs/device/foo", 200), reason, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history", 200), reason, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?show-files=true", 200), reason, validConfig1)
 		tc.assertConfigs(tc.GET("/configs/device/bar", 200), reason, validConfig3)
-		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history", 200), reason, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history?show-files=true", 200), reason, validConfig3)
 	})
 
 	t.Run("Update valid config", func(t *testing.T) {
 		put("/configs/device/foo", 204, validConfig2)
 		tc.assertConfigs(tc.GET("/configs/device/foo", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?show-files=true", 200), reason, validConfig2, validConfig1)
 		tc.assertConfigs(tc.GET("/configs/device/bar", 200), reason, validConfig3)
-		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history", 200), reason, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history?show-files=true", 200), reason, validConfig3)
 	})
 
 	t.Run("Update invalid config", func(t *testing.T) {
 		put("/configs/device/foo", 400, invalidConfig)
 		tc.assertConfigs(tc.GET("/configs/device/foo", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?show-files=true", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Update same config", func(t *testing.T) {
 		put("/configs/device/foo", 204, validConfig2)
 		tc.assertConfigs(tc.GET("/configs/device/foo", 200), reason, validConfig2)
-		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?show-files=true", 200), reason, validConfig2, validConfig1)
 	})
 
 	t.Run("Inexistent device", func(t *testing.T) {
@@ -1232,14 +1241,18 @@ func TestApiConfigsDevice(t *testing.T) {
 	t.Run("Update sota override", func(t *testing.T) {
 		put("/configs/device/bar", 204, sotaConfig)
 		tc.assertConfigs(tc.GET("/configs/device/bar", 200), reason, sotaConfig)
-		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history", 200), reason, sotaConfig, validConfig3)
+		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history?show-files=true", 200), reason, sotaConfig, validConfig3)
 	})
 
 	t.Run("History limit", func(t *testing.T) {
-		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=0", 200), reason, validConfig2, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=5", 200), reason, validConfig2, validConfig1)
-		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=1", 200), reason, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=0&show-files=true", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=5&show-files=true", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=1&show-files=true", 200), reason, validConfig2)
 		tc.GET("/configs/device/foo/history?limit=11", 400)
+
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=0", 200), reason, "", "")
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=5", 200), reason, "", "")
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=1", 200), reason, "")
 	})
 
 	reason = strings.Repeat("A", 201)

@@ -462,8 +462,8 @@ func (s Storage) TailRolloutsLog(tag, updateName string, isProd bool, stop stora
 	return fs.TailFileLines(tag, updateName, storage.LogRolloutsFile, stop)
 }
 
-func (s Storage) ReadFactoryConfigHistory(latest int) ([]*ConfigFileSet, error) {
-	return s.fs.Configs.ReadFactoryConfigHistory(latest)
+func (s Storage) ReadFactoryConfigHistory(latest int, withFiles bool) ([]*ConfigFileSet, error) {
+	return s.fs.Configs.ReadFactoryConfigHistory(latest, withFiles)
 }
 
 func (s Storage) SaveFactoryConfig(content, username, reason string) error {
@@ -475,8 +475,8 @@ func (s Storage) SaveFactoryConfig(content, username, reason string) error {
 	return nil
 }
 
-func (s Storage) ReadGroupConfigHistory(name string, latest int) ([]*ConfigFileSet, error) {
-	return s.fs.Configs.ReadGroupConfigHistory(name, latest)
+func (s Storage) ReadGroupConfigHistory(name string, latest int, withFiles bool) ([]*ConfigFileSet, error) {
+	return s.fs.Configs.ReadGroupConfigHistory(name, latest, withFiles)
 }
 
 func (s Storage) SaveGroupConfig(name, content, username, reason string) error {
@@ -488,8 +488,8 @@ func (s Storage) SaveGroupConfig(name, content, username, reason string) error {
 	return nil
 }
 
-func (s Storage) ReadDeviceConfigHistory(uuid string, latest int) ([]*ConfigFileSet, error) {
-	return s.fs.Configs.ReadDeviceConfigHistory(uuid, latest)
+func (s Storage) ReadDeviceConfigHistory(uuid string, latest int, withFiles bool) ([]*ConfigFileSet, error) {
+	return s.fs.Configs.ReadDeviceConfigHistory(uuid, latest, withFiles)
 }
 
 func (s Storage) SaveDeviceConfig(uuid, content, username, reason string) error {

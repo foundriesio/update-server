@@ -198,19 +198,19 @@ func (d Device) GetConfigs() (configs [3]string, timestamp int64, err error) {
 		return cfg.RawFiles
 	}
 
-	if history, err = d.storage.fs.Configs.ReadFactoryConfigHistory(1); err != nil {
+	if history, err = d.storage.fs.Configs.ReadFactoryConfigHistory(1, true); err != nil {
 		return
 	} else if len(history) > 0 {
 		configs[0] = loadConfig(history[0])
 	}
 	if len(d.GroupName) > 0 {
-		if history, err = d.storage.fs.Configs.ReadGroupConfigHistory(d.GroupName, 1); err != nil {
+		if history, err = d.storage.fs.Configs.ReadGroupConfigHistory(d.GroupName, 1, true); err != nil {
 			return
 		} else if len(history) > 0 {
 			configs[1] = loadConfig(history[0])
 		}
 	}
-	if history, err = d.storage.fs.Configs.ReadDeviceConfigHistory(d.Uuid, 1); err != nil {
+	if history, err = d.storage.fs.Configs.ReadDeviceConfigHistory(d.Uuid, 1, true); err != nil {
 		return
 	} else if len(history) > 0 {
 		configs[2] = loadConfig(history[0])
