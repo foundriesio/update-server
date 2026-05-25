@@ -44,10 +44,13 @@ func (h *handlers) factoryConfigsGet(c echo.Context) error {
 // @Description Requires scopes: devices:read
 // @Tags    Config
 // @Produce json
+// @Param   limit query int false "Query limit"
 // @Success 200 {array} ConfigFileSet
 // @Router  /configs/factory/history [get]
 func (h *handlers) factoryConfigsHistory(c echo.Context) error {
-	if history, err := h.storage.ReadFactoryConfigHistory(ConfigHistoryLimit); err != nil {
+	if limit, err := validateConfigHistoryParams(c); err != nil {
+		return err
+	} else if history, err := h.storage.ReadFactoryConfigHistory(limit); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read factory config history")
 	} else {
 		return c.JSON(http.StatusOK, configHistoryToJson(history))
@@ -105,11 +108,14 @@ func (h *handlers) groupConfigsGet(c echo.Context) error {
 // @Tags    Config
 // @Produce json
 // @Param   name path string true "Group name"
+// @Param   limit query int false "Query limit"
 // @Success 200 {array} ConfigFileSet
 // @Router  /configs/group/{name}/history [get]
 func (h *handlers) groupConfigsHistory(c echo.Context) error {
 	group := c.Param("name")
-	if history, err := h.storage.ReadGroupConfigHistory(group, ConfigHistoryLimit); err != nil {
+	if limit, err := validateConfigHistoryParams(c); err != nil {
+		return err
+	} else if history, err := h.storage.ReadGroupConfigHistory(group, limit); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
 	} else if len(history) > 0 {
 		return c.JSON(http.StatusOK, configHistoryToJson(history))
@@ -197,11 +203,14 @@ func (h *handlers) deviceAppliedConfigsGet(c echo.Context) error {
 // @Tags    Config
 // @Produce json
 // @Param   uuid path string true "Device uuid"
+// @Param   limit query int false "Query limit"
 // @Success 200 {array} ConfigFileSet
 // @Router  /configs/device/{uuid}/history [get]
 func (h *handlers) deviceConfigsHistory(c echo.Context) error {
 	return h.handleDevice(c, func(device *Device) error {
-		if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, ConfigHistoryLimit); err != nil {
+		if limit, err := validateConfigHistoryParams(c); err != nil {
+			return err
+		} else if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, limit); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
 		} else {
 			return c.JSON(http.StatusOK, configHistoryToJson(history))
@@ -325,4 +334,18 @@ func validateConfigSet(c echo.Context, denySotaOverride bool) (reason string, co
 		return "", nil, EchoError(c, err, http.StatusInternalServerError, "Failed to save config files")
 	}
 	return configs.Reason, content, nil
+}
+
+func validateConfigHistoryParams(c echo.Context) (limit int, err error) {
+	if limit, err = echo.QueryParamOr[int](c, "limit", 0); err != nil {
+		err = fmt.Errorf("invalid limit parameter: %w", err)
+	} else if limit < 1 {
+		limit = ConfigHistoryLimit
+	} else if limit > ConfigHistoryLimit {
+		err = fmt.Errorf("invalid limit parameter: %d exceeds the maximum allowed limit %d", limit, ConfigHistoryLimit)
+	}
+	if err != nil {
+		err = EchoError(c, err, http.StatusBadRequest, err.Error())
+	}
+	return
 }

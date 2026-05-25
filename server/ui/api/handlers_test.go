@@ -1049,6 +1049,13 @@ func TestApiConfigsFactory(t *testing.T) {
 		tc.assertConfigsHistory(tc.GET("/configs/factory/history", 200), reason, validConfig2, validConfig1)
 	})
 
+	t.Run("History limit", func(t *testing.T) {
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=0", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=5", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/factory/history?limit=1", 200), reason, validConfig2)
+		tc.GET("/configs/factory/history?limit=11", 400)
+	})
+
 	reason = strings.Repeat("A", 201)
 	t.Run("Reason too long", func(t *testing.T) {
 		put(400, validConfig1)
@@ -1128,6 +1135,14 @@ func TestApiConfigsGroup(t *testing.T) {
 		put("/configs/group/foo", 204, sotaConfig)
 		tc.assertConfigs(tc.GET("/configs/group/foo", 200), reason, sotaConfig)
 		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history", 200), reason, sotaConfig, validConfig2, validConfig1)
+	})
+
+	t.Run("History limit", func(t *testing.T) {
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=0", 200), reason, sotaConfig, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=5", 200), reason, sotaConfig, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=2", 200), reason, sotaConfig, validConfig2)
+		tc.assertConfigsHistory(tc.GET("/configs/group/foo/history?limit=1", 200), reason, sotaConfig)
+		tc.GET("/configs/group/foo/history?limit=11", 400)
 	})
 
 	reason = strings.Repeat("A", 201)
@@ -1218,6 +1233,13 @@ func TestApiConfigsDevice(t *testing.T) {
 		put("/configs/device/bar", 204, sotaConfig)
 		tc.assertConfigs(tc.GET("/configs/device/bar", 200), reason, sotaConfig)
 		tc.assertConfigsHistory(tc.GET("/configs/device/bar/history", 200), reason, sotaConfig, validConfig3)
+	})
+
+	t.Run("History limit", func(t *testing.T) {
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=0", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=5", 200), reason, validConfig2, validConfig1)
+		tc.assertConfigsHistory(tc.GET("/configs/device/foo/history?limit=1", 200), reason, validConfig2)
+		tc.GET("/configs/device/foo/history?limit=11", 400)
 	})
 
 	reason = strings.Repeat("A", 201)
