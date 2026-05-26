@@ -34,6 +34,28 @@ func (h handlers) configsList(c echo.Context) error {
 	return h.templates.ExecuteTemplate(c.Response(), "configs_list.html", ctx)
 }
 
+func (h handlers) configsGlobalHistory(c echo.Context) error {
+	openIndex, err := echo.QueryParamOr[int](c, "open", -1)
+	if err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	var history []api.ConfigFileSet
+	uri := fmt.Sprintf("/v1/configs/factory/history?show-files=%t", openIndex >= 0)
+	if err := getJson(c.Request().Context(), uri, &history); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	ctx := struct {
+		baseCtx
+		History   []api.ConfigFileSet
+		OpenIndex int
+	}{
+		baseCtx:   h.baseCtx(c, "Global Configs History", "configs"),
+		History:   history,
+		OpenIndex: openIndex,
+	}
+	return h.templates.ExecuteTemplate(c.Response(), "configs_history.html", ctx)
+}
+
 func (h handlers) configsGroupItem(c echo.Context) error {
 	var configs api.ConfigFileSet
 	group := c.Param("name")
@@ -49,6 +71,29 @@ func (h handlers) configsGroupItem(c echo.Context) error {
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
 
+}
+
+func (h handlers) configsGroupItemHistory(c echo.Context) error {
+	group := c.Param("name")
+	openIndex, err := echo.QueryParamOr[int](c, "open", -1)
+	if err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	var history []api.ConfigFileSet
+	uri := fmt.Sprintf("/v1/configs/group/"+group+"/history?show-files=%t", openIndex >= 0)
+	if err := getJson(c.Request().Context(), uri, &history); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	ctx := struct {
+		baseCtx
+		History   []api.ConfigFileSet
+		OpenIndex int
+	}{
+		baseCtx:   h.baseCtx(c, fmt.Sprintf("Group \"%s\" Configs History", group), "configs"),
+		History:   history,
+		OpenIndex: openIndex,
+	}
+	return h.templates.ExecuteTemplate(c.Response(), "configs_history.html", ctx)
 }
 
 func (h handlers) configsDeviceItem(c echo.Context) error {
@@ -87,4 +132,27 @@ func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 		Configs: applied,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "applied_configs_item.html", ctx) // defined inside configs_item.html
+}
+
+func (h handlers) configsDeviceItemHistory(c echo.Context) error {
+	uuid := c.Param("uuid")
+	openIndex, err := echo.QueryParamOr[int](c, "open", -1)
+	if err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	var history []api.ConfigFileSet
+	uri := fmt.Sprintf("/v1/configs/device/"+uuid+"/history?show-files=%t", openIndex >= 0)
+	if err := getJson(c.Request().Context(), uri, &history); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	ctx := struct {
+		baseCtx
+		History   []api.ConfigFileSet
+		OpenIndex int
+	}{
+		baseCtx:   h.baseCtx(c, fmt.Sprintf("Device \"%s\" Configs History", uuid), "devices"),
+		History:   history,
+		OpenIndex: openIndex,
+	}
+	return h.templates.ExecuteTemplate(c.Response(), "configs_history.html", ctx)
 }

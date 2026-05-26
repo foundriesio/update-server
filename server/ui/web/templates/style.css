@@ -245,6 +245,99 @@ dialog.file-content p {
  display: none !important;
 }
 
+/* Accordion table utilizes the grid system to build a table with expandable accordions.
+ * Each table row is formed by a <details> element wrapped into an accordion-row-wrapper div.
+ * Each details <summary> serves as a row, and <article> as a dropdown accordion expansion.
+ * An article must be embedded inside the summary for the grid system to work properly.
+ * Specific accordion table classes are responsible for defining the exact table layout. */
+.accordion-table-container {
+  display: grid;
+}
+
+.accordion-table-header,
+.accordion-table-body,
+.accordion-row-wrapper,
+.accordion-row-wrapper > details {
+  display: contents !important;
+}
+.accordion-table-header {
+  font-weight: bold;
+}
+
+.accordion-row-wrapper details {
+  margin-bottom: 0;
+}
+
+.accordion-row-wrapper > details > summary {
+  display: grid !important;
+  grid-template-columns: subgrid;
+  /* Remove default Pico list style for the accordion */
+  list-style: none !important;
+  padding: 0;
+  margin: 0;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.accordion-row-wrapper > details > summary::after {
+  /* Remove default Pico list style for the accordion */
+  display: none !important;
+  content: "" !important;
+}
+
+.accordion-row-wrapper:nth-child(even) > details > summary {
+  /* subtle zebra style */
+  background-color: rgba(0, 0, 0, 0.12);
+}
+
+.accordion-row-wrapper > details > summary:hover {
+  background-color: rgba(0, 5, 40, 0.23);
+}
+
+.accordion-row-wrapper > details > summary > div {
+  cursor: pointer;
+}
+
+.accordion-row-wrapper > details[open] > summary > div {
+  background-color: rgba(20, 180, 225, 0.31);
+}
+
+.accordion-table-header > div,
+.accordion-row-wrapper > details > summary > div {
+  padding: 0.6rem 1.25rem;
+  box-sizing: border-box;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.accordion-row-wrapper > details > summary > article {
+  /* As article is inside summary (for grid system to work properly), we need to hide/show it ourselves. */
+  display: none;
+  margin: 0;
+  padding: 1.25rem;
+  width: 100%;
+}
+
+.accordion-row-wrapper > details[open] > summary > article {
+  display: block;
+}
+
+.accordion-table-container.configs-history {
+  grid-template-columns: max-content max-content auto;
+}
+
+.configs-history .accordion-row-wrapper details,
+.configs-history .accordion-row-wrapper > details > summary,
+.configs-history .accordion-row-wrapper > details > summary > article {
+  grid-column: span 3;
+}
+
+.configs-history .accordion-table-header > div:nth-child(3),
+.configs-history .accordion-row-wrapper > details > summary > div:nth-child(3) {
+  white-space: normal;
+  overflow-wrap: break-word;
+  min-width: 20em;
+}
+
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-body: #11191f;

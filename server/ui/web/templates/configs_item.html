@@ -10,7 +10,8 @@
                <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range $val.OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
                {{ if deref $val.Unencrypted }}
-               <i class="icontip floppy" aria-label="View file content" onclick="this.nextElementSibling.showModal()"></i>
+               <i class="icontip floppy" aria-label="View file content"
+		  onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
                <dialog class="file-content">
                  <article>
                    <header>
@@ -42,6 +43,7 @@
     <section class="content-section">
       <h2>{{.Title}}</h2>
       {{ template "configs-item" .Configs }}
+      <button onclick="location.href=location.pathname+'/history'">History</button>
     </section>
 {{ template "footer"}}
 
