@@ -27,4 +27,5 @@ services:
       - /data
       - serve
     volumes:
+      - ../../contrib:/contrib
       - ${DATA_DIR:-./scale-test-data}:/data
