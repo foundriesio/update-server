@@ -81,7 +81,12 @@ class DeviceUser(HttpUser):
         GET /device triggers DeviceCreate on the server the first time a
         device connects, which is the registration we want to benchmark.
         """
-        with self.client.get("/device", catch_response=True, name="/device [register]") as resp:
+        with self.client.get(
+            "/device",
+            headers={"x-ats-tags": "main"},
+            catch_response=True,
+            name="/device [register]",
+        ) as resp:
             if not resp.ok:
                 resp.failure(f"device-{self._device_idx} {resp.status_code}: {resp.text}")
         with DeviceUser._active_lock:
