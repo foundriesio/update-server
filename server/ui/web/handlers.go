@@ -16,6 +16,7 @@ import (
 	"github.com/foundriesio/dg-satellite/server"
 	"github.com/foundriesio/dg-satellite/server/ui/web/templates"
 	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/dg-satellite/version"
 )
 
 type handlers struct {
@@ -74,6 +75,7 @@ type baseCtx struct {
 	Title     string
 	NavItems  []navItem
 	CsrfToken string
+	Version   string
 }
 
 func (h handlers) baseCtx(c echo.Context, title, selected string) baseCtx {
@@ -86,6 +88,7 @@ func (h handlers) baseCtx(c echo.Context, title, selected string) baseCtx {
 		Title:     title,
 		NavItems:  h.genNavItems(selected),
 		CsrfToken: csrfToken,
+		Version:   version.Version,
 	}
 }
 
