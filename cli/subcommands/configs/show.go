@@ -51,6 +51,7 @@ func printConfigsInfo(cfg api.ConfigFileSet) {
 }
 
 func printConfigs(cfg map[string]api.ConfigFile) {
+	fmt.Println("Files:")
 	for name, file := range cfg {
 		if len(file.OnChanged) == 0 {
 			fmt.Printf("\t%s\n", name)
