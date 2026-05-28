@@ -46,7 +46,7 @@ func showConfigs(capi api.SpecificConfigsApi) {
 
 func printConfigsInfo(cfg api.ConfigFileSet) {
 	fmt.Printf("Reason: %s\n", cfg.Reason)
-	fmt.Printf("Created At: %s\n", time.Unix(cfg.CreatedAt, 0).UTC().Format(time.RFC3339))
+	fmt.Printf("Created At: %s\n", formatTimestamp(cfg.CreatedAt))
 	fmt.Printf("Created By: %s\n", cfg.CreatedBy)
 }
 
@@ -64,4 +64,8 @@ func printConfigs(cfg map[string]api.ConfigFile) {
 			}
 		}
 	}
+}
+
+func formatTimestamp(timestamp int64) string {
+	return time.Unix(timestamp, 0).UTC().Format(time.RFC3339)
 }
