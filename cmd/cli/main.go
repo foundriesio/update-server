@@ -13,7 +13,7 @@ import (
 	"github.com/foundriesio/dg-satellite/cli/subcommands/devices"
 	"github.com/foundriesio/dg-satellite/cli/subcommands/login"
 	"github.com/foundriesio/dg-satellite/cli/subcommands/updates"
-	version "github.com/foundriesio/dg-satellite/cmd"
+	"github.com/foundriesio/dg-satellite/version"
 	"github.com/spf13/cobra"
 )
 
