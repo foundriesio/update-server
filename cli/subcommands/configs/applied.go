@@ -29,17 +29,12 @@ func init() {
 }
 
 func getDeviceApplied(a api.DeviceConfigsApi) {
-	applied, err := a.GetApplied()
+	cfg, err := a.GetApplied()
 	cobra.CheckErr(err)
-	if applied == nil {
+	if cfg.AppliedAt == 0 {
 		fmt.Println("No configuration has been applied to this device yet.")
 		return
 	}
-	appliedAt := time.Unix(applied.AppliedAt, 0)
-	fmt.Printf("Applied at: %s\n", appliedAt.Format(time.RFC1123))
-	cfg := make(api.ConfigFileSet, len(applied.Files))
-	for k, v := range applied.Files {
-		cfg[k] = *v
-	}
-	printConfigs(cfg)
+	fmt.Printf("Applied at: %s\n", time.Unix(cfg.AppliedAt, 0).UTC().Format(time.RFC3339))
+	printConfigs(cfg.Files)
 }

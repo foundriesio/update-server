@@ -111,9 +111,9 @@ func TestStorage(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, "test content", content)
 
-	require.Nil(t, fs.Configs.WriteFactoryConfig("factory config"))
-	require.Nil(t, fs.Configs.WriteGroupConfig("grp", "group config"))
-	require.Nil(t, fs.Configs.WriteDeviceConfig(d2.Uuid, "device config"))
+	require.Nil(t, fs.Configs.WriteFactoryConfig("factory config", "alice", "test"))
+	require.Nil(t, fs.Configs.WriteGroupConfig("grp", "group config", "bob", "save:it"))
+	require.Nil(t, fs.Configs.WriteDeviceConfig(d2.Uuid, "device config", "bob", "this thing"))
 
 	time.Sleep(10 * time.Millisecond)
 	now := time.Now().Truncate(time.Second).Add(time.Second).Unix()

@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/golang:1.24-bookworm
+FROM public.ecr.aws/docker/library/golang:1.25-bookworm
 
 RUN --mount=target=/ctx \
     if [ -d /ctx/.extra-certs/ ] ; then \

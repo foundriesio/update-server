@@ -46,11 +46,20 @@ type ConfigFile struct {
 	OnChanged   []string `json:"OnChanged,omitempty"`
 }
 
+type ConfigFileSet struct {
+	// Storage returns RawFiles, but API returns parsed Files.
+	RawFiles  string                `json:"-"`
+	Files     map[string]ConfigFile `json:"Files"`
+	Reason    string                `json:"Reason,omitempty"`
+	CreatedAt int64                 `json:"CreatedAt,omitempty"`
+	CreatedBy string                `json:"CreatedBy,omitempty"`
+}
+
 // AppliedConfigs wraps the merged config sent to a device along with
 // the Unix timestamp (seconds) at which it was delivered.
 type AppliedConfigs struct {
-	AppliedAt int64                  `json:"applied_at"`
-	Files     map[string]*ConfigFile `json:"config"`
+	Files     map[string]ConfigFile `json:"config"`
+	AppliedAt int64                 `json:"applied_at"`
 }
 
 var evtIdToStatus = map[string]string{

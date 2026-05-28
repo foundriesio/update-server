@@ -4,6 +4,7 @@
 package api
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/foundriesio/dg-satellite/storage"
@@ -12,7 +13,7 @@ import (
 
 type (
 	ConfigFile     = models.ConfigFile
-	ConfigFileSet  = map[string]ConfigFile
+	ConfigFileSet  = models.ConfigFileSet
 	AppliedConfigs = storage.AppliedConfigs
 )
 
@@ -58,18 +59,18 @@ func (a SpecificConfigsApi) Get() (res ConfigFileSet, err error) {
 	return
 }
 
+func (a SpecificConfigsApi) GetHistory(limit int, showFiles bool) (res []ConfigFileSet, err error) {
+	uri := a.uri + fmt.Sprintf("/history?limit=%d&show-files=%t", limit, showFiles)
+	err = a.api.Get(uri, &res)
+	return
+}
+
 func (a SpecificConfigsApi) Put(configs ConfigFileSet) (err error) {
 	_, err = a.api.Put(a.uri, configs)
 	return
 }
 
-func (a DeviceConfigsApi) GetApplied() (result *AppliedConfigs, err error) {
-	var applied AppliedConfigs
-	if err = a.api.Get(a.uri+"/applied", &applied); err != nil {
-		return
-	}
-	if applied.AppliedAt != 0 {
-		result = &applied
-	}
+func (a DeviceConfigsApi) GetApplied() (res AppliedConfigs, err error) {
+	err = a.api.Get(a.uri+"/applied", &res)
 	return
 }

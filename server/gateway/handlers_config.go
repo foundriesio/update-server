@@ -47,10 +47,10 @@ func (h handlers) configGet(c echo.Context) error {
 	}
 
 	// A reference type here allows manipulating map values directly below.
-	files := make(map[string]*ConfigFile)
+	files := make(map[string]ConfigFile)
 	pacmanCfg := make(pacmanConfig)
 	for _, rawConfig := range configs {
-		var cfg map[string]*ConfigFile
+		var cfg map[string]ConfigFile
 		if len(rawConfig) == 0 {
 			continue
 		} else if err = json.Unmarshal([]byte(rawConfig), &cfg); err != nil {
@@ -66,8 +66,13 @@ func (h handlers) configGet(c echo.Context) error {
 		}
 	}
 	if !pacmanCfg.empty() {
-		if files[storage.ConfigSotaOverride].Value, err = pacmanCfg.encode(); err != nil {
+		// When pacmanCfg is non-empty, files are warranted to contain the sota override.
+		sotaCfg := files[storage.ConfigSotaOverride]
+		if sotaCfg.Value, err = pacmanCfg.encode(); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "failed to encode merged sota toml config")
+		} else {
+			// set back into a map, as sotaCfg is a value copy
+			files[storage.ConfigSotaOverride] = sotaCfg
 		}
 	}
 	c.Response().Header().Set("Date", cts.Format(time.RFC1123))

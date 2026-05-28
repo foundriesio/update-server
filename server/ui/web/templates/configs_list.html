@@ -2,6 +2,7 @@
     <section class="content-section">
       <h2>{{.Title}}</h2>
       {{ template "configs-item" .Configs }}
+      <button onclick="location.href='/configs/global/history'">History</button>
     </section>
     {{ $groupsPerPage := 20 }}
     <section class="content-section">

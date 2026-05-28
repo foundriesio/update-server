@@ -4,12 +4,11 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
+	"regexp"
 	"slices"
 
 	"github.com/labstack/echo/v4"
@@ -19,7 +18,7 @@ import (
 
 type (
 	ConfigFile     = storage.ConfigFile
-	ConfigFileSet  = map[string]ConfigFile
+	ConfigFileSet  = storage.ConfigFileSet
 	AppliedConfigs = storage.AppliedConfigs
 )
 
@@ -32,10 +31,10 @@ const ConfigHistoryLimit = storage.ConfigHistoryLimit
 // @Success 200 {object} ConfigFileSet
 // @Router  /configs/factory [get]
 func (h *handlers) factoryConfigsGet(c echo.Context) error {
-	if history, err := h.storage.ReadFactoryConfigHistory(1); err != nil {
+	if history, err := h.storage.ReadFactoryConfigHistory(1, true); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read factory config history")
 	} else if len(history) > 0 {
-		return c.JSON(http.StatusOK, json.RawMessage(history[0]))
+		return c.JSON(http.StatusOK, configItemToJson(history[0]))
 	} else {
 		return c.NoContent(http.StatusNoContent)
 	}
@@ -45,10 +44,14 @@ func (h *handlers) factoryConfigsGet(c echo.Context) error {
 // @Description Requires scopes: devices:read
 // @Tags    Config
 // @Produce json
+// @Param   limit query int false "Query limit"
+// @Param   show-files query boolean false "Show config files"
 // @Success 200 {array} ConfigFileSet
 // @Router  /configs/factory/history [get]
 func (h *handlers) factoryConfigsHistory(c echo.Context) error {
-	if history, err := h.storage.ReadFactoryConfigHistory(ConfigHistoryLimit); err != nil {
+	if limit, showFiles, err := validateConfigHistoryParams(c); err != nil {
+		return err
+	} else if history, err := h.storage.ReadFactoryConfigHistory(limit, showFiles); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read factory config history")
 	} else {
 		return c.JSON(http.StatusOK, configHistoryToJson(history))
@@ -63,14 +66,15 @@ func (h *handlers) factoryConfigsHistory(c echo.Context) error {
 // @Success 204
 // @Router  /configs/factory [put]
 func (h *handlers) factoryConfigsPut(c echo.Context) error {
-	if cfg, err := validateConfigSet(c, true); err != nil {
+	user := CtxGetUser(c.Request().Context())
+	if reason, cfg, err := validateConfigSet(c, true); err != nil {
 		return err // EchoError is used internally
-	} else if history, err := h.storage.ReadFactoryConfigHistory(1); err != nil {
+	} else if history, err := h.storage.ReadFactoryConfigHistory(1, true); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read factory config history")
-	} else if len(history) > 0 && string(cfg) == history[0] {
+	} else if len(history) > 0 && string(cfg) == history[0].RawFiles {
 		// No change - no need to create a new history item.
 		return c.NoContent(http.StatusNoContent)
-	} else if err = h.storage.SaveFactoryConfig(string(cfg)); err != nil {
+	} else if err = h.storage.SaveFactoryConfig(string(cfg), user.Username, reason); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to save factory config history")
 	} else {
 		// New history item created.
@@ -87,10 +91,10 @@ func (h *handlers) factoryConfigsPut(c echo.Context) error {
 // @Router  /configs/group/{name} [get]
 func (h *handlers) groupConfigsGet(c echo.Context) error {
 	group := c.Param("name")
-	if history, err := h.storage.ReadGroupConfigHistory(group, 1); err != nil {
+	if history, err := h.storage.ReadGroupConfigHistory(group, 1, true); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
 	} else if len(history) > 0 {
-		return c.JSON(http.StatusOK, json.RawMessage(history[0]))
+		return c.JSON(http.StatusOK, configItemToJson(history[0]))
 	} else if knownGroups, err := h.storage.GetKnownDeviceGroupNames(); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to get known group names")
 	} else if slices.Contains(knownGroups, group) {
@@ -105,11 +109,15 @@ func (h *handlers) groupConfigsGet(c echo.Context) error {
 // @Tags    Config
 // @Produce json
 // @Param   name path string true "Group name"
+// @Param   limit query int false "Query limit"
+// @Param   show-files query boolean false "Show config files"
 // @Success 200 {array} ConfigFileSet
 // @Router  /configs/group/{name}/history [get]
 func (h *handlers) groupConfigsHistory(c echo.Context) error {
 	group := c.Param("name")
-	if history, err := h.storage.ReadGroupConfigHistory(group, ConfigHistoryLimit); err != nil {
+	if limit, showFiles, err := validateConfigHistoryParams(c); err != nil {
+		return err
+	} else if history, err := h.storage.ReadGroupConfigHistory(group, limit, showFiles); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
 	} else if len(history) > 0 {
 		return c.JSON(http.StatusOK, configHistoryToJson(history))
@@ -132,17 +140,18 @@ func (h *handlers) groupConfigsHistory(c echo.Context) error {
 // @Router  /configs/group/{name} [put]
 func (h *handlers) groupConfigsPut(c echo.Context) error {
 	group := c.Param("name")
+	user := CtxGetUser(c.Request().Context())
 	if !validateLabelValue(group) {
 		err := fmt.Errorf("group value must match a given regexp: %s", validLabelValueRegex)
 		return EchoError(c, err, http.StatusBadRequest, err.Error())
-	} else if cfg, err := validateConfigSet(c, false); err != nil {
+	} else if reason, cfg, err := validateConfigSet(c, false); err != nil {
 		return err // EchoError is used internally
-	} else if history, err := h.storage.ReadGroupConfigHistory(group, 1); err != nil {
+	} else if history, err := h.storage.ReadGroupConfigHistory(group, 1, true); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to read group config history")
-	} else if len(history) > 0 && string(cfg) == history[0] {
+	} else if len(history) > 0 && string(cfg) == history[0].RawFiles {
 		// No change - no need to create a new history item.
 		return c.NoContent(http.StatusNoContent)
-	} else if err = h.storage.SaveGroupConfig(group, string(cfg)); err != nil {
+	} else if err = h.storage.SaveGroupConfig(group, string(cfg), user.Username, reason); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to save group config history")
 	} else {
 		// New history item created.
@@ -159,10 +168,10 @@ func (h *handlers) groupConfigsPut(c echo.Context) error {
 // @Router  /configs/device/{uuid} [get]
 func (h *handlers) deviceConfigsGet(c echo.Context) error {
 	return h.handleDevice(c, func(device *Device) error {
-		if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1); err != nil {
+		if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1, true); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
 		} else if len(history) > 0 {
-			return c.JSON(http.StatusOK, json.RawMessage(history[0]))
+			return c.JSON(http.StatusOK, configItemToJson(history[0]))
 		} else {
 			return c.NoContent(http.StatusNoContent)
 		}
@@ -196,11 +205,15 @@ func (h *handlers) deviceAppliedConfigsGet(c echo.Context) error {
 // @Tags    Config
 // @Produce json
 // @Param   uuid path string true "Device uuid"
+// @Param   limit query int false "Query limit"
+// @Param   show-files query boolean false "Show config files"
 // @Success 200 {array} ConfigFileSet
 // @Router  /configs/device/{uuid}/history [get]
 func (h *handlers) deviceConfigsHistory(c echo.Context) error {
 	return h.handleDevice(c, func(device *Device) error {
-		if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, ConfigHistoryLimit); err != nil {
+		if limit, showFiles, err := validateConfigHistoryParams(c); err != nil {
+			return err
+		} else if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, limit, showFiles); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
 		} else {
 			return c.JSON(http.StatusOK, configHistoryToJson(history))
@@ -218,14 +231,15 @@ func (h *handlers) deviceConfigsHistory(c echo.Context) error {
 // @Router  /configs/device/{uuid} [put]
 func (h *handlers) deviceConfigsPut(c echo.Context) error {
 	return h.handleDevice(c, func(device *Device) error {
-		if cfg, err := validateConfigSet(c, false); err != nil {
+		user := CtxGetUser(c.Request().Context())
+		if reason, cfg, err := validateConfigSet(c, false); err != nil {
 			return err // EchoError is used internally
-		} else if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1); err != nil {
+		} else if history, err := h.storage.ReadDeviceConfigHistory(device.Uuid, 1, true); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to read device config history")
-		} else if len(history) > 0 && string(cfg) == history[0] {
+		} else if len(history) > 0 && string(cfg) == history[0].RawFiles {
 			// No change - no need to create a new history item.
 			return c.NoContent(http.StatusNoContent)
-		} else if err = h.storage.SaveDeviceConfig(device.Uuid, string(cfg)); err != nil {
+		} else if err = h.storage.SaveDeviceConfig(device.Uuid, string(cfg), user.Username, reason); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to save device config history")
 		} else {
 			// New history item created.
@@ -269,33 +283,76 @@ One of them should be moved to the configs directory at '%s'.`,
 	}
 }
 
-func configHistoryToJson(history []string) []json.RawMessage {
-	res := make([]json.RawMessage, len(history))
+type configFileSet struct {
+	ConfigFileSet
+	// Avoids unmarshalling Files into a map, and then marshalling them back.
+	Files json.RawMessage `json:"Files,omitempty"`
+}
+
+func configItemToJson(cfg *ConfigFileSet) *configFileSet {
+	return &configFileSet{*cfg, json.RawMessage(cfg.RawFiles)}
+}
+
+func configHistoryToJson(history []*ConfigFileSet) []*configFileSet {
+	res := make([]*configFileSet, len(history))
 	for i, cfg := range history {
-		res[i] = json.RawMessage(cfg)
+		res[i] = configItemToJson(cfg)
 	}
 	return res
 }
 
-func validateConfigSet(c echo.Context, denySotaOverride bool) ([]byte, error) {
-	// We only need to validate config files, and return the original body (save on serialization)
+var (
+	// For a reason allow alphanum + basic punctuation + space. Important: no newlines.
+	validConfigsReasonChars  = `a-zA-Z0-9_ ,.-:;'"`
+	validConfigsReasonRegexp = `^[a-zA-Z0-9_ \,\.\-\:\;\'\"]*$`
+	validateConfigsReason    = regexp.MustCompile(validConfigsReasonRegexp).MatchString
+)
+
+func validateConfigSet(c echo.Context, denySotaOverride bool) (reason string, content []byte, err error) {
 	body := c.Request().Body
 	defer body.Close() //nolint:errcheck
-	res, err := io.ReadAll(body)
-	if err != nil {
-		return nil, EchoError(c, err, http.StatusBadRequest, "Failed to read request body")
-	}
-	dec := json.NewDecoder(bytes.NewReader(res))
+	dec := json.NewDecoder(body)
 	dec.DisallowUnknownFields()
 	var configs ConfigFileSet
 	if err = dec.Decode(&configs); err != nil {
-		return nil, EchoError(c, err, http.StatusBadRequest, "Failed to parse request body")
+		return "", nil, EchoError(c, err, http.StatusBadRequest, "Failed to parse request body")
+	}
+	const maxReasonLen = 200
+	if len(configs.Reason) > maxReasonLen {
+		err = fmt.Errorf("a maximum accepted reason length is %d", maxReasonLen)
+		return "", nil, EchoError(c, err, http.StatusBadRequest, err.Error())
+	} else if !validateConfigsReason(configs.Reason) {
+		err = fmt.Errorf("reason must only contain the following characters: %s", validConfigsReasonChars)
+		return "", nil, EchoError(c, err, http.StatusBadRequest, err.Error())
 	}
 	if denySotaOverride {
-		if _, ok := configs[storage.ConfigSotaOverride]; ok {
+		if configs.Files == nil {
+			configs.Files = make(map[string]ConfigFile, 0)
+		} else if _, ok := configs.Files[storage.ConfigSotaOverride]; ok {
 			err = fmt.Errorf("a '%s' is not allowed for global configs", storage.ConfigSotaOverride)
-			return nil, EchoError(c, err, http.StatusBadRequest, err.Error())
+			return "", nil, EchoError(c, err, http.StatusBadRequest, err.Error())
 		}
 	}
-	return res, nil
+	if content, err = json.Marshal(configs.Files); err != nil {
+		return "", nil, EchoError(c, err, http.StatusInternalServerError, "Failed to save config files")
+	}
+	return configs.Reason, content, nil
+}
+
+func validateConfigHistoryParams(c echo.Context) (limit int, showFiles bool, err error) {
+	var err1 error
+	if showFiles, err1 = echo.QueryParamOr[bool](c, "show-files", false); err1 != nil {
+		err = fmt.Errorf("invalid show-files parameter: %w", err1)
+	}
+	if limit, err1 = echo.QueryParamOr[int](c, "limit", 0); err1 != nil {
+		err = fmt.Errorf("invalid limit parameter: %w", err1)
+	} else if limit < 1 {
+		limit = ConfigHistoryLimit
+	} else if limit > ConfigHistoryLimit {
+		err = fmt.Errorf("invalid limit parameter: %d exceeds the maximum allowed limit %d", limit, ConfigHistoryLimit)
+	}
+	if err != nil {
+		err = EchoError(c, err, http.StatusBadRequest, err.Error())
+	}
+	return
 }

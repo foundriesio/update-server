@@ -29,7 +29,7 @@ func init() {
 		"contains": strings.Contains,
 		"deref": func(v any) any {
 			// Used to convert e.g. *bool to bool in config_item.html.
-			if val := reflect.ValueOf(v); val.Kind() == reflect.Ptr && !val.IsNil() {
+			if val := reflect.ValueOf(v); val.Kind() == reflect.Pointer && !val.IsNil() {
 				return val.Elem().Interface()
 			}
 			return v

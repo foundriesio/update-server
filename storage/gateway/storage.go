@@ -159,7 +159,7 @@ func (d Device) GetAppsFilePath(file string) string {
 	}
 }
 
-func (d Device) SaveAppliedConfigs(files map[string]*storage.ConfigFile) error {
+func (d Device) SaveAppliedConfigs(files map[string]ConfigFile) error {
 	envelope := storage.AppliedConfigs{
 		AppliedAt: time.Now().Unix(),
 		Files:     files,
@@ -189,24 +189,31 @@ func (d Device) GetTufMeta(tag, file string) (string, error) {
 
 func (d Device) GetConfigs() (configs [3]string, timestamp int64, err error) {
 	// Returns 3 configs (in order): factory, group, device; and their latest modification timestamp.
-	var ts int64
+	var history []*storage.ConfigFileSet
 	timestamp = d.groupNameModifiedAt
-	if configs[0], ts, err = d.storage.fs.Configs.ReadFactoryConfig(); err != nil {
+	loadConfig := func(cfg *storage.ConfigFileSet) string {
+		if cfg.CreatedAt > timestamp {
+			timestamp = cfg.CreatedAt
+		}
+		return cfg.RawFiles
+	}
+
+	if history, err = d.storage.fs.Configs.ReadFactoryConfigHistory(1, true); err != nil {
 		return
-	} else if ts > timestamp {
-		timestamp = ts
+	} else if len(history) > 0 {
+		configs[0] = loadConfig(history[0])
 	}
 	if len(d.GroupName) > 0 {
-		if configs[1], ts, err = d.storage.fs.Configs.ReadGroupConfig(d.GroupName); err != nil {
+		if history, err = d.storage.fs.Configs.ReadGroupConfigHistory(d.GroupName, 1, true); err != nil {
 			return
-		} else if ts > timestamp {
-			timestamp = ts
+		} else if len(history) > 0 {
+			configs[1] = loadConfig(history[0])
 		}
 	}
-	if configs[2], ts, err = d.storage.fs.Configs.ReadDeviceConfig(d.Uuid); err != nil {
+	if history, err = d.storage.fs.Configs.ReadDeviceConfigHistory(d.Uuid, 1, true); err != nil {
 		return
-	} else if ts > timestamp {
-		timestamp = ts
+	} else if len(history) > 0 {
+		configs[2] = loadConfig(history[0])
 	}
 	return
 }

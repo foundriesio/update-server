@@ -1,4 +1,4 @@
-{{ define "configs-item" }}
+{{ define "configs-item-files" }}
       <h4>Files:</h4>
       <table class="striped">
          <tbody>
@@ -10,7 +10,8 @@
                <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range $val.OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
                {{ if deref $val.Unencrypted }}
-               <i class="icontip floppy" aria-label="View file content" onclick="this.nextElementSibling.showModal()"></i>
+               <i class="icontip floppy" aria-label="View file content"
+		  onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
                <dialog class="file-content">
                  <article>
                    <header>
@@ -31,14 +32,31 @@
       </table>
 {{ end }}
 
+{{ define "configs-item" }}
+      <p><b>Reason:</b> {{.Reason}}</p>
+      <p><b>Created At:</b> {{tsToString .CreatedAt}}</p>
+      <p><b>Created By:</b> {{.CreatedBy}}</p>
+      {{ template "configs-item-files" .Files }}
+{{ end}}
+
 {{ template "header" .}}
     <section class="content-section">
       <h2>{{.Title}}</h2>
-      {{ if .AppliedAt }}<p>Applied at: <strong>{{ .AppliedAt }}</strong></p>{{ end }}
-      {{ if .Configs }}
       {{ template "configs-item" .Configs }}
+      <button onclick="location.href=location.pathname+'/history'">History</button>
+    </section>
+{{ template "footer"}}
+
+{{ define "applied_configs_item.html" }}
+  {{ template "header" .}}
+    <section class="content-section">
+      <h2>{{.Title}}</h2>
+      {{ if gt .Configs.AppliedAt 0 }}
+      <p><b>Applied at:</b> {{ tsToString .Configs.AppliedAt }}</p>
+      {{ template "configs-item-files" .Configs.Files }}
       {{ else }}
       <p><em>No configuration has been applied to this device yet.</em></p>
       {{ end }}
     </section>
-{{ template "footer"}}
+  {{ template "footer"}}
+{{ end }}

@@ -51,11 +51,12 @@ var updatesCmd = &cobra.Command{
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := getSpecificApi(cmd)
+		reason, _ := cmd.Flags().GetString("reason")
 		apps, tag, err := validateUpdatesArgs(cmd)
 		if err != nil {
 			return err
 		}
-		setUpdates(api, apps, tag)
+		setUpdates(api, apps, tag, reason)
 		return nil
 	},
 }
@@ -65,14 +66,17 @@ func init() {
 	addSpecificFlags(updatesCmd)
 	updatesCmd.Flags().StringP("apps", "", "", "A comma-separated list of apps to run on the device.")
 	updatesCmd.Flags().StringP("tag", "", "", "A tag to follow on the device.")
+	updatesCmd.Flags().StringP("reason", "m",
+		"Override aktualizr-lite update configuration",
+		"Add a message to store as the \"reason\" for this change")
 }
 
-func setUpdates(capi api.SpecificConfigsApi, apps, tag string) {
+func setUpdates(capi api.SpecificConfigsApi, apps, tag, reason string) {
 	cfg, err := capi.Get()
 	cobra.CheckErr(err)
 
-	if cfg == nil {
-		cfg = make(map[string]api.ConfigFile)
+	if cfg.Files == nil {
+		cfg.Files = make(map[string]api.ConfigFile)
 	}
 
 	const (
@@ -80,7 +84,7 @@ func setUpdates(capi api.SpecificConfigsApi, apps, tag string) {
 		sotaOverrideOnChanged = "/usr/share/fioconfig/handlers/aktualizr-toml-update"
 	)
 	var sotaFile api.ConfigFile
-	for name, val := range cfg {
+	for name, val := range cfg.Files {
 		if name == sotaOverride {
 			sotaFile = val
 			break
@@ -119,12 +123,12 @@ func setUpdates(capi api.SpecificConfigsApi, apps, tag string) {
 		return
 	}
 	unencrypted := true
-	cfg[sotaOverride] = api.ConfigFile{
+	cfg.Files[sotaOverride] = api.ConfigFile{
 		Value:       newSotaContent,
 		Unencrypted: &unencrypted,
 		OnChanged:   []string{sotaOverrideOnChanged},
 	}
-	cobra.CheckErr(capi.Put(cfg))
+	cobra.CheckErr(capi.Put(api.ConfigFileSet{Files: cfg.Files, Reason: reason}))
 }
 
 var (

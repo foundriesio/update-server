@@ -1,0 +1,46 @@
+{{ template "header" .}}
+    <section class="content-section">
+      <h2>{{.Title}}</h2>
+      <div class="accordion-table-container configs-history">
+        <div class="accordion-table-header">
+          <div>Created At</div>
+          <div>Created By</div>
+          <div>Reason</div>
+        </div>
+        <div class="accordion-table-body">
+          {{ range $idx, $cfg := .History }}
+          <div class="accordion-row-wrapper">
+            <details {{ if eq $idx $.OpenIndex }}open{{ end }}>
+              <summary data-index="{{ $idx }}">
+                <div>{{ tsToString $cfg.CreatedAt }}</div>
+                <div>{{ $cfg.CreatedBy }}</div>
+                <div>{{ $cfg.Reason }}</div>
+                <article onclick="event.preventDefault()">
+                  {{ if ge $.OpenIndex 0 }}
+                    {{ template "configs-item" $cfg }}
+                  {{ end }}
+                </article>
+              </summary>
+            </details>
+          </div>
+          {{ end }}
+        </div>
+      </div>
+    </section>
+    <script type="module">
+      if (window.location.search.includes('open=')) {
+        // Forces the browser history to visually remain in the same page.
+        const cleanUrl = location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } else {
+        document.querySelector('.configs-history').addEventListener('click', function(e) {
+          const summary = e.target.closest('summary[data-index]');
+          if (summary) {
+            e.preventDefault();
+            // Forces a traditional server reload, but overwrites the current history slot!
+            location.replace(location.pathname + '?open=' + summary.getAttribute('data-index'));
+          }
+        });
+      }
+    </script>
+{{ template "footer"}}
