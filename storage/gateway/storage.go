@@ -17,6 +17,7 @@ type (
 	DbHandle = storage.DbHandle
 	FsHandle = storage.FsHandle
 
+	AppliedConfigs    = storage.AppliedConfigs
 	AppsStates        = storage.AppsStates
 	ConfigFile        = storage.ConfigFile
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
@@ -159,12 +160,8 @@ func (d Device) GetAppsFilePath(file string) string {
 	}
 }
 
-func (d Device) SaveAppliedConfigs(files map[string]ConfigFile) error {
-	envelope := storage.AppliedConfigs{
-		AppliedAt: time.Now().Unix(),
-		Files:     files,
-	}
-	bytes, err := json.Marshal(envelope)
+func (d Device) SaveAppliedConfigs(cfg AppliedConfigs) error {
+	bytes, err := json.Marshal(cfg)
 	if err != nil {
 		return err
 	}
@@ -187,33 +184,37 @@ func (d Device) GetTufMeta(tag, file string) (string, error) {
 	}
 }
 
-func (d Device) GetConfigs() (configs [3]string, timestamp int64, err error) {
+func (d Device) GetConfigs() (configs [3]*storage.ConfigFileSet, timestamp int64, err error) {
 	// Returns 3 configs (in order): factory, group, device; and their latest modification timestamp.
 	var history []*storage.ConfigFileSet
 	timestamp = d.groupNameModifiedAt
-	loadConfig := func(cfg *storage.ConfigFileSet) string {
+	loadConfig := func(history []*storage.ConfigFileSet) *storage.ConfigFileSet {
+		if len(history) == 0 {
+			return nil
+		}
+		cfg := history[0]
 		if cfg.CreatedAt > timestamp {
 			timestamp = cfg.CreatedAt
 		}
-		return cfg.RawFiles
+		return cfg
 	}
 
 	if history, err = d.storage.fs.Configs.ReadFactoryConfigHistory(1, true); err != nil {
 		return
-	} else if len(history) > 0 {
-		configs[0] = loadConfig(history[0])
+	} else {
+		configs[0] = loadConfig(history)
 	}
 	if len(d.GroupName) > 0 {
 		if history, err = d.storage.fs.Configs.ReadGroupConfigHistory(d.GroupName, 1, true); err != nil {
 			return
-		} else if len(history) > 0 {
-			configs[1] = loadConfig(history[0])
+		} else {
+			configs[1] = loadConfig(history)
 		}
 	}
 	if history, err = d.storage.fs.Configs.ReadDeviceConfigHistory(d.Uuid, 1, true); err != nil {
 		return
-	} else if len(history) > 0 {
-		configs[2] = loadConfig(history[0])
+	} else {
+		configs[2] = loadConfig(history)
 	}
 	return
 }
