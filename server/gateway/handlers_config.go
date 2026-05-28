@@ -51,9 +51,18 @@ func (h handlers) configGet(c echo.Context) error {
 		Files: make(map[string]ConfigFile),
 	}
 	pacmanCfg := make(pacmanConfig)
-	for _, srcConfig := range configs {
+	for idx, srcConfig := range configs {
 		var cfg map[string]ConfigFile
-		if srcConfig == nil || len(srcConfig.RawFiles) == 0 {
+		if srcConfig == nil {
+			continue
+		}
+		// If srcConfig is not nil, audit fields must be set, even if the Files are empty.
+		// That's a valid use case if the entire global, group, or device configs were deleted.
+		auditTrail := &applied.AuditTrail[idx]
+		auditTrail.Reason = srcConfig.Reason
+		auditTrail.CreatedAt = srcConfig.CreatedAt
+		auditTrail.CreatedBy = srcConfig.CreatedBy
+		if len(srcConfig.RawFiles) == 0 {
 			continue
 		} else if err = json.Unmarshal([]byte(srcConfig.RawFiles), &cfg); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "failed to parse config JSON")

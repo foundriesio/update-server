@@ -1309,6 +1309,9 @@ func TestApiConfigsDeviceApplied(t *testing.T) {
 		Files:     map[string]storage.ConfigFile{"test": {Value: "hello"}},
 		AppliedAt: time.Now().Unix(),
 	}
+	audit := &cfg.AuditTrail[1]
+	audit.CreatedAt = time.Now().Add(-time.Minute).Unix()
+	audit.CreatedBy = "bob"
 	require.Nil(t, device.SaveAppliedConfigs(cfg))
 
 	t.Run("Returns applied config envelope", func(t *testing.T) {
@@ -1317,6 +1320,7 @@ func TestApiConfigsDeviceApplied(t *testing.T) {
 		require.Nil(t, json.Unmarshal(body, &applied))
 		assert.Equal(t, cfg.AppliedAt, applied.AppliedAt)
 		assert.Equal(t, cfg.Files, applied.Files)
+		assert.Equal(t, cfg.AuditTrail, applied.AuditTrail)
 	})
 }
 
