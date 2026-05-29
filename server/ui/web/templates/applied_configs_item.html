@@ -8,7 +8,8 @@
     {{ $audit := index .Configs.AuditTrail 0 }}
     {{ if gt $audit.CreatedAt 0 }}
       <li>
-        Global config created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
+        <a href="/configs">Global config</a>
+        created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
         at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
       </li>
     {{ end }}
@@ -16,14 +17,18 @@
     {{ if gt $audit.CreatedAt 0 }}
       <li>
         {{/* When device group changes, applied config group can differ until device fetches new config */}}
-        Group config from {{ $audit.Auxiliary }} created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
+        {{ $group := $audit.Auxiliary }}
+        <a href="/configs/group/{{ $group }}">Group config</a>
+        from {{ $group }} created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
         at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
       </li>
     {{ end }}
     {{ $audit = index .Configs.AuditTrail 2 }}
     {{ if gt $audit.CreatedAt 0 }}
       <li>
-        Device config created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
+        {{/* Device UUID remains unmodified, so we don't need to show it here */}}
+        <a href="/configs/device/{{ $audit.Auxiliary }}">Device config</a>
+        created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
         at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
       </li>
     {{ end }}
