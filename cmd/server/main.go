@@ -9,8 +9,8 @@ import (
 
 	"github.com/alexflint/go-arg"
 
-	"github.com/foundriesio/dg-satellite/cmd"
 	"github.com/foundriesio/dg-satellite/context"
+	"github.com/foundriesio/dg-satellite/version"
 )
 
 type VersionCmd struct{}
@@ -53,7 +53,7 @@ func main() {
 	case args.UserAdd != nil:
 		err = args.UserAdd.Run(args)
 	case args.Version != nil:
-		fmt.Println(cmd.Version)
+		fmt.Println(version.Version)
 	default:
 		p.Fail("missing required subcommand")
 	}

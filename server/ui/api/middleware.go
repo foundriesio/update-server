@@ -8,8 +8,11 @@ import (
 
 	"github.com/foundriesio/dg-satellite/auth"
 	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/dg-satellite/version"
 	"github.com/labstack/echo/v4"
 )
+
+const versionHeader = "x-version"
 
 func requireScope(scope users.Scopes) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -38,6 +41,8 @@ func authUser(provider auth.Provider) echo.MiddlewareFunc {
 			ctx = CtxWithLog(ctx, log)
 			ctx = CtxWithUser(ctx, user)
 			c.SetRequest(req.WithContext(ctx))
+
+			c.Response().Header().Set(versionHeader, version.Version)
 
 			return next(c)
 		}

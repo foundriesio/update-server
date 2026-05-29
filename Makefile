@@ -1,7 +1,7 @@
 COMMIT?=$(shell git describe --tags HEAD)$(shell git diff --quiet || echo '+dirty')
 
 # Use linker flags to provide commit info
-LDFLAGS=-ldflags "-X=github.com/foundriesio/dg-satellite/cmd.Version=$(COMMIT)"
+LDFLAGS=-ldflags "-X=github.com/foundriesio/dg-satellite/version.Version=$(COMMIT)"
 
 build-cli: satcli-linux-amd64 satcli-linux-arm64 satcli-windows-amd64.exe satcli-windows-arm64.exe satcli-darwin-arm64 satcli-darwin-amd64
 

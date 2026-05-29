@@ -30,6 +30,7 @@ import (
 	gatewayStorage "github.com/foundriesio/dg-satellite/storage/gateway"
 	storageTesting "github.com/foundriesio/dg-satellite/storage/testing"
 	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/dg-satellite/version"
 )
 
 func generateUpdateEvents(corId, pack string, num int) []storage.DeviceUpdateEvent {
@@ -248,6 +249,24 @@ func NewTestClient(t *testing.T) *testClient {
 		e:   e,
 	}
 	return &tc
+}
+
+func TestApiVersionHeader(t *testing.T) {
+	tc := NewTestClient(t)
+
+	prevVersion := version.Version
+	t.Cleanup(func() {
+		version.Version = prevVersion
+	})
+	version.Version = "test-version"
+
+	tc.u.AllowedScopes = users.ScopeDevicesR
+	req := httptest.NewRequest(http.MethodGet, "/v1/devices", nil)
+	tc.marshalHeaders(nil, req)
+	rec := tc.Do(req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "test-version", rec.Header().Get(versionHeader))
 }
 
 func TestApiDeviceList(t *testing.T) {
