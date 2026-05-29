@@ -65,6 +65,7 @@ type AppliedConfigs struct {
 		CreatedAt int64  `json:"CreatedAt,omitempty"`
 		CreatedBy string `json:"CreatedBy,omitempty"`
 		Reason    string `json:"Reason,omitempty"`
+		Auxiliary string `json:"Auxiliary,omitempty"`
 	} `json:"AuditTrail"`
 }
 

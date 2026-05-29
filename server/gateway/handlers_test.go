@@ -468,12 +468,15 @@ tags = "group"
 	assert.GreaterOrEqual(t, beforeRequest, applied.AuditTrail[0].CreatedAt)
 	assert.Equal(t, "bob", applied.AuditTrail[0].CreatedBy)
 	assert.Equal(t, "", applied.AuditTrail[0].Reason)
+	assert.Equal(t, "", applied.AuditTrail[0].Auxiliary)
 	assert.GreaterOrEqual(t, beforeRequest, applied.AuditTrail[1].CreatedAt)
 	assert.Equal(t, "alice", applied.AuditTrail[1].CreatedBy)
 	assert.Equal(t, "No reason", applied.AuditTrail[1].Reason)
+	assert.Equal(t, "group", applied.AuditTrail[1].Auxiliary)
 	assert.GreaterOrEqual(t, beforeRequest, applied.AuditTrail[2].CreatedAt)
 	assert.Equal(t, "badman", applied.AuditTrail[2].CreatedBy)
 	assert.Equal(t, "behind blue eyes", applied.AuditTrail[2].Reason)
+	assert.Equal(t, tc.uuid, applied.AuditTrail[2].Auxiliary)
 }
 
 func TestInfo(t *testing.T) {

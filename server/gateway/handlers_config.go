@@ -62,6 +62,12 @@ func (h handlers) configGet(c echo.Context) error {
 		auditTrail.Reason = srcConfig.Reason
 		auditTrail.CreatedAt = srcConfig.CreatedAt
 		auditTrail.CreatedBy = srcConfig.CreatedBy
+		switch idx {
+		case 1: // Group config
+			auditTrail.Auxiliary = d.GroupName
+		case 2: // Device config
+			auditTrail.Auxiliary = d.Uuid
+		}
 		if len(srcConfig.RawFiles) == 0 {
 			continue
 		} else if err = json.Unmarshal([]byte(srcConfig.RawFiles), &cfg); err != nil {

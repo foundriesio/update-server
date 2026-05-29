@@ -52,8 +52,9 @@ func printAuditFields(cfg api.AppliedConfigs) {
 			a.CreatedBy, formatTimestamp(a.CreatedAt), msg(a.Reason))
 	}
 	if a := cfg.AuditTrail[1]; a.CreatedAt > 0 {
-		fmt.Printf("\tGroup config created by %s at %s%s\n",
-			a.CreatedBy, formatTimestamp(a.CreatedAt), msg(a.Reason))
+		// When device group changes, applied config group can differ until device fetches new config.
+		fmt.Printf("\tGroup config from %s created by %s at %s%s\n",
+			a.Auxiliary, a.CreatedBy, formatTimestamp(a.CreatedAt), msg(a.Reason))
 	}
 	if a := cfg.AuditTrail[2]; a.CreatedAt > 0 {
 		fmt.Printf("\tDevice config created by %s at %s%s\n",
