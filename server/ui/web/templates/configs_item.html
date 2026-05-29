@@ -46,17 +46,3 @@
       <button onclick="location.href=location.pathname+'/history'">History</button>
     </section>
 {{ template "footer"}}
-
-{{ define "applied_configs_item.html" }}
-  {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
-      {{ if gt .Configs.AppliedAt 0 }}
-      <p><b>Applied at:</b> {{ tsToString .Configs.AppliedAt }}</p>
-      {{ template "configs-item-files" .Configs.Files }}
-      {{ else }}
-      <p><em>No configuration has been applied to this device yet.</em></p>
-      {{ end }}
-    </section>
-  {{ template "footer"}}
-{{ end }}
