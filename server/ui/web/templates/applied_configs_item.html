@@ -3,6 +3,30 @@
     <h2>{{.Title}}</h2>
     {{ if gt .Configs.AppliedAt 0 }}
     <p><b>Applied at:</b> {{ tsToString .Configs.AppliedAt }}</p>
+    <p><b>Generated From:</b><p>
+    <ul>
+    {{ $audit := index .Configs.AuditTrail 0 }}
+    {{ if gt $audit.CreatedAt 0 }}
+      <li>
+        Global config created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
+        at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
+      </li>
+    {{ end }}
+    {{ $audit = index .Configs.AuditTrail 1 }}
+    {{ if gt $audit.CreatedAt 0 }}
+      <li>
+        Group config created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
+        at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
+      </li>
+    {{ end }}
+    {{ $audit = index .Configs.AuditTrail 2 }}
+    {{ if gt $audit.CreatedAt 0 }}
+      <li>
+        Device config created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
+        at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
+      </li>
+    {{ end }}
+    </ul>
     {{ template "configs-item-files" .Configs.Files }}
     {{ else }}
     <p><em>No configuration has been applied to this device yet.</em></p>
