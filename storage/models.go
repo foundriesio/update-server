@@ -42,7 +42,7 @@ type DeviceStatus struct {
 
 type ConfigFile struct {
 	Value       string   `json:"Value"`
-	Unencrypted *bool    `json:"Unencrypted,omitempty"`
+	Unencrypted bool     `json:"Unencrypted,omitempty"`
 	OnChanged   []string `json:"OnChanged,omitempty"`
 }
 

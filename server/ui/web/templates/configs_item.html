@@ -9,7 +9,7 @@
                {{ if gt (len $val.OnChanged) 0 }}
                <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range $val.OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
-               {{ if deref $val.Unencrypted }}
+               {{ if $val.Unencrypted }}
                <i class="icontip floppy" aria-label="View file content"
 		  onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
                <dialog class="file-content">

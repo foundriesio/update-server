@@ -58,7 +58,7 @@ func printConfigs(cfg map[string]api.ConfigFile) {
 		} else {
 			fmt.Printf("\t%s - %v\n", name, file.OnChanged)
 		}
-		if file.Unencrypted != nil && *file.Unencrypted {
+		if file.Unencrypted {
 			for _, line := range strings.Split(file.Value, "\n") {
 				fmt.Printf("\t | %s\n", line)
 			}

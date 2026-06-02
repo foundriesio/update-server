@@ -83,7 +83,6 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, raw, replace bool, 
 		err  error
 	)
 	cfg.Reason = reason
-	unencrypted := true
 	if raw {
 		if raw && len(files) != 1 {
 			return errors.New("raw file only accepts one file argument")
@@ -112,7 +111,7 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, raw, replace bool, 
 				cobra.CheckErr(err)
 				content = string(data)
 			}
-			cfg.Files[name] = api.ConfigFile{Value: content, Unencrypted: &unencrypted}
+			cfg.Files[name] = api.ConfigFile{Value: content, Unencrypted: true}
 		}
 	}
 	if !replace {

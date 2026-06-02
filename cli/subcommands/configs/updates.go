@@ -122,10 +122,9 @@ func setUpdates(capi api.SpecificConfigsApi, apps, tag, reason string) {
 		fmt.Println("No changes found.")
 		return
 	}
-	unencrypted := true
 	cfg.Files[sotaOverride] = api.ConfigFile{
 		Value:       newSotaContent,
-		Unencrypted: &unencrypted,
+		Unencrypted: true,
 		OnChanged:   []string{sotaOverrideOnChanged},
 	}
 	cobra.CheckErr(capi.Put(api.ConfigFileSet{Files: cfg.Files, Reason: reason}))
