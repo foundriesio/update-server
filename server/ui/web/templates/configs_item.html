@@ -15,11 +15,24 @@
                <dialog class="file-content">
                  <article>
                    <header>
-                     <h3>File "{{ $name }}" content:</h3>
+                     <h3>File "{{ $name }}"</h3>
                      <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">x</button>
                    </header>
-                   <p>{{ $val.Value }}</p>
-                   <button autofocus onclick="this.closest('dialog').close()">Close</button>
+                   <section>
+                     {{ if gt (len $val.OnChanged) 0 }}
+                     <label><b>On Change Triggers:</b></label>
+                     <ul>
+                       {{ range $val.OnChanged }}
+                       <li>{{.}}</li>
+                       {{ end }}
+                     </ul>
+                     {{ end }}
+                     <label><b>Content:</b></label>
+                     <p>{{ $val.Value }}</p>
+                   </section>
+                   <footer>
+                     <button autofocus onclick="this.closest('dialog').close()">Close</button>
+                   </footer>
                  </article>
                </dialog>
                {{ else }}

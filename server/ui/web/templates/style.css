@@ -220,25 +220,33 @@ dialog.file-content {
   text-align: left;
 }
 
-dialog.file-content header {
+dialog.file-content > article > header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
 }
 
-dialog.file-content article > button:last-child {
+dialog.file-content > article > footer > button:last-child {
   display: block;
   margin-left: auto;
 }
 
-dialog.file-content p {
-  white-space: pre;
+dialog.file-content > article > section {
   width: fit-content;
   height: fit-content;
   max-height: min(60em, 70vh);
   max-width: min(80em, 80vw);
   overflow: scroll;
+}
+
+dialog.file-content > article > section > p {
+  white-space: pre;
+  margin-left: 0.5rem;
+}
+
+dialog.file-content > article > section > ul {
+  padding-left: 1.5rem;
 }
 
 .hidden {
