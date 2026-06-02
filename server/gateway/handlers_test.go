@@ -424,11 +424,11 @@ func TestConfigSota(t *testing.T) {
 	}
 
 	cfg := marshalSota("[pacman]\ntags='factory'\napps='factory'\n[madman]\nfoo='bar'\n")
-	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(cfg, "", ""))
+	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(cfg, "bob", ""))
 	cfg = marshalSota("[pacman]\ntags='group'\n[madman]\nbar='baz'\n")
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("group", cfg, "", ""))
+	require.Nil(t, tc.fs.Configs.WriteGroupConfig("group", cfg, "alice", "No reason"))
 	cfg = marshalSota("[pacman]\napps='device'\n[badman]\nfoo='bar'\n")
-	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid, cfg, "", ""))
+	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid, cfg, "badman", "behind blue eyes"))
 
 	// TOML library uses double-quotes for values, sorts everything alphabetically, and puts spaces around equality.
 	mergedCfg := marshalSota(`[badman]
@@ -442,11 +442,13 @@ foo = "bar"
 apps = "device"
 tags = "group"
 `)
+	time.Sleep(4 * time.Millisecond)
 	beforeRequest := time.Now().Unix()
+	time.Sleep(4 * time.Millisecond)
 	serverCfg := strings.Trim(string(tc.GET("/config", 200)), "\n")
 	require.Equal(t, mergedCfg, serverCfg)
 
-	// Verify that the applied config envelope was persisted.
+	// Verify that the applied config was persisted.
 	raw, err := tc.fs.Devices.ReadFile(tc.uuid, storage.ConfigAppliedFile)
 	require.Nil(t, err)
 	var applied baseStorage.AppliedConfigs
@@ -463,6 +465,18 @@ tags = "group"
 			return string(b)
 		}()),
 	)
+	assert.GreaterOrEqual(t, beforeRequest, applied.AuditTrail[0].CreatedAt)
+	assert.Equal(t, "bob", applied.AuditTrail[0].CreatedBy)
+	assert.Equal(t, "", applied.AuditTrail[0].Reason)
+	assert.Equal(t, "", applied.AuditTrail[0].Auxiliary)
+	assert.GreaterOrEqual(t, beforeRequest, applied.AuditTrail[1].CreatedAt)
+	assert.Equal(t, "alice", applied.AuditTrail[1].CreatedBy)
+	assert.Equal(t, "No reason", applied.AuditTrail[1].Reason)
+	assert.Equal(t, "group", applied.AuditTrail[1].Auxiliary)
+	assert.GreaterOrEqual(t, beforeRequest, applied.AuditTrail[2].CreatedAt)
+	assert.Equal(t, "badman", applied.AuditTrail[2].CreatedBy)
+	assert.Equal(t, "behind blue eyes", applied.AuditTrail[2].Reason)
+	assert.Equal(t, tc.uuid, applied.AuditTrail[2].Auxiliary)
 }
 
 func TestInfo(t *testing.T) {

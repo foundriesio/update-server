@@ -36,7 +36,7 @@ func (h handlers) configGet(c echo.Context) error {
 
 	// All times below use one second precision to account for devices which don't support subsecond timestamps.
 	// A client is expected to use the Date header value in its subsequent If-Modified-Since header values.
-	cts := time.Unix(timestamp, 0)
+	cts := time.Unix(timestamp, 0).UTC()
 	ifModifiedSince := req.Header.Get("If-Modified-Since")
 	if len(ifModifiedSince) > 0 {
 		if dts, err := time.Parse(time.RFC1123, ifModifiedSince); err != nil {
@@ -47,13 +47,30 @@ func (h handlers) configGet(c echo.Context) error {
 	}
 
 	// A reference type here allows manipulating map values directly below.
-	files := make(map[string]ConfigFile)
+	applied := storage.AppliedConfigs{
+		Files: make(map[string]ConfigFile),
+	}
 	pacmanCfg := make(pacmanConfig)
-	for _, rawConfig := range configs {
+	for idx, srcConfig := range configs {
 		var cfg map[string]ConfigFile
-		if len(rawConfig) == 0 {
+		if srcConfig == nil {
 			continue
-		} else if err = json.Unmarshal([]byte(rawConfig), &cfg); err != nil {
+		}
+		// If srcConfig is not nil, audit fields must be set, even if the Files are empty.
+		// That's a valid use case if the entire global, group, or device configs were deleted.
+		auditTrail := &applied.AuditTrail[idx]
+		auditTrail.Reason = srcConfig.Reason
+		auditTrail.CreatedAt = srcConfig.CreatedAt
+		auditTrail.CreatedBy = srcConfig.CreatedBy
+		switch idx {
+		case 1: // Group config
+			auditTrail.Auxiliary = d.GroupName
+		case 2: // Device config
+			auditTrail.Auxiliary = d.Uuid
+		}
+		if len(srcConfig.RawFiles) == 0 {
+			continue
+		} else if err = json.Unmarshal([]byte(srcConfig.RawFiles), &cfg); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "failed to parse config JSON")
 		}
 		for k, v := range cfg {
@@ -62,24 +79,25 @@ func (h handlers) configGet(c echo.Context) error {
 					return EchoError(c, err, http.StatusInternalServerError, "failed to parse sota toml config")
 				}
 			}
-			files[k] = v
+			applied.Files[k] = v
 		}
 	}
 	if !pacmanCfg.empty() {
 		// When pacmanCfg is non-empty, files are warranted to contain the sota override.
-		sotaCfg := files[storage.ConfigSotaOverride]
+		sotaCfg := applied.Files[storage.ConfigSotaOverride]
 		if sotaCfg.Value, err = pacmanCfg.encode(); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "failed to encode merged sota toml config")
 		} else {
 			// set back into a map, as sotaCfg is a value copy
-			files[storage.ConfigSotaOverride] = sotaCfg
+			applied.Files[storage.ConfigSotaOverride] = sotaCfg
 		}
 	}
 	c.Response().Header().Set("Date", cts.Format(time.RFC1123))
-	if err := d.SaveAppliedConfigs(files); err != nil {
+	applied.AppliedAt = time.Now().Unix()
+	if err := d.SaveAppliedConfigs(applied); err != nil {
 		log.Warn("Failed to save applied config", "device", d.Uuid, "error", err)
 	}
-	return c.JSON(http.StatusOK, files)
+	return c.JSON(http.StatusOK, applied.Files)
 }
 
 type pacmanConfig map[string]map[string]interface{}

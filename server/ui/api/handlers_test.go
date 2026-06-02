@@ -1305,20 +1305,22 @@ func TestApiConfigsDeviceApplied(t *testing.T) {
 	// Write an applied config as the gateway would after delivering config to a device.
 	device, err := tc.gw.DeviceGet("foo")
 	require.Nil(t, err)
-	cfg := map[string]storage.ConfigFile{
-		"test": {Value: "hello"},
+	cfg := storage.AppliedConfigs{
+		Files:     map[string]storage.ConfigFile{"test": {Value: "hello"}},
+		AppliedAt: time.Now().Unix(),
 	}
-	beforeApply := time.Now().Unix()
+	audit := &cfg.AuditTrail[1]
+	audit.CreatedAt = time.Now().Add(-time.Minute).Unix()
+	audit.CreatedBy = "bob"
 	require.Nil(t, device.SaveAppliedConfigs(cfg))
 
 	t.Run("Returns applied config envelope", func(t *testing.T) {
 		body := tc.GET("/configs/device/foo/applied", 200)
 		var applied storage.AppliedConfigs
 		require.Nil(t, json.Unmarshal(body, &applied))
-		assert.GreaterOrEqual(t, applied.AppliedAt, beforeApply)
-		assert.LessOrEqual(t, applied.AppliedAt, time.Now().Unix())
-		require.Contains(t, applied.Files, "test")
-		assert.Equal(t, "hello", applied.Files["test"].Value)
+		assert.Equal(t, cfg.AppliedAt, applied.AppliedAt)
+		assert.Equal(t, cfg.Files, applied.Files)
+		assert.Equal(t, cfg.AuditTrail, applied.AuditTrail)
 	})
 }
 
