@@ -37,6 +37,7 @@ type LabelsPutReq map[string]*string
 // @Description Requires scope: devices:read or devices:read-update
 // @Tags    Devices
 // @Param _ query DeviceListOpts false "Sorting options"
+// @Param label query []string false "Label filters in the format key.comparison.value (e.g. env.eq.production). Comparison operators: eq, ne, contains, ncontains. Multiple filters are ANDed together."
 // @Accept  json
 // @Produce json
 // @Success 200 {array} DeviceListItem
@@ -52,6 +53,12 @@ func (h *handlers) deviceList(c echo.Context) error {
 		return EchoError(c, err, http.StatusBadRequest, "Failed to parse list options")
 	}
 
+	if filters, err := parseLabelFilters(c.QueryParams()["label"]); err != nil {
+		return EchoError(c, err, http.StatusBadRequest, err.Error())
+	} else {
+		opts.LabelFilters = filters
+	}
+
 	devices, total, err := h.storage.DevicesList(opts)
 	if err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Unexpected error listing devices")
@@ -59,6 +66,32 @@ func (h *handlers) deviceList(c echo.Context) error {
 
 	setPaginationHeaders(c, opts, total)
 	return c.JSON(http.StatusOK, devices)
+}
+
+// parseLabelFilters parses query parameters of the form "key.comparison.value"
+// into LabelFilter structs. The value may contain dots.
+func parseLabelFilters(params []string) ([]storage.LabelFilter, error) {
+	if len(params) == 0 {
+		return nil, nil
+	}
+	filters := make([]storage.LabelFilter, 0, len(params))
+	for _, p := range params {
+		// Split into at most 3 parts: key, comparison, value (value may contain dots)
+		parts := strings.SplitN(p, ".", 3)
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("invalid label filter %q: expected format key.comparison.value", p)
+		}
+		f := storage.LabelFilter{
+			Label:      parts[0],
+			Comparison: storage.LabelComparison(parts[1]),
+			Value:      parts[2],
+		}
+		if err := f.Validate(); err != nil {
+			return nil, err
+		}
+		filters = append(filters, f)
+	}
+	return filters, nil
 }
 
 func setPaginationHeaders(c echo.Context, opts storage.DeviceListOpts, total int) {

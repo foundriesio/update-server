@@ -30,11 +30,14 @@ func (a *Api) Devices() DeviceApi {
 
 // ListPage fetches a single page of devices. It returns the devices,
 // whether more pages are available, and the total number of pages.
-func (d DeviceApi) ListPage(page int, limit int, sortBy string) ([]DeviceListItem, bool, int, error) {
+func (d DeviceApi) ListPage(page int, limit int, sortBy string, labelFilters []string) ([]DeviceListItem, bool, int, error) {
 	offset := (page - 1) * limit
 	resource := fmt.Sprintf("/v1/devices?limit=%d&offset=%d", limit, offset)
 	if sortBy != "" {
 		resource += "&order-by=" + sortBy
+	}
+	for _, lf := range labelFilters {
+		resource += "&label=" + url.QueryEscape(lf)
 	}
 	var devices []DeviceListItem
 	headers, err := d.api.GetWithHeaders(resource, &devices)

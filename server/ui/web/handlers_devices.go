@@ -25,12 +25,17 @@ func (h handlers) devicesList(c echo.Context) error {
 	if sort == "" {
 		sort = "created-at-desc"
 	}
+	labelFilters := c.QueryParams()["label"]
+
 	const pageSize = 50
 	offset := (page - 1) * pageSize
 
 	resource := fmt.Sprintf("/v1/devices?limit=%d&offset=%d", pageSize, offset)
 	if sort != "" {
 		resource += "&order-by=" + sort
+	}
+	for _, lf := range labelFilters {
+		resource += "&label=" + lf
 	}
 
 	var devices []api.DeviceListItem
@@ -42,24 +47,33 @@ func (h handlers) devicesList(c echo.Context) error {
 	hasNext := linkHasRel(headers.Get("Link"), "next")
 	totalPages := linkTotalPages(headers.Get("Link"), pageSize)
 
+	var knownLabels []string
+	if err := getJson(c.Request().Context(), "/v1/known-labels/devices", &knownLabels); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
 	ctx := struct {
 		baseCtx
-		Devices    []api.DeviceListItem
-		CanDelete  bool
-		Page       int
-		TotalPages int
-		HasNext    bool
-		HasPrev    bool
-		Sort       string
+		Devices      []api.DeviceListItem
+		CanDelete    bool
+		Page         int
+		TotalPages   int
+		HasNext      bool
+		HasPrev      bool
+		Sort         string
+		LabelFilters []string
+		KnownLabels  []string
 	}{
-		baseCtx:    h.baseCtx(c, "Devices", "devices"),
-		Devices:    devices,
-		CanDelete:  CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeDevicesD),
-		Page:       page,
-		TotalPages: totalPages,
-		HasNext:    hasNext,
-		HasPrev:    page > 1,
-		Sort:       sort,
+		baseCtx:      h.baseCtx(c, "Devices", "devices"),
+		Devices:      devices,
+		CanDelete:    CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeDevicesD),
+		Page:         page,
+		TotalPages:   totalPages,
+		HasNext:      hasNext,
+		HasPrev:      page > 1,
+		Sort:         sort,
+		LabelFilters: labelFilters,
+		KnownLabels:  knownLabels,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "devices_list.html", ctx)
 }

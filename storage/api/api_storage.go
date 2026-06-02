@@ -11,6 +11,7 @@ import (
 	"io"
 	"iter"
 	"log/slog"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -47,6 +48,41 @@ const (
 	ConfigSotaOverride     = storage.ConfigSotaOverride
 )
 
+// LabelComparison defines the comparison operator for label filters.
+type LabelComparison string
+
+const (
+	LabelCmpEqual       LabelComparison = "eq"
+	LabelCmpNotEqual    LabelComparison = "ne"
+	LabelCmpContains    LabelComparison = "contains"
+	LabelCmpNotContains LabelComparison = "ncontains"
+)
+
+// LabelFilter defines a filter on a device's JSONB labels column.
+type LabelFilter struct {
+	Label      string
+	Value      string
+	Comparison LabelComparison
+}
+
+// validLabelKey ensures label keys only contain safe characters for JSON path embedding.
+var validLabelKey = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
+
+func (f LabelFilter) Validate() error {
+	switch f.Comparison {
+	case LabelCmpEqual, LabelCmpNotEqual, LabelCmpContains, LabelCmpNotContains:
+	default:
+		return fmt.Errorf("invalid label comparison: %q", f.Comparison)
+	}
+	if f.Label == "" {
+		return fmt.Errorf("label filter key must not be empty")
+	}
+	if !validLabelKey.MatchString(f.Label) {
+		return fmt.Errorf("invalid label filter key: %q", f.Label)
+	}
+	return nil
+}
+
 var orderByDeviceMap = map[OrderBy]string{
 	OrderByDeviceCreatedAsc:  "created_at ASC",
 	OrderByDeviceCreatedDsc:  "created_at DESC",
@@ -76,9 +112,10 @@ var (
 // DeviceListOpts lets you set the order devices will be returned
 // by the `List` api
 type DeviceListOpts struct {
-	OrderBy OrderBy `query:"order-by" default:"last-seen-desc"`
-	Limit   int     `query:"limit"    default:"1000"`
-	Offset  int     `query:"offset"   default:"0"`
+	OrderBy      OrderBy       `query:"order-by" default:"last-seen-desc"`
+	Limit        int           `query:"limit"    default:"1000"`
+	Offset       int           `query:"offset"   default:"0"`
+	LabelFilters []LabelFilter `json:"label-filters,omitempty"`
 }
 
 type DeviceListItem struct {
@@ -119,12 +156,10 @@ type Storage struct {
 	db *storage.DbHandle
 	fs *storage.FsHandle
 
-	stmtDeviceCount     stmtDeviceCount
 	stmtDeviceDelete    stmtDeviceDelete
 	stmtDeviceGet       stmtDeviceGet
 	stmtDeviceGetGroups stmtDeviceGetGroups
 	stmtDeviceGetLabels stmtDeviceGetLabels
-	stmtDeviceList      map[OrderBy]stmtDeviceList
 	stmtDeviceSetLabels stmtDeviceSetLabels
 	stmtDeviceSetUpdate stmtDeviceSetUpdate
 }
@@ -193,7 +228,6 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 	handle := Storage{db: db, fs: fs}
 
 	if err := db.InitStmt(
-		&handle.stmtDeviceCount,
 		&handle.stmtDeviceDelete,
 		&handle.stmtDeviceGet,
 		&handle.stmtDeviceGetGroups,
@@ -204,15 +238,6 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		return nil, err
 	}
 
-	handle.stmtDeviceList = make(map[OrderBy]stmtDeviceList, len(orderByDeviceMap))
-	for orderBy, orderByStr := range orderByDeviceMap {
-		stmt := stmtDeviceList{}
-		if err := stmt.Init(*db, orderByStr); err != nil {
-			return nil, err
-		}
-		handle.stmtDeviceList[orderBy] = stmt
-	}
-
 	return &handle, nil
 }
 
@@ -221,22 +246,105 @@ func (s Storage) DevicesList(opts DeviceListOpts) ([]DeviceListItem, int, error)
 	if orderBy == "" {
 		orderBy = OrderByDeviceLastSeenDsc
 	}
-	stmt, ok := s.stmtDeviceList[orderBy]
+	orderByStr, ok := orderByDeviceMap[orderBy]
 	if !ok {
 		return nil, 0, fmt.Errorf("invalid order by arg: %s", opts.OrderBy)
 	}
 
-	total, err := s.stmtDeviceCount.run()
+	filterSQL, filterArgs, err := buildLabelFilterSQL(opts.LabelFilters)
 	if err != nil {
 		return nil, 0, err
 	}
 
+	// Count query
+	countQuery := "SELECT COUNT(*) FROM devices WHERE deleted=false" + filterSQL
+	var total int
+	if err := s.db.QueryRow(countQuery, filterArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count devices: %w", err)
+	}
+
+	// List query
+	listQuery := fmt.Sprintf(
+		"SELECT uuid, created_at, last_seen, target_name, tag, is_prod, json(labels) FROM devices WHERE deleted=false%s ORDER BY %s LIMIT ? OFFSET ?",
+		filterSQL, orderByStr,
+	)
+	listArgs := append(filterArgs, opts.Limit, opts.Offset)
+	rows, err := s.db.Query(listQuery, listArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list devices: %w", err)
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			slog.Error("failed to close rows in device list", "error", err)
+		}
+	}()
+
 	devices := make([]DeviceListItem, 0, opts.Limit)
-	if err := stmt.run(opts.Limit, opts.Offset, &devices); err != nil {
+	for rows.Next() {
+		var (
+			d      DeviceListItem
+			labels []byte
+		)
+		if err = rows.Scan(
+			&d.Uuid, &d.CreatedAt, &d.LastSeen, &d.Target, &d.Tag, &d.IsProd, &labels,
+		); err != nil {
+			return nil, 0, err
+		}
+		if err = json.Unmarshal(labels, &d.Labels); err != nil {
+			return nil, 0, fmt.Errorf("failed to parse device labels: %w", err)
+		}
+		devices = append(devices, d)
+	}
+	if err = rows.Err(); err != nil {
 		return nil, 0, err
 	}
 
 	return devices, total, nil
+}
+
+// buildLabelFilterSQL produces SQL WHERE clause fragments and args for label filters.
+// Each filter uses the JSONB extract operator (labels ->> '$.<key>') with parameterized values.
+// For "name" and "group" labels, it uses the indexed virtual columns directly.
+func buildLabelFilterSQL(filters []LabelFilter) (string, []any, error) {
+	if len(filters) == 0 {
+		return "", nil, nil
+	}
+
+	var sb strings.Builder
+	args := make([]any, 0, len(filters))
+	for _, f := range filters {
+		if err := f.Validate(); err != nil {
+			return "", nil, err
+		}
+
+		// Use indexed virtual columns for "name" and "group" labels;
+		// fall back to JSON extraction for all other labels.
+		var col string
+		switch f.Label {
+		case "name":
+			col = "name"
+		case "group":
+			col = "group_name"
+		default:
+			col = fmt.Sprintf("labels ->> '$.%s'", f.Label)
+		}
+
+		switch f.Comparison {
+		case LabelCmpEqual:
+			fmt.Fprintf(&sb, " AND %s = ?", col)
+			args = append(args, f.Value)
+		case LabelCmpNotEqual:
+			fmt.Fprintf(&sb, " AND (%s IS NULL OR %s != ?)", col, col)
+			args = append(args, f.Value)
+		case LabelCmpContains:
+			fmt.Fprintf(&sb, " AND %s LIKE ?", col)
+			args = append(args, "%"+f.Value+"%")
+		case LabelCmpNotContains:
+			fmt.Fprintf(&sb, " AND (%s IS NULL OR %s NOT LIKE ?)", col, col)
+			args = append(args, "%"+f.Value+"%")
+		}
+	}
+	return sb.String(), args, nil
 }
 
 func (s Storage) DeviceGet(uuid string) (*Device, error) {
@@ -548,64 +656,6 @@ func (s *stmtDeviceGet) run(
 ) error {
 	return s.Stmt.QueryRow(uuid).Scan(
 		createdAt, lastSeen, pubkey, updateName, tag, targetName, ostreeHash, apps, labels, isProd)
-}
-
-type stmtDeviceList storage.DbStmt
-
-func (s *stmtDeviceList) Init(db storage.DbHandle, orderBy string) (err error) {
-	s.Stmt, err = db.Prepare("apiDeviceList", fmt.Sprintf(`
-		SELECT
-			uuid, created_at, last_seen, target_name, tag, is_prod, json(labels)
-		FROM devices
-		WHERE deleted=false
-		ORDER BY %s LIMIT ? OFFSET ?`, orderBy),
-	)
-	return
-}
-
-func (s *stmtDeviceList) run(limit, offset int, dl *[]DeviceListItem) error {
-	if rows, err := s.Stmt.Query(limit, offset); err != nil {
-		return err
-	} else {
-		defer func() {
-			if err := rows.Close(); err != nil {
-				slog.Error("failed to close rows in device list", "error", err)
-			}
-		}()
-		for rows.Next() {
-			var (
-				d      DeviceListItem
-				labels []byte
-			)
-			if err = rows.Scan(
-				&d.Uuid, &d.CreatedAt, &d.LastSeen, &d.Target, &d.Tag, &d.IsProd, &labels,
-			); err != nil {
-				return err
-			}
-			if err = json.Unmarshal(labels, &d.Labels); err != nil {
-				return fmt.Errorf("failed to parse device labels: %w", err)
-			}
-			*dl = append(*dl, d)
-		}
-		if err = rows.Err(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type stmtDeviceCount storage.DbStmt
-
-func (s *stmtDeviceCount) Init(db storage.DbHandle) (err error) {
-	s.Stmt, err = db.Prepare("apiDeviceCount", `
-		SELECT COUNT(*) FROM devices WHERE deleted=false`,
-	)
-	return
-}
-
-func (s *stmtDeviceCount) run() (count int, err error) {
-	err = s.Stmt.QueryRow().Scan(&count)
-	return
 }
 
 type stmtDeviceSetLabels storage.DbStmt

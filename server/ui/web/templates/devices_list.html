@@ -2,43 +2,177 @@
     <section class="content-section">
       <h2>{{.Title}}</h2>
 
+      <div class="filter-input-wrap">
+        <input type="search" id="labels" name="labels" placeholder="Filter: label.comparison.value (e.g. name.contains.foo)" autocomplete="off">
+        <div id="acDropdown" class="ac-dropdown"></div>
+      </div>
+      <script>
+      (function() {
+        var knownLabels = [{{range $i, $l := .KnownLabels}}{{if $i}},{{end}}"{{$l}}"{{end}}];
+        var comparisons = ["eq", "ne", "contains", "ncontains"];
+        var input = document.getElementById('labels');
+        var dropdown = document.getElementById('acDropdown');
+        var activeIdx = -1;
+
+        // Populate from current query params on load
+        var params = new URLSearchParams(window.location.search);
+        var existing = [];
+        params.forEach(function(v, k) { if (k === "label") existing.push(v); });
+        if (existing.length > 0) input.value = existing.join(' ');
+
+        // Get the token the cursor is currently inside
+        function currentToken() {
+          var val = input.value;
+          var pos = input.selectionStart;
+          var before = val.substring(0, pos);
+          var start = before.lastIndexOf(' ') + 1;
+          var afterCursor = val.indexOf(' ', pos);
+          var end = afterCursor === -1 ? val.length : afterCursor;
+          return { text: val.substring(start, end), start: start, end: end };
+        }
+
+        function getSuggestions(token) {
+          var parts = token.split('.');
+          if (parts.length <= 1) {
+            // Typing the label key
+            var prefix = parts[0].toLowerCase();
+            return knownLabels
+              .filter(function(l) { return l.toLowerCase().indexOf(prefix) !== -1; })
+              .map(function(l) { return { display: l, fill: l + '.' }; });
+          } else if (parts.length === 2) {
+            // Typing the comparison
+            var prefix = parts[1].toLowerCase();
+            var base = parts[0] + '.';
+            return comparisons
+              .filter(function(c) { return c.indexOf(prefix) !== -1; })
+              .map(function(c) { return { display: parts[0] + '.' + c, fill: base + c + '.' }; });
+          }
+          return [];
+        }
+
+        function renderDropdown(items) {
+          activeIdx = -1;
+          if (items.length === 0) { dropdown.style.display = 'none'; return; }
+          dropdown.innerHTML = '';
+          items.forEach(function(item, i) {
+            var div = document.createElement('div');
+            div.className = 'ac-item';
+            div.textContent = item.display;
+            div.addEventListener('mousedown', function(e) {
+              e.preventDefault();
+              pickItem(item);
+            });
+            dropdown.appendChild(div);
+          });
+          dropdown.style.display = 'block';
+        }
+
+        function pickItem(item) {
+          var tok = currentToken();
+          var val = input.value;
+          input.value = val.substring(0, tok.start) + item.fill + val.substring(tok.end);
+          var newPos = tok.start + item.fill.length;
+          input.setSelectionRange(newPos, newPos);
+          input.focus();
+          showSuggestions();
+        }
+
+        function highlightItem(idx) {
+          var items = dropdown.querySelectorAll('.ac-item');
+          items.forEach(function(el, i) {
+            el.classList.toggle('ac-active', i === idx);
+          });
+        }
+
+        function showSuggestions() {
+          var tok = currentToken();
+          var items = getSuggestions(tok.text);
+          renderDropdown(items);
+        }
+
+        input.addEventListener('input', showSuggestions);
+        input.addEventListener('focus', showSuggestions);
+        input.addEventListener('blur', function() {
+          setTimeout(function() { dropdown.style.display = 'none'; }, 150);
+        });
+
+        input.addEventListener('keydown', function(e) {
+          var items = dropdown.querySelectorAll('.ac-item');
+          if (dropdown.style.display === 'block' && items.length > 0) {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              activeIdx = (activeIdx + 1) % items.length;
+              highlightItem(activeIdx);
+              return;
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              activeIdx = (activeIdx - 1 + items.length) % items.length;
+              highlightItem(activeIdx);
+              return;
+            } else if (e.key === 'Tab' || (e.key === 'Enter' && activeIdx >= 0)) {
+              e.preventDefault();
+              var suggs = getSuggestions(currentToken().text);
+              if (activeIdx >= 0 && activeIdx < suggs.length) {
+                pickItem(suggs[activeIdx]);
+              } else if (suggs.length > 0) {
+                pickItem(suggs[0]);
+              }
+              return;
+            }
+          }
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            dropdown.style.display = 'none';
+            var labels = input.value.trim();
+            var p = new URLSearchParams(window.location.search);
+            [...p.keys()].forEach(function(k) { if (k === "label") p.delete(k); });
+            p.delete("page");
+            if (labels.length > 0) {
+              labels.split(/\s+/).forEach(function(l) { p.append("label", l); });
+            }
+            window.location.search = p.toString();
+          }
+        });
+      })();
+      </script>
+
       <table class="striped">
         <thead>
           <tr>
             <th class="sortable">
               {{ if eq .Sort "uuid-asc" }}
-                <a href="/devices?sort=uuid-desc" title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=uuid-desc{{labelParams .LabelFilters}}" title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "uuid-desc" }}
-                <a href="/devices?sort=uuid-asc" title="Sorted descending, click for ascending">UUID <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=uuid-asc{{labelParams .LabelFilters}}" title="Sorted descending, click for ascending">UUID <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=uuid-asc" title="Sort by UUID">UUID <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=uuid-asc{{labelParams .LabelFilters}}" title="Sort by UUID">UUID <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th class="sortable">
               {{ if eq .Sort "name-asc" }}
-                <a href="/devices?sort=name-desc" title="Sorted ascending, click for descending">Name <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=name-desc{{labelParams .LabelFilters}}" title="Sorted ascending, click for descending">Name <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "name-desc" }}
-                <a href="/devices?sort=name-asc" title="Sorted descending, click for ascending">Name <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=name-asc{{labelParams .LabelFilters}}" title="Sorted descending, click for ascending">Name <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=name-asc" title="Sort by Name">Name <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=name-asc{{labelParams .LabelFilters}}" title="Sort by Name">Name <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th class="sortable">
               {{ if eq .Sort "created-at-asc" }}
-                <a href="/devices?sort=created-at-desc" title="Sorted ascending, click for descending">Created at <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=created-at-desc{{labelParams .LabelFilters}}" title="Sorted ascending, click for descending">Created at <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "created-at-desc" }}
-                <a href="/devices?sort=created-at-asc" title="Sorted descending, click for ascending">Created at <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=created-at-asc{{labelParams .LabelFilters}}" title="Sorted descending, click for ascending">Created at <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=created-at-asc" title="Sort by Created at">Created at <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=created-at-asc{{labelParams .LabelFilters}}" title="Sort by Created at">Created at <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th class="sortable">
               {{ if eq .Sort "last-seen-asc" }}
-                <a href="/devices?sort=last-seen-desc" title="Sorted ascending, click for descending">Last seen <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=last-seen-desc{{labelParams .LabelFilters}}" title="Sorted ascending, click for descending">Last seen <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "last-seen-desc" }}
-                <a href="/devices?sort=last-seen-asc" title="Sorted descending, click for ascending">Last seen <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=last-seen-asc{{labelParams .LabelFilters}}" title="Sorted descending, click for ascending">Last seen <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=last-seen-asc" title="Sort by Last seen">Last seen <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=last-seen-asc{{labelParams .LabelFilters}}" title="Sort by Last seen">Last seen <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th>Target</th>
@@ -77,15 +211,15 @@
       <nav>
         <div>
           {{ if .HasPrev }}
-            <a href="/devices?page=1{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">&laquo; First</a>
-            <a href="/devices?page={{sub .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">&larr; Previous</a>
+            <a href="/devices?page=1{{if .Sort}}&amp;sort={{.Sort}}{{end}}{{labelParams .LabelFilters}}" role="button">&laquo; First</a>
+            <a href="/devices?page={{sub .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}{{labelParams .LabelFilters}}" role="button">&larr; Previous</a>
           {{ end }}
         </div>
         <span>Showing page {{.Page}} of {{.TotalPages}} pages.</span>
         <div>
           {{ if .HasNext }}
-            <a href="/devices?page={{add .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">Next &rarr;</a>
-            <a href="/devices?page={{.TotalPages}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">Last &raquo;</a>
+            <a href="/devices?page={{add .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}{{labelParams .LabelFilters}}" role="button">Next &rarr;</a>
+            <a href="/devices?page={{.TotalPages}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}{{labelParams .LabelFilters}}" role="button">Last &raquo;</a>
           {{ end }}
         </div>
       </nav>

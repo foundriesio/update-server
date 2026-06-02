@@ -367,3 +367,34 @@ dialog.file-content p {
         background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5 10l4 4 6-8" stroke="%23fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
     }
 }
+
+/* Autocomplete dropdown for label filter input */
+.filter-input-wrap {
+    position: relative;
+}
+.ac-dropdown {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 10;
+    background: var(--bg-content, #fff);
+    border: 1px solid var(--pico-muted-border-color, #ccc);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    max-height: 220px;
+    overflow-y: auto;
+}
+.ac-item {
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+.ac-item:hover,
+.ac-item.ac-active {
+    background: var(--pico-primary-focus, rgba(0,100,200,0.12));
+}
+.filter-help {
+    margin-top: 0;
+}
