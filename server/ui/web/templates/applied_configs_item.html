@@ -1,41 +1,45 @@
 {{ template "header" .}}
   <section class="content-section">
     <h2>{{.Title}}</h2>
-    {{ if gt .Configs.AppliedAt 0 }}
-    <p><b>Applied at:</b> {{ tsToString .Configs.AppliedAt }}</p>
+    {{ with .Configs }}
+    {{ if gt .AppliedAt 0 }}
+    <p><b>Applied at:</b> {{ tsToString .AppliedAt }}</p>
     <p><b>Generated From:</b><p>
     <ul>
-    {{ $audit := index .Configs.AuditTrail 0 }}
-    {{ if gt $audit.CreatedAt 0 }}
+    {{ with (index .AuditTrail 0) }}
+    {{ if gt .CreatedAt 0 }}
       <li>
         <a href="/configs">Global config</a>
-        created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
-        at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
+        created {{ if gt (len .CreatedBy) 0 }}by <b>{{ .CreatedBy }}</b>{{ end }}
+        at <b>{{ tsToString .CreatedAt }}</b>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}
       </li>
     {{ end }}
-    {{ $audit = index .Configs.AuditTrail 1 }}
-    {{ if gt $audit.CreatedAt 0 }}
+    {{ end }}
+    {{ with (index .AuditTrail 1) }}
+    {{ if gt .CreatedAt 0 }}
       <li>
         {{/* When device group changes, applied config group can differ until device fetches new config */}}
-        {{ $group := $audit.Auxiliary }}
-        <a href="/configs/group/{{ $group }}">Group config</a>
-        from {{ $group }} created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
-        at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
+        <a href="/configs/group/{{ .Auxiliary }}">Group config</a>
+        from {{ .Auxiliary }} created {{ if gt (len .CreatedBy) 0 }}by <b>{{ .CreatedBy }}</b>{{ end }}
+        at <b>{{ tsToString .CreatedAt }}</b>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}
       </li>
     {{ end }}
-    {{ $audit = index .Configs.AuditTrail 2 }}
-    {{ if gt $audit.CreatedAt 0 }}
+    {{ end }}
+    {{ with (index .AuditTrail 2) }}
+    {{ if gt .CreatedAt 0 }}
       <li>
         {{/* Device UUID remains unmodified, so we don't need to show it here */}}
-        <a href="/configs/device/{{ $audit.Auxiliary }}">Device config</a>
-        created {{ if gt (len $audit.CreatedBy) 0 }}by <b>{{ $audit.CreatedBy }}</b>{{ end }}
-        at <b>{{ tsToString $audit.CreatedAt }}</b>{{ if gt (len $audit.Reason) 0 }}: {{ $audit.Reason }}{{ end }}
+        <a href="/configs/device/{{ .Auxiliary }}">Device config</a>
+        created {{ if gt (len .CreatedBy) 0 }}by <b>{{ .CreatedBy }}</b>{{ end }}
+        at <b>{{ tsToString .CreatedAt }}</b>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}
       </li>
     {{ end }}
+    {{ end }}
     </ul>
-    {{ template "configs-item-files" .Configs.Files }}
+    {{ template "configs-item-files" $ }}
     {{ else }}
     <p><em>No configuration has been applied to this device yet.</em></p>
+    {{ end }}
     {{ end }}
   </section>
 {{ template "footer"}}

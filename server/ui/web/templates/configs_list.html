@@ -1,7 +1,7 @@
 {{ template "header" .}}
     <section class="content-section">
       <h2>{{.Title}}</h2>
-      {{ template "configs-item" .Configs }}
+      {{ template "configs-item" . }}
       <button onclick="location.href='/configs/global/history'">History</button>
     </section>
     {{ $groupsPerPage := 20 }}
@@ -19,9 +19,9 @@
           </tr>
         </thead>
         <tbody id="groups-table">
-          {{ range $i, $val := .Groups }}
+          {{ range $i, $_ := .Groups }}
           <tr{{ if ge $i $groupsPerPage }} class="hidden"{{ end }}>
-            <td><a href="/configs/group/{{ $val }}">{{ $val }}</a></td>
+            <td><a href="/configs/group/{{ . }}">{{ . }}</a></td>
           </tr>
           {{ end }}
         </tbody>

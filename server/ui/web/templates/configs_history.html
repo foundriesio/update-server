@@ -8,16 +8,16 @@
           <div>Reason</div>
         </div>
         <div class="accordion-table-body">
-          {{ range $idx, $cfg := .History }}
+          {{ range $idx, $_ := .History }}
           <div class="accordion-row-wrapper">
             <details {{ if eq $idx $.OpenIndex }}open{{ end }}>
               <summary data-index="{{ $idx }}">
-                <div>{{ tsToString $cfg.CreatedAt }}</div>
-                <div>{{ $cfg.CreatedBy }}</div>
-                <div>{{ $cfg.Reason }}</div>
+                <div>{{ tsToString .CreatedAt }}</div>
+                <div>{{ .CreatedBy }}</div>
+                <div>{{ .Reason }}</div>
                 <article onclick="event.preventDefault()">
                   {{ if ge $.OpenIndex 0 }}
-                    {{ template "configs-item" $cfg }}
+                    {{ template "configs-item" (map "Configs" .) }}
                   {{ end }}
                 </article>
               </summary>

@@ -5,6 +5,7 @@ package templates
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"strings"
 	"time"
@@ -16,6 +17,20 @@ var Templates *template.Template
 
 func init() {
 	funcMap := template.FuncMap{
+		"map": func(kv ...any) (map[string]any, error) {
+			if len(kv)%2 != 0 {
+				return nil, fmt.Errorf("map only accepts an even number of arguments, but got %d", len(kv))
+			}
+			res := make(map[string]any, len(kv)/2)
+			for i := 0; i < len(kv); i += 2 {
+				if key, ok := kv[i].(string); !ok {
+					return nil, fmt.Errorf("map even arguments must be a string, but got %T for %d", kv[i], i)
+				} else {
+					res[key] = kv[i+1]
+				}
+			}
+			return res, nil
+		},
 		"tsToString": func(ts int64) string {
 			return time.Unix(ts, 0).Format(time.RFC3339)
 		},

@@ -1,15 +1,16 @@
 {{ define "configs-item-files" }}
       <h4>Files:</h4>
+      {{ with .Configs.Files }}
       <table class="striped">
          <tbody>
-           {{ range $name, $val := . }}
+           {{ range $name, $_ := . }}
            <tr>
              <td style="min-width: 20em;">{{ $name }}</td>
              <td style="min-width: 5em; text-align: right;">
-               {{ if gt (len $val.OnChanged) 0 }}
-               <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range $val.OnChanged }}&#xa;{{.}}{{ end }}"></i>
+               {{ if gt (len .OnChanged) 0 }}
+               <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range .OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
-               {{ if $val.Unencrypted }}
+               {{ if .Unencrypted }}
                <i class="icontip gear" aria-label="View file content"
                   onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
                <dialog class="file-content">
@@ -19,16 +20,16 @@
                      <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">x</button>
                    </header>
                    <section>
-                     {{ if gt (len $val.OnChanged) 0 }}
+                     {{ if gt (len .OnChanged) 0 }}
                      <label><b>On Change Triggers:</b></label>
                      <ul>
-                       {{ range $val.OnChanged }}
-                       <li>{{.}}</li>
+                       {{ range .OnChanged }}
+                       <li>{{ . }}</li>
                        {{ end }}
                      </ul>
                      {{ end }}
                      <label><b>Content:</b></label>
-                     <p>{{ $val.Value }}</p>
+                     <p>{{ .Value }}</p>
                    </section>
                    <footer>
                      <button autofocus onclick="this.closest('dialog').close()">Close</button>
@@ -43,19 +44,22 @@
            {{ end }}
          </tbody>
       </table>
+      {{ end }}
 {{ end }}
 
 {{ define "configs-item" }}
+      {{ with .Configs }}
       <p><b>Reason:</b> {{.Reason}}</p>
       <p><b>Created At:</b> {{tsToString .CreatedAt}}</p>
       <p><b>Created By:</b> {{.CreatedBy}}</p>
-      {{ template "configs-item-files" .Files }}
+      {{ template "configs-item-files" $ }}
+      {{ end }}
 {{ end}}
 
 {{ template "header" .}}
     <section class="content-section">
       <h2>{{.Title}}</h2>
-      {{ template "configs-item" .Configs }}
+      {{ template "configs-item" . }}
       <button onclick="location.href=location.pathname+'/history'">History</button>
     </section>
 {{ template "footer"}}
