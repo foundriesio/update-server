@@ -10,8 +10,8 @@
                <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range $val.OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
                {{ if $val.Unencrypted }}
-               <i class="icontip floppy" aria-label="View file content"
-		  onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
+               <i class="icontip gear" aria-label="View file content"
+                  onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
                <dialog class="file-content">
                  <article>
                    <header>

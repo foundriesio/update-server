@@ -162,21 +162,25 @@ i.password-reset {
 
 i.lock-closed::before {
   content: "\1F512";
+  display: inline-block;
   filter: grayscale(100%) contrast(200%) brightness(60%);
+  transform: translateX(0.15rem) translateY(-0.15rem);
   font-style: normal;
   font-size: 1.2rem;
   line-height: 1rem;
 }
 
-i.floppy::before {
-  content: "\1F4BE";
+i.gear::before {
+  content: "\2699";
+  font-size: 1.3rem;
+  line-height: 1rem;
   font-style: normal;
 }
 
 i.ocr-fork::before {
   content: "\2442";
   display: inline-block;
-  transform: rotate(90deg);
+  transform: translateY(0.1rem) rotate(90deg);
   font-style: normal;
   font-weight: bold;
   font-size: 1.3rem;
