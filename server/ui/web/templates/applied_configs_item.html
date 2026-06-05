@@ -36,7 +36,7 @@
     {{ end }}
     {{ end }}
     </ul>
-    {{ template "configs-item-files" $ }}
+    {{ template "configs-item-files" (map "Configs" . "CanEdit" false) }}
     {{ else }}
     <p><em>No configuration has been applied to this device yet.</em></p>
     {{ end }}

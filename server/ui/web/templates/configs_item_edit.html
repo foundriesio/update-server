@@ -1,0 +1,184 @@
+{{ define "configs-item-edit-dialog" }}
+      <style>
+        dialog.file-content[data-mode="edit"] [data-mode="add"],
+        dialog.file-content[data-mode="add"] [data-mode="edit"] {
+          display: none !important;
+        }
+
+        dialog.file-content > article > section > form textarea {
+          white-space: pre;
+          /* A field-sizing: content is not supported by Firefox/Safari and is badly implemented by others - do via the JavaScript. June 2026. */
+          /* field-sizing: content; */
+          resize: none;
+          overflow: hidden;
+          min-height: 2rem;
+          min-width: 100%;
+          font-size: inherit;
+        }
+
+        dialog.file-content > article > section > form input {
+          min-width: 100%;
+          font-size: inherit;
+        }
+
+        dialog.file-content > article > section > form input:read-only {
+          {{/* Make it look like a span when editing a file, as a name is read-only */}}
+          cursor: inherit;
+          font-size: inherit;
+          user-select: inherit;
+          background: transparent;
+          caret-color: transparent;
+          border-color: transparent;
+          outline: none;
+          min-width: auto;
+        }
+      </style>
+      <dialog id="EditConfigsFile" class="file-content" data-mode="add">
+        <article>
+          <header>
+            <h3>
+              <span data-mode="add">Add New Config File</span>
+              <span data-mode="edit">Edit Config File</span>
+            </h3>
+            <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">x</button>
+          </header>
+          <section>
+            <form>
+              <fieldset class="grid">
+                <label><b>File Name:</b></label>
+                <input name="FileName"/>
+              </fieldset>
+              <fieldset class="grid">
+                <label><b>Reason:</b></label>
+                <input name="Reason"/>
+              </fieldset>
+              <fieldset>
+                <label><b>On Change Handlers:</b></label>
+                <br/>
+                <textarea name="OnChanged"></textarea>
+                <br/>
+                <span><i><small>Handlers must be defined in /usr/share/fioconfig/handlers/ on devices.</small></i></span>
+              </fieldset>
+              <fieldset>
+                <label><b>Content:</b></label>
+                <br/>
+                <textarea name="Value"></textarea>
+              </fieldset>
+            </form>
+          </section>
+          <footer>
+            <button name="save">Save changes</button>
+            <button onclick="this.closest('dialog').close()">Cancel</button>
+          </footer>
+        </article>
+      </dialog>
+      <script type="module">
+        export const config = {
+          'apiUrl': location.pathname, // PATCH usually sits at the same URL as the page itself.
+          'addButtonName': 'AddFile',
+          'editButtonName': 'EditFile',
+          'fileNameCell': 'FileName',
+        }
+        /* export/import of script tags does not work in Firefox, so use the window object for that */
+        window.EditConfigsFileConfig = config;
+
+        const dialog = document.querySelector('#EditConfigsFile'),
+              dialogForm = dialog.querySelector('form'),
+              dialogFileName = dialog.querySelector('input[name="FileName"]'),
+              dialogOnChanged = dialog.querySelector('textarea[name="OnChanged"]'),
+              dialogReason = dialog.querySelector('input[name="Reason"]'),
+              dialogValue = dialog.querySelector('textarea[name="Value"]');
+
+        function openAddDialog(ev) {
+          ev.preventDefault();
+          dialog.dataset.mode = "add";
+          dialogFileName.readOnly = false;
+          dialogFileName.value = "";
+          dialogOnChanged.value = "";
+          dialogReason.value = "";
+          dialogValue.value = "";
+          dialog.showModal();
+          autoResizeTextareas();
+        }
+
+        function openEditDialog(ev) {
+          ev.preventDefault();
+          const src = ev.target.closest('dialog')
+          dialog.dataset.mode = "edit";
+          dialogFileName.readOnly = true;
+          copyConfigsFileData(src);
+          src.close();
+          dialog.showModal();
+          autoResizeTextareas();
+        }
+
+        function copyConfigsFileData(src) {
+          // Source is a dialog from configs-item-files.
+          dialogReason.value = "";
+          dialogFileName.value = src.querySelector('header > h3 > span').textContent.trim();
+          dialogOnChanged.value = [...src.querySelectorAll('section > ul > li')]
+                                  .map(li => li.textContent.trim()).join('\n');
+          dialogValue.value = src.querySelector('section > p[name="Value"]').innerText;
+        }
+
+        function saveConfigFile() {
+          const data = Object.fromEntries(new FormData(dialogForm));
+          data.FileName = data.FileName.trim();
+
+          fetch(config.apiUrl, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+          })
+          .then(async response => {
+            if (response.ok) {
+              location.reload(); // refresh the page to get updated data.
+            } else {
+              const errorText = await response.text();
+              alert('Error saving config file: ' + errorText);
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('Error saving config file: ' + error.message);
+          });
+        }
+
+        dialog.querySelector('button[name="save"]').addEventListener('click', ev => {
+          ev.preventDefault();
+          if ( dialog.dataset.mode === 'add' ) {
+            const name = dialogFileName.value.trim();
+            if (
+              [...document.querySelectorAll(`td[name="${config.fileNameCell}"]`)]
+              .some(el => el.textContent.trim() === name)
+            ) {
+              if ( !confirm(`A file with name "${name}" already exists. Do you want to overwrite it?`) ) {
+                return
+              }
+            }
+          }
+          saveConfigFile();
+        });
+
+        document.querySelectorAll(`dialog.file-content button[name="${config.editButtonName}"]`).forEach(el => {
+          el.addEventListener('click', ev => { openEditDialog(ev) });
+        });
+        document.querySelector(`button[name="${config.addButtonName}"]`).addEventListener('click', ev => { openAddDialog(ev) });
+
+        /* Code implementing the field-sizing: content style properly, before it is widely adopted */
+        const tx = [dialogOnChanged, dialogValue];
+        function autoResizeTextareas() {
+          tx.forEach(el => {
+            el.style.height = '0px';
+            el.style.width = '0px';
+          });
+          tx.forEach(el => {
+            el.style.height = el.scrollHeight + 'px';
+            el.style.width = el.scrollWidth + 'px';
+          });
+        }
+        tx.forEach(el => el.addEventListener('input', autoResizeTextareas));
+      </script>
+{{ end }}

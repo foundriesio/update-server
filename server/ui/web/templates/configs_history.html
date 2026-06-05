@@ -17,7 +17,7 @@
                 <div>{{ .Reason }}</div>
                 <article onclick="event.preventDefault()">
                   {{ if ge $.OpenIndex 0 }}
-                    {{ template "configs-item" (map "Configs" .) }}
+                    {{ template "configs-item" (map "Configs" . "CanEdit" false) }}
                   {{ end }}
                 </article>
               </summary>

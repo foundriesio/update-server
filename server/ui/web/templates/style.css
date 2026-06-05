@@ -231,9 +231,14 @@ dialog.file-content > article > header {
   gap: 20px;
 }
 
+dialog.file-content > article > footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
 dialog.file-content > article > footer > button:last-child {
-  display: block;
-  margin-left: auto;
+  margin-left: auto; /* push to the right */
 }
 
 dialog.file-content > article > section {

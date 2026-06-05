@@ -5,23 +5,23 @@
          <tbody>
            {{ range $name, $_ := . }}
            <tr>
-             <td style="min-width: 20em;">{{ $name }}</td>
+             <td style="min-width: 20em;" name="FileName">{{ $name }}</td>
              <td style="min-width: 5em; text-align: right;">
                {{ if gt (len .OnChanged) 0 }}
                <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range .OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
                {{ if .Unencrypted }}
-               <i class="icontip gear" aria-label="View file content"
+               <i class="icontip gear" aria-label="View{{ if $.CanEdit }} or edit{{ end }} file content"
                   onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
                <dialog class="file-content">
                  <article>
                    <header>
-                     <h3>File "{{ $name }}"</h3>
+                     <h3>File "<span>{{ $name }}</span>"</h3>
                      <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">x</button>
                    </header>
                    <section>
                      {{ if gt (len .OnChanged) 0 }}
-                     <label><b>On Change Triggers:</b></label>
+                     <label><b>On Change Handlers:</b></label>
                      <ul>
                        {{ range .OnChanged }}
                        <li>{{ . }}</li>
@@ -29,9 +29,12 @@
                      </ul>
                      {{ end }}
                      <label><b>Content:</b></label>
-                     <p>{{ .Value }}</p>
+                     <p name="Value">{{ .Value }}</p>
                    </section>
                    <footer>
+                     {{ if $.CanEdit }}
+                     <button name="EditFile">Edit</button>
+                     {{ end }}
                      <button autofocus onclick="this.closest('dialog').close()">Close</button>
                    </footer>
                  </article>
@@ -44,6 +47,9 @@
            {{ end }}
          </tbody>
       </table>
+      {{ end }}
+      {{ if .CanEdit }}
+        {{ template "configs-item-edit-dialog" $ }}
       {{ end }}
 {{ end }}
 
@@ -60,6 +66,9 @@
     <section class="content-section">
       <h2>{{.Title}}</h2>
       {{ template "configs-item" . }}
+      {{ if .CanEdit }}
+      <button name="AddFile">Add</button>
+      {{ end }}
       <button onclick="location.href=location.pathname+'/history'">History</button>
     </section>
 {{ template "footer"}}

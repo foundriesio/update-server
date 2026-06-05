@@ -2,6 +2,12 @@
     <section class="content-section">
       <h2>{{.Title}}</h2>
       {{ template "configs-item" . }}
+      {{ if .CanEdit }}
+      <button name="AddFile">Add</button>
+      <script type="module">
+        window.EditConfigsFileConfig.apiUrl = '/configs/global';
+      </script>
+      {{ end }}
       <button onclick="location.href='/configs/global/history'">History</button>
     </section>
     {{ $groupsPerPage := 20 }}
