@@ -46,13 +46,19 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	e.GET("/configs/device/:uuid", h.configsDeviceItem, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.PATCH("/configs/device/:uuid", h.configsDeviceItemPatch, h.requireSession,
 		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
+	e.DELETE("/configs/device/:uuid", h.configsDeviceItemDelete, h.requireSession,
+		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
 	e.GET("/configs/device/:uuid/applied", h.configsDeviceItemApplied, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/configs/device/:uuid/history", h.configsDeviceItemHistory, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.PATCH("/configs/global", h.configsGlobalPatch, h.requireSession,
 		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
+	e.DELETE("/configs/global", h.configsGlobalDelete, h.requireSession,
+		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
 	e.GET("/configs/global/history", h.configsGlobalHistory, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/configs/group/:name", h.configsGroupItem, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.PATCH("/configs/group/:name", h.configsGroupItemPatch, h.requireSession,
+		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
+	e.DELETE("/configs/group/:name", h.configsGroupItemDelete, h.requireSession,
 		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
 	e.GET("/configs/group/:name/history", h.configsGroupItemHistory, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices", h.devicesList, h.requireSession, h.requireScope(users.ScopeDevicesR))

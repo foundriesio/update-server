@@ -66,6 +66,10 @@ func (h handlers) configsGlobalPatch(c echo.Context) error {
 	return h.configsPatchConfigFile(c, "/v1/configs/factory")
 }
 
+func (h handlers) configsGlobalDelete(c echo.Context) error {
+	return h.configsDeleteConfigFile(c, "/v1/configs/factory")
+}
+
 func (h handlers) configsGroupItem(c echo.Context) error {
 	var configs api.ConfigFileSet
 	group := c.Param("name")
@@ -109,6 +113,10 @@ func (h handlers) configsGroupItemHistory(c echo.Context) error {
 
 func (h handlers) configsGroupItemPatch(c echo.Context) error {
 	return h.configsPatchConfigFile(c, "/v1/configs/group/"+c.Param("name"))
+}
+
+func (h handlers) configsGroupItemDelete(c echo.Context) error {
+	return h.configsDeleteConfigFile(c, "/v1/configs/group/"+c.Param("name"))
 }
 
 func (h handlers) configsDeviceItem(c echo.Context) error {
@@ -178,6 +186,10 @@ func (h handlers) configsDeviceItemPatch(c echo.Context) error {
 	return h.configsPatchConfigFile(c, "/v1/configs/device/"+c.Param("uuid"))
 }
 
+func (h handlers) configsDeviceItemDelete(c echo.Context) error {
+	return h.configsDeleteConfigFile(c, "/v1/configs/device/"+c.Param("uuid"))
+}
+
 func (h handlers) configsEditable(c echo.Context) bool {
 	return CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeDevicesRU | users.ScopeUpdatesRU)
 }
@@ -211,6 +223,29 @@ func (h handlers) configsPatchConfigFile(c echo.Context, apiUrl string) error {
 	}
 	if err := putJson(ctx, apiUrl, configs, nil); err != nil {
 		return h.handleUnexpected(c, err)
+	}
+	return c.NoContent(http.StatusOK)
+}
+
+func (h handlers) configsDeleteConfigFile(c echo.Context, apiUrl string) error {
+	ctx := c.Request().Context()
+	var patch struct {
+		FileName string
+		Reason   string
+	}
+	if err := c.Bind(&patch); err != nil {
+		return EchoError(c, err, http.StatusBadRequest, "Could not parse request")
+	}
+	var configs api.ConfigFileSet
+	if err := getJson(ctx, apiUrl, &configs); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	if configs.Files != nil {
+		configs.Reason = patch.Reason
+		delete(configs.Files, patch.FileName)
+		if err := putJson(ctx, apiUrl, configs, nil); err != nil {
+			return h.handleUnexpected(c, err)
+		}
 	}
 	return c.NoContent(http.StatusOK)
 }
