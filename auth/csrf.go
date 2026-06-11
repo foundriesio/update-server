@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const CsrfCookieName = "dg-satellite-csrf"
+const CsrfCookieName = "fioserver-csrf"
 const CsrfHeaderName = "X-CSRF-Token"
 
 // SetCsrfCookie sets a CSRF cookie on the response. It should be called when a new session is created.

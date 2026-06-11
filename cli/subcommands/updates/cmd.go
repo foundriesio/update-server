@@ -10,5 +10,5 @@ import (
 var UpdatesCmd = &cobra.Command{
 	Use:   "updates",
 	Short: "Manage updates",
-	Long:  `Commands for managing updates in the Satellite server`,
+	Long:  `Commands for managing updates in the Update server`,
 }

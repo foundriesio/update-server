@@ -18,10 +18,10 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "satcli",
-	Short: "A command line interface to the Satellite Server",
-	Long: `satcli is a command-line interface for managing devices, updates,
-and other resources on a Satellite server.
+	Use:   "fiocli",
+	Short: "A command line interface to the Foundries Update Server",
+	Long: `fiocli is a command-line interface for managing devices, updates,
+and other resources on a Foundries Update server.
 
 Configuration is stored in $HOME/.config/satcli.yaml`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

@@ -12,7 +12,7 @@ import (
 var ConfigsCmd = &cobra.Command{
 	Use:   "configs",
 	Short: "Manage configs",
-	Long:  `Commands for managing configs in the Satellite server`,
+	Long:  `Commands for managing configs in the Update server`,
 }
 
 func addSpecificFlags(cmd *cobra.Command) {

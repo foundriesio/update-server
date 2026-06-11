@@ -8,5 +8,5 @@ import "github.com/spf13/cobra"
 var DevicesCmd = &cobra.Command{
 	Use:   "devices",
 	Short: "Manage devices",
-	Long:  `Commands for managing devices in the DG Satellite server`,
+	Long:  `Commands for managing devices in the Foundries Update server`,
 }

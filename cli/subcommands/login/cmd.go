@@ -15,7 +15,7 @@ import (
 var LoginCmd = &cobra.Command{
 	Use:   "login <context-name> <server-url>",
 	Short: "Configure authentication for a server",
-	Long: `Login to a Satellite Server by configuring a context with authentication.
+	Long: `Login to a Foundries Update Server by configuring a context with authentication.
 
 This command will guide you through the authentication process and save
 the configuration to ~/.config/satcli.yaml.`,

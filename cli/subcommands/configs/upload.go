@@ -18,7 +18,7 @@ import (
 var uploadCmd = &cobra.Command{
 	Use:   "upload <configs.tgz> | --dir <configs-dir>",
 	Short: "Upload configs",
-	Long: `Upload configs to the Satellite server.
+	Long: `Upload configs to the Update server.
 
 	Supported file formats are .tar, .tar.gz, and .tgz.`,
 	Args: cobra.ExactArgs(1),
