@@ -3,18 +3,18 @@ COMMIT?=$(shell git describe --tags HEAD)$(shell git diff --quiet || echo '+dirt
 # Use linker flags to provide commit info
 LDFLAGS=-ldflags "-X=github.com/foundriesio/update-server/version.Version=$(COMMIT)"
 
-build-cli: satcli-linux-amd64 satcli-linux-arm64 satcli-windows-amd64.exe satcli-windows-arm64.exe satcli-darwin-arm64 satcli-darwin-amd64
+build-cli: fiocli-linux-amd64 fiocli-linux-arm64 fiocli-windows-amd64.exe fiocli-windows-arm64.exe fiocli-darwin-arm64 fiocli-darwin-amd64
 
 fioserver:
 	go build $(LDFLAGS) -o bin/$@ github.com/foundriesio/update-server/cmd/server
 
-satcli-linux-amd64:
-satcli-linux-arm64:
-satcli-windows-amd64.exe:
-satcli-windows-arm64.exe:
-satcli-darwin-amd64:
-satcli-darwin-arm64:
-satcli-%:
+fiocli-linux-amd64:
+fiocli-linux-arm64:
+fiocli-windows-amd64.exe:
+fiocli-windows-arm64.exe:
+fiocli-darwin-amd64:
+fiocli-darwin-arm64:
+fiocli-%:
 	CGO_ENABLED=0 \
 	GOOS=$(shell echo $* | cut -f1 -d\- ) \
 	GOARCH=$(shell echo $* | cut -f2 -d\- | cut -f1 -d. ) \
