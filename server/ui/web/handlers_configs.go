@@ -10,8 +10,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/foundriesio/dg-satellite/server/ui/api"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/server/ui/api"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 func (h handlers) configsList(c echo.Context) error {

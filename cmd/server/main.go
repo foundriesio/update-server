@@ -9,8 +9,8 @@ import (
 
 	"github.com/alexflint/go-arg"
 
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/version"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/version"
 )
 
 type VersionCmd struct{}

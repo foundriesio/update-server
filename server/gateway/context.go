@@ -4,8 +4,8 @@
 package gateway
 
 import (
-	"github.com/foundriesio/dg-satellite/context"
-	storage "github.com/foundriesio/dg-satellite/storage/gateway"
+	"github.com/foundriesio/update-server/context"
+	storage "github.com/foundriesio/update-server/storage/gateway"
 )
 
 type (

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/storage"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )

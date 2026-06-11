@@ -10,8 +10,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/foundriesio/dg-satellite/server"
-	storage "github.com/foundriesio/dg-satellite/storage/gateway"
+	"github.com/foundriesio/update-server/server"
+	storage "github.com/foundriesio/update-server/storage/gateway"
 )
 
 type handlers struct {

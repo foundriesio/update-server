@@ -9,8 +9,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 func (h handlers) requireSession(next echo.HandlerFunc) echo.HandlerFunc {

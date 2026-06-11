@@ -21,16 +21,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/foundriesio/dg-satellite/auth"
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/server"
-	"github.com/foundriesio/dg-satellite/server/ui/daemons"
-	"github.com/foundriesio/dg-satellite/storage"
-	apiStorage "github.com/foundriesio/dg-satellite/storage/api"
-	gatewayStorage "github.com/foundriesio/dg-satellite/storage/gateway"
-	storageTesting "github.com/foundriesio/dg-satellite/storage/testing"
-	"github.com/foundriesio/dg-satellite/storage/users"
-	"github.com/foundriesio/dg-satellite/version"
+	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/server"
+	"github.com/foundriesio/update-server/server/ui/daemons"
+	"github.com/foundriesio/update-server/storage"
+	apiStorage "github.com/foundriesio/update-server/storage/api"
+	gatewayStorage "github.com/foundriesio/update-server/storage/gateway"
+	storageTesting "github.com/foundriesio/update-server/storage/testing"
+	"github.com/foundriesio/update-server/storage/users"
+	"github.com/foundriesio/update-server/version"
 )
 
 func generateUpdateEvents(corId, pack string, num int) []storage.DeviceUpdateEvent {

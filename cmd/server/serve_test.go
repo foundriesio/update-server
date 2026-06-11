@@ -11,8 +11,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/storage"
 )
 
 func TestServe(t *testing.T) {

@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/server/ui/web/templates"
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/server/ui/web/templates"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/oauth2"
 )

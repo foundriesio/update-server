@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/storage"
 )
 
 func (s Storage) hashSessionID(id string) (string, error) {

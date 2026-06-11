@@ -9,14 +9,14 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/auth"
-	"github.com/foundriesio/dg-satellite/server"
-	apiHandlers "github.com/foundriesio/dg-satellite/server/ui/api"
-	"github.com/foundriesio/dg-satellite/server/ui/daemons"
-	webHandlers "github.com/foundriesio/dg-satellite/server/ui/web"
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/api"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/server"
+	apiHandlers "github.com/foundriesio/update-server/server/ui/api"
+	"github.com/foundriesio/update-server/server/ui/daemons"
+	webHandlers "github.com/foundriesio/update-server/server/ui/web"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/api"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 const serverName = "rest-api"

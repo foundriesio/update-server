@@ -6,9 +6,9 @@ package api
 import (
 	"net/http"
 
-	"github.com/foundriesio/dg-satellite/auth"
-	"github.com/foundriesio/dg-satellite/storage/users"
-	"github.com/foundriesio/dg-satellite/version"
+	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/storage/users"
+	"github.com/foundriesio/update-server/version"
 	"github.com/labstack/echo/v4"
 )
 

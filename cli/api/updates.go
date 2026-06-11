@@ -6,7 +6,7 @@ package api
 import (
 	"io"
 
-	models "github.com/foundriesio/dg-satellite/storage/api"
+	models "github.com/foundriesio/update-server/storage/api"
 )
 
 type Rollout = models.Rollout

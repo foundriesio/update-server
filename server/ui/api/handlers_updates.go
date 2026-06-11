@@ -9,7 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	storage "github.com/foundriesio/dg-satellite/storage/api"
+	storage "github.com/foundriesio/update-server/storage/api"
 )
 
 type UpdateTufResp map[string]map[string]any

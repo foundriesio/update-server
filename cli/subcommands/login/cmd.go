@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/foundriesio/dg-satellite/cli/config"
+	"github.com/foundriesio/update-server/cli/config"
 )
 
 var LoginCmd = &cobra.Command{

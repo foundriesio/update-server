@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/foundriesio/dg-satellite/storage"
-	models "github.com/foundriesio/dg-satellite/storage/api"
+	"github.com/foundriesio/update-server/storage"
+	models "github.com/foundriesio/update-server/storage/api"
 )
 
 type DeviceListItem = models.DeviceListItem

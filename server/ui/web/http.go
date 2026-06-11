@@ -10,8 +10,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/foundriesio/dg-satellite/auth"
-	"github.com/foundriesio/dg-satellite/context"
+	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/context"
 )
 
 func getJson(ctx context.Context, resource string, result any) error {

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
 )
 

@@ -7,10 +7,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/foundriesio/dg-satellite/auth"
-	"github.com/foundriesio/dg-satellite/server"
-	storage "github.com/foundriesio/dg-satellite/storage/api"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/server"
+	storage "github.com/foundriesio/update-server/storage/api"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 type handlers struct {

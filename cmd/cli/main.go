@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/foundriesio/dg-satellite/cli/api"
-	"github.com/foundriesio/dg-satellite/cli/config"
-	"github.com/foundriesio/dg-satellite/cli/subcommands/configs"
-	"github.com/foundriesio/dg-satellite/cli/subcommands/devices"
-	"github.com/foundriesio/dg-satellite/cli/subcommands/login"
-	"github.com/foundriesio/dg-satellite/cli/subcommands/updates"
-	"github.com/foundriesio/dg-satellite/version"
+	"github.com/foundriesio/update-server/cli/api"
+	"github.com/foundriesio/update-server/cli/config"
+	"github.com/foundriesio/update-server/cli/subcommands/configs"
+	"github.com/foundriesio/update-server/cli/subcommands/devices"
+	"github.com/foundriesio/update-server/cli/subcommands/login"
+	"github.com/foundriesio/update-server/cli/subcommands/updates"
+	"github.com/foundriesio/update-server/version"
 	"github.com/spf13/cobra"
 )
 

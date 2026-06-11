@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/storage"
 )
 
 type TargetTest = storage.TargetTest

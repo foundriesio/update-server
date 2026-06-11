@@ -4,8 +4,8 @@
 package main
 
 import (
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 type AuthInitCmd struct {

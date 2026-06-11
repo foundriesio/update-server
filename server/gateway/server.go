@@ -10,9 +10,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/server"
-	storage "github.com/foundriesio/dg-satellite/storage/gateway"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/server"
+	storage "github.com/foundriesio/update-server/storage/gateway"
 )
 
 const serverName = "gateway-api"

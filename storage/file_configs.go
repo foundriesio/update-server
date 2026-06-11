@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/foundriesio/dg-satellite/clock"
+	"github.com/foundriesio/update-server/clock"
 )
 
 // Outer directory structure:

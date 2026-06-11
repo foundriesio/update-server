@@ -6,7 +6,7 @@ package web
 import (
 	"net/http"
 
-	"github.com/foundriesio/dg-satellite/context"
+	"github.com/foundriesio/update-server/context"
 	"github.com/labstack/echo/v4"
 )
 

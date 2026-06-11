@@ -4,8 +4,8 @@
 package api
 
 import (
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 type (

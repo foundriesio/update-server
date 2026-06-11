@@ -1,4 +1,4 @@
-module github.com/foundriesio/dg-satellite
+module github.com/foundriesio/update-server
 
 go 1.25.0
 
