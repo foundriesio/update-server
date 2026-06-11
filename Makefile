@@ -5,7 +5,7 @@ LDFLAGS=-ldflags "-X=github.com/foundriesio/update-server/version.Version=$(COMM
 
 build-cli: satcli-linux-amd64 satcli-linux-arm64 satcli-windows-amd64.exe satcli-windows-arm64.exe satcli-darwin-arm64 satcli-darwin-amd64
 
-dg-sat:
+fioserver:
 	go build $(LDFLAGS) -o bin/$@ github.com/foundriesio/update-server/cmd/server
 
 satcli-linux-amd64:
