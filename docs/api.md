@@ -16,6 +16,6 @@ For example, you could list devices using curl with:
 
 Each release of this project includes Swagger documentation for both the
 REST API, `api_swagger.yaml`, and the device gateway API,
-`gateway_swagger.yaml`. They are available [here](https://github.com/foundriesio/dg-satellite/releases/latest)
+`gateway_swagger.yaml`. They are available [here](https://github.com/foundriesio/update-server/releases/latest)
 
 They can also be generated from source by running `make swagger`.

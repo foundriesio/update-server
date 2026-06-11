@@ -18,7 +18,7 @@ A simple Caddyfile can function as a TLS terminated reverse proxy with:
 ```
 # ./caddy/Caddyfile
 dg.example.com {
-    reverse_proxy satellite-server:8080
+    reverse_proxy update-server:8080
 }
 ```
 
@@ -39,7 +39,7 @@ services:
     depends_on:
       - dg
   dg:
-    image: <your satellite server container>
+    image: <your update server container>
     command:
       - --datadir=/data
       - serve
@@ -54,7 +54,7 @@ backed up as needed.
 
 ## HA Failover
 
-The satellite server has a single SQLite database file, `<datadir>/db.sqlite`.
+The server has a single SQLite database file, `<datadir>/db.sqlite`.
 You can use the [Litestream](https://litestream.io/) project to stream
 updates to an S3 compatible bucket or NFS share.
 
