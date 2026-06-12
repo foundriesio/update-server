@@ -14,17 +14,13 @@ import (
 )
 
 var createCmd = &cobra.Command{
-	Use:   "upload <ci|prod> <tag> <update-name> <directory>",
+	Use:   "upload <tag> <update-name> <directory>",
 	Short: "Upload an offline update",
 	Long:  `Create an update on Update server by uploading the offline update found in the directory.`,
-	Args:  cobra.ExactArgs(4),
+	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := api.CtxGetApi(cmd.Context())
-		prodType := args[0]
-		if prodType != "ci" && prodType != "prod" {
-			return fmt.Errorf("first argument must be 'ci' or 'prod', got '%s'", prodType)
-		}
-		cobra.CheckErr(createUpdate(a.Updates(prodType), args[1], args[2], args[3]))
+		cobra.CheckErr(createUpdate(a.Updates(), args[0], args[1], args[2]))
 		return nil
 	},
 }

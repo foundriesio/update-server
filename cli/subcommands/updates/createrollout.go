@@ -12,24 +12,17 @@ import (
 )
 
 var createRolloutCmd = &cobra.Command{
-	Use:   "create-rollout <ci|prod> <tag> <update-name> <rollout-name>",
+	Use:   "create-rollout <tag> <update-name> <rollout-name>",
 	Short: "Create a new rollout for an update",
 	Long:  `Create a new rollout specifying device UUIDs and/or groups to target`,
-	Args:  cobra.ExactArgs(4),
+	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := api.CtxGetApi(cmd.Context())
-		prodType := args[0]
-
-		// Validate prod type
-		if prodType != "ci" && prodType != "prod" {
-			return fmt.Errorf("first argument must be 'ci' or 'prod', got '%s'", prodType)
-		}
 
 		uuids, _ := cmd.Flags().GetString("uuids")
 		groups, _ := cmd.Flags().GetString("groups")
 
-		updates := api.Updates(prodType)
-		cobra.CheckErr(createRollout(updates, args[1], args[2], args[3], uuids, groups))
+		cobra.CheckErr(createRollout(api.Updates(), args[0], args[1], args[2], uuids, groups))
 		return nil
 	},
 }
