@@ -5,27 +5,16 @@
       <table>
         <thead>
           <tr>
-            <th></th>
             <th>Tag</th>
             <th>Update name</th>
           </tr>
         </thead>
         <tbody>
-          {{ range $key, $value := .Prod }}
+          {{ range $key, $value := .Updates }}
           {{ range $update := $value }}
           <tr>
-            <td>Production</td>
             <td>{{ $key }}</td>
-            <td><a href="/updates/prod/{{$key}}/{{ $update }}">{{ $update }}</a></td>
-          </tr>
-          {{ end }}
-          {{ end }}
-          {{ range $key, $value := .CI }}
-          {{ range $update := $value }}
-          <tr>
-            <td>CI</td>
-            <td>{{ $key }}</td>
-            <td><a href="/updates/ci/{{$key}}/{{ $update }}">{{ $update }}</a></td>
+            <td><a href="/updates/{{$key}}/{{ $update }}">{{ $update }}</a></td>
           </tr>
           {{ end }}
           {{ end }}
@@ -42,12 +31,6 @@
         </p>
 
         <form id="upload-form" onsubmit="return false;">
-          <label for="upload-type">Type</label>
-          <select id="upload-type" required>
-            <option value="ci">CI</option>
-            <option value="prod">Production</option>
-          </select>
-
           <label for="upload-tag">Tag</label>
           <input type="text" id="upload-tag" placeholder="e.g. main" required />
 
@@ -211,7 +194,6 @@
     }
 
     async function uploadUpdate() {
-      const typeEl = document.getElementById('upload-type');
       const tagEl = document.getElementById('upload-tag');
       const nameEl = document.getElementById('upload-name');
       const dirEl = document.getElementById('upload-dir');
@@ -221,7 +203,6 @@
       const statusEl = document.getElementById('upload-status');
       const resultDiv = document.getElementById('upload-result');
 
-      const updateType = typeEl.value;
       const tag = tagEl.value.trim();
       const updateName = nameEl.value.trim();
 
@@ -247,8 +228,7 @@
         const tarBlob = buildTarBlob(files);
         statusEl.textContent = 'Uploading: 0 B / ' + formatBytes(tarBlob.size);
 
-        const url = '/v1/updates/' + encodeURIComponent(updateType) + '/' +
-                    encodeURIComponent(tag) + '/' + encodeURIComponent(updateName);
+        const url = '/v1/updates/' + encodeURIComponent(tag) + '/' + encodeURIComponent(updateName);
 
         // Get CSRF token from meta tag
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -287,7 +267,7 @@
         progressBar.value = 100;
         statusEl.textContent = 'Upload complete: ' + formatBytes(tarBlob.size);
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<p style="color:green;"><strong>Update ' + updateType + '/' + tag + '/' + updateName + ' created successfully.</strong></p>';
+        resultDiv.innerHTML = '<p style="color:green;"><strong>Update ' + tag + '/' + updateName + ' created successfully.</strong></p>';
 
         // Clear the form
         document.getElementById('upload-form').reset();

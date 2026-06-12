@@ -87,29 +87,23 @@ func findLatestTarget(tuf api.UpdateTufResp) *latestTarget {
 }
 
 func (h handlers) updatesList(c echo.Context) error {
-	var ci map[string][]string
-	if err := getJson(c.Request().Context(), "/v1/updates/ci", &ci); err != nil {
-		return h.handleUnexpected(c, err)
-	}
-	var prod map[string][]string
-	if err := getJson(c.Request().Context(), "/v1/updates/prod", &prod); err != nil {
+	var updates map[string][]string
+	if err := getJson(c.Request().Context(), "/v1/updates", &updates); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
 	ctx := struct {
 		baseCtx
-		CI   map[string][]string
-		Prod map[string][]string
+		Updates map[string][]string
 	}{
 		baseCtx: h.baseCtx(c, "Updates", "updates"),
-		CI:      ci,
-		Prod:    prod,
+		Updates: updates,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "updates.html", ctx)
 }
 
 func (h handlers) updatesGet(c echo.Context) error {
-	url := fmt.Sprintf("/v1/updates/%s/%s/%s/rollouts", c.Param("prod"), c.Param("tag"), c.Param("name"))
+	url := fmt.Sprintf("/v1/updates/%s/%s/rollouts", c.Param("tag"), c.Param("name"))
 
 	var rollouts []string
 	if err := getJson(c.Request().Context(), url, &rollouts); err != nil {
@@ -121,7 +115,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 		return h.handleUnexpected(c, err)
 	}
 
-	url = fmt.Sprintf("/v1/updates/%s/%s/%s/tuf", c.Param("prod"), c.Param("tag"), c.Param("name"))
+	url = fmt.Sprintf("/v1/updates/%s/%s/tuf", c.Param("tag"), c.Param("name"))
 	var tuf api.UpdateTufResp
 	tufErr := ""
 	if err := getJson(c.Request().Context(), url, &tuf); err != nil {
@@ -136,7 +130,6 @@ func (h handlers) updatesGet(c echo.Context) error {
 		baseCtx
 		Tag          string
 		Name         string
-		Prod         string
 		Rollouts     []string
 		Groups       []string
 		Tuf          api.UpdateTufResp
@@ -147,7 +140,6 @@ func (h handlers) updatesGet(c echo.Context) error {
 		baseCtx:      h.baseCtx(c, "Update Details", "updates"),
 		Tag:          c.Param("tag"),
 		Name:         c.Param("name"),
-		Prod:         c.Param("prod"),
 		Rollouts:     rollouts,
 		Groups:       groups,
 		Tuf:          tuf,
@@ -159,7 +151,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 }
 
 func (h handlers) updatesRollout(c echo.Context) error {
-	url := fmt.Sprintf("/v1/updates/%s/%s/%s/rollouts/%s", c.Param("prod"), c.Param("tag"), c.Param("name"), c.Param("rollout"))
+	url := fmt.Sprintf("/v1/updates/%s/%s/rollouts/%s", c.Param("tag"), c.Param("name"), c.Param("rollout"))
 
 	var details api.Rollout
 	if err := getJson(c.Request().Context(), url, &details); err != nil {
@@ -170,14 +162,12 @@ func (h handlers) updatesRollout(c echo.Context) error {
 		baseCtx
 		Tag     string
 		Name    string
-		Prod    string
 		Rollout string
 		Details api.Rollout
 	}{
 		baseCtx: h.baseCtx(c, "Rollout Details", "updates"),
 		Tag:     c.Param("tag"),
 		Name:    c.Param("name"),
-		Prod:    c.Param("prod"),
 		Rollout: c.Param("rollout"),
 		Details: details,
 	}
@@ -190,7 +180,7 @@ func (h handlers) updatesTail(c echo.Context) error {
 		TailUrl string
 	}{
 		baseCtx: h.baseCtx(c, "Rollout Progress", "updates"),
-		TailUrl: fmt.Sprintf("/v1/updates/%s/%s/%s/tail", c.Param("prod"), c.Param("tag"), c.Param("name")),
+		TailUrl: fmt.Sprintf("/v1/updates/%s/%s/tail", c.Param("tag"), c.Param("name")),
 	}
 
 	return h.templates.ExecuteTemplate(c.Response(), "update_tail.html", ctx)
@@ -202,7 +192,7 @@ func (h handlers) updatesRolloutTail(c echo.Context) error {
 		TailUrl string
 	}{
 		baseCtx: h.baseCtx(c, "Rollout Progress", "updates"),
-		TailUrl: fmt.Sprintf("/v1/updates/%s/%s/%s/rollouts/%s/tail", c.Param("prod"), c.Param("tag"), c.Param("name"), c.Param("rollout")),
+		TailUrl: fmt.Sprintf("/v1/updates/%s/%s/rollouts/%s/tail", c.Param("tag"), c.Param("name"), c.Param("rollout")),
 	}
 
 	return h.templates.ExecuteTemplate(c.Response(), "update_tail.html", ctx)
