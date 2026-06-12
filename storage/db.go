@@ -80,7 +80,6 @@ func createTables(db *sql.DB) error {
 			uuid VARCHAR(48) NOT NULL PRIMARY KEY,
 			pubkey TEXT,
 			deleted BOOL,
-			is_prod BOOL,
 			created_at INT DEFAULT 0,
 			last_seen INT DEFAULT 0,
 			tag VARCHAR(80) DEFAULT "",

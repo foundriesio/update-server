@@ -281,10 +281,10 @@ func TestApiDeviceList(t *testing.T) {
 	require.Len(t, devices, 0)
 
 	// two devices with different last seen times
-	_, err := tc.gw.DeviceCreate("test-device-1", "pubkey1", true)
+	_, err := tc.gw.DeviceCreate("test-device-1", "pubkey1")
 	require.Nil(t, err)
 	time.Sleep(1 * time.Second)
-	_, err = tc.gw.DeviceCreate("test-device-2", "pubkey2", false)
+	_, err = tc.gw.DeviceCreate("test-device-2", "pubkey2")
 	require.Nil(t, err)
 
 	data = tc.GET("/devices", 200)
@@ -379,9 +379,9 @@ func TestApiDeviceGet(t *testing.T) {
 
 	_ = tc.GET("/devices/does-not-exist", 404)
 
-	_, err := tc.gw.DeviceCreate("test-device-1", "pubkey1", true)
+	_, err := tc.gw.DeviceCreate("test-device-1", "pubkey1")
 	require.Nil(t, err)
-	_, err = tc.gw.DeviceCreate("test-device-2", "pubkey2", false)
+	_, err = tc.gw.DeviceCreate("test-device-2", "pubkey2")
 	require.Nil(t, err)
 
 	data := tc.GET("/devices/test-device-1", 200)
@@ -409,9 +409,9 @@ func TestApiDeviceGet(t *testing.T) {
 
 func TestApiDeviceLabelsPatch(t *testing.T) {
 	tc := NewTestClient(t)
-	_, err := tc.gw.DeviceCreate("test-device-1", "pubkey1", true)
+	_, err := tc.gw.DeviceCreate("test-device-1", "pubkey1")
 	require.Nil(t, err)
-	_, err = tc.gw.DeviceCreate("test-device-2", "pubkey2", false)
+	_, err = tc.gw.DeviceCreate("test-device-2", "pubkey2")
 	require.Nil(t, err)
 
 	headers := []string{"content-type", "application/json"}
@@ -495,9 +495,9 @@ func TestApiDeviceLabelsPatch(t *testing.T) {
 
 func TestApiDeviceLabelsPut(t *testing.T) {
 	tc := NewTestClient(t)
-	_, err := tc.gw.DeviceCreate("test-device-1", "pubkey1", true)
+	_, err := tc.gw.DeviceCreate("test-device-1", "pubkey1")
 	require.Nil(t, err)
-	_, err = tc.gw.DeviceCreate("test-device-2", "pubkey2", false)
+	_, err = tc.gw.DeviceCreate("test-device-2", "pubkey2")
 	require.Nil(t, err)
 
 	headers := []string{"content-type", "application/json"}
@@ -537,7 +537,7 @@ func TestApiAppsStates(t *testing.T) {
 
 	_ = tc.GET("/devices/test-device-1/apps-states", 404)
 
-	d, err := tc.gw.DeviceCreate("test-device-1", "pubkey1", true)
+	d, err := tc.gw.DeviceCreate("test-device-1", "pubkey1")
 	require.Nil(t, err)
 
 	state1 := storage.AppsStates{
@@ -570,7 +570,7 @@ func TestApiDeviceUpdateEvents(t *testing.T) {
 
 	_ = tc.GET("/devices/updates/does-not-exist", 404)
 
-	d, err := tc.gw.DeviceCreate("test-device-1", "pubkey1", true)
+	d, err := tc.gw.DeviceCreate("test-device-1", "pubkey1")
 	require.Nil(t, err)
 
 	data := tc.GET("/devices/test-device-1/updates", 200)
@@ -727,28 +727,28 @@ func TestApiRolloutPut(t *testing.T) {
 
 	require.Nil(t, tc.fs.Updates.Ci.Ostree.WriteFile("tag1", "update1", "foo", "bar"))
 	require.Nil(t, tc.fs.Updates.Prod.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
-	d, err := tc.gw.DeviceCreate("ci1", "pubkey1", false)
+	d, err := tc.gw.DeviceCreate("ci1", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
-	d, err = tc.gw.DeviceCreate("ci2", "pubkey1", false)
+	d, err = tc.gw.DeviceCreate("ci2", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
-	d, err = tc.gw.DeviceCreate("ci3", "pubkey1", false)
+	d, err = tc.gw.DeviceCreate("ci3", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag2", "", ""))
-	d, err = tc.gw.DeviceCreate("ci4", "pubkey1", false)
+	d, err = tc.gw.DeviceCreate("ci4", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag2", "", ""))
-	d, err = tc.gw.DeviceCreate("prod1", "pubkey2", true)
+	d, err = tc.gw.DeviceCreate("prod1", "pubkey2")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag2", "", ""))
-	d, err = tc.gw.DeviceCreate("prod2", "pubkey2", true)
+	d, err = tc.gw.DeviceCreate("prod2", "pubkey2")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag2", "", ""))
-	d, err = tc.gw.DeviceCreate("prod3", "pubkey2", true)
+	d, err = tc.gw.DeviceCreate("prod3", "pubkey2")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag2", "", ""))
-	d, err = tc.gw.DeviceCreate("prod4", "pubkey2", true)
+	d, err = tc.gw.DeviceCreate("prod4", "pubkey2")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag3", "", ""))
 
@@ -774,7 +774,7 @@ func TestApiRolloutPut(t *testing.T) {
 	data := tc.GET("/updates/ci/tag1/update1/rollouts/rocks", 200)
 	assert.Equal(t, `{"uuids":["ci1","ci2","ci3"],"effective-uuids":["ci1","ci2"],"committed":true}`, s(data))
 	data = tc.GET("/updates/prod/tag2/update2/rollouts/rocks", 200)
-	assert.Equal(t, `{"uuids":["prod2"],"groups":["grp1"],"effective-uuids":["prod2","prod3"],"committed":true}`, s(data))
+	assert.Equal(t, `{"uuids":["prod2"],"groups":["grp1"],"effective-uuids":["ci4","prod2","prod3"],"committed":true}`, s(data))
 	dev, err := tc.api.DeviceGet("ci1")
 	require.Nil(t, err)
 	assert.Equal(t, "update1", dev.UpdateName)
@@ -816,10 +816,10 @@ func TestApiRolloutDaemon(t *testing.T) {
 
 	require.Nil(t, tc.fs.Updates.Ci.Ostree.WriteFile("tag1", "update1", "foo", "bar"))
 	require.Nil(t, tc.fs.Updates.Prod.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
-	d, err := tc.gw.DeviceCreate("ci1", "pubkey1", false)
+	d, err := tc.gw.DeviceCreate("ci1", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
-	d, err = tc.gw.DeviceCreate("prod1", "pubkey2", true)
+	d, err = tc.gw.DeviceCreate("prod1", "pubkey2")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag2", "", ""))
 
@@ -859,16 +859,16 @@ func TestApiRolloutDaemon(t *testing.T) {
 
 func TestApiUpdateTail(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.GET("/updates/prod/tag1/update1/tail", 403)
+	tc.GET("/updates/ci/tag1/update1/tail", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
-	d, err := tc.gw.DeviceCreate("test-device-1", "pubkey1", true)
+	d, err := tc.gw.DeviceCreate("test-device-1", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
-	d, err = tc.gw.DeviceCreate("test-device-2", "pubkey1", true)
+	d, err = tc.gw.DeviceCreate("test-device-2", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
-	d, err = tc.gw.DeviceCreate("test-device-3", "pubkey1", true)
+	d, err = tc.gw.DeviceCreate("test-device-3", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
 	_, err = tc.api.SetUpdateName("tag1", "update1", true, []string{"test-device-1", "test-device-2"}, nil)
@@ -887,7 +887,7 @@ func TestApiUpdateTail(t *testing.T) {
 
 	// Before any events appear, check the correct error event is received.
 	done := make(chan bool)
-	rec := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/prod/tag1/update1/tail", nil), done)
+	rec := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/ci/tag1/update1/tail", nil), done)
 	time.Sleep(10 * time.Millisecond)
 	expectedStream := `event: error
 id: 0
@@ -912,9 +912,9 @@ data: No rollout logs for this update yet.
 
 	// rec1 is plain request, rec2 is request with resumption.
 	done1 := make(chan bool)
-	rec1 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/prod/tag1/update1/tail", nil), done1)
+	rec1 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/ci/tag1/update1/tail", nil), done1)
 	done2 := make(chan bool)
-	req2 := httptest.NewRequest(http.MethodGet, "/v1/updates/prod/tag1/update1/tail", nil)
+	req2 := httptest.NewRequest(http.MethodGet, "/v1/updates/ci/tag1/update1/tail", nil)
 	req2.Header.Add("Last-Event-ID", "1")
 	rec2 := tc.DoAsync(req2, done2)
 	time.Sleep(10 * time.Millisecond)
@@ -956,7 +956,7 @@ data: {"uuid":"test-device-1","correlationId":"uuid-1","target-name":"intel-core
 	keepaliveResponseInterval = 50 * time.Millisecond
 	defer func() { keepaliveResponseInterval = saved }()
 	done3 := make(chan bool)
-	rec3 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/prod/tag1/update1/tail", nil), done3)
+	rec3 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/ci/tag1/update1/tail", nil), done3)
 	time.Sleep(130 * time.Millisecond)
 	expectedStream3 := expectedStream1 + keepaliveResponseText + keepaliveResponseText
 	require.Equal(t, 200, rec3.Code)
@@ -981,7 +981,7 @@ func TestApiDeviceDelete(t *testing.T) {
 	tc := NewTestClient(t)
 
 	// Create a device
-	_, err := tc.gw.DeviceCreate("del-device", "pubkey", false)
+	_, err := tc.gw.DeviceCreate("del-device", "pubkey")
 	require.Nil(t, err)
 
 	// No permission
@@ -1197,9 +1197,9 @@ func TestApiConfigsDevice(t *testing.T) {
 		tc.PUT(url, code, fmt.Sprintf(`{"Reason":"%s","Files":%s}`, reason, cfg))
 	}
 
-	_, err := tc.gw.DeviceCreate("foo", "pubkey1", true)
+	_, err := tc.gw.DeviceCreate("foo", "pubkey1")
 	require.Nil(t, err)
-	_, err = tc.gw.DeviceCreate("bar", "pubkey1", false)
+	_, err = tc.gw.DeviceCreate("bar", "pubkey1")
 	require.Nil(t, err)
 
 	t.Run("Default user scopes", func(t *testing.T) {
@@ -1283,7 +1283,7 @@ func TestApiConfigsDevice(t *testing.T) {
 func TestApiConfigsDeviceApplied(t *testing.T) {
 	tc := NewTestClient(t)
 
-	_, err := tc.gw.DeviceCreate("foo", "pubkey1", false)
+	_, err := tc.gw.DeviceCreate("foo", "pubkey1")
 	require.Nil(t, err)
 
 	tc.u.AllowedScopes = users.ScopeDevicesR

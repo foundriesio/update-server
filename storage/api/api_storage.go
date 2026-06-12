@@ -87,7 +87,6 @@ type DeviceListItem struct {
 	LastSeen  int64  `json:"last-seen"`
 	Target    string `json:"target"`
 	Tag       string `json:"tag"`
-	IsProd    bool   `json:"is-prod"`
 	Labels    Labels `json:"labels"`
 }
 
@@ -250,7 +249,7 @@ func (s Storage) DeviceGet(uuid string) (*Device, error) {
 		uuid,
 		&d.CreatedAt, &d.LastSeen,
 		&d.PubKey, &d.UpdateName, &d.Tag, &d.Target, &d.OstreeHash,
-		&apps, &labels, &d.IsProd,
+		&apps, &labels,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			err = nil
@@ -533,7 +532,7 @@ type stmtDeviceGet storage.DbStmt
 func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiDeviceGet", `
 		SELECT
-			created_at, last_seen, pubkey, update_name, tag, target_name, ostree_hash, apps, json(labels), is_prod
+			created_at, last_seen, pubkey, update_name, tag, target_name, ostree_hash, apps, json(labels)
 		FROM devices
 		WHERE uuid = ? AND deleted=false`,
 	)
@@ -544,10 +543,9 @@ func (s *stmtDeviceGet) run(
 	uuid string,
 	createdAt, lastSeen *int64,
 	pubkey, updateName, tag, targetName, ostreeHash, apps, labels *string,
-	isProd *bool,
 ) error {
 	return s.Stmt.QueryRow(uuid).Scan(
-		createdAt, lastSeen, pubkey, updateName, tag, targetName, ostreeHash, apps, labels, isProd)
+		createdAt, lastSeen, pubkey, updateName, tag, targetName, ostreeHash, apps, labels)
 }
 
 type stmtDeviceList storage.DbStmt
@@ -555,7 +553,7 @@ type stmtDeviceList storage.DbStmt
 func (s *stmtDeviceList) Init(db storage.DbHandle, orderBy string) (err error) {
 	s.Stmt, err = db.Prepare("apiDeviceList", fmt.Sprintf(`
 		SELECT
-			uuid, created_at, last_seen, target_name, tag, is_prod, json(labels)
+			uuid, created_at, last_seen, target_name, tag, json(labels)
 		FROM devices
 		WHERE deleted=false
 		ORDER BY %s LIMIT ? OFFSET ?`, orderBy),
@@ -578,7 +576,7 @@ func (s *stmtDeviceList) run(limit, offset int, dl *[]DeviceListItem) error {
 				labels []byte
 			)
 			if err = rows.Scan(
-				&d.Uuid, &d.CreatedAt, &d.LastSeen, &d.Target, &d.Tag, &d.IsProd, &labels,
+				&d.Uuid, &d.CreatedAt, &d.LastSeen, &d.Target, &d.Tag, &labels,
 			); err != nil {
 				return err
 			}
@@ -671,7 +669,7 @@ func (s *stmtDeviceSetUpdate) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiDeviceSetUpdateName", `
 		UPDATE devices
 		SET update_name=?
-		WHERE tag=? AND is_prod=? AND (
+		WHERE tag=? AND (
 			uuid IN (SELECT value from json_each(?))
 			OR
 			group_name IN (SELECT value from json_each(?))
@@ -689,7 +687,7 @@ func (s *stmtDeviceSetUpdate) run(tag, updateName string, isProd bool, uuids, gr
 	if err != nil {
 		return fmt.Errorf("unexpected error marshalling groups to JSON: %w", err)
 	}
-	if rows, err := s.Stmt.Query(updateName, tag, isProd, uuidsStr, groupsStr); err != nil {
+	if rows, err := s.Stmt.Query(updateName, tag, uuidsStr, groupsStr); err != nil {
 		return err
 	} else {
 		var resUuid string

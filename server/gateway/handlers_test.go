@@ -99,7 +99,7 @@ func (c testClient) marshalBody(data any) io.Reader {
 	}
 }
 
-func newTestClient(t *testing.T, isProd bool) *testClient {
+func NewTestClient(t *testing.T) *testClient {
 	tmpDir := t.TempDir()
 	fsS, err := storage.NewFs(tmpDir)
 	require.Nil(t, err)
@@ -119,14 +119,6 @@ func newTestClient(t *testing.T, isProd bool) *testClient {
 
 	uuid := rand.Text() // Base32 encoded 128-bit (16-byte, 26 chars) random string
 	subj := pkix.Name{CommonName: uuid}
-	if isProd {
-		bc := pkix.AttributeTypeAndValue{
-			Type:  businessCategoryOid,
-			Value: businessCategoryProduction,
-		}
-		subj.Names = append(subj.Names, bc)           // Parsed names
-		subj.ExtraNames = append(subj.ExtraNames, bc) // Marshalled names
-	}
 	cert := x509.Certificate{
 		Subject:   subj,
 		PublicKey: priv.Public(),
@@ -143,14 +135,6 @@ func newTestClient(t *testing.T, isProd bool) *testClient {
 		cert: &cert,
 	}
 	return &tc
-}
-
-func NewTestClient(t *testing.T) *testClient {
-	return newTestClient(t, false)
-}
-
-func NewProdTestClient(t *testing.T) *testClient {
-	return newTestClient(t, true)
 }
 
 func TestApiDevice(t *testing.T) {
@@ -577,12 +561,10 @@ func TestEvents(t *testing.T) {
 func TestTufMeta(t *testing.T) {
 	tcCi42 := NewTestClient(t)
 	tcCi137 := NewTestClient(t)
-	tcProd42 := NewProdTestClient(t)
-	tcProd137 := NewProdTestClient(t)
 
 	// Positive test bed
 	tests := []struct {
-		tc     *testClient // CI vs prod
+		tc     *testClient // test client
 		name   string      // test name and file data
 		tag    string      // x-ats-tags header value
 		update string      // update name, set for the device
@@ -595,11 +577,6 @@ func TestTufMeta(t *testing.T) {
 		{tcCi42, "CI test targets.json", "test", "42", "targets.json"},
 		{tcCi137, "CI test 137 targets.json", "test", "137", "targets.json"},
 		{tcCi137, "CI beta targets.json", "beta", "137", "targets.json"},
-		{tcProd42, "Prod beta 1.root.json", "beta", "42", "1.root.json"},
-		{tcProd137, "Prod prod 1.root.json", "prod", "137", "1.root.json"},
-		{tcProd137, "Prod beta timestamp.json", "beta", "137", "timestamp.json"},
-		{tcProd137, "Prod prod snapshot.json", "prod", "137", "snapshot.json"},
-		{tcProd42, "Prod frog targets.json", "frog", "42", "targets.json"},
 	}
 
 	// Pre-create devices and set their update names before tests
@@ -621,12 +598,7 @@ func TestTufMeta(t *testing.T) {
 	// Pre-create TUF data before tests
 	var err error
 	for _, ts := range tests {
-		switch ts.tc {
-		case tcCi42, tcCi137:
-			err = ts.tc.fs.Updates.Ci.Tuf.WriteFile(ts.tag, ts.update, ts.role, ts.name)
-		case tcProd42, tcProd137:
-			err = ts.tc.fs.Updates.Prod.Tuf.WriteFile(ts.tag, ts.update, ts.role, ts.name)
-		}
+		err = ts.tc.fs.Updates.Ci.Tuf.WriteFile(ts.tag, ts.update, ts.role, ts.name)
 		require.Nil(t, err, ts.name)
 	}
 
@@ -662,12 +634,12 @@ func TestTufMeta(t *testing.T) {
 func TestOstree(t *testing.T) {
 	tcCi42 := NewTestClient(t)
 	tcCi137 := NewTestClient(t)
-	tcProd42 := NewProdTestClient(t)
-	tcProd137 := NewProdTestClient(t)
+	tcCi42b := NewTestClient(t)
+	tcCi137b := NewTestClient(t)
 
 	// Positive test bed
 	tests := []struct {
-		tc     *testClient // CI vs prod
+		tc     *testClient // test client
 		name   string      // test name and file data
 		tag    string      // x-ats-tags header value
 		update string      // update name, set for the device
@@ -681,10 +653,10 @@ func TestOstree(t *testing.T) {
 		{tcCi42, "CI test summary", "test", "42", "summary"},
 		{tcCi137, "CI beta config", "beta", "137", "config"},
 		{tcCi137, "CI beta objects", "beta", "137", "objects/bar"},
-		{tcProd42, "Prod beta config", "beta", "42", "config"},
-		{tcProd42, "Prod beta objects", "beta", "42", "objects/bar"},
-		{tcProd137, "Prod prod config", "prod", "137", "config"},
-		{tcProd137, "Prod prod objects", "prod", "137", "objects/foo"},
+		{tcCi42b, "CI beta2 config", "beta", "42", "config"},
+		{tcCi42b, "CI beta2 objects", "beta", "42", "objects/bar"},
+		{tcCi137b, "CI prod config", "prod", "137", "config"},
+		{tcCi137b, "CI prod objects", "prod", "137", "objects/foo"},
 	}
 
 	// Pre-create devices and set their update names before tests
@@ -717,12 +689,7 @@ func TestOstree(t *testing.T) {
 	// Pre-create TUF data before tests
 	var err error
 	for _, ts := range tests {
-		switch ts.tc {
-		case tcCi42, tcCi137:
-			err = writeFile(ts.tc.fs.Updates.Ci.Ostree, ts.tag, ts.update, ts.path, ts.name)
-		case tcProd42, tcProd137:
-			err = writeFile(ts.tc.fs.Updates.Prod.Ostree, ts.tag, ts.update, ts.path, ts.name)
-		}
+		err = writeFile(ts.tc.fs.Updates.Ci.Ostree, ts.tag, ts.update, ts.path, ts.name)
 		require.Nil(t, err, ts.name)
 	}
 

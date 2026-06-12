@@ -5,19 +5,12 @@ package gateway
 
 import (
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-)
-
-var (
-	businessCategoryOid        = asn1.ObjectIdentifier{2, 5, 4, 15}
-	businessCategoryProduction = "production"
 )
 
 func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
@@ -32,7 +25,6 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 		log := CtxGetLog(ctx).With("device", uuid)
 		ctx = CtxWithLog(ctx, log)
 
-		isProd := getBusinessCategory(cert.Subject) == businessCategoryProduction
 		pub, err := pubkey(cert)
 		if err != nil {
 			return c.String(http.StatusForbidden, fmt.Sprintf("unable to extract device's public key: %s", err))
@@ -44,7 +36,7 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 			log.Error("Unable to query for device", "error", err)
 			return c.String(http.StatusBadGateway, err.Error())
 		} else if device == nil {
-			device, err = h.storage.DeviceCreate(cert.Subject.CommonName, pub, isProd)
+			device, err = h.storage.DeviceCreate(cert.Subject.CommonName, pub)
 			if err != nil {
 				log.Error("Unable to create device", "error", err)
 				return c.String(http.StatusBadGateway, "Unable to create device")
@@ -124,16 +116,6 @@ func pubkey(cert *x509.Certificate) (string, error) {
 		Bytes: derBytes,
 	}
 	return string(pem.EncodeToMemory(block)), nil
-}
-
-// Golang crypto/x509/pkix package doesn't parse a dozen of standard attributes
-func getBusinessCategory(subject pkix.Name) string {
-	for _, atv := range subject.Names {
-		if businessCategoryOid.Equal(atv.Type) {
-			return atv.Value.(string)
-		}
-	}
-	return ""
 }
 
 func getHeader(req *http.Request, header, defVal string) string {
