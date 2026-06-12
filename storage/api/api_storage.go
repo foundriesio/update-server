@@ -320,11 +320,11 @@ func (s Storage) ReadAppliedConfigs(uuid string) (*storage.AppliedConfigs, error
 var clearingEventTypes = []string{"EcuInstallationCompleted", "CertRotationCompleted", "MetadataUpdateCompleted"}
 
 func (s Storage) ListUpdates(tag string) (map[string][]string, error) {
-	return s.fs.Updates.Ci.Rollouts.ListUpdates(tag)
+	return s.fs.Updates.Rollouts.ListUpdates(tag)
 }
 
 func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[string]any, error) {
-	handle := s.fs.Updates.Ci
+	handle := s.fs.Updates
 
 	latestRoot, err := handle.Tuf.LatestRootMetaName(tag, updateName)
 	if err != nil {
@@ -351,12 +351,12 @@ func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[st
 }
 
 func (s Storage) ListRollouts(tag, updateName string) ([]string, error) {
-	return s.fs.Updates.Ci.Rollouts.ListFiles(tag, updateName)
+	return s.fs.Updates.Rollouts.ListFiles(tag, updateName)
 }
 
 func (s Storage) GetRollout(tag, updateName, rolloutName string) (res Rollout, err error) {
 	var content string
-	content, err = s.fs.Updates.Ci.Rollouts.ReadFile(tag, updateName, rolloutName)
+	content, err = s.fs.Updates.Rollouts.ReadFile(tag, updateName, rolloutName)
 	if err == nil {
 		err = json.Unmarshal([]byte(content), &res)
 	}
@@ -367,12 +367,12 @@ func (s Storage) SaveRollout(tag, updateName, rolloutName string, rollout Rollou
 	if data, err := json.Marshal(rollout); err != nil {
 		return err
 	} else {
-		return s.fs.Updates.Ci.Rollouts.WriteFile(tag, updateName, rolloutName, string(data))
+		return s.fs.Updates.Rollouts.WriteFile(tag, updateName, rolloutName, string(data))
 	}
 }
 
 func (s Storage) CreateRollout(tag, updateName, rolloutName string, rollout Rollout) error {
-	h := s.fs.Updates.Ci.Rollouts
+	h := s.fs.Updates.Rollouts
 	log := fmt.Sprintf("%s|%s|%s\n", tag, updateName, rolloutName)
 	if data, err := json.Marshal(rollout); err != nil {
 		return err
@@ -393,7 +393,7 @@ func (s Storage) CommitRollout(tag, updateName, rolloutName string, rollout Roll
 }
 
 func (s Storage) ReadRolloutJournal() iter.Seq2[*[3]string, error] {
-	h := s.fs.Updates.Ci.Rollouts
+	h := s.fs.Updates.Rollouts
 	return func(yield func(*[3]string, error) bool) {
 		for log, err := range h.ReadJournal() {
 			if err != nil {
@@ -415,7 +415,7 @@ func (s Storage) ReadRolloutJournal() iter.Seq2[*[3]string, error] {
 }
 
 func (s Storage) RolloverRolloutJournal() error {
-	return s.fs.Updates.Ci.Rollouts.RolloverJournal()
+	return s.fs.Updates.Rollouts.RolloverJournal()
 }
 
 func (s Storage) GetKnownDeviceGroupNames() ([]string, error) {
@@ -451,7 +451,7 @@ func (s Storage) SetUpdateName(tag, updateName string, uuids, groups []string) (
 }
 
 func (s Storage) TailRolloutsLog(tag, updateName string, stop storage.DoneChan) iter.Seq2[string, error] {
-	return s.fs.Updates.Ci.Logs.TailFileLines(tag, updateName, storage.LogRolloutsFile, stop)
+	return s.fs.Updates.Logs.TailFileLines(tag, updateName, storage.LogRolloutsFile, stop)
 }
 
 func (s Storage) ReadFactoryConfigHistory(latest int, withFiles bool) ([]*ConfigFileSet, error) {
@@ -505,7 +505,7 @@ func (s Storage) CreateUpdate(tag, updateName string, payload io.Reader) error {
 		// This is not critical - log and let the "real" error/success return below.
 		slog.Error("Failed to clean upload directory", "error", cleanupErr)
 	}
-	return s.fs.Updates.Ci.SaveUpload(tag, updateName, payload, cleanup)
+	return s.fs.Updates.SaveUpload(tag, updateName, payload, cleanup)
 }
 
 type stmtDeviceGet storage.DbStmt

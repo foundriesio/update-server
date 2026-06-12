@@ -598,7 +598,7 @@ func TestTufMeta(t *testing.T) {
 	// Pre-create TUF data before tests
 	var err error
 	for _, ts := range tests {
-		err = ts.tc.fs.Updates.Ci.Tuf.WriteFile(ts.tag, ts.update, ts.role, ts.name)
+		err = ts.tc.fs.Updates.Tuf.WriteFile(ts.tag, ts.update, ts.role, ts.name)
 		require.Nil(t, err, ts.name)
 	}
 
@@ -689,7 +689,7 @@ func TestOstree(t *testing.T) {
 	// Pre-create TUF data before tests
 	var err error
 	for _, ts := range tests {
-		err = writeFile(ts.tc.fs.Updates.Ci.Ostree, ts.tag, ts.update, ts.path, ts.name)
+		err = writeFile(ts.tc.fs.Updates.Ostree, ts.tag, ts.update, ts.path, ts.name)
 		require.Nil(t, err, ts.name)
 	}
 

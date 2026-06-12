@@ -204,7 +204,7 @@ func Test_ProcessEvents(t *testing.T) {
 				require.Equal(t, pack, evt.Event.Details)
 			}
 		}
-		actualStatusLog, err := fs.Updates.Ci.Logs.ReadFile(d.Tag, d.UpdateName, storage.LogRolloutsFile)
+		actualStatusLog, err := fs.Updates.Logs.ReadFile(d.Tag, d.UpdateName, storage.LogRolloutsFile)
 		require.Nil(t, err)
 		require.Equal(t, expectedStatusLog, actualStatusLog)
 	}

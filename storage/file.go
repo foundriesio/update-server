@@ -56,9 +56,6 @@ const (
 	TestArtifactsPrefix = "test-artifacts"
 
 	// Per update files/dirs
-	// Update roots
-	UpdatesCiDir   = "ci"
-	UpdatesProdDir = "prod"
 	// Update categories
 	UpdatesTufDir      = "tuf"
 	UpdatesOstreeDir   = "ostree_repo"
@@ -118,14 +115,6 @@ func (c FsConfig) UpdatesDir() string {
 	return filepath.Join(string(c), UpdatesDir)
 }
 
-func (c FsConfig) UpdatesCiDir() string {
-	return filepath.Join(c.UpdatesDir(), UpdatesCiDir)
-}
-
-func (c FsConfig) UpdatesProdDir() string {
-	return filepath.Join(c.UpdatesDir(), UpdatesProdDir)
-}
-
 type FsHandle struct {
 	Config FsConfig
 
@@ -134,10 +123,7 @@ type FsHandle struct {
 	Certs   CertsFsHandle
 	Configs ConfigsFsHandle
 	Devices DevicesFsHandle
-	Updates struct {
-		Ci   updatesFsHandleWrap
-		Prod updatesFsHandleWrap
-	}
+	Updates updatesFsHandleWrap
 }
 
 func NewFs(root string) (*FsHandle, error) {
@@ -147,8 +133,7 @@ func NewFs(root string) (*FsHandle, error) {
 	fs.Certs.root = fs.Config.CertsDir()
 	fs.Configs.root = fs.Config.ConfigsDir()
 	fs.Devices.root = fs.Config.DevicesDir()
-	fs.Updates.Ci.init(fs.Config.UpdatesCiDir())
-	fs.Updates.Prod.init(fs.Config.UpdatesProdDir())
+	fs.Updates.init(fs.Config.UpdatesDir())
 
 	for _, h := range []baseFsHandle{
 		fs.Audit.baseFsHandle,
@@ -156,8 +141,7 @@ func NewFs(root string) (*FsHandle, error) {
 		fs.Certs.baseFsHandle,
 		fs.Configs.baseFsHandle,
 		fs.Devices.baseFsHandle,
-		fs.Updates.Ci.baseFsHandle,
-		fs.Updates.Prod.baseFsHandle,
+		fs.Updates.baseFsHandle,
 	} {
 		if err := h.mkdirs(defaultDirAccess, true); err != nil {
 			return nil, fmt.Errorf("unable to initialize file storage: %w", err)
