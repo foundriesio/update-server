@@ -54,7 +54,7 @@ func TestStorage(t *testing.T) {
 	_, err = dg.DeviceCreate("uuid-2", "pubkey-value-2")
 	require.Nil(t, err)
 
-	uuids, err := s.SetUpdateName("tag", "update42", false, []string{"uuid-1", "uuid-2"}, nil)
+	uuids, err := s.SetUpdateName("tag", "update42", []string{"uuid-1", "uuid-2"}, nil)
 	require.Nil(t, err)
 	require.Equal(t, 1, len(uuids))
 	assert.Equal(t, "uuid-1", uuids[0])

@@ -19,17 +19,8 @@ var (
 )
 
 const (
-	ctxKeyProd ctxKey = iota
-	ctxKeyUser
+	ctxKeyUser ctxKey = iota
 )
-
-func CtxGetIsProd(ctx Context) bool {
-	return ctx.Value(ctxKeyProd).(bool)
-}
-
-func CtxWithIsProd(ctx Context, isProd bool) Context {
-	return context.WithValue(ctx, ctxKeyProd, isProd)
-}
 
 func CtxGetUser(ctx Context) *users.User {
 	return ctx.Value(ctxKeyUser).(*users.User)

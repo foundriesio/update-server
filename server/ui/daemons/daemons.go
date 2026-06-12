@@ -30,8 +30,7 @@ func New(context context.Context, storage *storage.Storage, users *users.Storage
 		interval: 5 * time.Minute,
 	}
 	d.daemons = []daemonFunc{
-		d.rolloutWatchdog(true),
-		d.rolloutWatchdog(false),
+		d.rolloutWatchdog(),
 		userGcDaemonFunc(users),
 	}
 

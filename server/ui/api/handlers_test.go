@@ -600,14 +600,9 @@ func TestApiDeviceUpdateEvents(t *testing.T) {
 
 func TestApiUpdateList(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.GET("/updates/ci", 403)
-	tc.GET("/updates/ci/tag", 403)
-	tc.GET("/updates/prod", 403)
-	tc.GET("/updates/prod/tag", 403)
+	tc.GET("/updates", 403)
+	tc.GET("/updates/tag", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
-
-	tc.GET("/updates/non-prod", 404)
-	tc.GET("/updates/non-prod/tag", 404)
 
 	s := func(data []byte) string {
 		return strings.TrimSpace(string(data))
@@ -617,38 +612,25 @@ func TestApiUpdateList(t *testing.T) {
 	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag1", "update2", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag2", "update1", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag2", "update3", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag1", "update2", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag4", "update42", "rollout1", "foo"))
 
-	data := tc.GET("/updates/ci", 200)
+	data := tc.GET("/updates", 200)
 	assert.Equal(t, `{"tag1":["update1","update2"],"tag2":["update1","update3"]}`, s(data))
-	data = tc.GET("/updates/ci/tag1", 200)
+	data = tc.GET("/updates/tag1", 200)
 	assert.Equal(t, `{"tag1":["update1","update2"]}`, s(data))
-	data = tc.GET("/updates/ci/tag2", 200)
+	data = tc.GET("/updates/tag2", 200)
 	assert.Equal(t, `{"tag2":["update1","update3"]}`, s(data))
-	data = tc.GET("/updates/ci/tag4", 200) // tag not exists
+	data = tc.GET("/updates/tag4", 200) // tag not exists
 	assert.Equal(t, "{}", s(data))
-	data = tc.GET("/updates/prod", 200)
-	assert.Equal(t, `{"tag1":["update2"],"tag4":["update42"]}`, s(data))
-	data = tc.GET("/updates/prod/tag1", 200)
-	assert.Equal(t, `{"tag1":["update2"]}`, s(data))
-	data = tc.GET("/updates/prod/tag2", 200) // tag not exists
-	assert.Equal(t, "{}", s(data))
-	data = tc.GET("/updates/prod/tag4", 200)
-	assert.Equal(t, `{"tag4":["update42"]}`, s(data))
 
 	// Synthetic tag validation - create a bad tag on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
-	tc.GET("/updates/prod/bad^tag", 404)
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
+	tc.GET("/updates/bad^tag", 404)
 }
 
 func TestApiRolloutList(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.GET("/updates/ci/tag/update/rollouts", 403)
-	tc.GET("/updates/prod/tag/update/rollouts", 403)
+	tc.GET("/updates/tag/update/rollouts", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
-
-	tc.GET("/updates/non-prod/tag/update/rollouts", 404)
 
 	s := func(data []byte) string {
 		return strings.TrimSpace(string(data))
@@ -657,32 +639,29 @@ func TestApiRolloutList(t *testing.T) {
 	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag1", "update1", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag1", "update1", "rollout2", "foo"))
 	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag2", "update1", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag1", "update2", "rollout4", "foo"))
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag1", "update2", "rollout4", "foo"))
 
-	data := tc.GET("/updates/ci/tag1/update1/rollouts", 200)
+	data := tc.GET("/updates/tag1/update1/rollouts", 200)
 	assert.Equal(t, `["rollout1","rollout2"]`, s(data))
-	data = tc.GET("/updates/ci/tag2/update1/rollouts", 200)
+	data = tc.GET("/updates/tag2/update1/rollouts", 200)
 	assert.Equal(t, `["rollout1"]`, s(data))
-	data = tc.GET("/updates/ci/tag2/update2/rollouts", 200) // update not exists
+	data = tc.GET("/updates/tag2/update2/rollouts", 200) // update not exists
 	assert.Equal(t, "[]", s(data))
-	data = tc.GET("/updates/ci/tag3/update1/rollouts", 200) // tag not exists
+	data = tc.GET("/updates/tag3/update1/rollouts", 200) // tag not exists
 	assert.Equal(t, "[]", s(data))
-	data = tc.GET("/updates/prod/tag1/update2/rollouts", 200)
+	data = tc.GET("/updates/tag1/update2/rollouts", 200)
 	assert.Equal(t, `["rollout4"]`, s(data))
-	data = tc.GET("/updates/ci/tag2/update2/rollouts", 200) // tag not exists
-	assert.Equal(t, "[]", s(data))
 
 	// Synthetic tag/update validation - create a bad tag/update on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
-	tc.GET("/updates/prod/bad^tag/update42/rollouts", 404)
-	tc.GET("/updates/prod/tag/update=bad/rollouts", 404)
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
+	tc.GET("/updates/bad^tag/update42/rollouts", 404)
+	tc.GET("/updates/tag/update=bad/rollouts", 404)
 }
 
 func TestApiRolloutGet(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.GET("/updates/ci/tag/update/rollouts/rolling", 403)
-	tc.GET("/updates/prod/tag/update/rollouts/stones", 403)
+	tc.GET("/updates/tag/update/rollouts/rolling", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
 	tc.GET("/updates/non-prod/tag/update/rollouts/rocks", 404)
@@ -693,40 +672,37 @@ func TestApiRolloutGet(t *testing.T) {
 
 	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag1", "update1", "rollout1", `{"uuids":["123","xyz"]}`))
 	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag1", "update2", "rollout2", `{"groups":["test","dev"]}`))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag", "update", "rollout", `{"uuids":["uh"],"groups":["oh"]}`))
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag", "update", "rollout", `{"uuids":["uh"],"groups":["oh"]}`))
 
-	data := tc.GET("/updates/ci/tag1/update1/rollouts/rollout1", 200)
+	data := tc.GET("/updates/tag1/update1/rollouts/rollout1", 200)
 	assert.Equal(t, `{"uuids":["123","xyz"],"committed":false}`, s(data))
-	data = tc.GET("/updates/ci/tag1/update2/rollouts/rollout2", 200)
+	data = tc.GET("/updates/tag1/update2/rollouts/rollout2", 200)
 	assert.Equal(t, `{"groups":["test","dev"],"committed":false}`, s(data))
-	tc.GET("/updates/ci/tag1/update2/rollouts/rollout3", 404) // rollout not exists
-	tc.GET("/updates/ci/tag1/update3/rollouts/rollout1", 404) // update not exists
-	tc.GET("/updates/ci/tag2/update1/rollouts/rollout1", 404) // tag not exists
-	data = tc.GET("/updates/prod/tag/update/rollouts/rollout", 200)
+	tc.GET("/updates/tag1/update2/rollouts/rollout3", 404) // rollout not exists
+	tc.GET("/updates/tag1/update3/rollouts/rollout1", 404) // update not exists
+	tc.GET("/updates/tag2/update1/rollouts/rollout1", 404) // tag not exists
+	data = tc.GET("/updates/tag/update/rollouts/rollout", 200)
 	assert.Equal(t, `{"uuids":["uh"],"groups":["oh"],"committed":false}`, s(data))
 
 	// Synthetic tag/update/rollout validation - create a bad tag/update/rollout on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag", "update", "omg+", "foo"))
-	tc.GET("/updates/prod/bad^tag/update42/rollouts/rollout1", 404)
-	tc.GET("/updates/prod/tag/update=bad/rollouts/rollout1", 404)
-	tc.GET("/updates/prod/tag/update/rollouts/omg+", 404)
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag", "update", "omg+", "foo"))
+	tc.GET("/updates/bad^tag/update42/rollouts/rollout1", 404)
+	tc.GET("/updates/tag/update=bad/rollouts/rollout1", 404)
+	tc.GET("/updates/tag/update/rollouts/omg+", 404)
 }
 
 func TestApiRolloutPut(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.PUT("/updates/ci/tag/update/rollouts/rolling", 403, "{}")
-	tc.PUT("/updates/prod/tag/update/rollouts/stones", 403, "{}")
+	tc.PUT("/updates/tag/update/rollouts/rolling", 403, "{}")
 	tc.u.AllowedScopes = users.ScopeUpdatesRU
 
-	tc.PUT("/updates/non-prod/tag/update/rollouts/rocks", 404, "{}")
-
-	tc.PUT("/updates/prod/tag/update/rollouts/rocks", 400, "{")
-	tc.PUT("/updates/prod/tag/update/rollouts/rocks", 400, "{}")
+	tc.PUT("/updates/tag/update/rollouts/rocks", 400, "{")
+	tc.PUT("/updates/tag/update/rollouts/rocks", 400, "{}")
 
 	require.Nil(t, tc.fs.Updates.Ci.Ostree.WriteFile("tag1", "update1", "foo", "bar"))
-	require.Nil(t, tc.fs.Updates.Prod.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
+	require.Nil(t, tc.fs.Updates.Ci.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
 	d, err := tc.gw.DeviceCreate("ci1", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
@@ -755,15 +731,15 @@ func TestApiRolloutPut(t *testing.T) {
 	grp1 := "grp1"
 	require.Nil(t, tc.api.PatchDeviceLabels(map[string]*string{"group": &grp1}, []string{"prod3", "prod4", "ci4"}))
 
-	tc.PUT("/updates/ci/tag1/update1/rollouts/rocks", 202,
+	tc.PUT("/updates/tag1/update1/rollouts/rocks", 202,
 		`{"uuids":["ci1","ci2","ci3"]}`, "content-type", "application/json")
-	tc.PUT("/updates/ci/tag1/update2/rollouts/rocks", 404,
+	tc.PUT("/updates/tag1/update2/rollouts/rocks", 404,
 		`{"uuids":["ci1","ci2"]}`, "content-type", "application/json")
-	tc.PUT("/updates/ci/tag1/update1/rollouts/rocks", 409,
+	tc.PUT("/updates/tag1/update1/rollouts/rocks", 409,
 		`{"uuids":["ci1"]}`, "content-type", "application/json")
-	tc.PUT("/updates/prod/tag2/update2/rollouts/rocks", 202,
+	tc.PUT("/updates/tag2/update2/rollouts/rocks", 202,
 		`{"uuids":["prod2"],"groups":["grp1"]}`, "content-type", "application/json")
-	tc.PUT("/updates/prod/tag1/update1/rollouts/rocks", 404,
+	tc.PUT("/updates/tag1/update1b/rollouts/rocks", 404,
 		`{"uuids":["prod2"],"groups":["grp1"]}`, "content-type", "application/json")
 
 	s := func(data []byte) string {
@@ -771,9 +747,9 @@ func TestApiRolloutPut(t *testing.T) {
 	}
 	time.Sleep(50 * time.Millisecond) // Allow async database updates to finish
 
-	data := tc.GET("/updates/ci/tag1/update1/rollouts/rocks", 200)
+	data := tc.GET("/updates/tag1/update1/rollouts/rocks", 200)
 	assert.Equal(t, `{"uuids":["ci1","ci2","ci3"],"effective-uuids":["ci1","ci2"],"committed":true}`, s(data))
-	data = tc.GET("/updates/prod/tag2/update2/rollouts/rocks", 200)
+	data = tc.GET("/updates/tag2/update2/rollouts/rocks", 200)
 	assert.Equal(t, `{"uuids":["prod2"],"groups":["grp1"],"effective-uuids":["ci4","prod2","prod3"],"committed":true}`, s(data))
 	dev, err := tc.api.DeviceGet("ci1")
 	require.Nil(t, err)
@@ -792,12 +768,12 @@ func TestApiRolloutPut(t *testing.T) {
 	assert.Equal(t, "update2", dev.UpdateName)
 
 	// Synthetic tag/update/rollout validation - create a bad tag/update/rollout on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Prod.Rollouts.WriteFile("tag", "update", "omg+", "foo"))
-	tc.PUT("/updates/prod/bad^tag/update42/rollouts/gogogo", 404, "foo")
-	tc.PUT("/updates/prod/tag/update=bad/rollouts/gogogo", 404, "foo")
-	tc.PUT("/updates/prod/tag/update/rollouts/omg+", 404, "foo")
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Ci.Rollouts.WriteFile("tag", "update", "omg+", "foo"))
+	tc.PUT("/updates/bad^tag/update42/rollouts/gogogo", 404, "foo")
+	tc.PUT("/updates/tag/update=bad/rollouts/gogogo", 404, "foo")
+	tc.PUT("/updates/tag/update/rollouts/omg+", 404, "foo")
 }
 
 func TestApiRolloutDaemon(t *testing.T) {
@@ -815,7 +791,7 @@ func TestApiRolloutDaemon(t *testing.T) {
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
 	require.Nil(t, tc.fs.Updates.Ci.Ostree.WriteFile("tag1", "update1", "foo", "bar"))
-	require.Nil(t, tc.fs.Updates.Prod.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
+	require.Nil(t, tc.fs.Updates.Ci.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
 	d, err := tc.gw.DeviceCreate("ci1", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
@@ -828,13 +804,13 @@ func TestApiRolloutDaemon(t *testing.T) {
 	}
 
 	// Emulate a non-committed rollout (file present, database not updated).
-	require.Nil(t, tc.api.CreateRollout("tag1", "update1", "roll1", false, Rollout{Uuids: []string{"ci1"}}))
-	require.Nil(t, tc.api.CreateRollout("tag2", "update2", "roll2", true, Rollout{Uuids: []string{"prod1"}}))
+	require.Nil(t, tc.api.CreateRollout("tag1", "update1", "roll1", Rollout{Uuids: []string{"ci1"}}))
+	require.Nil(t, tc.api.CreateRollout("tag2", "update2", "roll2", Rollout{Uuids: []string{"prod1"}}))
 
 	// Before the watchdog daemon processing, rollouts are not yet committed.
-	data := tc.GET("/updates/ci/tag1/update1/rollouts/roll1", 200)
+	data := tc.GET("/updates/tag1/update1/rollouts/roll1", 200)
 	assert.Equal(t, `{"uuids":["ci1"],"committed":false}`, s(data))
-	data = tc.GET("/updates/prod/tag2/update2/rollouts/roll2", 200)
+	data = tc.GET("/updates/tag2/update2/rollouts/roll2", 200)
 	assert.Equal(t, `{"uuids":["prod1"],"committed":false}`, s(data))
 	dev, err := tc.api.DeviceGet("ci1")
 	require.Nil(t, err)
@@ -845,9 +821,9 @@ func TestApiRolloutDaemon(t *testing.T) {
 
 	// After the watchdog daemon processing, rollouts are committed.
 	time.Sleep(60 * time.Millisecond)
-	data = tc.GET("/updates/ci/tag1/update1/rollouts/roll1", 200)
+	data = tc.GET("/updates/tag1/update1/rollouts/roll1", 200)
 	assert.Equal(t, `{"uuids":["ci1"],"effective-uuids":["ci1"],"committed":true}`, s(data))
-	data = tc.GET("/updates/prod/tag2/update2/rollouts/roll2", 200)
+	data = tc.GET("/updates/tag2/update2/rollouts/roll2", 200)
 	assert.Equal(t, `{"uuids":["prod1"],"effective-uuids":["prod1"],"committed":true}`, s(data))
 	dev, err = tc.api.DeviceGet("ci1")
 	assert.Nil(t, err)
@@ -859,7 +835,7 @@ func TestApiRolloutDaemon(t *testing.T) {
 
 func TestApiUpdateTail(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.GET("/updates/ci/tag1/update1/tail", 403)
+	tc.GET("/updates/tag1/update1/tail", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
 	d, err := tc.gw.DeviceCreate("test-device-1", "pubkey1")
@@ -871,7 +847,7 @@ func TestApiUpdateTail(t *testing.T) {
 	d, err = tc.gw.DeviceCreate("test-device-3", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
-	_, err = tc.api.SetUpdateName("tag1", "update1", true, []string{"test-device-1", "test-device-2"}, nil)
+	_, err = tc.api.SetUpdateName("tag1", "update1", []string{"test-device-1", "test-device-2"}, nil)
 	require.Nil(t, err)
 
 	d1, err := tc.gw.DeviceGet("test-device-1")
@@ -887,7 +863,7 @@ func TestApiUpdateTail(t *testing.T) {
 
 	// Before any events appear, check the correct error event is received.
 	done := make(chan bool)
-	rec := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/ci/tag1/update1/tail", nil), done)
+	rec := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/tag1/update1/tail", nil), done)
 	time.Sleep(10 * time.Millisecond)
 	expectedStream := `event: error
 id: 0
@@ -912,9 +888,9 @@ data: No rollout logs for this update yet.
 
 	// rec1 is plain request, rec2 is request with resumption.
 	done1 := make(chan bool)
-	rec1 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/ci/tag1/update1/tail", nil), done1)
+	rec1 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/tag1/update1/tail", nil), done1)
 	done2 := make(chan bool)
-	req2 := httptest.NewRequest(http.MethodGet, "/v1/updates/ci/tag1/update1/tail", nil)
+	req2 := httptest.NewRequest(http.MethodGet, "/v1/updates/tag1/update1/tail", nil)
 	req2.Header.Add("Last-Event-ID", "1")
 	rec2 := tc.DoAsync(req2, done2)
 	time.Sleep(10 * time.Millisecond)
@@ -956,7 +932,7 @@ data: {"uuid":"test-device-1","correlationId":"uuid-1","target-name":"intel-core
 	keepaliveResponseInterval = 50 * time.Millisecond
 	defer func() { keepaliveResponseInterval = saved }()
 	done3 := make(chan bool)
-	rec3 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/ci/tag1/update1/tail", nil), done3)
+	rec3 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/tag1/update1/tail", nil), done3)
 	time.Sleep(130 * time.Millisecond)
 	expectedStream3 := expectedStream1 + keepaliveResponseText + keepaliveResponseText
 	require.Equal(t, 200, rec3.Code)
@@ -1385,13 +1361,13 @@ func TestApiUpdateCreate(t *testing.T) {
 	})
 
 	// Should require auth scope
-	tc.POST("/updates/ci/main/v1.0", 403, bytes.NewReader(validTar.Bytes()),
+	tc.POST("/updates/main/v1.0", 403, bytes.NewReader(validTar.Bytes()),
 		"Content-Type", "application/x-tar")
 
 	tc.u.AllowedScopes = users.ScopeUpdatesRU
 
 	// Valid tar with tuf + ostree_repo
-	tc.POST("/updates/ci/main/v1.0", 201, bytes.NewReader(validTar.Bytes()),
+	tc.POST("/updates/main/v1.0", 201, bytes.NewReader(validTar.Bytes()),
 		"Content-Type", "application/x-tar")
 
 	// Verify files were extracted to the right place
@@ -1409,10 +1385,9 @@ func TestApiUpdateCreate(t *testing.T) {
 		"tuf/targets.json": validTargets,
 		"apps/myapp.json":  `{"name":"myapp"}`,
 	})
-	tc.POST("/updates/prod/main/v2.0", 201, bytes.NewReader(appsTar.Bytes()),
+	tc.POST("/updates/main/v2.0", 201, bytes.NewReader(appsTar.Bytes()),
 		"Content-Type", "application/x-tar")
-	prodDir := tc.fs.Config.UpdatesProdDir()
-	appData, err := os.ReadFile(filepath.Join(prodDir, "main", "v2.0", "apps", "myapp.json"))
+	appData, err := os.ReadFile(filepath.Join(updatesDir, "main", "v2.0", "apps", "myapp.json"))
 	require.NoError(t, err)
 	assert.Equal(t, `{"name":"myapp"}`, string(appData))
 
@@ -1423,7 +1398,7 @@ func TestApiUpdateCreate(t *testing.T) {
 		"ostree_repo/config": "[core]\n",
 		"apps/myapp.json":    `{}`,
 	})
-	tc.POST("/updates/ci/main/v3.0", 201, bytes.NewReader(bothTar.Bytes()),
+	tc.POST("/updates/main/v3.0", 201, bytes.NewReader(bothTar.Bytes()),
 		"Content-Type", "application/x-tar")
 
 	// Valid tar with tuf + ostree_repo + apps (both present)
@@ -1435,14 +1410,14 @@ func TestApiUpdateCreate(t *testing.T) {
 		"ostree_repo/config": "[core]\n",
 		"apps/myapp.json":    `{}`,
 	})
-	tc.POST("/updates/ci/main/v3.1", 400, bytes.NewReader(bothTar.Bytes()),
+	tc.POST("/updates/main/v3.1", 400, bytes.NewReader(bothTar.Bytes()),
 		"Content-Type", "application/x-tar")
 
 	// Missing tuf directory
 	noTufTar := tarBuffer(t, map[string]string{
 		"ostree_repo/config": "[core]\n",
 	})
-	data := tc.POST("/updates/ci/main/v-bad1", 400, bytes.NewReader(noTufTar.Bytes()),
+	data := tc.POST("/updates/main/v-bad1", 400, bytes.NewReader(noTufTar.Bytes()),
 		"Content-Type", "application/x-tar")
 	assert.Contains(t, string(data), "invalid update archive")
 
@@ -1450,7 +1425,7 @@ func TestApiUpdateCreate(t *testing.T) {
 	noContentTar := tarBuffer(t, map[string]string{
 		"tuf/root.json": `{"signed":{}}`,
 	})
-	data = tc.POST("/updates/ci/main/v-bad2", 400, bytes.NewReader(noContentTar.Bytes()),
+	data = tc.POST("/updates/main/v-bad2", 400, bytes.NewReader(noContentTar.Bytes()),
 		"Content-Type", "application/x-tar")
 	assert.Contains(t, string(data), "invalid update archive")
 
@@ -1460,7 +1435,7 @@ func TestApiUpdateCreate(t *testing.T) {
 		"tuf/targets.json":   validTargets,
 		"ostree_repo/config": "[core]\n",
 	}))
-	tc.POST("/updates/ci/main/v4.0", 201, bytes.NewReader(gzTar.Bytes()),
+	tc.POST("/updates/main/v4.0", 201, bytes.NewReader(gzTar.Bytes()),
 		"Content-Type", "application/gzip")
 	_, err = os.ReadFile(filepath.Join(updatesDir, "main", "v4.0", "tuf", "root.json"))
 	require.NoError(t, err)
@@ -1471,18 +1446,18 @@ func TestApiUpdateCreate(t *testing.T) {
 		"tuf/targets.json":   validTargets,
 		"ostree_repo/config": "[core]\n",
 	}))
-	tc.POST("/updates/ci/main/v5.0", 201, bytes.NewReader(gzTar2.Bytes()),
+	tc.POST("/updates/main/v5.0", 201, bytes.NewReader(gzTar2.Bytes()),
 		"Content-Type", "application/x-tar",
 		"Content-Encoding", "gzip")
 	_, err = os.ReadFile(filepath.Join(updatesDir, "main", "v5.0", "tuf", "root.json"))
 	require.NoError(t, err)
 
 	// Invalid gzip stream
-	tc.POST("/updates/ci/main/v-bad3", 500, strings.NewReader("not-gzip-data"),
+	tc.POST("/updates/main/v-bad3", 500, strings.NewReader("not-gzip-data"),
 		"Content-Type", "application/gzip")
 
 	// Invalid update path params
-	tc.POST("/updates/ci/../../etc/v1.0", 404, bytes.NewReader(validTar.Bytes()),
+	tc.POST("/updates/../../etc/v1.0", 404, bytes.NewReader(validTar.Bytes()),
 		"Content-Type", "application/x-tar")
 }
 

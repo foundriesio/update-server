@@ -19,19 +19,17 @@ type UpdateTufResp map[string]map[string]any
 // @Tags    Updates
 // @Accept  application/x-tar,application/gzip
 // @Success 201
-// @Param   prod path bool true "Whether the update is for production devices"
 // @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{prod}/{tag}/{update} [post]
+// @Router  /updates/{tag}/{update} [post]
 func (h handlers) updateCreate(c echo.Context) error {
 	tag := c.Param("tag")
 	update := c.Param("update")
-	isProd := CtxGetIsProd(c.Request().Context())
 
 	payload := c.Request().Body
 	defer payload.Close() //nolint:errcheck
 
-	if err := h.storage.CreateUpdate(tag, update, isProd, payload); err != nil {
+	if err := h.storage.CreateUpdate(tag, update, payload); err != nil {
 		if errors.Is(err, storage.ErrInvalidUpdate) {
 			return EchoError(c, err, http.StatusBadRequest, err.Error())
 		}
@@ -46,16 +44,14 @@ func (h handlers) updateCreate(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} UpdateTufResp
-// @Param   prod path bool true "Whether the update is for production devices"
 // @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{prod}/{tag}/{update}/rollouts [get]
+// @Router  /updates/{tag}/{update}/rollouts [get]
 func (h handlers) updateGetTuf(c echo.Context) error {
 	tag := c.Param("tag")
 	update := c.Param("update")
-	isProd := CtxGetIsProd(c.Request().Context())
 
-	metas, err := h.storage.GetUpdateTufMetadata(tag, update, isProd)
+	metas, err := h.storage.GetUpdateTufMetadata(tag, update)
 	if err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "failed to get update TUF metadata")
 	}
