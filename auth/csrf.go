@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"net/http"
@@ -62,6 +63,22 @@ func CsrfCheck(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.String(http.StatusForbidden, "CSRF token mismatch")
 		}
 
+		ctx := context.WithValue(c.Request().Context(), ctxKeyCsrfToken, cookie)
+		c.SetRequest(c.Request().WithContext(ctx))
+
 		return next(c)
 	}
 }
+
+// PassCsrfCookie transfer CSRF cookie from web request to API request.
+// A CSRF token must be validated by the CsrfCheck middleware before this is possible.
+func PassCsrfCookie(ctx context.Context, req *http.Request) {
+	if cookie, ok := ctx.Value(ctxKeyCsrfToken).(*http.Cookie); ok {
+		req.AddCookie(cookie)
+		req.Header.Set(CsrfHeaderName, cookie.Value)
+	}
+}
+
+type ctxKey int
+
+const ctxKeyCsrfToken ctxKey = iota

@@ -1,48 +1,112 @@
 {{ define "configs-item-files" }}
       <h4>Files:</h4>
+      {{ with .Configs.Files }}
       <table class="striped">
          <tbody>
-           {{ range $name, $val := . }}
+           {{ range $name, $_ := . }}
            <tr>
-             <td style="min-width: 20em;">{{ $name }}</td>
+             <td style="min-width: 20em;" name="FileName">{{ $name }}</td>
              <td style="min-width: 5em; text-align: right;">
-               {{ if gt (len $val.OnChanged) 0 }}
-               <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range $val.OnChanged }}&#xa;{{.}}{{ end }}"></i>
+               {{ if gt (len .OnChanged) 0 }}
+               <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range .OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
-               {{ if $val.Unencrypted }}
-               <i class="icontip floppy" aria-label="View file content"
-		  onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
+               {{ if .Unencrypted }}
+               <i class="icontip gear" aria-label="View{{ if $.CanEdit }} or edit{{ end }} file content"
+                  onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
                <dialog class="file-content">
                  <article>
                    <header>
-                     <h3>File "{{ $name }}" content:</h3>
+                     <h3>File "<span>{{ $name }}</span>"</h3>
                      <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">x</button>
                    </header>
-                   <p>{{ $val.Value }}</p>
-                   <button autofocus onclick="this.closest('dialog').close()">Close</button>
+                   <section>
+                     {{ if gt (len .OnChanged) 0 }}
+                     <label><b>On Change Handlers:</b></label>
+                     <ul>
+                       {{ range .OnChanged }}
+                       <li>{{ . }}</li>
+                       {{ end }}
+                     </ul>
+                     {{ end }}
+                     <label><b>Content:</b></label>
+                     <p name="Value">{{ .Value }}</p>
+                   </section>
+                   <footer>
+                     {{ if $.CanEdit }}
+                     <button name="EditFile">Edit</button>
+                     {{ end }}
+                     <button autofocus onclick="this.closest('dialog').close()">Close</button>
+                   </footer>
                  </article>
                </dialog>
                {{ else }}
                <i class="icontip lock-closed" aria-label="File content is encrypted"></i>
+               {{ end }}
+               {{ if $.CanEdit }}
+               <i class="icontip" aria-label="Delete file"><i class="trash" style="transform: translateY(0.1em)"></i></i>
                {{ end }}
              </td>
            </tr>
            {{ end }}
          </tbody>
       </table>
+      {{ end }}
+      {{ if .CanEdit }}
+        {{ template "configs-item-edit-dialog" $ }}
+        <script type="module">
+            document.querySelectorAll('td i.trash').forEach( el => {
+            el.addEventListener('click', ev => {
+              const fileName = el.closest('tr').querySelector('td[name="FileName"]').textContent.trim();
+              const reason = window.prompt(`Are you sure to delete config file "${fileName}"?\nThis action cannot be reverted.\n\nReason:`, '');
+              if (reason === null) {
+                // Action cancelled
+                return
+              }
+              {{/* Reuse config from configs-item-edit-dialog */}}
+              fetch(window.EditConfigsFileConfig.apiUrl, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  'FileName': fileName,
+                  'Reason': reason,
+                }),
+              })
+              .then(async response => {
+                if (response.ok) {
+                  location.reload(); // refresh the page to get updated data.
+                } else {
+                  const errorText = await response.text();
+                  alert('Error deleting config file: ' + errorText);
+                }
+              })
+              .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting config file: ' + error.message);
+              });
+            });
+          });
+        </script>
+      {{ end }}
 {{ end }}
 
 {{ define "configs-item" }}
+      {{ with .Configs }}
       <p><b>Reason:</b> {{.Reason}}</p>
       <p><b>Created At:</b> {{tsToString .CreatedAt}}</p>
       <p><b>Created By:</b> {{.CreatedBy}}</p>
-      {{ template "configs-item-files" .Files }}
+      {{ template "configs-item-files" $ }}
+      {{ end }}
 {{ end}}
 
 {{ template "header" .}}
     <section class="content-section">
       <h2>{{.Title}}</h2>
-      {{ template "configs-item" .Configs }}
+      {{ template "configs-item" . }}
+      {{ if .CanEdit }}
+      <button name="AddFile">Add</button>
+      {{ end }}
       <button onclick="location.href=location.pathname+'/history'">History</button>
     </section>
 {{ template "footer"}}

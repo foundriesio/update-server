@@ -162,21 +162,25 @@ i.password-reset {
 
 i.lock-closed::before {
   content: "\1F512";
+  display: inline-block;
   filter: grayscale(100%) contrast(200%) brightness(60%);
+  transform: translateX(0.15rem) translateY(-0.15rem);
   font-style: normal;
   font-size: 1.2rem;
   line-height: 1rem;
 }
 
-i.floppy::before {
-  content: "\1F4BE";
+i.gear::before {
+  content: "\2699";
+  font-size: 1.3rem;
+  line-height: 1rem;
   font-style: normal;
 }
 
 i.ocr-fork::before {
   content: "\2442";
   display: inline-block;
-  transform: rotate(90deg);
+  transform: translateY(0.1rem) rotate(90deg);
   font-style: normal;
   font-weight: bold;
   font-size: 1.3rem;
@@ -220,25 +224,38 @@ dialog.file-content {
   text-align: left;
 }
 
-dialog.file-content header {
+dialog.file-content > article > header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
 }
 
-dialog.file-content article > button:last-child {
-  display: block;
-  margin-left: auto;
+dialog.file-content > article > footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
 }
 
-dialog.file-content p {
-  white-space: pre;
+dialog.file-content > article > footer > button:last-child {
+  margin-left: auto; /* push to the right */
+}
+
+dialog.file-content > article > section {
   width: fit-content;
   height: fit-content;
   max-height: min(60em, 70vh);
   max-width: min(80em, 80vw);
   overflow: scroll;
+}
+
+dialog.file-content > article > section > p {
+  white-space: pre;
+  margin-left: 0.5rem;
+}
+
+dialog.file-content > article > section > ul {
+  padding-left: 1.5rem;
 }
 
 .hidden {
