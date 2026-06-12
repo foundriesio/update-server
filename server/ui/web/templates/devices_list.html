@@ -65,7 +65,6 @@
               {{ end }}
             </td>
             <td>
-              {{ if .IsProd}}<i class="check" title="Production device"></i>{{ end }}
               {{ if $.CanDelete }}<i class="trash" title="Delete device" onclick="showDeleteDialog('{{.Uuid}}', '{{.Labels.name}}')"></i>{{ end }}
             </td>
           </tr>
