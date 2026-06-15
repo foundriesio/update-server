@@ -19,13 +19,14 @@ import (
 
 const (
 	// Global files/dirs
-	AuditDir   = "audit"
-	AuthDir    = "auth"
-	CertsDir   = "certs"
-	ConfigsDir = "configs"
-	DbFile     = "db.sqlite"
-	DevicesDir = "devices"
-	UpdatesDir = "updates"
+	AuditDir     = "audit"
+	AuthDir      = "auth"
+	CertsDir     = "certs"
+	ConfigsDir   = "configs"
+	DbFile       = "db.sqlite"
+	DevicesDir   = "devices"
+	GlobalTufDir = "tuf"
+	UpdatesDir   = "updates"
 
 	partialFileSuffix  = "..part"
 	rolloutJournalFile = "rollouts.journal"
@@ -115,6 +116,10 @@ func (c FsConfig) UpdatesDir() string {
 	return filepath.Join(string(c), UpdatesDir)
 }
 
+func (c FsConfig) TufDir() string {
+	return filepath.Join(string(c), GlobalTufDir)
+}
+
 type FsHandle struct {
 	Config FsConfig
 
@@ -123,6 +128,7 @@ type FsHandle struct {
 	Certs   CertsFsHandle
 	Configs ConfigsFsHandle
 	Devices DevicesFsHandle
+	Tuf     TufFsHandle
 	Updates updatesFsHandleWrap
 }
 
@@ -133,6 +139,7 @@ func NewFs(root string) (*FsHandle, error) {
 	fs.Certs.root = fs.Config.CertsDir()
 	fs.Configs.root = fs.Config.ConfigsDir()
 	fs.Devices.root = fs.Config.DevicesDir()
+	fs.Tuf.root = fs.Config.TufDir()
 	fs.Updates.init(fs.Config.UpdatesDir())
 
 	for _, h := range []baseFsHandle{
@@ -141,6 +148,7 @@ func NewFs(root string) (*FsHandle, error) {
 		fs.Certs.baseFsHandle,
 		fs.Configs.baseFsHandle,
 		fs.Devices.baseFsHandle,
+		fs.Tuf.baseFsHandle,
 		fs.Updates.baseFsHandle,
 	} {
 		if err := h.mkdirs(defaultDirAccess, true); err != nil {
