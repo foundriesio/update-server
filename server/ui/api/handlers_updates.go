@@ -46,7 +46,7 @@ func (h handlers) updateCreate(c echo.Context) error {
 // @Success 200 {object} UpdateTufResp
 // @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/rollouts [get]
+// @Router  /updates/{tag}/{update}/tuf [get]
 func (h handlers) updateGetTuf(c echo.Context) error {
 	tag := c.Param("tag")
 	update := c.Param("update")
