@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/api"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/api"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

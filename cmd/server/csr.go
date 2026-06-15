@@ -12,7 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/storage"
 )
 
 type CsrCmd struct {

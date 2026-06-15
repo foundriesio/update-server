@@ -2,7 +2,7 @@
 
 ## Producing and Serving Update Content
 
-The satellite server uses a specific file hierarchy for serving update
+The update server uses a specific file hierarchy for serving update
 content:
 
 ```
@@ -14,9 +14,9 @@ content:
 
 The contents of the `update` directory above are the *exact* contents
 of what `fioctl targets offline-update` produces. Let's say we want to
-deploy a CI build to some devices connected to our satellite server.
+deploy a CI build to some devices connected to our server.
 The Target is tagged with `main` and is named `intel-corei7-64-lmp-148`.
-The content can be staged on the satellite server by running:
+The content can be staged on the server by running:
 
 ```
   cd <datadir>
@@ -46,7 +46,7 @@ Create a rollout named "first-try"
 
 ### CLI
 
-Use the `satcli updates create-rollout` command.
+Use the `fiocli updates create-rollout` command.
 
 ### Web
 

@@ -24,11 +24,11 @@ Choose and configure the option that best fits your needs:
 
 ## Configuring Google SSO
 
-Assume your satellite server is hosted at `dg.example.com`. First go
+Assume your update server is hosted at `dg.example.com`. First go
 to the [GCP OAuth2 Clients](https://console.cloud.google.com/auth/clients)
 page. Click on "Create client". You'll be prompted for
 the "Application type"—select `Web application` from the drop-down menu.
-Next, give it a name like "Foundries Satellite Server".
+Next, give it a name like "Foundries Update Server".
 
 Set the "Authorized JavaScript Origins" to a single entry:
 `https://dg.example.com`.
@@ -53,11 +53,11 @@ and set the values:
 
 ## Configuring GitHub SSO
 
-Assume your satellite server is hosted at `dg.example.com`. First go
+Assume your update server is hosted at `dg.example.com`. First go
 to the GitHub [Developer Settings](https://github.com/settings/apps) page.
 From here, select the "OAuth Apps" option from the sidebar, and click the
 "New OAuth App" button. The "Application name" should be something descriptive
-for you like "Foundries Satellite Server". The URL does not matter, but could
+for you like "Foundries Update Server". The URL does not matter, but could
 be `https://dg.example.com` for this example. The "Authorization callback URL"
 is critical and must be in the form of `https://dg.example.com/auth/callback`.
 
@@ -94,7 +94,7 @@ and set these optional values:
 You will need to define the initial user by running:
 
 ```
-  ./dg-sat user-add --username <initial user name> --password <password>
+  ./fioserver user-add --username <initial user name> --password <password>
 ```
 
 ## Configuring Authentication Rate Limits

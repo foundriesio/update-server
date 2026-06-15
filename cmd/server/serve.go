@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/server"
-	"github.com/foundriesio/dg-satellite/server/gateway"
-	"github.com/foundriesio/dg-satellite/server/ui"
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/server"
+	"github.com/foundriesio/update-server/server/gateway"
+	"github.com/foundriesio/update-server/server/ui"
+	"github.com/foundriesio/update-server/storage"
 )
 
 type ServeCmd struct {

@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/storage"
 )
 
 type User struct {

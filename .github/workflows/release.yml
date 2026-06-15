@@ -31,14 +31,14 @@ jobs:
           go-version: "1.24"
       - name: Build binary
         run: |
-          make dg-sat
-          mv bin/dg-sat bin/dg-sat-linux-${{ matrix.arch }}
+          make fioserver
+          mv bin/fioserver bin/fioserver-linux-${{ matrix.arch }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v5
         with:
-          name: dg-sat-linux-${{ matrix.arch }}
-          path: bin/dg-sat-linux-${{ matrix.arch }}
+          name: fioserver-linux-${{ matrix.arch }}
+          path: bin/fioserver-linux-${{ matrix.arch }}
 
   build-cli:
     name: Build CLI
@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: cli-binaries
-          path: bin/satcli-*
+          path: bin/fiocli-*
 
   build-swagger:
     name: Build Swagger docs
@@ -107,7 +107,7 @@ jobs:
         run: |
           mkdir -p release
 
-          cp artifacts/dg-sat-* artifacts/satcli-* release/
+          cp artifacts/fioserver-* artifacts/fiocli-* release/
           cp artifacts/api/* release/
           cp artifacts/gateway/* release/
 

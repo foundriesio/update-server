@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/foundriesio/dg-satellite/cli/api"
+	"github.com/foundriesio/update-server/cli/api"
 )
 
 var logCmd = &cobra.Command{

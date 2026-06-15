@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/foundriesio/dg-satellite/cli/config"
+	"github.com/foundriesio/update-server/cli/config"
 )
 
 type Api struct {

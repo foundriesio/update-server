@@ -16,6 +16,6 @@
     "ClientID": "Your-Oauth2-ID",
     "ClientSecret": "Your-Oauth2-Secret",
     "AllowedOrgs": ["Your", "GitHub", "Orgs"],
-    "BaseUrl": "Your-Satellite-Site-URL"
+    "BaseUrl": "Your-UpdateServer-Site-URL"
   }
 }

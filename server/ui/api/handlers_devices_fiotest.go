@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/foundriesio/dg-satellite/server"
-	storage "github.com/foundriesio/dg-satellite/storage/api"
+	"github.com/foundriesio/update-server/server"
+	storage "github.com/foundriesio/update-server/storage/api"
 	"github.com/labstack/echo/v4"
 )
 

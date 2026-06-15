@@ -9,14 +9,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/foundriesio/dg-satellite/cli/api"
-	"github.com/foundriesio/dg-satellite/cli/subcommands"
+	"github.com/foundriesio/update-server/cli/api"
+	"github.com/foundriesio/update-server/cli/subcommands"
 )
 
 var createCmd = &cobra.Command{
 	Use:   "upload <ci|prod> <tag> <update-name> <directory>",
 	Short: "Upload an offline update",
-	Long:  `Create an update on Satellite server by uploading the offline update found in the directory.`,
+	Long:  `Create an update on Update server by uploading the offline update found in the directory.`,
 	Args:  cobra.ExactArgs(4),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := api.CtxGetApi(cmd.Context())

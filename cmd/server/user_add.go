@@ -10,9 +10,9 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/foundriesio/dg-satellite/auth"
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 type UserAddCmd struct {

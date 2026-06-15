@@ -9,7 +9,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/storage"
 )
 
 func (d *Device) TestCreate(targetName string, testName, testId string) error {

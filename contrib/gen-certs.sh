@@ -46,7 +46,7 @@ echo "Hostname: $HOSTNAME"
 
 echo "## Generating TLS CSR"
 cd ${DG_DIR}
-go run github.com/foundriesio/dg-satellite/cmd/server --datadir ${DATA_DIR} create-csr --dnsname ${HOSTNAME} --factory ${FACTORY}
+go run github.com/foundriesio/update-server/cmd/server --datadir ${DATA_DIR} create-csr --dnsname ${HOSTNAME} --factory ${FACTORY}
 
 cd ${DATA_DIR}/certs
 
@@ -115,4 +115,4 @@ done
 echo
 echo "## Generate TLS cert"
 cd ${DG_DIR}
-go run github.com/foundriesio/dg-satellite/cmd/server --datadir ${DATA_DIR} sign-csr --cakey ${DATA_DIR}/certs/factory_ca.key --cacert ${DATA_DIR}/certs/factory_ca.pem
+go run github.com/foundriesio/update-server/cmd/server --datadir ${DATA_DIR} sign-csr --cakey ${DATA_DIR}/certs/factory_ca.key --cacert ${DATA_DIR}/certs/factory_ca.pem

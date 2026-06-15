@@ -21,7 +21,7 @@ jobs:
 
       - name: Build and test devshell
         run: |
-          ./contrib/dev-shell go run github.com/foundriesio/dg-satellite/cmd/server --help
+          ./contrib/dev-shell go run github.com/foundriesio/update-server/cmd/server --help
 
       - name: Build compose image(s)
         run: |

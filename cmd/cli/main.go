@@ -7,21 +7,21 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/foundriesio/dg-satellite/cli/api"
-	"github.com/foundriesio/dg-satellite/cli/config"
-	"github.com/foundriesio/dg-satellite/cli/subcommands/configs"
-	"github.com/foundriesio/dg-satellite/cli/subcommands/devices"
-	"github.com/foundriesio/dg-satellite/cli/subcommands/login"
-	"github.com/foundriesio/dg-satellite/cli/subcommands/updates"
-	"github.com/foundriesio/dg-satellite/version"
+	"github.com/foundriesio/update-server/cli/api"
+	"github.com/foundriesio/update-server/cli/config"
+	"github.com/foundriesio/update-server/cli/subcommands/configs"
+	"github.com/foundriesio/update-server/cli/subcommands/devices"
+	"github.com/foundriesio/update-server/cli/subcommands/login"
+	"github.com/foundriesio/update-server/cli/subcommands/updates"
+	"github.com/foundriesio/update-server/version"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "satcli",
-	Short: "A command line interface to the Satellite Server",
-	Long: `satcli is a command-line interface for managing devices, updates,
-and other resources on a Satellite server.
+	Use:   "fiocli",
+	Short: "A command line interface to the Foundries Update Server",
+	Long: `fiocli is a command-line interface for managing devices, updates,
+and other resources on a Foundries Update server.
 
 Configuration is stored in $HOME/.config/satcli.yaml`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

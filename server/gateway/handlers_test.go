@@ -27,11 +27,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/foundriesio/dg-satellite/clock"
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/server"
-	baseStorage "github.com/foundriesio/dg-satellite/storage"
-	storage "github.com/foundriesio/dg-satellite/storage/gateway"
+	"github.com/foundriesio/update-server/clock"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/server"
+	baseStorage "github.com/foundriesio/update-server/storage"
+	storage "github.com/foundriesio/update-server/storage/gateway"
 )
 
 type testClient struct {

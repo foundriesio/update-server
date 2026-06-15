@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/storage"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )

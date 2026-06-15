@@ -13,9 +13,9 @@ RUN go mod download
 COPY . .
 RUN go build \
     --ldflags '-linkmode external -extldflags "-static"' \
-    -o dg-satellite \
-    github.com/foundriesio/dg-satellite/cmd/server
+    -o fioserver \
+    github.com/foundriesio/update-server/cmd/server
 
 FROM gcr.io/distroless/static-debian12
-COPY --from=builder /src/dg-satellite /usr/local/bin/
-ENTRYPOINT ["/usr/local/bin/dg-satellite"]
+COPY --from=builder /src/fioserver /usr/local/bin/
+ENTRYPOINT ["/usr/local/bin/fioserver"]

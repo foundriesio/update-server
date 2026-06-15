@@ -13,12 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/server/ui/web/templates"
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/server/ui/web/templates"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/oauth2"
 )
+
+const oauthStateCookie = "fioserver-oauthstate"
 
 type authConfigOauth2 struct {
 	ClientID     string
@@ -104,7 +106,7 @@ func (p oauth2BaseProvider) handleLogin(c echo.Context) error {
 }
 
 func (p oauth2BaseProvider) handleOauthCallback(c echo.Context) error {
-	oauthState, err := c.Cookie("dg-oauthstate")
+	oauthState, err := c.Cookie(oauthStateCookie)
 	if err != nil {
 		return c.String(http.StatusBadRequest, "Could not read oauth cookie")
 	}
@@ -159,7 +161,7 @@ func generateStateOauthCookie(c echo.Context) string {
 	expiration := time.Now().Add(1 * time.Hour)
 	state := rand.Text()
 	c.SetCookie(&http.Cookie{
-		Name:     "dg-oauthstate",
+		Name:     oauthStateCookie,
 		Value:    state,
 		Expires:  expiration,
 		HttpOnly: true,

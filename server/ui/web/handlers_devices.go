@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/foundriesio/dg-satellite/context"
-	"github.com/foundriesio/dg-satellite/server/ui/api"
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/server/ui/api"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
 )
 

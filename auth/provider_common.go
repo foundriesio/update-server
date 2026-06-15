@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/foundriesio/dg-satellite/server"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/server"
+	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
 )
 

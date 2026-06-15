@@ -7,7 +7,7 @@
     <meta name="color-scheme" content="light dark">
     {{ if .CsrfToken }}<meta name="csrf-token" content="{{.CsrfToken}}">{{ end }}
 
-    <title>{{.Title}} - Satellite Server</title>
+    <title>{{.Title}} - Update Server</title>
 
     <link rel="stylesheet" href="/css/pico_min_211.css">
     <link rel="stylesheet" href="/css/style.css">
@@ -34,10 +34,10 @@
   <body>
     <nav id="topbar">
       <div class="container">
-        <strong class="brand">Satellite Server</strong>
+        <strong class="brand">Foundries Update Server</strong>
 
         <div style="display: flex; align-items: center; gap: 1rem;">
-        <a href="https://github.com/foundriesio/dg-satellite/blob/main/README.md" style="color: white; text-decoration: none;">Docs</a>
+        <a href="https://github.com/foundriesio/update-server/blob/main/README.md" style="color: white; text-decoration: none;">Docs</a>
 
         {{ if .User }}
         <details class="dropdown">
@@ -65,7 +65,7 @@
     {{ end }}
 
     <main class="container">
-    
+
 {{end}}
 
 {{define "footer"}}

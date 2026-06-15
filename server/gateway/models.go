@@ -4,7 +4,7 @@
 package gateway
 
 import (
-	storage "github.com/foundriesio/dg-satellite/storage/gateway"
+	storage "github.com/foundriesio/update-server/storage/gateway"
 )
 
 type (

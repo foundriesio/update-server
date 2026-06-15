@@ -10,25 +10,25 @@ project source code mounted.
 
 ## docker-compose.yml
 
-This compose project will launch a satellite server that devices can
+This compose project will launch an update server that devices can
 communicate with. In order to use this you must first:
 ```
- $ go run github.com/foundriesio/dg-satellite/cmd/server create-csr \
+ $ go run github.com/foundriesio/update-server/cmd/server create-csr \
      --datadir .compose-server-data \
      --dnsname <HOSTNAME> --factory <FACTORY>
- $ go run github.com/foundriesio/dg-satellite/cmd/server \
+ $ go run github.com/foundriesio/update-server/cmd/server \
     --datadir .compose-server-data sign-csr \
     --cakey <PATH TO FACTORY PKI>/factory_ca.key \
     --cacert <PATH TO FACTORY PKI>/factory_ca.pem
  $ fioctl keys ca show --just-device-cas > .compose-server-data/certs/cas.pem
- 
- $ go run github.com/foundriesio/dg-satellite/cmd/server \
+
+ $ go run github.com/foundriesio/update-server/cmd/server \
     --datadir .compose-server-data auth-init
 ```
 
 ## gen-certs.sh / fake-device.py
 
-`gen-certs.sh` creates minimal fake data to stand up a satellite server and
+`gen-certs.sh` creates minimal fake data to stand up an update server and
 have fake-devices connect to it.
 
 `fake-device.py` is a simple script to issue HTTP requests against the server.
@@ -36,7 +36,7 @@ have fake-devices connect to it.
 Example:
 ```
  $ ./contrib/gen-certs /tmp/server
- $  go run github.com/foundriesio/dg-satellite/cmd/server serve --datadir /tmp/server
+ $  go run github.com/foundriesio/update-server/cmd/server serve --datadir /tmp/server
 
  # From another terminal:
  ./contrib/fake-device.py -d /tmp/server/fake-devices/device-1 /device

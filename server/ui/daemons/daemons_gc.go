@@ -6,7 +6,7 @@ package daemons
 import (
 	"time"
 
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 func userGcDaemonFunc(users *users.Storage) daemonFunc {

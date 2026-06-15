@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/foundriesio/dg-satellite/storage"
-	"github.com/foundriesio/dg-satellite/storage/gateway"
-	storageTesting "github.com/foundriesio/dg-satellite/storage/testing"
+	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/gateway"
+	storageTesting "github.com/foundriesio/update-server/storage/testing"
 )
 
 func TestStorage(t *testing.T) {

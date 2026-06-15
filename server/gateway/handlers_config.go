@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	toml "github.com/pelletier/go-toml"
 
-	storage "github.com/foundriesio/dg-satellite/storage/gateway"
+	storage "github.com/foundriesio/update-server/storage/gateway"
 )
 
 type ConfigFile = storage.ConfigFile

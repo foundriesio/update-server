@@ -7,8 +7,8 @@ import (
 	"context"
 	"time"
 
-	storage "github.com/foundriesio/dg-satellite/storage/api"
-	"github.com/foundriesio/dg-satellite/storage/users"
+	storage "github.com/foundriesio/update-server/storage/api"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 type daemonFunc func(stop chan bool)

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/server"
-	"github.com/foundriesio/dg-satellite/storage"
+	"github.com/foundriesio/update-server/server"
+	"github.com/foundriesio/update-server/storage"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/time/rate"
 )

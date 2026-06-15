@@ -9,7 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	storage "github.com/foundriesio/dg-satellite/storage/gateway"
+	storage "github.com/foundriesio/update-server/storage/gateway"
 )
 
 // @Summary Set aktualizr-lites's running configuration

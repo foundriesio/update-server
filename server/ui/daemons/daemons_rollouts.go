@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/foundriesio/dg-satellite/context"
+	"github.com/foundriesio/update-server/context"
 )
 
 // WithRolloverInterval sets the rollout rollover interval

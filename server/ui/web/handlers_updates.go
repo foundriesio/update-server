@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/foundriesio/dg-satellite/server/ui/api"
+	"github.com/foundriesio/update-server/server/ui/api"
 	"github.com/labstack/echo/v4"
 )
 

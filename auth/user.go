@@ -6,7 +6,7 @@ package auth
 import (
 	"net/http"
 
-	"github.com/foundriesio/dg-satellite/storage/users"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 type User interface {

@@ -7,12 +7,12 @@ need access to your [Factory CA](https://docs.foundries.io/latest/reference-manu
 in order to create a TLS certificate for device-facing APIs.
 
 ## Install
-Download the latest satellite server from:
+Download the latest update server from:
 
- <https://github.com/foundriesio/dg-satellite/releases>
+ <https://github.com/foundriesio/update-server/releases>
 
-Save as `dg-sat`.
-For Linux and Mac, make sure to `chmod +x dg-sat`.
+Save as `fioserver`.
+For Linux and Mac, make sure to `chmod +x fioserver`.
 
 ## Configure Mutual TLS
 
@@ -23,7 +23,7 @@ order to do this, you must create a CSR to be signed with the Factory
 root key:
 
 ```
-  ./dg-sat --datadir=./datadir create-csr --dnsname <HOSTNAME> --factory <FACTORY>
+  ./fioserver --datadir=./datadir create-csr --dnsname <HOSTNAME> --factory <FACTORY>
 ```
 
 ### Sign the Request
@@ -37,7 +37,7 @@ needed. From the factory PKI directory run:
 ```
 
 This command will print the contents of the certificate. The contents are
-not sensitive. Go back to the satellite server system and create the
+not sensitive. Go back to the update server system and create the
 file `datadir/certs/tls.pem` with this content.
 
 ### Grant Access to Devices
@@ -50,19 +50,19 @@ all valid factory devices to connect with:
 
 ## Configure User Authentication
 
-The satellite server includes a few [authentication providers](../auth)
+The update server includes a few [authentication providers](../auth)
 for user-facing APIs. The "noauth" provider is handy for starting up a
 quick local environment for testing and evaluation. Running
 `auth-init --test` will setup an HMAC encryption key for API
 tokens and web sessions, as well as the "noauth" provider.
 
 ```
-  ./dg-sat --datadir=./datadir auth-init --test
+  ./fioserver --datadir=./datadir auth-init --test
 ```
 
 ## Run the Server
 
-`./dg-sat serve --datadir=datadir`
+`./fioserv serve --datadir=datadir`
 
 You can browse the UI at <http://localhost:8080/>
 
