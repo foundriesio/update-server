@@ -27,7 +27,7 @@ func TestStorage(t *testing.T) {
 	fs, err := storage.NewFs(tmpdir)
 	require.Nil(t, err)
 
-	s, err := NewStorage(db, fs)
+	s, err := NewStorage(db, fs, nil)
 	require.Nil(t, err)
 
 	dg, err := gateway.NewStorage(db, fs)
@@ -92,7 +92,7 @@ func TestDeviceDelete(t *testing.T) {
 	fs, err := storage.NewFs(tmpdir)
 	require.Nil(t, err)
 
-	s, err := NewStorage(db, fs)
+	s, err := NewStorage(db, fs, nil)
 	require.Nil(t, err)
 
 	dg, err := gateway.NewStorage(db, fs)
@@ -130,7 +130,7 @@ func TestUploadConfigs(t *testing.T) {
 	require.Nil(t, err)
 	fs, err := storage.NewFs(tmpdir)
 	require.Nil(t, err)
-	s, err := NewStorage(db, fs)
+	s, err := NewStorage(db, fs, nil)
 	require.Nil(t, err)
 
 	createTar := storageTesting.CreateTarBuffer

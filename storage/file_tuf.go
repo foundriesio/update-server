@@ -40,6 +40,81 @@ const (
 
 // TUF data structures matching the fioctl/FoundriesIO ATS format.
 
+// TufTargetHashes holds content hashes for a target file.
+type TufTargetHashes struct {
+	Sha256 string `json:"sha256,omitempty"`
+}
+
+type ComposeApp struct {
+	Uri string `json:"uri"`
+}
+
+// TufTargetCustom holds the custom metadata embedded in each target entry.
+type TufTargetCustom struct {
+	Tags         []string              `json:"tags,omitempty"`
+	HardwareIds  []string              `json:"hardwareIds,omitempty"`
+	Name         string                `json:"name,omitempty"`
+	Version      string                `json:"version,omitempty"`
+	TargetFormat string                `json:"targetFormat,omitempty"`
+	Uri          string                `json:"uri,omitempty"`
+	CreatedAt    string                `json:"createdAt,omitempty"`
+	ComposeApps  map[string]ComposeApp `json:"docker_compose_apps,omitempty"`
+}
+
+// TufTargetMeta is the per-target entry in targets.json.
+type TufTargetMeta struct {
+	Length int64            `json:"length"`
+	Hashes TufTargetHashes  `json:"hashes"`
+	Custom *TufTargetCustom `json:"custom,omitempty"`
+}
+
+// TufTargetsMeta is the signed portion of targets.json.
+type TufTargetsMeta struct {
+	Type    string                   `json:"_type"`
+	Expires time.Time                `json:"expires"`
+	Version int                      `json:"version"`
+	Targets map[string]TufTargetMeta `json:"targets"`
+}
+
+// TufTargets is the full targets.json structure.
+type TufTargets struct {
+	Signatures []TufSignature `json:"signatures"`
+	Signed     TufTargetsMeta `json:"signed"`
+}
+
+// TufMetaRef is a reference to another metadata file used in snapshot/timestamp.
+type TufMetaRef struct {
+	Version int `json:"version"`
+}
+
+// TufSnapshotMeta is the signed portion of snapshot.json.
+type TufSnapshotMeta struct {
+	Type    string                `json:"_type"`
+	Expires time.Time             `json:"expires"`
+	Version int                   `json:"version"`
+	Meta    map[string]TufMetaRef `json:"meta"`
+}
+
+// TufSnapshot is the full snapshot.json structure.
+type TufSnapshot struct {
+	Signatures []TufSignature  `json:"signatures"`
+	Signed     TufSnapshotMeta `json:"signed"`
+}
+
+// TufTimestampMeta is the signed portion of timestamp.json.
+type TufTimestampMeta struct {
+	Type    string                `json:"_type"`
+	Expires time.Time             `json:"expires"`
+	Version int                   `json:"version"`
+	Meta    map[string]TufMetaRef `json:"meta"`
+}
+
+// TufTimestamp is the full timestamp.json structure.
+type TufTimestamp struct {
+	Signatures []TufSignature   `json:"signatures"`
+	Signed     TufTimestampMeta `json:"signed"`
+}
+
 type TufKeyVal struct {
 	Public  string `json:"public,omitempty"`
 	Private string `json:"private,omitempty"`
@@ -384,4 +459,130 @@ func (h *TufFsHandle) GetRoots() ([]*TufRoot, error) {
 		result = append(result, &root)
 	}
 	return result, nil
+}
+
+// signMeta signs an arbitrary signed metadata struct and returns the TufSignature.
+func (h *TufFsHandle) signMeta(signed any, priv ed25519.PrivateKey) (TufSignature, error) {
+	pub := priv.Public().(ed25519.PublicKey)
+	keyID, err := tufKeyID(pub)
+	if err != nil {
+		return TufSignature{}, err
+	}
+	data, err := json.Marshal(signed)
+	if err != nil {
+		return TufSignature{}, fmt.Errorf("marshaling metadata: %w", err)
+	}
+	return TufSignature{
+		KeyID:  keyID,
+		Method: tufSigMethodEd25519,
+		Sig:    hex.EncodeToString(ed25519.Sign(priv, data)),
+	}, nil
+}
+
+// ProcessUpdateTuf reads targets.json from the unpacked update directory, replaces its
+// signatures, and generates snapshot.json and timestamp.json. It also creates symlinks
+// for each versioned root.json file from the global TUF store into the update tuf directory.
+// The tufDir argument is the path to the update's tuf/ subdirectory.
+func (h *TufFsHandle) ProcessUpdateTuf(tufDir string) error {
+	// Read and parse the uploaded targets.json.
+	targetsPath := filepath.Join(tufDir, TufTargetsFile)
+	targetsData, err := os.ReadFile(targetsPath)
+	if err != nil {
+		return fmt.Errorf("reading targets.json: %w", err)
+	}
+	var targets TufTargets
+	if err = json.Unmarshal(targetsData, &targets); err != nil {
+		return fmt.Errorf("parsing targets.json: %w", err)
+	}
+
+	// Overwrite version and expiry, then re-sign with our targets key.
+	targets.Signed.Type = "Targets"
+	targets.Signed.Version = 1
+	targets.Signed.Expires = time.Now().Add(365 * 24 * time.Hour)
+	sig, err := h.signMeta(targets.Signed, h.TargetsKey)
+	if err != nil {
+		return fmt.Errorf("signing targets: %w", err)
+	}
+	targets.Signatures = []TufSignature{sig}
+
+	targetsJSON, err := json.MarshalIndent(targets, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling targets.json: %w", err)
+	}
+	if err = os.WriteFile(targetsPath, targetsJSON, defaultFileAccess); err != nil {
+		return fmt.Errorf("writing targets.json: %w", err)
+	}
+
+	// Determine current root version for snapshot metadata.
+	rootVer, err := h.GetRootJSON(0)
+	if err != nil {
+		return fmt.Errorf("getting latest root version: %w", err)
+	}
+	var rootMeta TufRoot
+	if err = json.Unmarshal([]byte(rootVer), &rootMeta); err != nil {
+		return fmt.Errorf("parsing root.json: %w", err)
+	}
+	currentRootVer := rootMeta.Signed.Version
+
+	// Build and sign snapshot.json.
+	snapshotMeta := TufSnapshotMeta{
+		Type:    "Snapshot",
+		Version: 1,
+		Expires: time.Now().Add(365 * 24 * time.Hour),
+		Meta: map[string]TufMetaRef{
+			TufTargetsFile: {Version: targets.Signed.Version},
+			TufRootFile:    {Version: currentRootVer},
+		},
+	}
+	snapshotSig, err := h.signMeta(snapshotMeta, h.SnapshotKey)
+	if err != nil {
+		return fmt.Errorf("signing snapshot: %w", err)
+	}
+	snapshot := TufSnapshot{Signatures: []TufSignature{snapshotSig}, Signed: snapshotMeta}
+	snapshotJSON, err := json.MarshalIndent(snapshot, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling snapshot.json: %w", err)
+	}
+	if err = os.WriteFile(filepath.Join(tufDir, TufSnapshotFile), snapshotJSON, defaultFileAccess); err != nil {
+		return fmt.Errorf("writing snapshot.json: %w", err)
+	}
+
+	// Build and sign timestamp.json.
+	timestampMeta := TufTimestampMeta{
+		Type:    "Timestamp",
+		Version: 1,
+		Expires: time.Now().Add(365 * 24 * time.Hour),
+		Meta: map[string]TufMetaRef{
+			TufSnapshotFile: {Version: snapshotMeta.Version},
+		},
+	}
+	timestampSig, err := h.signMeta(timestampMeta, h.TimestampKey)
+	if err != nil {
+		return fmt.Errorf("signing timestamp: %w", err)
+	}
+	timestamp := TufTimestamp{Signatures: []TufSignature{timestampSig}, Signed: timestampMeta}
+	timestampJSON, err := json.MarshalIndent(timestamp, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling timestamp.json: %w", err)
+	}
+	if err = os.WriteFile(filepath.Join(tufDir, TufTimestampFile), timestampJSON, defaultFileAccess); err != nil {
+		return fmt.Errorf("writing timestamp.json: %w", err)
+	}
+
+	// Symlink all versioned root.json files from the global TUF store into the update tuf dir.
+	files, err := h.matchFiles("", false)
+	if err != nil {
+		return fmt.Errorf("listing TUF root files: %w", err)
+	}
+	for _, f := range files {
+		if !strings.HasSuffix(f, ".root.json") {
+			continue
+		}
+		src := filepath.Join(h.root, f)
+		dst := filepath.Join(tufDir, f)
+		if err = os.Symlink(src, dst); err != nil && !errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("symlinking %s: %w", f, err)
+		}
+	}
+	return nil
 }

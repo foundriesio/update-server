@@ -81,7 +81,7 @@ func checkUpdateTargets(targetsPath, tag string) error {
 	return fmt.Errorf("no target with tag '%s' found in targets.json", tag)
 }
 
-func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, onCleanupFailure func(error), onCommit func() error) error {
+func (s updatesFsHandleWrap) SaveUpload(tag, update, uploadedBy string, tuf *TufFsHandle, payload io.Reader, onCleanupFailure func(error), onCommit func() error) error {
 	const (
 		appsDir   = UpdatesAppsDir + string(filepath.Separator)
 		ostreeDir = UpdatesOstreeDir + string(filepath.Separator)
@@ -116,9 +116,14 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, o
 						ErrInvalidUpdate, UpdatesOstreeDir, UpdatesAppsDir)
 				}
 
-				path := filepath.Join(root, txDir, "unpacked/tuf/targets.json")
-				if err := checkUpdateTargets(path, tag); err != nil {
+				unpackedTufDir := filepath.Join(root, txDir, "unpacked/tuf")
+				if err := checkUpdateTargets(filepath.Join(unpackedTufDir, "targets.json"), tag); err != nil {
 					return fmt.Errorf("%w: %v", ErrInvalidUpdate, err)
+				}
+				if tuf != nil {
+					if err := tuf.ProcessUpdateTuf(unpackedTufDir); err != nil {
+						return fmt.Errorf("processing TUF metadata: %w", err)
+					}
 				}
 				return nil
 			},

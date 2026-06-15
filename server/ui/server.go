@@ -31,7 +31,7 @@ func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, 
 	if err != nil {
 		return nil, fmt.Errorf("TUF not initialized: run 'tuf-init' first: %w", err)
 	}
-	strg, err := api.NewStorage(db, fs)
+	strg, err := api.NewStorage(db, fs, tuf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load %s storage: %w", serverName, err)
 	}

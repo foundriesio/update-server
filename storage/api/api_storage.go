@@ -119,8 +119,9 @@ type Rollout struct {
 }
 
 type Storage struct {
-	db *storage.DbHandle
-	fs *storage.FsHandle
+	db  *storage.DbHandle
+	fs  *storage.FsHandle
+	tuf *storage.TufFsHandle
 
 	stmtDeviceCount     stmtDeviceCount
 	stmtDeviceDelete    stmtDeviceDelete
@@ -195,8 +196,8 @@ func (d Device) AppsStates() ([]AppsStates, error) {
 	return states, nil
 }
 
-func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
-	handle := Storage{db: db, fs: fs}
+func NewStorage(db *storage.DbHandle, fs *storage.FsHandle, tuf *storage.TufFsHandle) (*Storage, error) {
+	handle := Storage{db: db, fs: fs, tuf: tuf}
 
 	if err := db.InitStmt(
 		&handle.stmtDeviceCount,
@@ -574,7 +575,7 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, payload io.Rea
 	commit := func() error {
 		return s.stmtUpdateInsert.run(tag, updateName, uploadedBy)
 	}
-	return s.fs.Updates.SaveUpload(tag, updateName, payload, cleanup, commit)
+	return s.fs.Updates.SaveUpload(tag, updateName, uploadedBy, s.tuf, payload, cleanup, commit)
 }
 
 type stmtDeviceGet storage.DbStmt

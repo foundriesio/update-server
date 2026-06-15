@@ -222,7 +222,7 @@ func NewTestClient(t *testing.T) *testClient {
 	require.Nil(t, err)
 	db, err := apiStorage.NewDb(filepath.Join(tmpDir, apiStorage.DbFile))
 	require.Nil(t, err)
-	apiS, err := apiStorage.NewStorage(db, fsS)
+	apiS, err := apiStorage.NewStorage(db, fsS, nil)
 	require.Nil(t, err)
 	gwS, err := gatewayStorage.NewStorage(db, fsS)
 	require.Nil(t, err)

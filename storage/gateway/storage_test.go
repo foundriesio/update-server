@@ -330,7 +330,7 @@ func Test_Fiotest(t *testing.T) {
 	require.Nil(t, d.TestComplete("test2-id", "FAILED", "details", results))
 
 	// A little lazy, but test the REST API code from here as well
-	api, err := api.NewStorage(db, fs)
+	api, err := api.NewStorage(db, fs, nil)
 	require.Nil(t, err)
 
 	apiD, err := api.DeviceGet(d.Uuid)
