@@ -32,6 +32,7 @@ type (
 	DeviceStatus      = storage.DeviceStatus
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
 	Update            = storage.Update
+	TufFsHandle       = storage.TufFsHandle
 
 	ErrConfigUploadBroken = storage.ErrConfigUploadBroken
 )

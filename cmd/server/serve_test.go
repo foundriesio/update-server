@@ -21,6 +21,8 @@ func TestServe(t *testing.T) {
 	fs, err := storage.NewFs(common.DataDir)
 	require.Nil(t, err)
 	require.Nil(t, fs.Auth.InitHmacSecret())
+	_, err = storage.InitTuf(fs)
+	require.Nil(t, err)
 	authConfig := storage.AuthConfig{
 		Type: "noauth",
 	}

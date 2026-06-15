@@ -310,6 +310,41 @@ func LoadTuf(fs *FsHandle) (*TufFsHandle, error) {
 	return h, nil
 }
 
+// GetRootJSON returns the raw JSON bytes of the root at the given version.
+// Pass version 0 to get the latest version.
+func (h *TufFsHandle) GetRootJSON(version int) (string, error) {
+	if version == 0 {
+		files, err := h.matchFiles("", false)
+		if err != nil {
+			return "", fmt.Errorf("listing TUF files: %w", err)
+		}
+		for _, f := range files {
+			if !strings.HasSuffix(f, ".root.json") {
+				continue
+			}
+			ver, err := strconv.Atoi(strings.TrimSuffix(f, ".root.json"))
+			if err != nil {
+				continue
+			}
+			if ver > version {
+				version = ver
+			}
+		}
+		if version == 0 {
+			return "", errors.New("no root.json files found")
+		}
+	}
+	name := fmt.Sprintf("%d.root.json", version)
+	data, err := h.readFile(name, false)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("root version %d not found", version)
+		}
+		return "", fmt.Errorf("reading %s: %w", name, err)
+	}
+	return data, nil
+}
+
 // GetRoots returns all versioned root.json files, sorted by ascending version number.
 func (h *TufFsHandle) GetRoots() ([]*TufRoot, error) {
 	files, err := h.matchFiles("", false)

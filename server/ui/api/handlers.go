@@ -15,12 +15,13 @@ import (
 
 type handlers struct {
 	storage *storage.Storage
+	tuf     *storage.TufFsHandle
 }
 
 var EchoError = server.EchoError
 
-func RegisterHandlers(e *echo.Echo, storage *storage.Storage, a auth.Provider) {
-	h := handlers{storage: storage}
+func RegisterHandlers(e *echo.Echo, storage *storage.Storage, tuf *storage.TufFsHandle, a auth.Provider) {
+	h := handlers{storage: storage, tuf: tuf}
 	g := e.Group("/v1")
 	g.Use(authUser(a))
 
@@ -63,4 +64,7 @@ func RegisterHandlers(e *echo.Echo, storage *storage.Storage, a auth.Provider) {
 	upd.PUT("/:tag/:update/rollouts/:rollout", h.rolloutPut, requireScope(users.ScopeUpdatesRU))
 	upd.GET("/:tag/:update/rollouts/:rollout/tail", h.rolloutTail, requireScope(users.ScopeUpdatesR))
 	upd.GET("/:tag/:update/tail", h.updateTail, requireScope(users.ScopeUpdatesR))
+
+	g.GET("/tuf/root.json", h.tufRootLatest, requireScope(users.ScopeUpdatesR))
+	g.GET("/tuf/:version", h.tufRootByVersion, requireScope(users.ScopeUpdatesR))
 }

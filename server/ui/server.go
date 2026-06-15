@@ -27,6 +27,10 @@ type daemon interface {
 }
 
 func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, bindAddr string) (server.Server, error) {
+	tuf, err := storage.LoadTuf(fs)
+	if err != nil {
+		return nil, fmt.Errorf("TUF not initialized: run 'tuf-init' first: %w", err)
+	}
 	strg, err := api.NewStorage(db, fs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load %s storage: %w", serverName, err)
@@ -47,7 +51,7 @@ func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, 
 
 	srv := server.NewServer(ctx, e, serverName, bindAddr, nil)
 	e.Use(auth.CsrfCheck)
-	apiHandlers.RegisterHandlers(e, strg, provider)
+	apiHandlers.RegisterHandlers(e, strg, tuf, provider)
 	webHandlers.RegisterHandlers(e, users, provider)
 	return &apiServer{server: srv, daemons: daemons}, nil
 }
