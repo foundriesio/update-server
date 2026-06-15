@@ -39,7 +39,6 @@ func showDevice(devices api.DeviceApi, uuid string, aktoml, hwinfo bool) {
 	fmt.Printf("UUID:         %s\n", device.Uuid)
 	fmt.Printf("Target:       %s\n", device.Target)
 	fmt.Printf("Tag:          %s\n", device.Tag)
-	fmt.Printf("Is Prod:      %v\n", device.IsProd)
 
 	if device.Status != nil {
 		status := device.Status.Status + "; " + device.Status.DeviceTime

@@ -46,15 +46,15 @@ func TestStorage(t *testing.T) {
 	require.Equal(t, 0, count)
 
 	// Create two devices to list/get on
-	d2, err := dg.DeviceCreate("uuid-1", "pubkey-value-1", false)
+	d2, err := dg.DeviceCreate("uuid-1", "pubkey-value-1")
 	require.Nil(t, err)
 	require.Nil(t, d2.PutFile(storage.AktomlFile, "aktoml content"))
 	require.Nil(t, d2.CheckIn("target", "tag", "hash", ""))
 	time.Sleep(time.Second)
-	_, err = dg.DeviceCreate("uuid-2", "pubkey-value-2", false)
+	_, err = dg.DeviceCreate("uuid-2", "pubkey-value-2")
 	require.Nil(t, err)
 
-	uuids, err := s.SetUpdateName("tag", "update42", false, []string{"uuid-1", "uuid-2"}, nil)
+	uuids, err := s.SetUpdateName("tag", "update42", []string{"uuid-1", "uuid-2"}, nil)
 	require.Nil(t, err)
 	require.Equal(t, 1, len(uuids))
 	assert.Equal(t, "uuid-1", uuids[0])
@@ -77,7 +77,6 @@ func TestStorage(t *testing.T) {
 
 	d, err = s.DeviceGet("uuid-1")
 	require.Nil(t, err)
-	assert.False(t, d.IsProd)
 	assert.Equal(t, "hash", d.OstreeHash)
 	assert.Equal(t, "tag", d.Tag)
 	assert.Equal(t, "pubkey-value-1", d.PubKey)
@@ -100,7 +99,7 @@ func TestDeviceDelete(t *testing.T) {
 	require.Nil(t, err)
 
 	// Create a device
-	_, err = dg.DeviceCreate("uuid-del", "pubkey-del", false)
+	_, err = dg.DeviceCreate("uuid-del", "pubkey-del")
 	require.Nil(t, err)
 
 	// Verify it exists

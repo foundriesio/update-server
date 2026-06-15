@@ -21,7 +21,6 @@ var allColumns = []string{
 	"target",
 	"last-seen",
 	"created-at",
-	"is-prod",
 	"tag",
 	"labels",
 }
@@ -135,11 +134,6 @@ func getColumnValue(device *api.DeviceListItem, column string) string {
 			return name
 		}
 		return "-"
-	case "is-prod":
-		if device.IsProd {
-			return "true"
-		}
-		return "false"
 	case "tag":
 		return device.Tag
 	case "labels":

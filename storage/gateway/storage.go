@@ -75,7 +75,6 @@ type Device struct {
 	Apps       string `json:"docker_apps"`
 	Deleted    bool   `json:"-"`
 	GroupName  string `json:"group_name"`
-	IsProd     bool   `json:"is_prod"`
 	LastSeen   int64  `json:"last_seen"`
 	OstreeHash string `json:"ostree_hash"`
 	PubKey     string `json:"pubkey"`
@@ -129,11 +128,8 @@ func (d Device) ProcessEvents(events []storage.DeviceUpdateEvent) error {
 			if err != nil {
 				return err
 			}
-			fs := d.storage.fs.Updates.Ci.Logs
-			if d.IsProd {
-				fs = d.storage.fs.Updates.Prod.Logs
-			}
-			if err = fs.AppendFile(d.Tag, d.UpdateName, storage.LogRolloutsFile, string(bytes)+"\n"); err != nil {
+			if err = d.storage.fs.Updates.Logs.AppendFile(
+				d.Tag, d.UpdateName, storage.LogRolloutsFile, string(bytes)+"\n"); err != nil {
 				return err
 			}
 		}
@@ -153,11 +149,7 @@ func (d Device) SaveAppsStates(content string) error {
 }
 
 func (d Device) GetAppsFilePath(file string) string {
-	if d.IsProd {
-		return d.storage.fs.Updates.Prod.Apps.FilePath(d.Tag, d.UpdateName, file)
-	} else {
-		return d.storage.fs.Updates.Ci.Apps.FilePath(d.Tag, d.UpdateName, file)
-	}
+	return d.storage.fs.Updates.Apps.FilePath(d.Tag, d.UpdateName, file)
 }
 
 func (d Device) SaveAppliedConfigs(cfg AppliedConfigs) error {
@@ -169,19 +161,11 @@ func (d Device) SaveAppliedConfigs(cfg AppliedConfigs) error {
 }
 
 func (d Device) GetOstreeFilePath(file string) string {
-	if d.IsProd {
-		return d.storage.fs.Updates.Prod.Ostree.FilePath(d.Tag, d.UpdateName, file)
-	} else {
-		return d.storage.fs.Updates.Ci.Ostree.FilePath(d.Tag, d.UpdateName, file)
-	}
+	return d.storage.fs.Updates.Ostree.FilePath(d.Tag, d.UpdateName, file)
 }
 
 func (d Device) GetTufMeta(tag, file string) (string, error) {
-	if d.IsProd {
-		return d.storage.fs.Updates.Prod.Tuf.ReadFile(tag, d.UpdateName, file)
-	} else {
-		return d.storage.fs.Updates.Ci.Tuf.ReadFile(tag, d.UpdateName, file)
-	}
+	return d.storage.fs.Updates.Tuf.ReadFile(tag, d.UpdateName, file)
 }
 
 func (d Device) GetConfigs() (configs [3]*storage.ConfigFileSet, timestamp int64, err error) {
@@ -238,20 +222,18 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 	return &handle, nil
 }
 
-func (s Storage) DeviceCreate(uuid, pubkey string, isProd bool) (*Device, error) {
+func (s Storage) DeviceCreate(uuid, pubkey string) (*Device, error) {
 	now := time.Now().Unix()
-	if err := s.stmtDeviceCreate.run(uuid, pubkey, now, now, isProd); err != nil {
+	if err := s.stmtDeviceCreate.run(uuid, pubkey, now, now); err != nil {
 		return nil, err
 	}
 
 	d := Device{
-		storage: s,
-		Uuid:    uuid,
-
+		storage:  s,
+		Uuid:     uuid,
 		Deleted:  false,
 		LastSeen: now,
 		PubKey:   pubkey,
-		IsProd:   isProd,
 	}
 	return &d, nil
 }
@@ -287,14 +269,14 @@ type stmtDeviceCreate storage.DbStmt
 
 func (s *stmtDeviceCreate) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("DeviceCreate", `
-		INSERT INTO devices(uuid, pubkey, created_at, last_seen, is_prod, deleted)
-		VALUES (?, ?, ?, ?, ?, false)`,
+		INSERT INTO devices(uuid, pubkey, created_at, last_seen, deleted)
+		VALUES (?, ?, ?, ?, false)`,
 	)
 	return
 }
 
-func (s *stmtDeviceCreate) run(uuid, pubkey string, createdAt, lastSeen int64, isProd bool) error {
-	_, err := s.Stmt.Exec(uuid, pubkey, createdAt, lastSeen, isProd)
+func (s *stmtDeviceCreate) run(uuid, pubkey string, createdAt, lastSeen int64) error {
+	_, err := s.Stmt.Exec(uuid, pubkey, createdAt, lastSeen)
 	return err
 }
 
@@ -303,7 +285,7 @@ type stmtDeviceGet storage.DbStmt
 func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("DeviceGet", `
 		SELECT
-			deleted, pubkey, group_name, update_name, last_seen, is_prod, tag, target_name,
+			deleted, pubkey, group_name, update_name, last_seen, tag, target_name,
 			ostree_hash, apps, group_name_modified_at
 		FROM devices
 		WHERE uuid = ?`,
@@ -313,6 +295,6 @@ func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 
 func (s *stmtDeviceGet) run(uuid string, d *Device) error {
 	return s.Stmt.QueryRow(uuid).Scan(
-		&d.Deleted, &d.PubKey, &d.GroupName, &d.UpdateName, &d.LastSeen, &d.IsProd, &d.Tag, &d.TargetName,
+		&d.Deleted, &d.PubKey, &d.GroupName, &d.UpdateName, &d.LastSeen, &d.Tag, &d.TargetName,
 		&d.OstreeHash, &d.Apps, &d.groupNameModifiedAt)
 }

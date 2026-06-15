@@ -12,7 +12,7 @@
         <p>{{.Name}}</p>
       </fieldset>
 
-      <button onclick='location.href="/updates/{{$.Prod}}/{{$.Tag}}/{{$.Name}}/tail";'>Follow progress</button>
+      <button onclick='location.href="/updates/{{$.Tag}}/{{$.Name}}/tail";'>Follow progress</button>
       <button onclick="rolloutModal.show()">Create rollout</button>
     </section>
 
@@ -20,7 +20,7 @@
       <h2>Rollout history</h3>
       <ul>
       {{ range .Rollouts }}
-        <li><a href="/updates/{{$.Prod}}/{{$.Tag}}/{{$.Name}}/rollouts/{{.}}">{{.}}</a></li>
+        <li><a href="/updates/{{$.Tag}}/{{$.Name}}/rollouts/{{.}}">{{.}}</a></li>
       {{ end }}
       </ul>
 
@@ -148,7 +148,7 @@
           groups: selectedGroups
         };
 
-        fetch('/v1/updates/{{.Prod}}/{{.Tag}}/{{.Name}}/rollouts/' + document.getElementById('name').value, {
+        fetch('/v1/updates/{{.Tag}}/{{.Name}}/rollouts/' + document.getElementById('name').value, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

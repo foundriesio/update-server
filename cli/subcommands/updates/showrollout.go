@@ -5,28 +5,19 @@ package updates
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/foundriesio/update-server/cli/api"
 	"github.com/spf13/cobra"
 )
 
 var showRolloutCmd = &cobra.Command{
-	Use:   "show-rollout <ci|prod> <tag> <update-name> <rollout>",
+	Use:   "show-rollout <tag> <update-name> <rollout>",
 	Short: "Show details for a specific rollout",
 	Long:  `Display detailed information about a rollout including UUIDs, groups, and effective devices`,
-	Args:  cobra.ExactArgs(4),
+	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := api.CtxGetApi(cmd.Context())
-		prodType := args[0]
-
-		// Validate prod type
-		if prodType != "ci" && prodType != "prod" {
-			return fmt.Errorf("first argument must be 'ci' or 'prod', got '%s'", prodType)
-		}
-
-		updates := api.Updates(prodType)
-		showRollout(updates, args[1], args[2], args[3])
+		showRollout(api.Updates(), args[0], args[1], args[2])
 		return nil
 	},
 }
@@ -40,7 +31,7 @@ func showRollout(updates api.UpdatesApi, tag, updateName, rollout string) {
 	cobra.CheckErr(err)
 
 	fmt.Printf("Rollout: %s\n", rollout)
-	fmt.Printf("Update: %s (%s)\n", updateName, strings.ToUpper(updates.Type))
+	fmt.Printf("Update: %s\n", updateName)
 	fmt.Printf("Tag: %s\n", tag)
 	fmt.Printf("Committed: %v\n\n", rolloutData.Commit)
 

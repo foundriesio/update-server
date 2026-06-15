@@ -14,22 +14,14 @@ import (
 )
 
 var tailCmd = &cobra.Command{
-	Use:   "tail <ci|prod> <tag> <update-name>",
+	Use:   "tail <tag> <update-name>",
 	Short: "Tail update logs",
 	Long:  `Follow server-side events for an update or specific rollout`,
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := api.CtxGetApi(cmd.Context())
-		prodType := args[0]
-
-		// Validate prod type
-		if prodType != "ci" && prodType != "prod" {
-			return fmt.Errorf("first argument must be 'ci' or 'prod', got '%s'", prodType)
-		}
-
 		rollout, _ := cmd.Flags().GetString("rollout")
-		updates := api.Updates(prodType)
-		cobra.CheckErr(tailUpdate(cmd, updates, args[1], args[2], rollout))
+		cobra.CheckErr(tailUpdate(cmd, api.Updates(), args[0], args[1], rollout))
 		return nil
 	},
 }

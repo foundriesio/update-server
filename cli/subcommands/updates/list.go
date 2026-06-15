@@ -12,7 +12,7 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all updates",
-	Long:  `List all CI and production updates`,
+	Long:  `List all updates`,
 	Run: func(cmd *cobra.Command, args []string) {
 		api := api.CtxGetApi(cmd.Context())
 		listUpdates(api)
@@ -24,23 +24,14 @@ func init() {
 }
 
 func listUpdates(api *api.Api) {
-	ciUpdates, err := api.Updates("ci").List()
+	allUpdates, err := api.Updates().List()
 	cobra.CheckErr(err)
 
-	prodUpdates, err := api.Updates("prod").List()
-	cobra.CheckErr(err)
+	t := subcommands.NewTableWriter([]string{"TAG", "NAME"})
 
-	t := subcommands.NewTableWriter([]string{"TYPE", "TAG", "NAME"})
-
-	for tag, names := range ciUpdates {
+	for tag, names := range allUpdates {
 		for _, name := range names {
-			t.AddRow("ci", tag, name)
-		}
-	}
-
-	for tag, names := range prodUpdates {
-		for _, name := range names {
-			t.AddRow("prod", tag, name)
+			t.AddRow(tag, name)
 		}
 	}
 

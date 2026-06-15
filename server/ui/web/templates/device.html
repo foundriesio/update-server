@@ -11,12 +11,6 @@
         </div>
         <div>
           <dl>
-            <dt>Production</dt>
-            <dd>{{if .Device.IsProd}}Yes{{else}}No{{end}}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
             <dt>Apps</dt>
             <dd>{{.Device.Apps}}</dd>
           </dl>
@@ -27,8 +21,20 @@
             <dd>{{.Device.Target}}</dd>
           </dl>
         </div>
+        <div>
+          <dl>
+            <dt>Configured update</dt>
+            <dd>
+              {{ if .Device.UpdateName }}
+                <a href="/updates/{{.Device.Tag}}/{{.Device.UpdateName}}">{{.Device.UpdateName}}</a>
+              {{ else }}
+                <em>Device needs to be added to a <a href="/updates">rollout</a></em>
+              {{ end }}
+            </dd>
+          </dl>
+        </div>
       </div>
-        
+
       <div class="grid device-details">
         <div>
           <dl>
@@ -61,27 +67,6 @@
         </div>
         <div>
           <dl>
-            <dt>Configured update</dt>
-            <dd>
-              {{ if .Device.UpdateName }}
-                <a href="/updates/{{ if .Device.IsProd}}prod{{else}}ci{{end}}/{{.Device.Tag}}/{{.Device.UpdateName}}">{{.Device.UpdateName}}</a>
-              {{ else }}
-                <em>Device needs to be added to a <a href="/updates">rollout</a></em>
-              {{ end }}
-            </dd>
-          </dl>
-        </div>
-      </div>
-
-      <div class="grid device-details">
-        <div>
-          <dl>
-            <dt>OSTree hash</dt>
-            <dd style="font-family: monospace">{{.Device.OstreeHash}}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
             <dt>Labels - <a href='/devices/{{.Device.Uuid}}/labels'>manage</a></dt>
             <dd>
               <ul>
@@ -95,7 +80,16 @@
             </dd>
         </div>
       </div>
-      
+
+      <div class="grid device-details">
+        <div>
+          <dl>
+            <dt>OSTree hash</dt>
+            <dd style="font-family: monospace">{{.Device.OstreeHash}}</dd>
+          </dl>
+        </div>
+      </div>
+
       <div class="grid device-details">
         <div>
           <dl>
@@ -110,7 +104,7 @@
         </div>
       </div>
     </section>
-    
+
     <section class="content-section">
       <div class="grid device-details">
         <div>
