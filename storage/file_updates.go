@@ -85,13 +85,13 @@ func (s updatesFsHandleWrap) UpdateTufDir(tag, update string) string {
 	return filepath.Join(s.root, tag, update, UpdatesTufDir)
 }
 
-func (s updatesFsHandleWrap) SaveUpload(tag, update, uploadedBy string, tuf *TufFsHandle, payload io.Reader, onCleanupFailure func(error), onCommit func() error) error {
+func (s updatesFsHandleWrap) SaveUpload(tag, update, uploadedBy string, tuf *TufFsHandle, params *TufTargetParams, payload io.Reader, onCleanupFailure func(error), onCommit func() error) error {
 	const (
 		appsDir   = UpdatesAppsDir + string(filepath.Separator)
 		ostreeDir = UpdatesOstreeDir + string(filepath.Separator)
 		tufDir    = UpdatesTufDir + string(filepath.Separator)
 	)
-	var sawTuf, sawOstree, sawApps bool
+	var sawOstree, sawApps bool
 	txDir := ".update-upload-" + rand.Text()[:10]
 	root, destDir := filepath.Split(s.root)
 	destDir = filepath.Join(destDir, tag, update)
@@ -108,24 +108,25 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update, uploadedBy string, tuf *Tuf
 				// For tarballs with many files, below boolean algebra is way faster than a switch over name patterns.
 				sawApps = sawApps || strings.HasPrefix(hdr.Name, appsDir)
 				sawOstree = sawOstree || strings.HasPrefix(hdr.Name, ostreeDir)
-				sawTuf = sawTuf || strings.HasPrefix(hdr.Name, tufDir)
 				return
 			},
 			onUnpackComplete: func() error {
-				if !sawTuf {
-					return fmt.Errorf("%w: missing required %q directory", ErrInvalidUpdate, UpdatesTufDir)
-				}
 				if !sawOstree && !sawApps {
 					return fmt.Errorf("%w: must contain %q and/or %q directory",
 						ErrInvalidUpdate, UpdatesOstreeDir, UpdatesAppsDir)
 				}
 
-				unpackedTufDir := filepath.Join(root, txDir, "unpacked", UpdatesTufDir)
-				if err := checkUpdateTargets(filepath.Join(unpackedTufDir, "targets.json"), tag); err != nil {
-					return fmt.Errorf("%w: %v", ErrInvalidUpdate, err)
+				unpackedDir := filepath.Join(root, txDir, "unpacked")
+				unpackedTufDir := filepath.Join(unpackedDir, UpdatesTufDir)
+
+				if params == nil {
+					// targets.json must be provided by the uploader.
+					if err := checkUpdateTargets(filepath.Join(unpackedTufDir, "targets.json"), tag); err != nil {
+						return fmt.Errorf("%w: %v", ErrInvalidUpdate, err)
+					}
 				}
 				if tuf != nil {
-					if err := tuf.ProcessUpdateTuf(unpackedTufDir); err != nil {
+					if err := tuf.ProcessUpdateTuf(unpackedTufDir, unpackedDir, params); err != nil {
 						return fmt.Errorf("processing TUF metadata: %w", err)
 					}
 				}

@@ -16,12 +16,13 @@ import (
 type handlers struct {
 	storage *storage.Storage
 	tuf     *storage.TufFsHandle
+	baseURI string
 }
 
 var EchoError = server.EchoError
 
-func RegisterHandlers(e *echo.Echo, storage *storage.Storage, tuf *storage.TufFsHandle, a auth.Provider) {
-	h := handlers{storage: storage, tuf: tuf}
+func RegisterHandlers(e *echo.Echo, storage *storage.Storage, tuf *storage.TufFsHandle, baseURI string, a auth.Provider) {
+	h := handlers{storage: storage, tuf: tuf, baseURI: baseURI}
 	g := e.Group("/v1")
 	g.Use(authUser(a))
 

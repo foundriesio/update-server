@@ -125,10 +125,11 @@ func TestRefreshUpdateTuf_noRefreshNeeded(t *testing.T) {
 	h, err := storage.InitTuf(fs)
 	require.NoError(t, err)
 
-	tufDir := filepath.Join(t.TempDir(), "tuf")
+	updateDir := t.TempDir()
+	tufDir := filepath.Join(updateDir, "tuf")
 	require.NoError(t, os.MkdirAll(tufDir, 0o750))
 	require.NoError(t, os.WriteFile(filepath.Join(tufDir, "targets.json"), minimalTargetsJSON(t), 0o640))
-	require.NoError(t, h.ProcessUpdateTuf(tufDir))
+	require.NoError(t, h.ProcessUpdateTuf(tufDir, updateDir, nil))
 
 	// Read back snapshot/timestamp versions before refresh attempt.
 	snapBefore := readSnapshot(t, tufDir)
@@ -149,10 +150,11 @@ func TestRefreshUpdateTuf_refreshNeeded(t *testing.T) {
 	h, err := storage.InitTuf(fs)
 	require.NoError(t, err)
 
-	tufDir := filepath.Join(t.TempDir(), "tuf")
+	updateDir := t.TempDir()
+	tufDir := filepath.Join(updateDir, "tuf")
 	require.NoError(t, os.MkdirAll(tufDir, 0o750))
 	require.NoError(t, os.WriteFile(filepath.Join(tufDir, "targets.json"), minimalTargetsJSON(t), 0o640))
-	require.NoError(t, h.ProcessUpdateTuf(tufDir))
+	require.NoError(t, h.ProcessUpdateTuf(tufDir, updateDir, nil))
 
 	snapBefore := readSnapshot(t, tufDir)
 	tsBefore := readTimestamp(t, tufDir)
@@ -204,8 +206,9 @@ func TestProcessUpdateTuf(t *testing.T) {
 	h, err := storage.InitTuf(fs)
 	require.NoError(t, err)
 
-	// Create a minimal tuf directory simulating an uploaded update.
-	tufDir := filepath.Join(t.TempDir(), "tuf")
+	// Create a minimal update directory simulating an uploaded update.
+	updateDir := t.TempDir()
+	tufDir := filepath.Join(updateDir, "tuf")
 	require.NoError(t, os.MkdirAll(tufDir, 0o750))
 
 	targetsJSON := `{
@@ -225,7 +228,7 @@ func TestProcessUpdateTuf(t *testing.T) {
 	}`
 	require.NoError(t, os.WriteFile(filepath.Join(tufDir, "targets.json"), []byte(targetsJSON), 0o640))
 
-	require.NoError(t, h.ProcessUpdateTuf(tufDir))
+	require.NoError(t, h.ProcessUpdateTuf(tufDir, updateDir, nil))
 
 	// targets.json should be re-signed with version=1 and a fresh expiry.
 	targetsData, err := os.ReadFile(filepath.Join(tufDir, "targets.json"))
@@ -265,4 +268,53 @@ func TestProcessUpdateTuf(t *testing.T) {
 	linkTarget, err := os.Readlink(filepath.Join(tufDir, "1.root.json"))
 	require.NoError(t, err)
 	require.NotEmpty(t, linkTarget)
+}
+
+func TestProcessUpdateTuf_fromParams(t *testing.T) {
+	fs := newTufFs(t)
+	h, err := storage.InitTuf(fs)
+	require.NoError(t, err)
+
+	updateDir := t.TempDir()
+	tufDir := filepath.Join(updateDir, "tuf")
+
+	// Set up an ostree ref and two compose apps.
+	ostreeRefsDir := filepath.Join(updateDir, "ostree_repo", "refs", "heads")
+	require.NoError(t, os.MkdirAll(ostreeRefsDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(ostreeRefsDir, "intel-corei7-64-lmp"), []byte("deadbeef1234"), 0o640))
+
+	appDir := filepath.Join(updateDir, "apps", "apps", "myapp", "abc123sha")
+	require.NoError(t, os.MkdirAll(appDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "uri"), []byte(""), 0o640))
+
+	params := &storage.TufTargetParams{
+		HardwareID: "intel-corei7-64",
+		Version:    "42",
+		Tag:        "main",
+		BaseURI:    "https://example.com",
+	}
+	require.NoError(t, h.ProcessUpdateTuf(tufDir, updateDir, params))
+
+	// targets.json should be generated server-side.
+	targetsData, err := os.ReadFile(filepath.Join(tufDir, "targets.json"))
+	require.NoError(t, err)
+	var targets storage.TufTargets
+	require.NoError(t, json.Unmarshal(targetsData, &targets))
+
+	// Name defaults to ostree branch name.
+	require.Contains(t, targets.Signed.Targets, "intel-corei7-64-lmp-42")
+	target := targets.Signed.Targets["intel-corei7-64-lmp-42"]
+	require.NotNil(t, target.Custom)
+	require.Equal(t, []string{"intel-corei7-64"}, target.Custom.HardwareIds)
+	require.Equal(t, "42", target.Custom.Version)
+	require.Equal(t, []string{"main"}, target.Custom.Tags)
+	require.Equal(t, "deadbeef1234", target.Hashes.Sha256)
+	require.Contains(t, target.Custom.ComposeApps, "myapp")
+	require.Equal(t, "https://example.com/apps/myapp/abc123sha", target.Custom.ComposeApps["myapp"].Uri)
+
+	// snapshot.json and timestamp.json should be generated.
+	_, err = os.ReadFile(filepath.Join(tufDir, "snapshot.json"))
+	require.NoError(t, err)
+	_, err = os.ReadFile(filepath.Join(tufDir, "timestamp.json"))
+	require.NoError(t, err)
 }

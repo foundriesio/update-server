@@ -237,7 +237,7 @@ func NewTestClient(t *testing.T) *testClient {
 		Username:      "root",
 		AllowedScopes: 0,
 	}
-	RegisterHandlers(e, apiS, nil, &testAuthProvider{user: u})
+	RegisterHandlers(e, apiS, nil, "", &testAuthProvider{user: u})
 
 	tc := testClient{
 		t:   t,
@@ -1364,26 +1364,33 @@ func TestApiConfigsUpload(t *testing.T) {
 func TestApiUpdateCreate(t *testing.T) {
 	tc := NewTestClient(t)
 
-	validTargets := `{"signed": {"targets": {"foo": {"custom": {"tags": ["main"]}}}}}`
-
 	validTar := tarBuffer(t, map[string]string{
 		"tuf/root.json":              `{"signed":{}}`,
-		"tuf/targets.json":           validTargets,
 		"ostree_repo/config":         "[core]\nrepo_version=1\n",
 		"ostree_repo/refs/heads/foo": "abc123",
 	})
 
-	// Should require auth scope
-	tc.POST("/updates/main/v1.0", 403, bytes.NewReader(validTar.Bytes()),
+	// Should require auth scope (no params, but scope check fires first).
+	tc.POST("/updates/main/v1.0?hardware-id=hw1&version=1&name=x", 403, bytes.NewReader(validTar.Bytes()),
 		"Content-Type", "application/x-tar")
 
 	tc.u.AllowedScopes = users.ScopeUpdatesRU
 
-	// Valid tar with tuf + ostree_repo
-	tc.POST("/updates/main/v1.0", 201, bytes.NewReader(validTar.Bytes()),
+	// Missing required params → 400.
+	tc.POST("/updates/main/v0.1", 400, bytes.NewReader(validTar.Bytes()),
+		"Content-Type", "application/x-tar")
+	tc.POST("/updates/main/v0.1?hardware-id=hw1", 400, bytes.NewReader(validTar.Bytes()),
+		"Content-Type", "application/x-tar")
+	tc.POST("/updates/main/v0.1?version=1", 400, bytes.NewReader(validTar.Bytes()),
+		"Content-Type", "application/x-tar")
+	tc.POST("/updates/main/v0.1?hardware-id=hw1&version=notanint", 400, bytes.NewReader(validTar.Bytes()),
 		"Content-Type", "application/x-tar")
 
-	// Verify files were extracted to the right place
+	// Valid tar with ostree_repo (tuf dir not required in tarball).
+	tc.POST("/updates/main/v1.0?hardware-id=intel-corei7-64&version=1&name=mydevice", 201, bytes.NewReader(validTar.Bytes()),
+		"Content-Type", "application/x-tar")
+
+	// Verify files were extracted to the right place.
 	updatesDir := tc.fs.Config.UpdatesDir()
 	root, err := os.ReadFile(filepath.Join(updatesDir, "main", "v1.0", "tuf", "root.json"))
 	require.NoError(t, err)
@@ -1392,85 +1399,52 @@ func TestApiUpdateCreate(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "[core]\nrepo_version=1\n", string(config))
 
-	// Valid tar with tuf + apps (no ostree_repo)
+	// Valid tar with apps only (no ostree_repo, no tuf dir).
 	appsTar := tarBuffer(t, map[string]string{
-		"tuf/root.json":    `{"signed":{}}`,
-		"tuf/targets.json": validTargets,
-		"apps/myapp.json":  `{"name":"myapp"}`,
+		"apps/apps/myapp/abc123def/uri": "ghcr.io/example/myapp@sha256:abc123def",
 	})
-	tc.POST("/updates/main/v2.0", 201, bytes.NewReader(appsTar.Bytes()),
+	tc.POST("/updates/main/v2.0?hardware-id=hw1&version=2&name=myapp", 201, bytes.NewReader(appsTar.Bytes()),
 		"Content-Type", "application/x-tar")
-	appData, err := os.ReadFile(filepath.Join(updatesDir, "main", "v2.0", "apps", "myapp.json"))
+	_, err = os.ReadFile(filepath.Join(updatesDir, "main", "v2.0", "apps", "apps", "myapp", "abc123def", "uri"))
 	require.NoError(t, err)
-	assert.Equal(t, `{"name":"myapp"}`, string(appData))
 
-	// Valid tar with tuf + ostree_repo + apps (both present)
+	// Valid tar with ostree_repo + apps (both present).
 	bothTar := tarBuffer(t, map[string]string{
-		"tuf/root.json":      `{"signed":{}}`,
-		"tuf/targets.json":   validTargets,
 		"ostree_repo/config": "[core]\n",
 		"apps/myapp.json":    `{}`,
 	})
-	tc.POST("/updates/main/v3.0", 201, bytes.NewReader(bothTar.Bytes()),
+	tc.POST("/updates/main/v3.0?hardware-id=hw1&version=3&name=both", 201, bytes.NewReader(bothTar.Bytes()),
 		"Content-Type", "application/x-tar")
 
-	// Valid tar with tuf + ostree_repo + apps (both present)
-	// BUT - targets.json has invalid tag. An update for "main" isn't going to work if the update
-	// doesn't have a target with tagged with "main"
-	bothTar = tarBuffer(t, map[string]string{
-		"tuf/root.json":      `{"signed":{}}`,
-		"tuf/targets.json":   `{"signed": {"targets": {"foo": {"custom": {"tags": ["invalid"]}}}}}`,
-		"ostree_repo/config": "[core]\n",
-		"apps/myapp.json":    `{}`,
-	})
-	tc.POST("/updates/main/v3.1", 400, bytes.NewReader(bothTar.Bytes()),
-		"Content-Type", "application/x-tar")
-
-	// Missing tuf directory
-	noTufTar := tarBuffer(t, map[string]string{
-		"ostree_repo/config": "[core]\n",
-	})
-	data := tc.POST("/updates/main/v-bad1", 400, bytes.NewReader(noTufTar.Bytes()),
-		"Content-Type", "application/x-tar")
-	assert.Contains(t, string(data), "invalid update archive")
-
-	// Missing ostree_repo and apps
+	// Missing ostree_repo and apps → 400.
 	noContentTar := tarBuffer(t, map[string]string{
 		"tuf/root.json": `{"signed":{}}`,
 	})
-	data = tc.POST("/updates/main/v-bad2", 400, bytes.NewReader(noContentTar.Bytes()),
+	data := tc.POST("/updates/main/v-bad1?hardware-id=hw1&version=1&name=x", 400, bytes.NewReader(noContentTar.Bytes()),
 		"Content-Type", "application/x-tar")
 	assert.Contains(t, string(data), "invalid update archive")
 
-	// Gzip-compressed tar via Content-Type
+	// Gzip-compressed tar via Content-Type.
 	gzTar := gzipBuffer(t, tarBuffer(t, map[string]string{
-		"tuf/root.json":      `{"signed":{}}`,
-		"tuf/targets.json":   validTargets,
 		"ostree_repo/config": "[core]\n",
 	}))
-	tc.POST("/updates/main/v4.0", 201, bytes.NewReader(gzTar.Bytes()),
+	tc.POST("/updates/main/v4.0?hardware-id=hw1&version=4&name=gz", 201, bytes.NewReader(gzTar.Bytes()),
 		"Content-Type", "application/gzip")
-	_, err = os.ReadFile(filepath.Join(updatesDir, "main", "v4.0", "tuf", "root.json"))
-	require.NoError(t, err)
 
-	// Gzip-compressed tar via Content-Encoding header
+	// Gzip-compressed tar via Content-Encoding header.
 	gzTar2 := gzipBuffer(t, tarBuffer(t, map[string]string{
-		"tuf/root.json":      `{"signed":{}}`,
-		"tuf/targets.json":   validTargets,
 		"ostree_repo/config": "[core]\n",
 	}))
-	tc.POST("/updates/main/v5.0", 201, bytes.NewReader(gzTar2.Bytes()),
+	tc.POST("/updates/main/v5.0?hardware-id=hw1&version=5&name=gz2", 201, bytes.NewReader(gzTar2.Bytes()),
 		"Content-Type", "application/x-tar",
 		"Content-Encoding", "gzip")
-	_, err = os.ReadFile(filepath.Join(updatesDir, "main", "v5.0", "tuf", "root.json"))
-	require.NoError(t, err)
 
-	// Invalid gzip stream
-	tc.POST("/updates/main/v-bad3", 500, strings.NewReader("not-gzip-data"),
+	// Invalid gzip stream.
+	tc.POST("/updates/main/v-bad2?hardware-id=hw1&version=1&name=x", 500, strings.NewReader("not-gzip-data"),
 		"Content-Type", "application/gzip")
 
-	// Invalid update path params
-	tc.POST("/updates/../../etc/v1.0", 404, bytes.NewReader(validTar.Bytes()),
+	// Invalid update path params.
+	tc.POST("/updates/../../etc/v1.0?hardware-id=hw1&version=1&name=x", 404, bytes.NewReader(validTar.Bytes()),
 		"Content-Type", "application/x-tar")
 }
 

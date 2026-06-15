@@ -549,20 +549,143 @@ func (h *TufFsHandle) RefreshUpdateTuf(tufDir string, threshold time.Duration) (
 	return true, nil
 }
 
-// ProcessUpdateTuf reads targets.json from the unpacked update directory, replaces its
-// signatures, and generates snapshot.json and timestamp.json. It also creates symlinks
-// for each versioned root.json file from the global TUF store into the update tuf directory.
-// The tufDir argument is the path to the update's tuf/ subdirectory.
-func (h *TufFsHandle) ProcessUpdateTuf(tufDir string) error {
-	// Read and parse the uploaded targets.json.
-	targetsPath := filepath.Join(tufDir, TufTargetsFile)
-	targetsData, err := os.ReadFile(targetsPath)
-	if err != nil {
-		return fmt.Errorf("reading targets.json: %w", err)
+// TufTargetParams holds the parameters used to build a TUF target entry server-side,
+// eliminating the need for a targets.json file in the upload tarball.
+type TufTargetParams struct {
+	// HardwareID is required; becomes HardwareIds[0] in TufTargetCustom.
+	HardwareID string
+	// Version is required; stored as a string in TufTargetCustom.Version.
+	Version string
+	// Name is optional; used as TufTargetCustom.Name and in the target dictionary key.
+	// When empty, the ostree branch name is used (requires an ostree_repo in the upload).
+	Name string
+	// OstreeHash overrides the hash read from ostree_repo/refs/heads/.
+	OstreeHash string
+	// Tag is the upload tag (e.g. "main"); placed in TufTargetCustom.Tags.
+	Tag string
+	// BaseURI is the server base URI used to construct ComposeApp URIs.
+	BaseURI string
+}
+
+// buildTargets constructs a TufTargets from upload directory contents and TufTargetParams.
+// updateDir is the root of the unpacked update (parent of ostree_repo/, apps/, tuf/).
+func buildTargets(updateDir string, p TufTargetParams) (TufTargets, error) {
+	custom := TufTargetCustom{
+		HardwareIds: []string{p.HardwareID},
+		Version:     p.Version,
+		Tags:        []string{p.Tag},
 	}
+
+	var targetMeta TufTargetMeta
+
+	// Resolve ostree name and hash from ostree_repo/refs/heads/ when the hash was not supplied.
+	if p.OstreeHash == "" {
+		ostreeDir := filepath.Join(updateDir, UpdatesOstreeDir, "refs", "heads")
+		ostreeEntries, err := os.ReadDir(ostreeDir)
+		if err != nil && !os.IsNotExist(err) {
+			return TufTargets{}, fmt.Errorf("reading ostree refs: %w", err)
+		}
+		if len(ostreeEntries) > 1 {
+			return TufTargets{}, fmt.Errorf("ostree_repo/refs/heads/ must contain exactly one file, found %d", len(ostreeEntries))
+		}
+		if len(ostreeEntries) == 1 {
+			entry := ostreeEntries[0]
+			if p.Name == "" {
+				p.Name = entry.Name()
+			}
+			hashBytes, err := os.ReadFile(filepath.Join(ostreeDir, entry.Name()))
+			if err != nil {
+				return TufTargets{}, fmt.Errorf("reading ostree hash: %w", err)
+			}
+			p.OstreeHash = strings.TrimSpace(string(hashBytes))
+		}
+	}
+	if p.OstreeHash != "" {
+		targetMeta.Hashes = TufTargetHashes{Sha256: p.OstreeHash}
+		custom.TargetFormat = "OSTREE"
+	}
+
+	// Scan apps/apps/<appname>/ for ComposeApps.
+	appsDir := filepath.Join(updateDir, UpdatesAppsDir, "apps")
+	appEntries, err := os.ReadDir(appsDir)
+	if err != nil && !os.IsNotExist(err) {
+		return TufTargets{}, fmt.Errorf("reading apps directory: %w", err)
+	}
+	if len(appEntries) > 0 {
+		custom.ComposeApps = make(map[string]ComposeApp, len(appEntries))
+		for _, appEntry := range appEntries {
+			if !appEntry.IsDir() {
+				continue
+			}
+			appName := appEntry.Name()
+			// The single sub-directory name under apps/apps/<appname>/ is the sha256.
+			appVersionEntries, err := os.ReadDir(filepath.Join(appsDir, appName))
+			if err != nil {
+				return TufTargets{}, fmt.Errorf("reading app %s directory: %w", appName, err)
+			}
+			var sha256 string
+			for _, e := range appVersionEntries {
+				if !e.IsDir() {
+					continue
+				}
+				if sha256 != "" {
+					return TufTargets{}, fmt.Errorf("app %s has multiple version directories, expected exactly one", appName)
+				}
+				sha256 = e.Name()
+			}
+			uri := p.BaseURI + "/apps/" + appName + "/" + sha256
+			custom.ComposeApps[appName] = ComposeApp{Uri: uri}
+		}
+	}
+
+	if p.Name == "" {
+		return TufTargets{}, fmt.Errorf("target name is required: supply 'name' parameter or include an ostree_repo")
+	}
+
+	targetMeta.Custom = &custom
+	targetKey := p.Name + "-" + p.Version
+	targets := TufTargets{
+		Signed: TufTargetsMeta{
+			Type:    "Targets",
+			Version: 1,
+			Expires: time.Now().Add(365 * 24 * time.Hour),
+			Targets: map[string]TufTargetMeta{targetKey: targetMeta},
+		},
+	}
+	return targets, nil
+}
+
+// ProcessUpdateTuf generates targets.json (either from params or by re-signing an existing one),
+// then generates snapshot.json and timestamp.json. It also creates symlinks for each versioned
+// root.json from the global TUF store into the update tuf directory.
+//
+// tufDir is the path to the update's tuf/ subdirectory.
+// updateDir is the root of the unpacked update (parent of tuf/, ostree_repo/, apps/).
+// params is optional; when non-nil, targets.json is built server-side from the upload contents.
+func (h *TufFsHandle) ProcessUpdateTuf(tufDir, updateDir string, params *TufTargetParams) error {
 	var targets TufTargets
-	if err = json.Unmarshal(targetsData, &targets); err != nil {
-		return fmt.Errorf("parsing targets.json: %w", err)
+
+	// Ensure the tuf directory exists.
+	if err := os.MkdirAll(tufDir, defaultDirAccess); err != nil {
+		return fmt.Errorf("creating tuf directory: %w", err)
+	}
+
+	targetsPath := filepath.Join(tufDir, TufTargetsFile)
+	if params != nil {
+		var err error
+		targets, err = buildTargets(updateDir, *params)
+		if err != nil {
+			return fmt.Errorf("building targets: %w", err)
+		}
+	} else {
+		// Read and parse the uploaded targets.json.
+		targetsData, err := os.ReadFile(targetsPath)
+		if err != nil {
+			return fmt.Errorf("reading targets.json: %w", err)
+		}
+		if err = json.Unmarshal(targetsData, &targets); err != nil {
+			return fmt.Errorf("parsing targets.json: %w", err)
+		}
 	}
 
 	// Overwrite version and expiry, then re-sign with our targets key.

@@ -34,6 +34,7 @@ type (
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
 	Update            = storage.Update
 	TufFsHandle       = storage.TufFsHandle
+	TufTargetParams   = storage.TufTargetParams
 
 	ErrConfigUploadBroken = storage.ErrConfigUploadBroken
 )
@@ -568,7 +569,7 @@ func (s Storage) UploadConfigs(payload io.Reader) (err error) {
 	})
 }
 
-func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, payload io.Reader) error {
+func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, params *storage.TufTargetParams, payload io.Reader) error {
 	cleanup := func(cleanupErr error) {
 		// This is not critical - log and let the "real" error/success return below.
 		slog.Error("Failed to clean upload directory", "error", cleanupErr)
@@ -576,7 +577,7 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, payload io.Rea
 	commit := func() error {
 		return s.stmtUpdateInsert.run(tag, updateName, uploadedBy)
 	}
-	return s.fs.Updates.SaveUpload(tag, updateName, uploadedBy, s.tuf, payload, cleanup, commit)
+	return s.fs.Updates.SaveUpload(tag, updateName, uploadedBy, s.tuf, params, payload, cleanup, commit)
 }
 
 // RefreshAllTuf iterates every known update and refreshes TUF timestamp/snapshot files that

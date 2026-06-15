@@ -5,6 +5,8 @@ package ui
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"log/slog"
 	"time"
@@ -51,9 +53,26 @@ func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, 
 
 	srv := server.NewServer(ctx, e, serverName, bindAddr, nil)
 	e.Use(auth.CsrfCheck)
-	apiHandlers.RegisterHandlers(e, strg, tuf, provider)
+	apiHandlers.RegisterHandlers(e, strg, tuf, serverBaseURI(fs), provider)
 	webHandlers.RegisterHandlers(e, users, provider)
 	return &apiServer{server: srv, daemons: daemons}, nil
+}
+
+// serverBaseURI returns "https://<dns>" from the TLS cert, or empty string if cert is absent.
+func serverBaseURI(fs *storage.FsHandle) string {
+	certPEM, err := fs.Certs.ReadFile(storage.CertsTlsPemFile)
+	if err != nil {
+		return ""
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return ""
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil || len(cert.DNSNames) == 0 {
+		return ""
+	}
+	return "https://" + cert.DNSNames[0]
 }
 
 type apiServer struct {
