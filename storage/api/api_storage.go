@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/foundriesio/update-server/storage"
 )
@@ -576,6 +577,28 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, payload io.Rea
 		return s.stmtUpdateInsert.run(tag, updateName, uploadedBy)
 	}
 	return s.fs.Updates.SaveUpload(tag, updateName, uploadedBy, s.tuf, payload, cleanup, commit)
+}
+
+// RefreshAllTuf iterates every known update and refreshes TUF timestamp/snapshot files that
+// expire within threshold. It is a no-op when TUF is not configured.
+func (s Storage) RefreshAllTuf(threshold time.Duration) error {
+	if s.tuf == nil {
+		return nil
+	}
+	updates, err := s.ListUpdates("")
+	if err != nil {
+		return fmt.Errorf("listing updates: %w", err)
+	}
+	for tag, names := range updates {
+		for _, u := range names {
+			tufDir := s.fs.Updates.UpdateTufDir(tag, u.Name)
+			if _, err := s.tuf.RefreshUpdateTuf(tufDir, threshold); err != nil {
+				// Log individually but continue — one broken update should not block others.
+				slog.Error("failed to refresh TUF metadata", "tag", tag, "update", u.Name, "error", err)
+			}
+		}
+	}
+	return nil
 }
 
 type stmtDeviceGet storage.DbStmt

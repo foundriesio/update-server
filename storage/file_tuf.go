@@ -57,8 +57,8 @@ type TufTargetCustom struct {
 	Version      string                `json:"version,omitempty"`
 	TargetFormat string                `json:"targetFormat,omitempty"`
 	Uri          string                `json:"uri,omitempty"`
-	CreatedAt    string                `json:"createdAt,omitempty"`
 	ComposeApps  map[string]ComposeApp `json:"docker_compose_apps,omitempty"`
+	CreatedAt    string                `json:"createdAt,omitempty"`
 }
 
 // TufTargetMeta is the per-target entry in targets.json.
@@ -477,6 +477,76 @@ func (h *TufFsHandle) signMeta(signed any, priv ed25519.PrivateKey) (TufSignatur
 		Method: tufSigMethodEd25519,
 		Sig:    hex.EncodeToString(ed25519.Sign(priv, data)),
 	}, nil
+}
+
+// RefreshUpdateTuf refreshes the timestamp and snapshot in an update's tuf directory if either
+// expires within the given threshold. Returns true if files were refreshed.
+func (h *TufFsHandle) RefreshUpdateTuf(tufDir string, threshold time.Duration) (bool, error) {
+	now := time.Now()
+
+	// Read current timestamp.json to check expiry.
+	tsPath := filepath.Join(tufDir, TufTimestampFile)
+	tsData, err := os.ReadFile(tsPath)
+	if err != nil {
+		return false, fmt.Errorf("reading timestamp.json: %w", err)
+	}
+	var timestamp TufTimestamp
+	if err = json.Unmarshal(tsData, &timestamp); err != nil {
+		return false, fmt.Errorf("parsing timestamp.json: %w", err)
+	}
+
+	// Read current snapshot.json to check expiry.
+	snapPath := filepath.Join(tufDir, TufSnapshotFile)
+	snapData, err := os.ReadFile(snapPath)
+	if err != nil {
+		return false, fmt.Errorf("reading snapshot.json: %w", err)
+	}
+	var snapshot TufSnapshot
+	if err = json.Unmarshal(snapData, &snapshot); err != nil {
+		return false, fmt.Errorf("parsing snapshot.json: %w", err)
+	}
+
+	// No refresh needed if neither expires soon.
+	if timestamp.Signed.Expires.After(now.Add(threshold)) && snapshot.Signed.Expires.After(now.Add(threshold)) {
+		return false, nil
+	}
+
+	newExpiry := now.Add(365 * 24 * time.Hour)
+
+	// Refresh snapshot.
+	snapshot.Signed.Version++
+	snapshot.Signed.Expires = newExpiry
+	snapshotSig, err := h.signMeta(snapshot.Signed, h.SnapshotKey)
+	if err != nil {
+		return false, fmt.Errorf("signing snapshot: %w", err)
+	}
+	snapshot.Signatures = []TufSignature{snapshotSig}
+	snapshotJSON, err := json.MarshalIndent(snapshot, "", "  ")
+	if err != nil {
+		return false, fmt.Errorf("marshaling snapshot.json: %w", err)
+	}
+	if err = os.WriteFile(snapPath, snapshotJSON, defaultFileAccess); err != nil {
+		return false, fmt.Errorf("writing snapshot.json: %w", err)
+	}
+
+	// Refresh timestamp, referencing the new snapshot version.
+	timestamp.Signed.Version++
+	timestamp.Signed.Expires = newExpiry
+	timestamp.Signed.Meta[TufSnapshotFile] = TufMetaRef{Version: snapshot.Signed.Version}
+	timestampSig, err := h.signMeta(timestamp.Signed, h.TimestampKey)
+	if err != nil {
+		return false, fmt.Errorf("signing timestamp: %w", err)
+	}
+	timestamp.Signatures = []TufSignature{timestampSig}
+	timestampJSON, err := json.MarshalIndent(timestamp, "", "  ")
+	if err != nil {
+		return false, fmt.Errorf("marshaling timestamp.json: %w", err)
+	}
+	if err = os.WriteFile(tsPath, timestampJSON, defaultFileAccess); err != nil {
+		return false, fmt.Errorf("writing timestamp.json: %w", err)
+	}
+
+	return true, nil
 }
 
 // ProcessUpdateTuf reads targets.json from the unpacked update directory, replaces its

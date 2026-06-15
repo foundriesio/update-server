@@ -22,6 +22,7 @@ type daemons struct {
 	stops   []chan bool
 
 	rolloutOptions rolloutOptions
+	tufOptions     tufOptions
 }
 
 func New(context context.Context, storage *storage.Storage, users *users.Storage, opts ...Option) *daemons {
@@ -29,8 +30,12 @@ func New(context context.Context, storage *storage.Storage, users *users.Storage
 	d.rolloutOptions = rolloutOptions{
 		interval: 5 * time.Minute,
 	}
+	d.tufOptions = tufOptions{
+		interval: tufRefreshDefaultInterval,
+	}
 	d.daemons = []daemonFunc{
 		d.rolloutWatchdog(),
+		d.tufRefreshDaemon(),
 		userGcDaemonFunc(users),
 	}
 

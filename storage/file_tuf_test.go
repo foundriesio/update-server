@@ -120,6 +120,85 @@ func TestGetRoots_keyIdsConsistent(t *testing.T) {
 	require.Equal(t, rootRoleKeyID, sigKeyID, "signature key ID must match root role key ID")
 }
 
+func TestRefreshUpdateTuf_noRefreshNeeded(t *testing.T) {
+	fs := newTufFs(t)
+	h, err := storage.InitTuf(fs)
+	require.NoError(t, err)
+
+	tufDir := filepath.Join(t.TempDir(), "tuf")
+	require.NoError(t, os.MkdirAll(tufDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(tufDir, "targets.json"), minimalTargetsJSON(t), 0o640))
+	require.NoError(t, h.ProcessUpdateTuf(tufDir))
+
+	// Read back snapshot/timestamp versions before refresh attempt.
+	snapBefore := readSnapshot(t, tufDir)
+	tsBefore := readTimestamp(t, tufDir)
+
+	// Threshold of 1 nanosecond — files expire in ~1 year so no refresh should happen.
+	refreshed, err := h.RefreshUpdateTuf(tufDir, time.Nanosecond)
+	require.NoError(t, err)
+	require.False(t, refreshed)
+
+	// Versions should be unchanged.
+	require.Equal(t, snapBefore.Signed.Version, readSnapshot(t, tufDir).Signed.Version)
+	require.Equal(t, tsBefore.Signed.Version, readTimestamp(t, tufDir).Signed.Version)
+}
+
+func TestRefreshUpdateTuf_refreshNeeded(t *testing.T) {
+	fs := newTufFs(t)
+	h, err := storage.InitTuf(fs)
+	require.NoError(t, err)
+
+	tufDir := filepath.Join(t.TempDir(), "tuf")
+	require.NoError(t, os.MkdirAll(tufDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(tufDir, "targets.json"), minimalTargetsJSON(t), 0o640))
+	require.NoError(t, h.ProcessUpdateTuf(tufDir))
+
+	snapBefore := readSnapshot(t, tufDir)
+	tsBefore := readTimestamp(t, tufDir)
+
+	// Threshold of 2 years — files expire in ~1 year, so refresh should trigger.
+	refreshed, err := h.RefreshUpdateTuf(tufDir, 2*365*24*time.Hour)
+	require.NoError(t, err)
+	require.True(t, refreshed)
+
+	snapAfter := readSnapshot(t, tufDir)
+	tsAfter := readTimestamp(t, tufDir)
+
+	require.Equal(t, snapBefore.Signed.Version+1, snapAfter.Signed.Version)
+	require.Equal(t, tsBefore.Signed.Version+1, tsAfter.Signed.Version)
+	require.True(t, snapAfter.Signed.Expires.After(snapBefore.Signed.Expires))
+	require.True(t, tsAfter.Signed.Expires.After(tsBefore.Signed.Expires))
+	// Timestamp must reference the new snapshot version.
+	require.Equal(t, snapAfter.Signed.Version, tsAfter.Signed.Meta["snapshot.json"].Version)
+	// Signatures must be updated.
+	require.NotEqual(t, snapBefore.Signatures[0].Sig, snapAfter.Signatures[0].Sig)
+	require.NotEqual(t, tsBefore.Signatures[0].Sig, tsAfter.Signatures[0].Sig)
+}
+
+func minimalTargetsJSON(t *testing.T) []byte {
+	t.Helper()
+	return []byte(`{"signatures":[],"signed":{"_type":"Targets","expires":"2020-01-01T00:00:00Z","version":1,"targets":{"x-1":{"length":1,"hashes":{"sha256":"abc"},"custom":{"tags":["main"]}}}}}`)
+}
+
+func readSnapshot(t *testing.T, tufDir string) storage.TufSnapshot {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(tufDir, "snapshot.json"))
+	require.NoError(t, err)
+	var s storage.TufSnapshot
+	require.NoError(t, json.Unmarshal(data, &s))
+	return s
+}
+
+func readTimestamp(t *testing.T, tufDir string) storage.TufTimestamp {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(tufDir, "timestamp.json"))
+	require.NoError(t, err)
+	var ts storage.TufTimestamp
+	require.NoError(t, json.Unmarshal(data, &ts))
+	return ts
+}
+
 func TestProcessUpdateTuf(t *testing.T) {
 	fs := newTufFs(t)
 	h, err := storage.InitTuf(fs)
