@@ -11,6 +11,8 @@ import (
 	"io"
 	"iter"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -129,6 +131,7 @@ type Storage struct {
 	stmtDeviceSetUpdate stmtDeviceSetUpdate
 	stmtUpdateInsert    stmtUpdateInsert
 	stmtUpdateList      stmtUpdateList
+	stmtUpdateBackfill  stmtUpdateBackfill
 }
 
 func (d Device) Delete() error {
@@ -204,6 +207,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceSetUpdate,
 		&handle.stmtUpdateInsert,
 		&handle.stmtUpdateList,
+		&handle.stmtUpdateBackfill,
 	); err != nil {
 		return nil, err
 	}
@@ -217,7 +221,63 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		handle.stmtDeviceList[orderBy] = stmt
 	}
 
+	if err := handle.backfillUpdates(); err != nil {
+		return nil, err
+	}
+
 	return &handle, nil
+}
+
+func (s Storage) backfillUpdates() error {
+	existing, err := s.stmtUpdateList.run("")
+	if err != nil {
+		return fmt.Errorf("backfill: failed to list DB updates: %w", err)
+	}
+	inDB := make(map[string]struct{})
+	for tag, updates := range existing {
+		for _, u := range updates {
+			inDB[tag+"/"+u.Name] = struct{}{}
+		}
+	}
+
+	updatesRoot := s.fs.Config.UpdatesDir()
+	tagEntries, err := os.ReadDir(updatesRoot)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("backfill: failed to read updates directory: %w", err)
+	}
+
+	for _, tagEntry := range tagEntries {
+		if !tagEntry.IsDir() {
+			continue
+		}
+		tag := tagEntry.Name()
+		updateEntries, err := os.ReadDir(filepath.Join(updatesRoot, tag))
+		if err != nil {
+			return fmt.Errorf("backfill: failed to read tag directory %q: %w", tag, err)
+		}
+		for _, updateEntry := range updateEntries {
+			if !updateEntry.IsDir() {
+				continue
+			}
+			name := updateEntry.Name()
+			if _, ok := inDB[tag+"/"+name]; ok {
+				continue
+			}
+			info, err := updateEntry.Info()
+			if err != nil {
+				return fmt.Errorf("backfill: failed to stat update %q/%q: %w", tag, name, err)
+			}
+			mtime := info.ModTime().Unix()
+			slog.Info("Backfilling update found on disk but missing from DB", "tag", tag, "name", name)
+			if err := s.stmtUpdateBackfill.run(tag, name, mtime); err != nil {
+				return fmt.Errorf("backfill: failed to insert update %q/%q: %w", tag, name, err)
+			}
+		}
+	}
+	return nil
 }
 
 func (s Storage) DevicesList(opts DeviceListOpts) ([]DeviceListItem, int, error) {
@@ -751,4 +811,17 @@ func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
 		res[t] = append(res[t], u)
 	}
 	return res, rows.Err()
+}
+
+type stmtUpdateBackfill storage.DbStmt
+
+func (s *stmtUpdateBackfill) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiUpdateBackfill", `
+		INSERT OR IGNORE INTO updates(tag, name, uploaded_at, uploaded_by) VALUES(?, ?, ?, ?)`)
+	return
+}
+
+func (s *stmtUpdateBackfill) run(tag, name string, uploadedAt int64) error {
+	_, err := s.Stmt.Exec(tag, name, uploadedAt, "backfill-helper")
+	return err
 }
