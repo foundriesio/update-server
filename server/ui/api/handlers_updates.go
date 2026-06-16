@@ -25,11 +25,12 @@ type UpdateTufResp map[string]map[string]any
 func (h handlers) updateCreate(c echo.Context) error {
 	tag := c.Param("tag")
 	update := c.Param("update")
+	user := CtxGetUser(c.Request().Context())
 
 	payload := c.Request().Body
 	defer payload.Close() //nolint:errcheck
 
-	if err := h.storage.CreateUpdate(tag, update, payload); err != nil {
+	if err := h.storage.CreateUpdate(tag, update, user.Username, payload); err != nil {
 		if errors.Is(err, storage.ErrInvalidUpdate) {
 			return EchoError(c, err, http.StatusBadRequest, err.Error())
 		}
