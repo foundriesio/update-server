@@ -506,7 +506,7 @@ func (s Storage) UploadConfigs(payload io.Reader) (err error) {
 	})
 }
 
-func (s Storage) CreateUpdate(tag, updateName string, payload io.Reader) error {
+func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, payload io.Reader) error {
 	// First, check the database for uniqueness by (tag, name).
 	// Then, save the upload, and finally, insert into the database.
 	// This warrants the two-phase transaction, unless the user makes concurrent uploads of the same update.
@@ -524,7 +524,7 @@ func (s Storage) CreateUpdate(tag, updateName string, payload io.Reader) error {
 	if err := s.fs.Updates.SaveUpload(tag, updateName, payload, cleanup); err != nil {
 		return err
 	}
-	return s.stmtUpdateInsert.run(tag, updateName)
+	return s.stmtUpdateInsert.run(tag, updateName, uploadedBy)
 }
 
 type stmtDeviceGet storage.DbStmt
@@ -721,26 +721,26 @@ type stmtUpdateInsert storage.DbStmt
 
 func (s *stmtUpdateInsert) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateInsert", `
-		INSERT INTO updates(tag, name, uploaded_at) VALUES(?, ?, unixepoch('now'))`)
+		INSERT INTO updates(tag, name, uploaded_at, uploaded_by) VALUES(?, ?, unixepoch('now'), ?)`)
 	return
 }
 
-func (s *stmtUpdateInsert) run(tag, name string) error {
-	_, err := s.Stmt.Exec(tag, name)
+func (s *stmtUpdateInsert) run(tag, name, uploadedBy string) error {
+	_, err := s.Stmt.Exec(tag, name, uploadedBy)
 	return err
 }
 
 // InsertUpdate is intended for unit tests that need to seed the updates table
 // without going through the full upload path.
-func (s Storage) InsertUpdate(tag, name string) error {
-	return s.stmtUpdateInsert.run(tag, name)
+func (s Storage) InsertUpdate(tag, name, uploadedBy string) error {
+	return s.stmtUpdateInsert.run(tag, name, uploadedBy)
 }
 
 type stmtUpdateList storage.DbStmt
 
 func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateList", `
-		SELECT tag, name, uploaded_at FROM updates
+		SELECT tag, name, uploaded_at, uploaded_by FROM updates
 		WHERE (? = '' OR tag = ?)
 		ORDER BY tag, uploaded_at, name`)
 	return
@@ -756,7 +756,7 @@ func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
 	for rows.Next() {
 		var u Update
 		var t string
-		if err = rows.Scan(&t, &u.Name, &u.UploadedAt); err != nil {
+		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy); err != nil {
 			return nil, err
 		}
 		res[t] = append(res[t], u)
