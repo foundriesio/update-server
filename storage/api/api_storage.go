@@ -510,10 +510,10 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, payload io.Rea
 		// This is not critical - log and let the "real" error/success return below.
 		slog.Error("Failed to clean upload directory", "error", cleanupErr)
 	}
-	if err := s.fs.Updates.SaveUpload(tag, updateName, payload, cleanup); err != nil {
-		return err
+	commit := func() error {
+		return s.stmtUpdateInsert.run(tag, updateName, uploadedBy)
 	}
-	return s.stmtUpdateInsert.run(tag, updateName, uploadedBy)
+	return s.fs.Updates.SaveUpload(tag, updateName, payload, cleanup, commit)
 }
 
 type stmtDeviceGet storage.DbStmt

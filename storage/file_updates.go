@@ -81,7 +81,7 @@ func checkUpdateTargets(targetsPath, tag string) error {
 	return fmt.Errorf("no target with tag '%s' found in targets.json", tag)
 }
 
-func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, onCleanupFailure func(error)) error {
+func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, onCleanupFailure func(error), onCommit func() error) error {
 	const (
 		appsDir   = UpdatesAppsDir + string(filepath.Separator)
 		ostreeDir = UpdatesOstreeDir + string(filepath.Separator)
@@ -98,6 +98,7 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, o
 		TarUnpackUseTmpDir(txDir),
 		TarUnpackOnEvents(tarUnpackEvents{
 			onTmpCleanupError: onCleanupFailure,
+			onCommit:          onCommit,
 			onTarHeaderSeen: func(hdr *TarHeader) (skip bool, err error) {
 				// If any check below fails due to header name being unclean - whose problem is that?
 				// For tarballs with many files, below boolean algebra is way faster than a switch over name patterns.

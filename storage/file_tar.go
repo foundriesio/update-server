@@ -29,6 +29,9 @@ type tarUnpackEvents struct {
 	onUnpackStarted  func() error
 	onTarHeaderSeen  func(*TarHeader) (skip bool, err error)
 	onUnpackComplete func() error
+	// Called after unpacking and contents are moved to final destination.
+	// If it returns an error, the unpacked files are cleaned up.
+	onCommit func() error
 	// Error handlers for two specific errors of interest
 	onTmpRenameError  func(error) (isDestCorrupted bool, err error)
 	onTmpCleanupError func(error)
@@ -216,6 +219,14 @@ func (s tarFsHandle) _handleTmpDir(destDirPath string, cfg tarUnpackConfig, unpa
 			err = fmt.Errorf("failed to rename unpacked directory: %w", err)
 		}
 		return err
+	}
+	if cfg.events.onCommit != nil {
+		if err := cfg.events.onCommit(); err != nil {
+			if rmErr := os.RemoveAll(destDirPath); rmErr != nil && cfg.events.onTmpCleanupError != nil {
+				cfg.events.onTmpCleanupError(rmErr)
+			}
+			return err
+		}
 	}
 	return nil
 }
