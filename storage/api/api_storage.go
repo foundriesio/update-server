@@ -29,6 +29,7 @@ type (
 	AppliedConfigs    = storage.AppliedConfigs
 	DeviceStatus      = storage.DeviceStatus
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
+	Update            = storage.Update
 
 	ErrConfigUploadBroken = storage.ErrConfigUploadBroken
 )
@@ -323,8 +324,8 @@ func (s Storage) ReadAppliedConfigs(uuid string) (*storage.AppliedConfigs, error
 
 var clearingEventTypes = []string{"EcuInstallationCompleted", "CertRotationCompleted", "MetadataUpdateCompleted"}
 
-// ListUpdates returns a map of tag to update names. If the tag is empty, it returns all tags.
-func (s Storage) ListUpdates(tag string) (map[string][]string, error) {
+// ListUpdates returns a map of tag to updates. If the tag is empty, it returns all tags.
+func (s Storage) ListUpdates(tag string) (map[string][]Update, error) {
 	return s.stmtUpdateList.run(tag)
 }
 
@@ -511,7 +512,9 @@ func (s Storage) CreateUpdate(tag, updateName string, payload io.Reader) error {
 	// This warrants the two-phase transaction, unless the user makes concurrent uploads of the same update.
 	if existing, err := s.stmtUpdateList.run(tag); err != nil {
 		return err
-	} else if lst, ok := existing[tag]; ok && len(lst) > 0 && slices.Contains(lst, updateName) {
+	} else if lst, ok := existing[tag]; ok && len(lst) > 0 && slices.ContainsFunc(lst, func(item Update) bool {
+		return item.Name == updateName
+	}) {
 		return storage.ErrDbConstraintUnique
 	}
 	cleanup := func(cleanupErr error) {
@@ -737,25 +740,26 @@ type stmtUpdateList storage.DbStmt
 
 func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateList", `
-		SELECT tag, name FROM updates
+		SELECT tag, name, uploaded_at FROM updates
 		WHERE (? = '' OR tag = ?)
 		ORDER BY tag, uploaded_at, name`)
 	return
 }
 
-func (s *stmtUpdateList) run(tag string) (map[string][]string, error) {
+func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
 	rows, err := s.Stmt.Query(tag, tag)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close() //nolint:errcheck
-	res := map[string][]string{}
+	res := map[string][]Update{}
 	for rows.Next() {
-		var t, name string
-		if err = rows.Scan(&t, &name); err != nil {
+		var u Update
+		var t string
+		if err = rows.Scan(&t, &u.Name, &u.UploadedAt); err != nil {
 			return nil, err
 		}
-		res[t] = append(res[t], name)
+		res[t] = append(res[t], u)
 	}
 	return res, rows.Err()
 }

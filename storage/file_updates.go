@@ -18,6 +18,11 @@ import (
 
 var ErrInvalidUpdate = errors.New("invalid update archive")
 
+type Update struct {
+	Name       string `json:"name"`
+	UploadedAt int64  `json:"uploaded-at"`
+}
+
 type updatesFsHandleWrap struct {
 	baseFsHandle
 	Apps     UpdatesFsHandle
