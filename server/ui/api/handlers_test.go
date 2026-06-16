@@ -604,8 +604,19 @@ func TestApiUpdateList(t *testing.T) {
 	tc.GET("/updates/tag", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
-	s := func(data []byte) string {
-		return strings.TrimSpace(string(data))
+	updateNames := func(data []byte) map[string][]string {
+		var updates map[string][]apiStorage.Update
+		require.Nil(t, json.Unmarshal(data, &updates))
+		res := make(map[string][]string, len(updates))
+		for tag, upds := range updates {
+			names := make([]string, len(upds))
+			for i, u := range upds {
+				require.NotZero(t, u.UploadedAt)
+				names[i] = u.Name
+			}
+			res[tag] = names
+		}
+		return res
 	}
 
 	require.Nil(t, tc.api.InsertUpdate("tag1", "update1"))
@@ -614,13 +625,13 @@ func TestApiUpdateList(t *testing.T) {
 	require.Nil(t, tc.api.InsertUpdate("tag2", "update3"))
 
 	data := tc.GET("/updates", 200)
-	assert.Equal(t, `{"tag1":["update1","update2"],"tag2":["update1","update3"]}`, s(data))
+	assert.Equal(t, map[string][]string{"tag1": {"update1", "update2"}, "tag2": {"update1", "update3"}}, updateNames(data))
 	data = tc.GET("/updates/tag1", 200)
-	assert.Equal(t, `{"tag1":["update1","update2"]}`, s(data))
+	assert.Equal(t, map[string][]string{"tag1": {"update1", "update2"}}, updateNames(data))
 	data = tc.GET("/updates/tag2", 200)
-	assert.Equal(t, `{"tag2":["update1","update3"]}`, s(data))
+	assert.Equal(t, map[string][]string{"tag2": {"update1", "update3"}}, updateNames(data))
 	data = tc.GET("/updates/tag4", 200) // tag not exists
-	assert.Equal(t, "{}", s(data))
+	assert.Equal(t, map[string][]string{}, updateNames(data))
 
 	// Synthetic tag validation - create a bad tag on disk - request must still return 404
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))

@@ -29,6 +29,7 @@ type (
 	AppliedConfigs    = storage.AppliedConfigs
 	DeviceStatus      = storage.DeviceStatus
 	DeviceUpdateEvent = storage.DeviceUpdateEvent
+	Update            = storage.Update
 
 	ErrConfigUploadBroken = storage.ErrConfigUploadBroken
 )
@@ -323,7 +324,7 @@ func (s Storage) ReadAppliedConfigs(uuid string) (*storage.AppliedConfigs, error
 
 var clearingEventTypes = []string{"EcuInstallationCompleted", "CertRotationCompleted", "MetadataUpdateCompleted"}
 
-func (s Storage) ListUpdates(tag string) (map[string][]string, error) {
+func (s Storage) ListUpdates(tag string) (map[string][]Update, error) {
 	return s.stmtUpdateList.run(tag)
 }
 
@@ -728,25 +729,26 @@ type stmtUpdateList storage.DbStmt
 
 func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateList", `
-		SELECT tag, name FROM updates
+		SELECT tag, name, uploaded_at FROM updates
 		WHERE (? = '' OR tag = ?)
 		ORDER BY tag, uploaded_at, name`)
 	return
 }
 
-func (s *stmtUpdateList) run(tag string) (map[string][]string, error) {
+func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
 	rows, err := s.Stmt.Query(tag, tag)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close() //nolint:errcheck
-	res := map[string][]string{}
+	res := map[string][]Update{}
 	for rows.Next() {
-		var t, name string
-		if err = rows.Scan(&t, &name); err != nil {
+		var u Update
+		var t string
+		if err = rows.Scan(&t, &u.Name, &u.UploadedAt); err != nil {
 			return nil, err
 		}
-		res[t] = append(res[t], name)
+		res[t] = append(res[t], u)
 	}
 	return res, rows.Err()
 }
