@@ -201,40 +201,6 @@ type RolloutsFsHandle struct {
 	UpdatesFsHandle
 }
 
-func (s RolloutsFsHandle) ListUpdates(tag string) (map[string][]string, error) {
-	// An assumption is that we will have a limited amount of tags.
-	// In this case it is just fine to list all available updates for all tags at once.
-	var tagDirs []string
-	if len(tag) > 0 {
-		tagDirs = []string{tag}
-	} else if dirs, err := os.ReadDir(s.root); err == nil {
-		for _, d := range dirs {
-			if d.IsDir() {
-				tagDirs = append(tagDirs, d.Name())
-			}
-		}
-	} else if os.IsNotExist(err) {
-		return nil, nil
-	} else {
-		return nil, err
-	}
-
-	res := make(map[string][]string, len(tagDirs))
-	for _, tag = range tagDirs {
-		if dirs, err := os.ReadDir(filepath.Join(s.root, tag)); err == nil {
-			res[tag] = make([]string, 0, len(dirs))
-			for _, d := range dirs {
-				if d.IsDir() {
-					res[tag] = append(res[tag], d.Name())
-				}
-			}
-		} else if !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
 func (s RolloutsFsHandle) ListFiles(tag, update string) ([]string, error) {
 	h, _ := s.updateLocalHandle(tag, update, false)
 	return h.matchFiles("", true)

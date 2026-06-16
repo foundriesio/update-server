@@ -126,6 +126,8 @@ type Storage struct {
 	stmtDeviceList      map[OrderBy]stmtDeviceList
 	stmtDeviceSetLabels stmtDeviceSetLabels
 	stmtDeviceSetUpdate stmtDeviceSetUpdate
+	stmtUpdateInsert    stmtUpdateInsert
+	stmtUpdateList      stmtUpdateList
 }
 
 func (d Device) Delete() error {
@@ -199,6 +201,8 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceGetLabels,
 		&handle.stmtDeviceSetLabels,
 		&handle.stmtDeviceSetUpdate,
+		&handle.stmtUpdateInsert,
+		&handle.stmtUpdateList,
 	); err != nil {
 		return nil, err
 	}
@@ -320,7 +324,7 @@ func (s Storage) ReadAppliedConfigs(uuid string) (*storage.AppliedConfigs, error
 var clearingEventTypes = []string{"EcuInstallationCompleted", "CertRotationCompleted", "MetadataUpdateCompleted"}
 
 func (s Storage) ListUpdates(tag string) (map[string][]string, error) {
-	return s.fs.Updates.Rollouts.ListUpdates(tag)
+	return s.stmtUpdateList.run(tag)
 }
 
 func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[string]any, error) {
@@ -505,7 +509,10 @@ func (s Storage) CreateUpdate(tag, updateName string, payload io.Reader) error {
 		// This is not critical - log and let the "real" error/success return below.
 		slog.Error("Failed to clean upload directory", "error", cleanupErr)
 	}
-	return s.fs.Updates.SaveUpload(tag, updateName, payload, cleanup)
+	if err := s.fs.Updates.SaveUpload(tag, updateName, payload, cleanup); err != nil {
+		return err
+	}
+	return s.stmtUpdateInsert.run(tag, updateName)
 }
 
 type stmtDeviceGet storage.DbStmt
@@ -696,4 +703,50 @@ func (s *stmtDeviceDelete) Init(db storage.DbHandle) (err error) {
 func (s *stmtDeviceDelete) run(uuid string) error {
 	_, err := s.Stmt.Exec(uuid)
 	return err
+}
+
+type stmtUpdateInsert storage.DbStmt
+
+func (s *stmtUpdateInsert) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiUpdateInsert", `
+		INSERT INTO updates(tag, name, uploaded_at) VALUES(?, ?, unixepoch('now'))`)
+	return
+}
+
+func (s *stmtUpdateInsert) run(tag, name string) error {
+	_, err := s.Stmt.Exec(tag, name)
+	return err
+}
+
+// InsertUpdate is intended for unit tests that need to seed the updates table
+// without going through the full upload path.
+func (s Storage) InsertUpdate(tag, name string) error {
+	return s.stmtUpdateInsert.run(tag, name)
+}
+
+type stmtUpdateList storage.DbStmt
+
+func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiUpdateList", `
+		SELECT tag, name FROM updates
+		WHERE (? = '' OR tag = ?)
+		ORDER BY tag, uploaded_at, name`)
+	return
+}
+
+func (s *stmtUpdateList) run(tag string) (map[string][]string, error) {
+	rows, err := s.Stmt.Query(tag, tag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close() //nolint:errcheck
+	res := map[string][]string{}
+	for rows.Next() {
+		var t, name string
+		if err = rows.Scan(&t, &name); err != nil {
+			return nil, err
+		}
+		res[t] = append(res[t], name)
+	}
+	return res, rows.Err()
 }

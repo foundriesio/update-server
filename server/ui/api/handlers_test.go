@@ -608,10 +608,10 @@ func TestApiUpdateList(t *testing.T) {
 		return strings.TrimSpace(string(data))
 	}
 
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update2", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update1", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update3", "rollout1", "foo"))
+	require.Nil(t, tc.api.InsertUpdate("tag1", "update1"))
+	require.Nil(t, tc.api.InsertUpdate("tag1", "update2"))
+	require.Nil(t, tc.api.InsertUpdate("tag2", "update1"))
+	require.Nil(t, tc.api.InsertUpdate("tag2", "update3"))
 
 	data := tc.GET("/updates", 200)
 	assert.Equal(t, `{"tag1":["update1","update2"],"tag2":["update1","update3"]}`, s(data))
@@ -702,7 +702,9 @@ func TestApiRolloutPut(t *testing.T) {
 	tc.PUT("/updates/tag/update/rollouts/rocks", 400, "{}")
 
 	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("tag1", "update1", "foo", "bar"))
+	require.Nil(t, tc.api.InsertUpdate("tag1", "update1"))
 	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
+	require.Nil(t, tc.api.InsertUpdate("tag2", "update2"))
 	d, err := tc.gw.DeviceCreate("ci1", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
