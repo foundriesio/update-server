@@ -38,6 +38,8 @@ type Provider interface {
 	// GetSession retrieves the session associated with the given context.
 	GetSession(c echo.Context) (*Session, error)
 	DropSession(c echo.Context, session *Session)
+
+	GetRateLimiterMiddleware() echo.MiddlewareFunc
 }
 
 const AuthCookieName = "fioserver-session"

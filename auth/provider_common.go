@@ -86,3 +86,7 @@ func (p *commonProvider) GetSession(c echo.Context) (*Session, error) {
 	}
 	return nil, p.renderer.renderLoginPage(c, "")
 }
+
+func (p *commonProvider) GetRateLimiterMiddleware() echo.MiddlewareFunc {
+	return p.rateLimiter.Middleware
+}
