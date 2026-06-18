@@ -215,6 +215,12 @@ func (p testAuthProvider) GetSession(c echo.Context) (*auth.Session, error) {
 func (testAuthProvider) DropSession(echo.Context, *auth.Session) {
 }
 
+func (testAuthProvider) GetRateLimiterMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return next
+	}
+}
+
 func NewTestClient(t *testing.T) *testClient {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
