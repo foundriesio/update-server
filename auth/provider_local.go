@@ -18,6 +18,7 @@ import (
 	"github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/users"
+	"github.com/foundriesio/update-server/version"
 )
 
 const localLoginTemplate = "local-login.html"
@@ -198,10 +199,12 @@ func (p localProvider) renderLoginPage(c echo.Context, reason string) error {
 		User      *users.User
 		NavItems  []string
 		CsrfToken string
+		Version   string
 	}{
 		Title:     "Login",
 		Reason:    reason,
 		CsrfToken: csrfToken,
+		Version:   version.Version,
 	}
 	return templates.Templates.ExecuteTemplate(c.Response(), localLoginTemplate, context)
 }
@@ -246,11 +249,13 @@ func (p *localProvider) handlePasswordPage(c echo.Context, session *Session) err
 		User      *users.User
 		NavItems  []string
 		CsrfToken string
+		Version   string
 	}{
 		Title:     "Change Password",
 		Message:   "Your password has expired. Please choose a new password.",
 		User:      session.User,
 		CsrfToken: csrfToken,
+		Version:   version.Version,
 	}
 	return templates.Templates.ExecuteTemplate(c.Response(), localPasswordChangeTemplate, context)
 }
