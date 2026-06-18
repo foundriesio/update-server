@@ -1,0 +1,23 @@
+## How to use
+
+```
+ # one time operation to:
+ #  - configure server
+ #  - generate all the device certs required
+ cd contrib/scale-test
+ docker compose -f docker-compose-setup.yml build
+ docker compose -f docker-compose-setup.yml up
+```
+
+Its handy to make a backup of this "data" directory after each step to keep you from repeating things.
+
+```
+ # One time to register devices:
+ cd contrib/scale-test
+ docker compose -f docker-compose-locust.yml build
+ LOCUSTFILE=locust-device-register.py docker compose -f docker-compose-locust.yml up
+```
+
+Make a backup of this directory to have everything in pristine condition.
+
+After this you can run the other perf tests
