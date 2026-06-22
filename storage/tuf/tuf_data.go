@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"time"
 )
 
@@ -152,6 +154,23 @@ type TargetsMeta struct {
 type AtsTufTargets struct {
 	Signatures []Signature `json:"signatures"`
 	Signed     TargetsMeta `json:"signed"`
+}
+
+func (t AtsTufTargets) GetLatestTargetVersion() int {
+	maxVersion := 0
+	for name, target := range t.Signed.Targets {
+		var custom struct {
+			Version string `json:"version"`
+		}
+		if err := json.Unmarshal(target.Custom, &custom); err != nil {
+			slog.Warn("Unable to parse target custom", "target-name", name, "error", err)
+			continue
+		}
+		if n, err := strconv.Atoi(custom.Version); err == nil && n > maxVersion {
+			maxVersion = n
+		}
+	}
+	return maxVersion
 }
 
 // MetaItem references a version of another metadata file. The ota-tuf format

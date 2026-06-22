@@ -142,7 +142,7 @@ func NewFs(root string) (*FsHandle, error) {
 	fs.Configs.root = fs.Config.ConfigsDir()
 	fs.Devices.root = fs.Config.DevicesDir()
 	fs.Updates.init(fs.Config.UpdatesDir())
-	fs.Tuf.init(fs.Config.TufDir(), fs.Auth)
+	fs.Tuf.init(fs.Config.TufDir(), fs.Auth, fs.Updates)
 
 	for _, h := range []baseFsHandle{
 		fs.Audit.baseFsHandle,
