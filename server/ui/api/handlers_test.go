@@ -1000,6 +1000,72 @@ func TestApiDeviceDelete(t *testing.T) {
 	tc.GET("/devices/del-device", 404)
 }
 
+func TestApiDeviceUndeny(t *testing.T) {
+	tc := NewTestClient(t)
+
+	// Create and delete a device.
+	_, err := tc.gw.DeviceCreate("restore-device", "pubkey")
+	require.Nil(t, err)
+	tc.u.AllowedScopes = users.ScopeDevicesD
+	tc.DELETE("/devices/restore-device", 204)
+
+	// No permission / wrong scope cannot remove from denied list.
+	tc.u.AllowedScopes = 0
+	tc.DELETE("/denied-devices/restore-device", 403)
+	tc.u.AllowedScopes = users.ScopeDevicesR
+	tc.DELETE("/denied-devices/restore-device", 403)
+
+	// With delete scope: removing an unknown device is a 404.
+	tc.u.AllowedScopes = users.ScopeDevicesD
+	tc.DELETE("/denied-devices/no-such-device", 404)
+
+	// Removing an already-active device is also a 404.
+	_, err = tc.gw.DeviceCreate("active-device", "pubkey2")
+	require.Nil(t, err)
+	tc.DELETE("/denied-devices/active-device", 404)
+
+	// Successful removal from denied list.
+	tc.DELETE("/denied-devices/restore-device", 204)
+
+	// The device is visible again.
+	tc.u.AllowedScopes = users.ScopeDevicesR
+	tc.GET("/devices/restore-device", 200)
+}
+
+func TestApiDeniedDevicesList(t *testing.T) {
+	tc := NewTestClient(t)
+	tc.GET("/denied-devices", 403)
+	tc.u.AllowedScopes = users.ScopeDevicesR
+
+	// No denied devices.
+	data := tc.GET("/denied-devices", 200)
+	var uuids []string
+	require.Nil(t, json.Unmarshal(data, &uuids))
+	require.Len(t, uuids, 0)
+
+	// Create two devices, delete only one of them.
+	_, err := tc.gw.DeviceCreate("live-device", "pubkey1")
+	require.Nil(t, err)
+	_, err = tc.gw.DeviceCreate("gone-device", "pubkey2")
+	require.Nil(t, err)
+	tc.u.AllowedScopes = users.ScopeDevicesD
+	tc.DELETE("/devices/gone-device", 204)
+
+	// Only the denied device shows up in the denied list.
+	tc.u.AllowedScopes = users.ScopeDevicesR
+	data = tc.GET("/denied-devices", 200)
+	require.Nil(t, json.Unmarshal(data, &uuids))
+	require.Len(t, uuids, 1)
+	assert.Equal(t, "gone-device", uuids[0])
+
+	// ...and it is absent from the active list (which has only the live one).
+	var devices []apiStorage.DeviceListItem
+	data = tc.GET("/devices", 200)
+	require.Nil(t, json.Unmarshal(data, &devices))
+	require.Len(t, devices, 1)
+	assert.Equal(t, "live-device", devices[0].Uuid)
+}
+
 func TestApiConfigsFactory(t *testing.T) {
 	tc := NewTestClient(t)
 	const (
