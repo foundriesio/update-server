@@ -10,6 +10,7 @@ import (
 )
 
 type Rollout = models.Rollout
+type Update = models.Update
 
 type UpdatesApi struct {
 	api *Api
@@ -19,8 +20,8 @@ func (a *Api) Updates() UpdatesApi {
 	return UpdatesApi{api: a}
 }
 
-func (u UpdatesApi) List() (map[string][]string, error) {
-	var updates map[string][]string
+func (u UpdatesApi) List() (map[string][]Update, error) {
+	var updates map[string][]Update
 	return updates, u.api.Get("/v1/updates", &updates)
 }
 

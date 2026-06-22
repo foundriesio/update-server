@@ -25,13 +25,17 @@ type UpdateTufResp map[string]map[string]any
 func (h handlers) updateCreate(c echo.Context) error {
 	tag := c.Param("tag")
 	update := c.Param("update")
+	user := CtxGetUser(c.Request().Context())
 
 	payload := c.Request().Body
 	defer payload.Close() //nolint:errcheck
 
-	if err := h.storage.CreateUpdate(tag, update, payload); err != nil {
-		if errors.Is(err, storage.ErrInvalidUpdate) {
+	if err := h.storage.CreateUpdate(tag, update, user.Username, payload); err != nil {
+		switch {
+		case errors.Is(err, storage.ErrInvalidUpdate):
 			return EchoError(c, err, http.StatusBadRequest, err.Error())
+		case errors.Is(err, storage.ErrDbConstraintUnique):
+			return EchoError(c, err, http.StatusConflict, "Update with this name and tag already exists")
 		}
 		return EchoError(c, err, http.StatusInternalServerError, "failed to create update")
 	}

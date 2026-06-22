@@ -23,12 +23,13 @@ import (
 )
 
 type Rollout = storage.Rollout
+type Update = storage.Update
 
 // @Summary List updates
 // @Description Requires scope: updates:read or updates:read-update
 // @Tags    Updates
 // @Produce json
-// @Success 200 {object} map[string][]string
+// @Success 200 {object} map[string][]Update
 // @Param   tag path string true "Update tag"
 // @Router  /updates/{tag} [get]
 func (h *handlers) updateList(c echo.Context) error {
@@ -38,7 +39,7 @@ func (h *handlers) updateList(c echo.Context) error {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to look up updates")
 	} else {
 		if updates == nil {
-			updates = map[string][]string{}
+			updates = map[string][]Update{}
 		}
 		return c.JSON(http.StatusOK, updates)
 	}
@@ -141,7 +142,9 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 	// Check if update with this name exists
 	if updates, err := h.storage.ListUpdates(tag); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to check if update exists")
-	} else if tagUpdates, ok := updates[tag]; !ok || !slices.Contains(tagUpdates, updateName) {
+	} else if tagUpdates, ok := updates[tag]; !ok || !slices.ContainsFunc(tagUpdates, func(u storage.Update) bool {
+		return u.Name == updateName
+	}) {
 		return c.String(http.StatusNotFound, "Update with this name does not exist")
 	}
 

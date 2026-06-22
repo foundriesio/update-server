@@ -18,6 +18,12 @@ import (
 
 var ErrInvalidUpdate = errors.New("invalid update archive")
 
+type Update struct {
+	Name       string `json:"name"`
+	UploadedAt int64  `json:"uploaded-at"`
+	UploadedBy string `json:"uploaded-by"`
+}
+
 type updatesFsHandleWrap struct {
 	baseFsHandle
 	Apps     UpdatesFsHandle
@@ -87,7 +93,7 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, o
 	destDir = filepath.Join(destDir, tag, update)
 	h := tarFsHandle{root: root}
 	return h.unpackTar(payload, destDir,
-		TarUnpackReplaceDest(false), // Fail if the update with the same tag and name already exists.
+		TarUnpackReplaceDest(true), // Replace updates with the same tag and name - uniqueness is checked on the database level.
 		TarUnpackUseTmpFile("update.tar"),
 		TarUnpackUseTmpDir(txDir),
 		TarUnpackOnEvents(tarUnpackEvents{
@@ -199,40 +205,6 @@ func (s UpdatesFsHandle) updateLocalHandle(tag, update string, forUpdate bool) (
 
 type RolloutsFsHandle struct {
 	UpdatesFsHandle
-}
-
-func (s RolloutsFsHandle) ListUpdates(tag string) (map[string][]string, error) {
-	// An assumption is that we will have a limited amount of tags.
-	// In this case it is just fine to list all available updates for all tags at once.
-	var tagDirs []string
-	if len(tag) > 0 {
-		tagDirs = []string{tag}
-	} else if dirs, err := os.ReadDir(s.root); err == nil {
-		for _, d := range dirs {
-			if d.IsDir() {
-				tagDirs = append(tagDirs, d.Name())
-			}
-		}
-	} else if os.IsNotExist(err) {
-		return nil, nil
-	} else {
-		return nil, err
-	}
-
-	res := make(map[string][]string, len(tagDirs))
-	for _, tag = range tagDirs {
-		if dirs, err := os.ReadDir(filepath.Join(s.root, tag)); err == nil {
-			res[tag] = make([]string, 0, len(dirs))
-			for _, d := range dirs {
-				if d.IsDir() {
-					res[tag] = append(res[tag], d.Name())
-				}
-			}
-		} else if !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
-	return res, nil
 }
 
 func (s RolloutsFsHandle) ListFiles(tag, update string) ([]string, error) {

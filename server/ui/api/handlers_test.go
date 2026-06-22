@@ -604,23 +604,40 @@ func TestApiUpdateList(t *testing.T) {
 	tc.GET("/updates/tag", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
-	s := func(data []byte) string {
-		return strings.TrimSpace(string(data))
+	updateNames := func(data []byte) map[string][]string {
+		var updates map[string][]apiStorage.Update
+		require.Nil(t, json.Unmarshal(data, &updates))
+		res := make(map[string][]string, len(updates))
+		for tag, upds := range updates {
+			names := make([]string, len(upds))
+			for i, u := range upds {
+				require.NotZero(t, u.UploadedAt)
+				names[i] = u.Name
+			}
+			res[tag] = names
+		}
+		return res
 	}
 
+	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout1", "foo"))
+
+	require.Nil(t, tc.api.InsertUpdate("tag1", "update2", "user1"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update2", "rollout1", "foo"))
+
+	require.Nil(t, tc.api.InsertUpdate("tag2", "update1", "user1"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update1", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update3", "rollout1", "foo"))
 
 	data := tc.GET("/updates", 200)
-	assert.Equal(t, `{"tag1":["update1","update2"],"tag2":["update1","update3"]}`, s(data))
+	assert.Equal(t, map[string][]string{"tag1": {"update1", "update2"}, "tag2": {"update1"}}, updateNames(data))
+
 	data = tc.GET("/updates/tag1", 200)
-	assert.Equal(t, `{"tag1":["update1","update2"]}`, s(data))
+	assert.Equal(t, map[string][]string{"tag1": {"update1", "update2"}}, updateNames(data))
 	data = tc.GET("/updates/tag2", 200)
-	assert.Equal(t, `{"tag2":["update1","update3"]}`, s(data))
+	assert.Equal(t, map[string][]string{"tag2": {"update1"}}, updateNames(data))
 	data = tc.GET("/updates/tag4", 200) // tag not exists
-	assert.Equal(t, "{}", s(data))
+	assert.Equal(t, map[string][]string{}, updateNames(data))
 
 	// Synthetic tag validation - create a bad tag on disk - request must still return 404
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
@@ -702,7 +719,9 @@ func TestApiRolloutPut(t *testing.T) {
 	tc.PUT("/updates/tag/update/rollouts/rocks", 400, "{}")
 
 	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("tag1", "update1", "foo", "bar"))
+	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
 	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
+	require.Nil(t, tc.api.InsertUpdate("tag2", "update2", "user1"))
 	d, err := tc.gw.DeviceCreate("ci1", "pubkey1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))
@@ -1390,6 +1409,10 @@ func TestApiUpdateCreate(t *testing.T) {
 	appData, err := os.ReadFile(filepath.Join(updatesDir, "main", "v2.0", "apps", "myapp.json"))
 	require.NoError(t, err)
 	assert.Equal(t, `{"name":"myapp"}`, string(appData))
+
+	// Duplicate tag and name
+	tc.POST("/updates/main/v2.0", 409, bytes.NewReader(appsTar.Bytes()),
+		"Content-Type", "application/x-tar")
 
 	// Valid tar with tuf + ostree_repo + apps (both present)
 	bothTar := tarBuffer(t, map[string]string{
