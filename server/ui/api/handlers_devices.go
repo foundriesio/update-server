@@ -61,6 +61,23 @@ func (h *handlers) deviceList(c echo.Context) error {
 	return c.JSON(http.StatusOK, devices)
 }
 
+// @Summary List denied devices
+// @Description Returns the UUIDs of all devices on the denied list. Denied devices are prevented from accessing the backend via mTLS. Requires scope: devices:read
+// @Tags    Devices
+// @Produce json
+// @Success 200 {array} string
+// @Router  /denied-devices [get]
+func (h *handlers) deniedDevicesList(c echo.Context) error {
+	uuids, err := h.storage.DeniedDevicesList()
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Unexpected error listing denied devices")
+	}
+	if uuids == nil {
+		uuids = []string{}
+	}
+	return c.JSON(http.StatusOK, uuids)
+}
+
 func setPaginationHeaders(c echo.Context, opts storage.DeviceListOpts, total int) {
 	if opts.Limit <= 0 {
 		return
@@ -121,6 +138,25 @@ func (h *handlers) deviceDelete(c echo.Context) error {
 		}
 		return c.NoContent(http.StatusNoContent)
 	})
+}
+
+// @Summary Remove a device from the denied list
+// @Description Requires scope: devices:delete. Removes the device from the denied list so it can access the backend again. Returns 404 if the device is not on the denied list.
+// @Tags    Devices
+// @Produce json
+// @Success 204
+// @Param   uuid path string true "Device UUID"
+// @Router  /denied-devices/{uuid} [delete]
+func (h *handlers) undenyDevice(c echo.Context) error {
+	uuid := c.Param("uuid")
+	undenied, err := h.storage.UndenyDevice(uuid)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to remove device from denied list")
+	}
+	if !undenied {
+		return c.NoContent(http.StatusNotFound)
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 // @Summary Get a list of updates for a device
