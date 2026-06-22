@@ -7,6 +7,8 @@
           <tr>
             <th>Tag</th>
             <th>Update name</th>
+            <th>Uploaded at</th>
+            <th>Uploaded by</th>
           </tr>
         </thead>
         <tbody>
@@ -14,7 +16,9 @@
           {{ range $update := $value }}
           <tr>
             <td>{{ $key }}</td>
-            <td><a href="/updates/{{$key}}/{{ $update }}">{{ $update }}</a></td>
+            <td><a href="/updates/{{$key}}/{{ $update.Name }}">{{ $update.Name }}</a></td>
+            <td>{{ tsToString $update.UploadedAt }}</td>
+            <td>{{ $update.UploadedBy }}</td>
           </tr>
           {{ end }}
           {{ end }}

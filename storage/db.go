@@ -157,6 +157,14 @@ func createTables(db *sql.DB) error {
 			scopes         TEXT,
 			FOREIGN KEY(user_id) REFERENCES user(id)
 		) WITHOUT ROWID;
+
+		CREATE TABLE updates (
+			tag         VARCHAR(80) NOT NULL,
+			name        VARCHAR(80) NOT NULL,
+			uploaded_at INT NOT NULL DEFAULT 0,
+			uploaded_by TEXT NOT NULL DEFAULT "",
+			PRIMARY KEY (tag, name)
+		) WITHOUT ROWID;
 	`
 	if _, err := db.Exec(sqlStmt); err != nil {
 		return fmt.Errorf("unable to create devices db: %w", err)

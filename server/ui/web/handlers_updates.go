@@ -87,14 +87,14 @@ func findLatestTarget(tuf api.UpdateTufResp) *latestTarget {
 }
 
 func (h handlers) updatesList(c echo.Context) error {
-	var updates map[string][]string
+	var updates map[string][]api.Update
 	if err := getJson(c.Request().Context(), "/v1/updates", &updates); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
 	ctx := struct {
 		baseCtx
-		Updates map[string][]string
+		Updates map[string][]api.Update
 	}{
 		baseCtx: h.baseCtx(c, "Updates", "updates"),
 		Updates: updates,

@@ -4,6 +4,8 @@
 package updates
 
 import (
+	"time"
+
 	"github.com/foundriesio/update-server/cli/api"
 	"github.com/foundriesio/update-server/cli/subcommands"
 	"github.com/spf13/cobra"
@@ -27,11 +29,11 @@ func listUpdates(api *api.Api) {
 	allUpdates, err := api.Updates().List()
 	cobra.CheckErr(err)
 
-	t := subcommands.NewTableWriter([]string{"TAG", "NAME"})
+	t := subcommands.NewTableWriter([]string{"TAG", "NAME", "UPLOADED AT", "UPLOADED BY"})
 
-	for tag, names := range allUpdates {
-		for _, name := range names {
-			t.AddRow(tag, name)
+	for tag, updates := range allUpdates {
+		for _, update := range updates {
+			t.AddRow(tag, update.Name, time.Unix(update.UploadedAt, 0).Format(time.RFC3339), update.UploadedBy)
 		}
 	}
 
