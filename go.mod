@@ -10,6 +10,7 @@ require (
 	github.com/labstack/gommon v0.5.0
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/pelletier/go-toml v1.9.5
+	github.com/secure-systems-lab/go-securesystemslib v0.11.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.50.0
