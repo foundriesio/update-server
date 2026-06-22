@@ -90,6 +90,17 @@ func (d DeviceApi) Delete(uuid string) error {
 	return d.api.Delete(fmt.Sprintf("/v1/devices/%s", uuid))
 }
 
+// ListDenied returns all UUIDs on the denied list.
+func (d DeviceApi) ListDenied() ([]string, error) {
+	var uuids []string
+	return uuids, d.api.Get("/v1/denied-devices", &uuids)
+}
+
+// DeleteDenied removes a device from the denied list so it can access the backend again.
+func (d DeviceApi) DeleteDenied(uuid string) error {
+	return d.api.Delete(fmt.Sprintf("/v1/denied-devices/%s", uuid))
+}
+
 func (d *DeviceApi) Tests(uuid string) ([]TargetTest, error) {
 	var tests []TargetTest
 	return tests, d.api.Get(fmt.Sprintf("/v1/devices/%s/tests", uuid), &tests)
