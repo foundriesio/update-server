@@ -131,6 +131,10 @@ type Storage struct {
 	stmtUpdateList      stmtUpdateList
 }
 
+// Delete is DESTRUCTIVE. It both adds the device to the denied list in the DB
+// (deleted=1) and removes the device's filesystem data (configs, update
+// events, apps-states). The filesystem data destroyed here is NOT recovered
+// if the device is later allowed back via UndenyDevice.
 func (d Device) Delete() error {
 	err1 := d.storage.stmtDeviceDelete.run(d.Uuid)
 	err2 := d.storage.fs.Devices.Delete(d.Uuid)
