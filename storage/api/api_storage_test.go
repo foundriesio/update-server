@@ -123,6 +123,68 @@ func TestDeviceDelete(t *testing.T) {
 	}
 }
 
+func TestDeviceRestore(t *testing.T) {
+	tmpdir := t.TempDir()
+	dbFile := filepath.Join(tmpdir, "sql.db")
+	db, err := storage.NewDb(dbFile)
+	require.Nil(t, err)
+	fs, err := storage.NewFs(tmpdir)
+	require.Nil(t, err)
+
+	s, err := NewStorage(db, fs)
+	require.Nil(t, err)
+
+	dg, err := gateway.NewStorage(db, fs)
+	require.Nil(t, err)
+
+	// Removing a device that does not exist reports "not found".
+	undenied, err := s.UndenyDevice("no-such-device")
+	require.Nil(t, err)
+	assert.False(t, undenied, "removing an unknown device from denied list should report false")
+
+	// Create and delete a device.
+	_, err = dg.DeviceCreate("uuid-restore", "pubkey-restore")
+	require.Nil(t, err)
+	d, err := s.DeviceGet("uuid-restore")
+	require.Nil(t, err)
+	require.NotNil(t, d)
+	require.Nil(t, d.Delete())
+
+	// The denied device shows up in the denied list, not the active list.
+	uuids, err := s.DeniedDevicesList()
+	require.Nil(t, err)
+	assert.Equal(t, 1, len(uuids), "deleted device should appear in DeniedDevicesList")
+	assert.Equal(t, "uuid-restore", uuids[0])
+
+	devices, count, err := s.DevicesList(DeviceListOpts{Limit: 100})
+	require.Nil(t, err)
+	assert.Equal(t, 0, count, "deleted device should not appear in DevicesList")
+	assert.Equal(t, 0, len(devices))
+
+	// Remove from denied list.
+	undenied, err = s.UndenyDevice("uuid-restore")
+	require.Nil(t, err)
+	assert.True(t, undenied, "removing a denied device should report true")
+
+	// It is back in the active list/get and gone from the denied list.
+	d, err = s.DeviceGet("uuid-restore")
+	require.Nil(t, err)
+	require.NotNil(t, d, "un-denied device should be returned by DeviceGet")
+
+	_, count, err = s.DevicesList(DeviceListOpts{Limit: 100})
+	require.Nil(t, err)
+	assert.Equal(t, 1, count, "un-denied device should appear in DevicesList")
+
+	uuids, err = s.DeniedDevicesList()
+	require.Nil(t, err)
+	assert.Equal(t, 0, len(uuids), "un-denied device should not appear in DeniedDevicesList")
+
+	// Calling UndenyDevice on an already-active device returns false (not on denied list).
+	undenied, err = s.UndenyDevice("uuid-restore")
+	require.Nil(t, err)
+	assert.False(t, undenied, "removing an already-active device from denied list should report false")
+}
+
 func TestUploadConfigs(t *testing.T) {
 	tmpdir := t.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
