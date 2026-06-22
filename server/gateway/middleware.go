@@ -43,7 +43,7 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 			}
 			log.Info("Created device")
 		} else if device.Deleted {
-			return c.String(http.StatusForbidden, fmt.Sprintf("Device(%s) has been deleted", uuid))
+			return c.String(http.StatusForbidden, fmt.Sprintf("Device(%s) is on the denied list", uuid))
 		} else if pub != device.PubKey {
 			/*if err := device.RotatePubKey(pub); err != nil {
 				return c.String(http.StatusForbidden, err.Error())
