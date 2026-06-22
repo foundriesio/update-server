@@ -52,6 +52,8 @@ type TufFsHandle struct {
 	// auth provides access to the HMAC secret used to encrypt key files.
 	auth AuthFsHandle
 
+	updates updatesFsHandleWrap
+
 	// RootExpiration is the validity period used for newly created root.json.
 	RootExpiration time.Duration
 	// TimestampExpiration is the validity period for timestamp metadata.
@@ -64,9 +66,10 @@ type TufFsHandle struct {
 	signers map[tuf.RoleName]*tuf.Signer
 }
 
-func (h *TufFsHandle) init(root string, auth AuthFsHandle) {
+func (h *TufFsHandle) init(root string, auth AuthFsHandle, updates updatesFsHandleWrap) {
 	h.root = root
 	h.auth = auth
+	h.updates = updates
 	h.RootExpiration = 20 * 365 * 24 * time.Hour
 	h.TimestampExpiration = 7 * 24 * time.Hour
 	h.TargetsExpiration = 90 * 24 * time.Hour
@@ -217,6 +220,18 @@ func (h TufFsHandle) ReadRoot(version int) ([]byte, error) {
 	return []byte(content), nil
 }
 
+// ReadTufMeta reads and unmarshals a TUF metadata file from an update.
+func (h TufFsHandle) ReadTufMeta(tag, update, name string, v any) error {
+	content, err := h.updates.Tuf.ReadFile(tag, update, name)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal([]byte(content), v); err != nil {
+		return fmt.Errorf("unable to parse %s for tag %s update %s: %w", name, tag, update, err)
+	}
+	return nil
+}
+
 func (h TufFsHandle) Sign(role tuf.RoleName, v any) (tuf.Signature, error) {
 	if !h.Enabled() {
 		return tuf.Signature{}, fmt.Errorf("TUF signing not available: call LoadTuf first")
@@ -226,6 +241,45 @@ func (h TufFsHandle) Sign(role tuf.RoleName, v any) (tuf.Signature, error) {
 		return tuf.Signature{}, fmt.Errorf("no signer loaded for TUF role %s", role)
 	}
 	return signer.Sign(v)
+}
+
+// Enabled reports whether TUF signing is available, i.e. LoadTuf has loaded the
+// role keys.
+func (h TufFsHandle) Enabled() bool {
+	return len(h.signers) > 0
+}
+
+func (h TufFsHandle) WriteMeta(tufDir string, targets, snapshot, timestamp []byte) error {
+	handle := baseFsHandle{root: tufDir}
+	if err := handle.mkdirs(defaultDirAccess, true); err != nil {
+		return fmt.Errorf("unable to create TUF directory: %w", err)
+	}
+
+	// link root metadata into the update directory
+	names, err := h.rootMetaNames()
+	if err != nil {
+		return fmt.Errorf("unable to list root metadata: %w", err)
+	}
+	for _, name := range names {
+		src := filepath.Join(h.root, name)
+		dst := filepath.Join(tufDir, name)
+		if err := os.Link(src, dst); err != nil {
+			return fmt.Errorf("unable to link %s into update directory: %w", name, err)
+		}
+	}
+
+	// Now write out the metadata
+	for _, pair := range [][2]string{
+		{TufTargetsFile, string(targets)},
+		{TufSnapshotFile, string(snapshot)},
+		{TufTimestampFile, string(timestamp)},
+	} {
+		if err := handle.writeFile(pair[0], pair[1], defaultFileAccess); err != nil {
+			return fmt.Errorf("unable to write %s: %w", pair[0], err)
+		}
+	}
+
+	return nil
 }
 
 // writeRoot persists a root metadata file as <version>.root.json.
