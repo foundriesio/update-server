@@ -29,6 +29,9 @@ func (c *ServeCmd) Run(args CommonArgs) error {
 	if err != nil {
 		return fmt.Errorf("failed to load filesystem: %w", err)
 	}
+	if err := fs.Tuf.LoadTuf(); err != nil {
+		return fmt.Errorf("failed to load TUF (run tuf-init first): %w", err)
+	}
 	db, err := storage.NewDb(fs.Config.DbFile())
 	if err != nil {
 		return fmt.Errorf("failed to load database: %w", err)
