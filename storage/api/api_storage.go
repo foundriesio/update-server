@@ -119,18 +119,24 @@ type Storage struct {
 	db *storage.DbHandle
 	fs *storage.FsHandle
 
-	stmtDeviceCount     stmtDeviceCount
-	stmtDeviceDelete    stmtDeviceDelete
-	stmtDeviceGet       stmtDeviceGet
-	stmtDeviceGetGroups stmtDeviceGetGroups
-	stmtDeviceGetLabels stmtDeviceGetLabels
-	stmtDeviceList      map[OrderBy]stmtDeviceList
-	stmtDeviceSetLabels stmtDeviceSetLabels
-	stmtDeviceSetUpdate stmtDeviceSetUpdate
-	stmtUpdateInsert    stmtUpdateInsert
-	stmtUpdateList      stmtUpdateList
+	stmtDeviceCount      stmtDeviceCount
+	stmtDeviceDelete     stmtDeviceDelete
+	stmtDeviceGet        stmtDeviceGet
+	stmtDeviceGetGroups  stmtDeviceGetGroups
+	stmtDeviceGetLabels  stmtDeviceGetLabels
+	stmtDeviceList       map[OrderBy]stmtDeviceList
+	stmtDeniedDeviceList stmtDeniedDeviceList
+	stmtUndenyDevice     stmtUndenyDevice
+	stmtDeviceSetLabels  stmtDeviceSetLabels
+	stmtDeviceSetUpdate  stmtDeviceSetUpdate
+	stmtUpdateInsert     stmtUpdateInsert
+	stmtUpdateList       stmtUpdateList
 }
 
+// Delete is DESTRUCTIVE. It both adds the device to the denied list in the DB
+// (deleted=1) and removes the device's filesystem data (configs, update
+// events, apps-states). The filesystem data destroyed here is NOT recovered
+// if the device is later allowed back via UndenyDevice.
 func (d Device) Delete() error {
 	err1 := d.storage.stmtDeviceDelete.run(d.Uuid)
 	err2 := d.storage.fs.Devices.Delete(d.Uuid)
@@ -200,6 +206,8 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceGet,
 		&handle.stmtDeviceGetGroups,
 		&handle.stmtDeviceGetLabels,
+		&handle.stmtDeniedDeviceList,
+		&handle.stmtUndenyDevice,
 		&handle.stmtDeviceSetLabels,
 		&handle.stmtDeviceSetUpdate,
 		&handle.stmtUpdateInsert,
@@ -241,6 +249,21 @@ func (s Storage) DevicesList(opts DeviceListOpts) ([]DeviceListItem, int, error)
 	}
 
 	return devices, total, nil
+}
+
+// DeniedDevicesList returns the UUIDs of all devices on the denied list
+// (deleted=1). These devices are prevented from accessing the backend via
+// mTLS. The result is capped at 10000 entries to protect against unbounded
+// responses on long-lived fleets.
+func (s Storage) DeniedDevicesList() ([]string, error) {
+	return s.stmtDeniedDeviceList.run()
+}
+
+// UndenyDevice removes a device from the denied list (sets deleted=0 WHERE
+// deleted=1). It returns true when the device was found on the denied list and
+// is now active, false when the device does not exist or was already active.
+func (s Storage) UndenyDevice(uuid string) (bool, error) {
+	return s.stmtUndenyDevice.run(uuid)
 }
 
 func (s Storage) DeviceGet(uuid string) (*Device, error) {
@@ -604,6 +627,58 @@ func (s *stmtDeviceCount) Init(db storage.DbHandle) (err error) {
 func (s *stmtDeviceCount) run() (count int, err error) {
 	err = s.Stmt.QueryRow().Scan(&count)
 	return
+}
+
+type stmtDeniedDeviceList storage.DbStmt
+
+// maxDeniedDevices caps the result set from DeniedDevicesList to protect
+// against unbounded responses on long-lived fleets.
+const maxDeniedDevices = 10000
+
+func (s *stmtDeniedDeviceList) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiDeniedDeviceList", fmt.Sprintf(`
+		SELECT uuid FROM devices WHERE deleted=1 LIMIT %d`, maxDeniedDevices),
+	)
+	return
+}
+
+func (s *stmtDeniedDeviceList) run() ([]string, error) {
+	rows, err := s.Stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			slog.Error("failed to close rows in denied device list", "error", err)
+		}
+	}()
+	var uuids []string
+	for rows.Next() {
+		var uuid string
+		if err = rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		uuids = append(uuids, uuid)
+	}
+	return uuids, rows.Err()
+}
+
+type stmtUndenyDevice storage.DbStmt
+
+func (s *stmtUndenyDevice) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiUndenyDevice", `
+		UPDATE devices SET deleted=0 WHERE uuid=? AND deleted=1`,
+	)
+	return
+}
+
+func (s *stmtUndenyDevice) run(uuid string) (bool, error) {
+	res, err := s.Stmt.Exec(uuid)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
 }
 
 type stmtDeviceSetLabels storage.DbStmt
