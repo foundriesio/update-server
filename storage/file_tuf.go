@@ -195,6 +195,28 @@ func (h TufFsHandle) GetRoots() ([]tuf.AtsTufRoot, error) {
 	return roots, nil
 }
 
+// ReadRoot returns the raw JSON bytes of a root metadata file. A version <= 0
+// returns the latest (highest version) root metadata. It returns an error that
+// wraps os.ErrNotExist when the requested root does not exist.
+func (h TufFsHandle) ReadRoot(version int) ([]byte, error) {
+	name := strconv.Itoa(version) + rootJsonSuffix
+	if version <= 0 {
+		names, err := h.rootMetaNames()
+		if err != nil {
+			return nil, err
+		}
+		if len(names) == 0 {
+			return nil, fmt.Errorf("no root metadata found: %w", os.ErrNotExist)
+		}
+		name = names[len(names)-1]
+	}
+	content, err := h.readFile(name, false)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read %s: %w", name, err)
+	}
+	return []byte(content), nil
+}
+
 func (h TufFsHandle) Sign(role tuf.RoleName, v any) (tuf.Signature, error) {
 	if !h.Enabled() {
 		return tuf.Signature{}, fmt.Errorf("TUF signing not available: call LoadTuf first")
