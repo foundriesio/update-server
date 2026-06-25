@@ -4,7 +4,27 @@
 
 set -euo pipefail
 
-DATADIR="${1:-./.local-data}"
+DATADIR="./.local-data"
+USE_AUTH=0
+AUTH_USER="${AUTH_USER:-admin}"
+AUTH_PASS="${AUTH_PASS:-admin}"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --auth)
+            USE_AUTH=1
+            shift
+            ;;
+        -*)
+            echo "Unknown flag: $1" >&2
+            exit 1
+            ;;
+        *)
+            DATADIR="$1"
+            shift
+            ;;
+    esac
+done
 
 echo "==> Building fioserver..."
 go build -o bin/fioserver ./cmd/server
@@ -22,14 +42,30 @@ if [ ! -f "$DATADIR/certs/tls.pem" ]; then
     cp "$DATADIR/certs/tls.pem" "$DATADIR/certs/cas.pem"
 fi
 
-echo "==> Initialising auth (noauth / test mode)..."
-./bin/fioserver --datadir "$DATADIR" auth-init --test
+if [ "$USE_AUTH" -eq 1 ]; then
+    echo "==> Initialising auth (local username/password mode)..."
+    ./bin/fioserver --datadir "$DATADIR" auth-init --local
+else
+    echo "==> Initialising auth (noauth / test mode)..."
+    ./bin/fioserver --datadir "$DATADIR" auth-init --test
+fi
 
 echo "==> Seeding mock devices..."
 go run ./cmd/seed --datadir "$DATADIR"
 
-echo ""
-echo "UI: http://localhost:8080/devices  (noauth — no login required)"
-echo ""
+if [ "$USE_AUTH" -eq 1 ]; then
+    echo "==> Creating initial user: $AUTH_USER"
+    ./bin/fioserver --datadir "$DATADIR" user-add --username "$AUTH_USER" --password "$AUTH_PASS" \
+        || echo "(user already exists, skipping)"
+
+    echo ""
+    echo "UI: http://localhost:8080/devices"
+    echo "Login: $AUTH_USER / $AUTH_PASS"
+    echo ""
+else
+    echo ""
+    echo "UI: http://localhost:8080/devices  (noauth — no login required)"
+    echo ""
+fi
 
 exec ./bin/fioserver --datadir "$DATADIR" serve

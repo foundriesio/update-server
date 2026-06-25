@@ -40,6 +40,31 @@ http://localhost:8080/devices
 
 No login is required. The `noauth` provider grants full access automatically.
 
+## Running with login (local auth)
+
+Pass `--auth` to start the server with the `local` username/password provider
+instead of `noauth`:
+
+```
+./contrib/run-local.sh --auth [datadir]
+```
+
+This seeds an initial user (`admin` / `admin` by default) and prints the login
+URL at startup. **Dev-only — do not use in production.**
+
+Override the credentials via environment variables:
+
+```
+AUTH_USER=myuser AUTH_PASS=mypassword ./contrib/run-local.sh --auth
+```
+
+Note: re-running against an existing `datadir` will fail at `auth-init` because
+the HMAC secret already exists. Remove the data directory first:
+
+```
+rm -rf ./.local-data
+```
+
 ## Reset
 
 Remove the data directory to start fresh:
