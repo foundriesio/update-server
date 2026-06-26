@@ -6,6 +6,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/foundriesio/update-server/server/ui/api"
@@ -86,6 +87,63 @@ func findLatestTarget(tuf api.UpdateTufResp) *latestTarget {
 	return latest
 }
 
+// findHardwareIds returns the sorted, de-duplicated set of hardwareIds found
+// across all targets in targets.json.
+func findHardwareIds(tuf api.UpdateTufResp) []string {
+	return findCustomStrings(tuf, "hardwareIds")
+}
+
+// findTags returns the sorted, de-duplicated set of tags found across all
+// targets in targets.json.
+func findTags(tuf api.UpdateTufResp) []string {
+	return findCustomStrings(tuf, "tags")
+}
+
+// findCustomStrings returns the sorted, de-duplicated set of string values
+// found in the given target.custom field across all targets in targets.json.
+func findCustomStrings(tuf api.UpdateTufResp, field string) []string {
+	targetsJson, ok := tuf["targets.json"]
+	if !ok {
+		return nil
+	}
+	signed, ok := targetsJson["signed"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	targets, ok := signed["targets"].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	for _, target := range targets {
+		t, ok := target.(map[string]any)
+		if !ok {
+			continue
+		}
+		custom, ok := t["custom"].(map[string]any)
+		if !ok {
+			continue
+		}
+		values, ok := custom[field].([]any)
+		if !ok {
+			continue
+		}
+		for _, value := range values {
+			if s, ok := value.(string); ok && s != "" {
+				seen[s] = struct{}{}
+			}
+		}
+	}
+
+	result := make([]string, 0, len(seen))
+	for s := range seen {
+		result = append(result, s)
+	}
+	sort.Strings(result)
+	return result
+}
+
 func (h handlers) updatesList(c echo.Context) error {
 	var updates map[string][]api.Update
 	if err := getJson(c.Request().Context(), "/v1/updates", &updates); err != nil {
@@ -135,6 +193,8 @@ func (h handlers) updatesGet(c echo.Context) error {
 		Tuf          api.UpdateTufResp
 		TufJson      string
 		LatestTarget *latestTarget
+		HardwareIds  []string
+		Tags         []string
 		TufError     string
 	}{
 		baseCtx:      h.baseCtx(c, "Update Details", "updates"),
@@ -145,6 +205,8 @@ func (h handlers) updatesGet(c echo.Context) error {
 		Tuf:          tuf,
 		TufJson:      string(tufJson),
 		LatestTarget: findLatestTarget(tuf),
+		HardwareIds:  findHardwareIds(tuf),
+		Tags:         findTags(tuf),
 		TufError:     tufErr,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "update.html", ctx)
