@@ -13,6 +13,20 @@ import (
 	"github.com/foundriesio/update-server/storage/api"
 )
 
+// updateRegistered reports whether (tag, name) is already in the updates table.
+func updateRegistered(apiStorage *api.Storage, tag, name string) (bool, error) {
+	existing, err := apiStorage.ListUpdates(tag)
+	if err != nil {
+		return false, err
+	}
+	for _, u := range existing[tag] {
+		if u.Name == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // fakeHex returns a deterministic lowercase hex string of the requested byte
 // length based on the seed index i.  It is not cryptographic — it only needs
 // to look plausible in the UI.
@@ -26,12 +40,12 @@ func fakeHex(i, length int) string {
 
 // targetsJSON builds a structurally-valid TUF targets.json body.
 func targetsJSON(i int, name, expires string) (string, error) {
-	sha256 := fakeHex(i, 32)       // 64 hex chars
-	sha512 := fakeHex(i+100, 64)   // 128 hex chars
-	appSha1 := fakeHex(i+200, 32)  // shellhttpd
-	appSha2 := fakeHex(i+300, 32)  // nginx
-	keyid := fakeHex(i+400, 32)    // 64 hex chars
-	sig := fakeHex(i+500, 64)      // 128 hex chars
+	sha256 := fakeHex(i, 32)      // 64 hex chars
+	sha512 := fakeHex(i+100, 64)  // 128 hex chars
+	appSha1 := fakeHex(i+200, 32) // shellhttpd
+	appSha2 := fakeHex(i+300, 32) // nginx
+	keyid := fakeHex(i+400, 32)   // 64 hex chars
+	sig := fakeHex(i+500, 64)     // 128 hex chars
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -212,6 +226,18 @@ func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, count int) error
 		}
 		if err := fs.Updates.Tuf.WriteFile(tag, name, "1.root.json", rootJSON(i, expires)); err != nil {
 			return fmt.Errorf("write 1.root.json for %s/%s: %w", tag, name, err)
+		}
+
+		// Register the update in the DB so it shows up in ListUpdates.
+		// ponytail: skip if already present to stay idempotent.
+		registered, err := updateRegistered(apiStorage, tag, name)
+		if err != nil {
+			return fmt.Errorf("list updates for %s/%s: %w", tag, name, err)
+		}
+		if !registered {
+			if err := apiStorage.InsertUpdate(tag, name, "seed"); err != nil {
+				return fmt.Errorf("insert update %s/%s: %w", tag, name, err)
+			}
 		}
 
 		// --- Token files for ostree_repo and apps ---

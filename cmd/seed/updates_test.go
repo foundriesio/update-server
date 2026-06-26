@@ -29,8 +29,12 @@ func TestSeedUpdates(t *testing.T) {
 	updates, err := apiStorage.ListUpdates("main")
 	require.NoError(t, err)
 	require.Contains(t, updates, "main", "expected 'main' tag in updates map")
-	require.Contains(t, updates["main"], "148", "expected update '148' under 'main'")
-	require.Contains(t, updates["main"], "149", "expected update '149' under 'main'")
+	names := make([]string, 0, len(updates["main"]))
+	for _, u := range updates["main"] {
+		names = append(names, u.Name)
+	}
+	require.Contains(t, names, "148", "expected update '148' under 'main'")
+	require.Contains(t, names, "149", "expected update '149' under 'main'")
 
 	// Verify GetUpdateTufMetadata returns parseable data for update "148".
 	meta, err := apiStorage.GetUpdateTufMetadata("main", "148")
