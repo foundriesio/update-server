@@ -282,6 +282,10 @@ func (h TufFsHandle) WriteMeta(tufDir string, targets, snapshot, timestamp []byt
 	return nil
 }
 
+func (h TufFsHandle) WriteTimestamp(tag, update string, ts []byte) error {
+	return h.updates.Tuf.WriteFile(tag, update, "timestamp.json", string(ts))
+}
+
 // writeRoot persists a root metadata file as <version>.root.json.
 func (h TufFsHandle) writeRoot(root tuf.AtsTufRoot) error {
 	data, err := json.MarshalIndent(root, "", "  ")

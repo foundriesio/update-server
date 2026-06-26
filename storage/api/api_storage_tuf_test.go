@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/foundriesio/update-server/clock"
+	appctx "github.com/foundriesio/update-server/context"
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/tuf"
 )
@@ -208,4 +210,60 @@ func TestAddTargetIncrementsTufVersion(t *testing.T) {
 	var timestamp tuf.AtsTufTimestamp
 	readTufMeta(t, tufDir, storage.TufTimestampFile, &timestamp)
 	assert.Equal(t, 6000, timestamp.Signed.Version)
+}
+
+// writeUpdateTimestamp registers an update in the database and writes a
+// timestamp.json with the given version and expiry into its TUF directory.
+func writeUpdateTimestamp(t *testing.T, s *Storage, tag, update string, version int, expires time.Time) {
+	t.Helper()
+	ts := tuf.AtsTufTimestamp{
+		Signed: tuf.TimestampMeta{
+			SignedCommon: tuf.SignedCommon{
+				Type:    tuf.RoleTimestamp.TufType(),
+				Version: version,
+				Expires: expires,
+			},
+			Meta: map[string]tuf.MetaItem{
+				storage.TufSnapshotFile: {Version: 1},
+			},
+		},
+	}
+	tsJSON, err := json.Marshal(ts)
+	require.NoError(t, err)
+	require.NoError(t, s.InsertUpdate(tag, update, "tester"))
+	require.NoError(t, s.fs.Tuf.WriteTimestamp(tag, update, tsJSON))
+}
+
+func TestRefreshTufTimestamps(t *testing.T) {
+	fixedNow := time.Date(2026, time.June, 26, 12, 0, 0, 0, time.UTC)
+	clock.Now = func() time.Time { return fixedNow }
+	defer func() { clock.Now = time.Now }()
+
+	s := newTufStorage(t)
+
+	const tag = "main"
+	// One timestamp expires within the 1-day cutoff and should be refreshed.
+	soonExpiry := fixedNow.Add(12 * time.Hour)
+	writeUpdateTimestamp(t, s, tag, "update-soon", 1000, soonExpiry)
+	// One timestamp is well in the future and should be left untouched.
+	laterExpiry := fixedNow.Add(30 * 24 * time.Hour).Truncate(time.Second)
+	writeUpdateTimestamp(t, s, tag, "update-later", 2000, laterExpiry)
+
+	ctx := appctx.CtxWithLog(appctx.Background(), slog.Default())
+	require.NoError(t, s.RefreshTufTimestamps(ctx))
+
+	// The soon-to-expire timestamp was re-signed with a fresh expiry.
+	var refreshed tuf.AtsTufTimestamp
+	require.NoError(t, s.fs.Tuf.ReadTufMeta(tag, "update-soon", storage.TufTimestampFile, &refreshed))
+	expectedExpiry := fixedNow.Add(s.fs.Tuf.TimestampExpiration).Truncate(time.Second)
+	assert.Equal(t, expectedExpiry, refreshed.Signed.Expires)
+	assert.Equal(t, 1000, refreshed.Signed.Version, "refresh should not change the timestamp version")
+	require.Len(t, refreshed.Signatures, 1)
+	verifyTufSig(t, s, refreshed.Signatures[0], refreshed.Signed)
+
+	// The future timestamp was left unchanged.
+	var untouched tuf.AtsTufTimestamp
+	require.NoError(t, s.fs.Tuf.ReadTufMeta(tag, "update-later", storage.TufTimestampFile, &untouched))
+	assert.Equal(t, laterExpiry, untouched.Signed.Expires)
+	assert.Empty(t, untouched.Signatures, "future timestamp should not be re-signed")
 }
