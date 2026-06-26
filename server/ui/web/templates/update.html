@@ -62,25 +62,29 @@
           <div>
             <fieldset>
               <legend><strong>Root expiration</strong></legend>
-              <p>{{index .Tuf "root.json" "signed" "expires"}}</p>
+              {{ $expires := index .Tuf "root.json" "signed" "expires" }}
+              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
             </fieldset>
           </div>
           <div>
             <fieldset>
               <legend><strong>Timestamp expiration</strong></legend>
-              <p>{{index .Tuf "timestamp.json" "signed" "expires"}}</p>
+              {{ $expires := index .Tuf "timestamp.json" "signed" "expires" }}
+              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
             </fieldset>
           </div>
           <div>
             <fieldset>
               <legend><strong>Snapshot expiration</strong></legend>
-              <p>{{index .Tuf "snapshot.json" "signed" "expires"}}</p>
+              {{ $expires := index .Tuf "snapshot.json" "signed" "expires" }}
+              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
             </fieldset>
           </div>
           <div>
             <fieldset>
               <legend><strong>Targets expiration</strong></legend>
-              <p>{{index .Tuf "targets.json" "signed" "expires"}}</p>
+              {{ $expires := index .Tuf "targets.json" "signed" "expires" }}
+              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
             </fieldset>
           </div>
         </div>
