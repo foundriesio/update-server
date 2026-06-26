@@ -5,6 +5,8 @@ package api
 
 import (
 	"io"
+	"net/url"
+	"strconv"
 
 	models "github.com/foundriesio/update-server/storage/api"
 )
@@ -53,8 +55,37 @@ func (u UpdatesApi) TailRollout(tag, updateName, rollout string) (io.ReadCloser,
 	return u.api.GetStream(endpoint)
 }
 
-func (u UpdatesApi) CreateUpdate(tag, updateName string, body io.Reader) error {
-	endpoint := "/v1/updates/" + tag + "/" + updateName
+// CreateUpdateOptions captures the optional TUF target overrides that can be
+// supplied when creating an update.
+type CreateUpdateOptions struct {
+	Version    int               // Override the target version (AppVersion)
+	Name       string            // Override the target name
+	OstreeHash string            // Override the ostree hash
+	Apps       map[string]string // Override docker compose apps (name -> sha256)
+}
+
+func (o CreateUpdateOptions) query() string {
+	values := url.Values{}
+	if o.Version != 0 {
+		values.Set("version", strconv.Itoa(o.Version))
+	}
+	if o.Name != "" {
+		values.Set("name", o.Name)
+	}
+	if o.OstreeHash != "" {
+		values.Set("ostree-hash", o.OstreeHash)
+	}
+	for name, hash := range o.Apps {
+		values.Add("apps", name+"="+hash)
+	}
+	if len(values) == 0 {
+		return ""
+	}
+	return "?" + values.Encode()
+}
+
+func (u UpdatesApi) CreateUpdate(tag, updateName string, opts CreateUpdateOptions, body io.Reader) error {
+	endpoint := "/v1/updates/" + tag + "/" + updateName + opts.query()
 	_, err := u.api.Post(endpoint, body, HttpHeader("Content-Type", "application/x-tar"), HttpHeader("Content-Encoding", "gzip"))
 	return err
 }
