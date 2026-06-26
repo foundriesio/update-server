@@ -98,8 +98,34 @@
               <p>{{ .LatestTarget.Version }}</p>
             </fieldset>
           </div>
-          <div></div>
-          <div></div>
+          <div>
+            <fieldset>
+              <legend><strong>Hardware IDs</strong></legend>
+              {{ if .HardwareIds }}
+              <ul>
+              {{ range .HardwareIds }}
+                <li>{{ . }}</li>
+              {{ end }}
+              </ul>
+              {{ else }}
+              <p>None</p>
+              {{ end }}
+            </fieldset>
+          </div>
+          <div>
+            <fieldset>
+              <legend><strong>Tags</strong></legend>
+              {{ if .Tags }}
+              <ul>
+              {{ range .Tags }}
+                <li>{{ . }}</li>
+              {{ end }}
+              </ul>
+              {{ else }}
+              <p>None</p>
+              {{ end }}
+            </fieldset>
+          </div>
         </div>
         <div class="grid">
           <div>
