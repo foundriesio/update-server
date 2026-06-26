@@ -19,13 +19,14 @@ import (
 
 const (
 	// Global files/dirs
-	AuditDir   = "audit"
-	AuthDir    = "auth"
-	CertsDir   = "certs"
-	ConfigsDir = "configs"
-	DbFile     = "db.sqlite"
-	DevicesDir = "devices"
-	UpdatesDir = "updates"
+	AuditDir    = "audit"
+	AuthDir     = "auth"
+	BrandingDir = "branding"
+	CertsDir    = "certs"
+	ConfigsDir  = "configs"
+	DbFile      = "db.sqlite"
+	DevicesDir  = "devices"
+	UpdatesDir  = "updates"
 
 	partialFileSuffix  = "..part"
 	rolloutJournalFile = "rollouts.journal"
@@ -35,8 +36,9 @@ const (
 	CertsTlsKeyFile = "tls.key"
 	CertsTlsPemFile = "tls.pem"
 
-	AuthConfigFile = "auth-config.json"
-	HmacFile       = "hmac.secret"
+	AuthConfigFile     = "auth-config.json"
+	BrandingConfigFile = "branding.json"
+	HmacFile           = "hmac.secret"
 
 	// Per config class files/dirs
 	ConfigsFactoryDir  = "factory"

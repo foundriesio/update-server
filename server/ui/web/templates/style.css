@@ -1,9 +1,22 @@
 :root {
     color-scheme: light dark;
     font-size: 15px;
-    --bg-body: #f2f2f2;
-    --bg-content: white;
-    --text-dark: black;
+
+    /* Brand tokens — the operator-customizable design system (colors only) */
+    --brand-primary: {{ .Primary }};
+    --brand-accent:  {{ .Accent }};
+    --surface-1:     {{ .Surface }};
+    --surface-2:     {{ .SurfaceAlt }};
+    --text-1:        {{ .Text }};
+
+    /* Bridge tokens into Pico so its components inherit the brand */
+    --pico-primary:       var(--brand-primary);
+    --pico-primary-hover: var(--brand-accent);
+
+    /* Back-compat aliases for existing rules below */
+    --bg-body:    var(--surface-1);
+    --bg-content: var(--surface-2);
+    --text-dark:  var(--text-1);
 }
 
 html, body {
@@ -14,7 +27,7 @@ html, body {
 }
 
 nav#topbar {
-    background-color: rgb(2, 11, 64);
+    background-color: var(--brand-primary);
     padding: 0.75rem 0;
 }
 
@@ -32,6 +45,8 @@ nav#topbar .container {
     color: white;
 }
 
+#topbar .brand-logo { height: 1.8rem; width: auto; margin-right: 0.5rem; vertical-align: middle; }
+
 nav#topbar a,
 nav#topbar summary {
     color: white;
@@ -39,7 +54,7 @@ nav#topbar summary {
 
 nav#topbar a:hover,
 nav#topbar summary:hover {
-    color: #d0d8ff;
+    color: var(--brand-accent);
 }
 
 /* User dropdown */
@@ -63,7 +78,7 @@ nav#subnav .container {
 }
 
 nav#subnav a {
-    color: rgb(2, 11, 64);
+    color: var(--brand-primary);
     font-size: 1.2rem;
     text-decoration: none !important;   /* remove underline */
     padding-bottom: 2px;
@@ -72,11 +87,11 @@ nav#subnav a {
 
 nav#subnav a:hover {
     text-decoration: none !important;
-    border-bottom-color: rgb(2, 11, 64);
+    border-bottom-color: var(--brand-primary);
 }
 
 nav#subnav a.selected {
-    border-bottom: 2px solid rgb(2, 11, 64);
+    border-bottom: 2px solid var(--brand-primary);
 }
 
 th.sortable a {
@@ -355,6 +370,7 @@ dialog.file-content > article > section > ul {
   min-width: 20em;
 }
 
+/* ponytail: dark-mode kept on fixed values for v1; tokenize in the redesign (step 2) */
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-body: #11191f;
@@ -363,13 +379,13 @@ dialog.file-content > article > section > ul {
     }
 
     nav#subnav a {
-        color: #a3b4ff;
+        color: var(--brand-accent);
     }
     nav#subnav a:hover {
-        border-bottom-color: #a3b4ff;
+        border-bottom-color: var(--brand-accent);
     }
     nav#subnav a.selected {
-        border-bottom-color: #a3b4ff;
+        border-bottom-color: var(--brand-accent);
     }
 
     .content-section {

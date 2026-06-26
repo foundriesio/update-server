@@ -4,11 +4,14 @@
 package web
 
 import (
+	"bytes"
 	"crypto/md5"
 	"fmt"
 	"html/template"
 	"io"
+	"log/slog"
 	"net/http"
+	"path/filepath"
 
 	"github.com/labstack/echo/v4"
 
@@ -20,27 +23,35 @@ import (
 )
 
 type handlers struct {
-	users     *users.Storage
-	provider  auth.Provider
-	templates *template.Template
-	styleEtag string
+	users       *users.Storage
+	provider    auth.Provider
+	templates   *template.Template
+	styleEtag   string
+	branding    Branding
+	brandingDir string
 }
 
 var EchoError = server.EchoError
 
-func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Provider) {
-	cssBytes, _ := templates.Assets.ReadFile("style.css")
+func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Provider, branding Branding, brandingDir string) {
 	h := handlers{
-		users:     storage,
-		provider:  authProvider,
-		styleEtag: fmt.Sprintf("%x", md5.Sum(cssBytes)),
-		templates: templates.Templates,
+		users:       storage,
+		provider:    authProvider,
+		templates:   templates.Templates,
+		branding:    branding,
+		brandingDir: brandingDir,
 	}
+	var rendered bytes.Buffer
+	if err := h.templates.ExecuteTemplate(&rendered, "style.css", branding); err != nil {
+		slog.Error("failed to render style.css for etag", "error", err)
+	}
+	h.styleEtag = fmt.Sprintf("%x", md5.Sum(rendered.Bytes()))
 
 	e.Renderer = h
 
 	e.GET("/", h.index, h.requireSession)
 	e.GET("/css/:filename", h.css)
+	e.GET("/branding/:filename", h.brandingAsset)
 	e.GET("/auth/logout", h.authLogout, h.requireSession)
 	e.GET("/configs", h.configsList, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/configs/device/:uuid", h.configsDeviceItem, h.requireSession, h.requireScope(users.ScopeDevicesR))
@@ -85,6 +96,8 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 type baseCtx struct {
 	User      *users.User
 	Title     string
+	BrandName string
+	LogoPath  string
 	NavItems  []navItem
 	CsrfToken string
 	Version   string
@@ -95,9 +108,15 @@ func (h handlers) baseCtx(c echo.Context, title, selected string) baseCtx {
 	if cookie, err := c.Cookie(auth.CsrfCookieName); err == nil {
 		csrfToken = cookie.Value
 	}
+	logoPath := ""
+	if h.branding.Logo != "" {
+		logoPath = "/branding/" + h.branding.Logo
+	}
 	return baseCtx{
 		User:      CtxGetSession(c.Request().Context()).User,
 		Title:     title,
+		BrandName: h.branding.Title,
+		LogoPath:  logoPath,
 		NavItems:  h.genNavItems(selected),
 		CsrfToken: csrfToken,
 		Version:   version.Version,
@@ -115,11 +134,19 @@ func (h handlers) css(c echo.Context) error {
 	c.Response().Header().Set("ETag", h.styleEtag)
 	c.Response().Header().Set("Cache-Control", "public, max-age=3600") // 1 hour in seconds
 	c.Response().Header().Set("Content-Type", "text/css")
-	return h.Render(c.Response(), c.Param("filename"), nil, c)
+	return h.Render(c.Response(), c.Param("filename"), h.branding, c)
 }
 
 func (h handlers) index(c echo.Context) error {
 	return c.Redirect(http.StatusTemporaryRedirect, "/devices")
+}
+
+func (h handlers) brandingAsset(c echo.Context) error {
+	logo := h.branding.Logo
+	if logo == "" || c.Param("filename") != logo || filepath.Base(logo) != logo {
+		return echo.ErrNotFound
+	}
+	return c.File(filepath.Join(h.brandingDir, logo))
 }
 
 type navItem struct {

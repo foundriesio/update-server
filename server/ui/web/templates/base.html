@@ -7,7 +7,7 @@
     <meta name="color-scheme" content="light dark">
     {{ if .CsrfToken }}<meta name="csrf-token" content="{{.CsrfToken}}">{{ end }}
 
-    <title>{{.Title}} - Update Server</title>
+    <title>{{.Title}} - {{.BrandName}}</title>
 
     <link rel="stylesheet" href="/css/pico_min_211.css">
     <link rel="stylesheet" href="/css/style.css">
@@ -34,7 +34,8 @@
   <body>
     <nav id="topbar">
       <div class="container">
-        <strong class="brand">Foundries Update Server</strong>
+        {{ if .LogoPath }}<img src="{{.LogoPath}}" alt="{{.BrandName}}" class="brand-logo">{{ end }}
+        <strong class="brand">{{.BrandName}}</strong>
 
         <div style="display: flex; align-items: center; gap: 1rem;">
         <a href="https://github.com/foundriesio/update-server/blob/main/README.md" style="color: white; text-decoration: none;">Docs</a>
