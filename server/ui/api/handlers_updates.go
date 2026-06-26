@@ -6,6 +6,8 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -21,26 +23,74 @@ type UpdateTufResp map[string]map[string]any
 // @Success 201
 // @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
+// @Param   version query int false "Override the target version (AppVersion)"
+// @Param   name query string false "Override the target name"
+// @Param   ostree-hash query string false "Override the ostree hash"
+// @Param   apps query string false "Override docker compose apps as name=sha256[,name=sha256]"
 // @Router  /updates/{tag}/{update} [post]
 func (h handlers) updateCreate(c echo.Context) error {
 	tag := c.Param("tag")
 	update := c.Param("update")
 	user := CtxGetUser(c.Request().Context())
 
+	opts := storage.TargetOptions{
+		Name:       c.QueryParam("name"),
+		OstreeHash: c.QueryParam("ostree-hash"),
+		Apps:       parseAppsParam(c.QueryParams()["apps"]),
+		BaseUrl:    baseURL(c),
+	}
+	if v := c.QueryParam("version"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return EchoError(c, err, http.StatusBadRequest, "invalid version parameter")
+		}
+		opts.AppVersion = n
+	}
+
 	payload := c.Request().Body
 	defer payload.Close() //nolint:errcheck
 
-	if err := h.storage.CreateUpdate(tag, update, user.Username, payload); err != nil {
+	if err := h.storage.CreateUpdate(tag, update, user.Username, opts, payload); err != nil {
 		switch {
 		case errors.Is(err, storage.ErrInvalidUpdate):
 			return EchoError(c, err, http.StatusBadRequest, err.Error())
 		case errors.Is(err, storage.ErrDbConstraintUnique):
 			return EchoError(c, err, http.StatusConflict, "Update with this name and tag already exists")
 		}
-		return EchoError(c, err, http.StatusInternalServerError, "failed to create update")
+		return EchoError(c, err, http.StatusInternalServerError, err.Error())
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+// baseURL returns the scheme://host base URL of the incoming request, used to
+// build proxied app/target URIs.
+func baseURL(c echo.Context) string {
+	return c.Scheme() + "://" + c.Request().Host
+}
+
+// parseAppsParam parses repeated "apps" query values of the form
+// "name=sha256" (comma separated) into a map of app name to sha256.
+func parseAppsParam(values []string) map[string]string {
+	apps := make(map[string]string)
+	for _, v := range values {
+		for _, pair := range strings.Split(v, ",") {
+			name, hash, ok := strings.Cut(pair, "=")
+			if !ok {
+				name, hash, ok = strings.Cut(pair, ":")
+			}
+			if !ok {
+				continue
+			}
+			if name = strings.TrimSpace(name); name != "" {
+				apps[name] = strings.TrimSpace(hash)
+			}
+		}
+	}
+	if len(apps) == 0 {
+		return nil
+	}
+	return apps
 }
 
 // @Summary Returns the TUF metadata for the update

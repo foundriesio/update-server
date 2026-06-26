@@ -81,7 +81,7 @@ func checkUpdateTargets(targetsPath, tag string) error {
 	return fmt.Errorf("no target with tag '%s' found in targets.json", tag)
 }
 
-func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, onCleanupFailure func(error)) error {
+func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, tufCreateFunc func(string) error, onCleanupFailure func(error)) error {
 	const (
 		appsDir   = UpdatesAppsDir + string(filepath.Separator)
 		ostreeDir = UpdatesOstreeDir + string(filepath.Separator)
@@ -107,12 +107,20 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, o
 				return
 			},
 			onUnpackComplete: func() error {
-				if !sawTuf {
-					return fmt.Errorf("%w: missing required %q directory", ErrInvalidUpdate, UpdatesTufDir)
-				}
 				if !sawOstree && !sawApps {
 					return fmt.Errorf("%w: must contain %q and/or %q directory",
 						ErrInvalidUpdate, UpdatesOstreeDir, UpdatesAppsDir)
+				}
+				if !sawTuf {
+					// When TUF is enabled the server generates the metadata from
+					// the uploaded ostree/apps content, so the tuf directory is
+					// optional. Otherwise it is required.
+					if tufCreateFunc == nil {
+						return fmt.Errorf("%w: missing required %q directory", ErrInvalidUpdate, UpdatesTufDir)
+					}
+					if err := tufCreateFunc(filepath.Join(root, txDir, "unpacked")); err != nil {
+						return fmt.Errorf("%w: unable to generate TUF metadata: %v", ErrInvalidUpdate, err)
+					}
 				}
 
 				path := filepath.Join(root, txDir, "unpacked/tuf/targets.json")
