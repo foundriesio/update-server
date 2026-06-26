@@ -60,6 +60,15 @@ tokens and web sessions, as well as the "noauth" provider.
   ./fioserver --datadir=./datadir auth-init --test
 ```
 
+## Initialize TUF
+
+Before the server can sign and manage TUF metadata, the TUF keys and
+root metadata must be initialized:
+
+```
+  ./fioserver --datadir=./datadir tuf-init
+```
+
 ## Run the Server
 
 `./fioserv serve --datadir=datadir`
