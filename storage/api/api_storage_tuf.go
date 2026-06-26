@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/foundriesio/update-server/clock"
+	"github.com/foundriesio/update-server/context"
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/tuf"
 )
@@ -205,4 +206,58 @@ func (s Storage) getLatestVersions(tag string) (tufVersion, targetVersion int, e
 		}
 	}
 	return tufVersion, targetVersion, nil
+}
+
+func (s Storage) RefreshTufTimestamps(c context.Context) error {
+	updates, err := s.ListUpdates("")
+	if err != nil {
+		return err
+	}
+
+	log := context.CtxGetLog(c)
+
+	for tag, updates := range updates {
+		log.Info("Checking TUF timestamp expiry for tag", "tag", tag, "updates", len(updates))
+		for _, u := range updates {
+			log.Debug("Checking timestamp for", "tag", tag, "update", u.Name)
+			if err := s.refreshTufTimestamp(c, tag, u); err != nil {
+				log.Error("Failed to refresh TUF timestamps", "tag", tag, "update", u.Name, "error", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (s Storage) refreshTufTimestamp(c context.Context, tag string, update Update) error {
+	log := context.CtxGetLog(c)
+
+	var ts tuf.AtsTufTimestamp
+	if err := s.fs.Tuf.ReadTufMeta(tag, update.Name, storage.TufTimestampFile, &ts); err != nil {
+		return fmt.Errorf("unable to read timestamp metadata: %w", err)
+	}
+
+	cutoff := clock.Now().UTC().Add(time.Hour * 24) // 1 day from now
+	if ts.Signed.Expires.After(cutoff) {
+		log.Debug("Timestamp okay", "tag", tag, "update", update.Name, "expiry", ts.Signed.Expires, "cutoff", cutoff)
+		return nil // timestamp is still valid, no need to refresh
+	}
+
+	ts.Signed.Expires = clock.Now().UTC().Add(s.fs.Tuf.TimestampExpiration).Truncate(time.Second)
+	sig, err := s.fs.Tuf.Sign(tuf.RoleTimestamp, ts.Signed)
+	if err != nil {
+		return fmt.Errorf("unable to sign timestamp metadata: %w", err)
+	}
+	ts.Signatures = []tuf.Signature{sig}
+
+	tsJson, err := json.Marshal(ts)
+	if err != nil {
+		return fmt.Errorf("unable to marshal timestamp metadata: %w", err)
+	}
+
+	if err := s.fs.Tuf.WriteTimestamp(tag, update.Name, tsJson); err != nil {
+		return err
+	}
+
+	log.Info("Refreshed TUF timestamp", "tag", tag, "update", update.Name, "new_expiry", ts.Signed.Expires)
+	return nil
 }
