@@ -23,6 +23,10 @@ Follow the [API](./docs/api.md) to learn how to access and use the REST API.
 Follow the [configuring authentication](./docs/auth.md) guide for chosing the
 method that meets your requirements.
 
+## Branding and white-labeling
+Follow the [branding guide](./docs/branding.md) to replace the server's default
+look with your own logo, favicon, and color scheme — no rebuild required.
+
 ## Running in production
 The [production guide](./docs/production.md) covers considerations when
 deploying the update server for production use.
