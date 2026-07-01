@@ -6,7 +6,9 @@ package web
 import (
 	"encoding/json"
 	"log/slog"
+	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 // cssColor allows hex, rgb()/rgba()/hsl() functional notation, and CSS named
@@ -14,11 +16,16 @@ import (
 // rejected so a bad branding.json can't inject or break the stylesheet.
 var cssColor = regexp.MustCompile(`^[#a-zA-Z0-9(),.%\s/-]+$`)
 
+// faviconExts bounds the content type an operator favicon can declare. Anything
+// else falls back to the embedded default.
+var faviconExts = map[string]bool{".svg": true, ".ico": true, ".png": true}
+
 // Branding holds the resolved branding values (defaults applied) used by both
 // HTML templates and the templated CSS.
 type Branding struct {
 	Title      string // app name in topbar + <title> suffix
 	Logo       string // filename under <data-dir>/branding/, "" = text brand only
+	Favicon    string // favicon filename under <data-dir>/branding/, "" = built-in default
 	Primary    string // --brand-primary
 	Accent     string // --brand-accent
 	Surface    string // --surface-1 (page background)
@@ -29,9 +36,10 @@ type Branding struct {
 // brandingFile is the on-disk JSON shape. Pointers distinguish "absent" (keep
 // default) from "explicitly set".
 type brandingFile struct {
-	Title  *string `json:"title"`
-	Logo   *string `json:"logo"`
-	Colors struct {
+	Title   *string `json:"title"`
+	Logo    *string `json:"logo"`
+	Favicon *string `json:"favicon"`
+	Colors  struct {
 		Primary    *string `json:"primary"`
 		Accent     *string `json:"accent"`
 		Surface    *string `json:"surface"`
@@ -44,6 +52,7 @@ func defaultBranding() Branding {
 	return Branding{
 		Title:      "Foundries Update Server",
 		Logo:       "",
+		Favicon:    "",
 		Primary:    "rgb(2, 11, 64)",
 		Accent:     "#a3b4ff",
 		Surface:    "#f2f2f2",
@@ -76,6 +85,13 @@ func LoadBranding(data []byte) Branding {
 	}
 	set(&b.Title, f.Title)
 	set(&b.Logo, f.Logo)
+	if f.Favicon != nil {
+		v := *f.Favicon
+		if filepath.Base(v) == v && faviconExts[strings.ToLower(filepath.Ext(v))] {
+			b.Favicon = v
+		}
+		// invalid (traversal or bad extension) → keep default "" (embedded favicon)
+	}
 	setColor(&b.Primary, f.Colors.Primary)
 	setColor(&b.Accent, f.Colors.Accent)
 	setColor(&b.Surface, f.Colors.Surface)
