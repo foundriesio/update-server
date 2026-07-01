@@ -31,33 +31,49 @@ type Branding struct {
 	Surface    string // --surface-1 (page background)
 	SurfaceAlt string // --surface-2 (content background)
 	Text       string // --text-1
+	// Dark-mode palette. Built-in defaults apply when colorsDark is omitted;
+	// brand primary/accent are shared across modes (not duplicated here).
+	SurfaceDark    string // --surface-1 in dark
+	SurfaceAltDark string // --surface-2 in dark
+	TextDark       string // --text-1 in dark
+}
+
+// brandingColors is the on-disk color palette shape, reused for light and dark.
+// brandingColors is the on-disk color palette shape, reused for the light
+// "colors" object and the dark "colorsDark" object. In the dark object,
+// primary/accent are accepted for schema symmetry but not applied — brand
+// colors are shared across modes (only surfaces + text vary by mode).
+type brandingColors struct {
+	Primary    *string `json:"primary"`
+	Accent     *string `json:"accent"`
+	Surface    *string `json:"surface"`
+	SurfaceAlt *string `json:"surface-alt"`
+	Text       *string `json:"text"`
 }
 
 // brandingFile is the on-disk JSON shape. Pointers distinguish "absent" (keep
 // default) from "explicitly set".
 type brandingFile struct {
-	Title   *string `json:"title"`
-	Logo    *string `json:"logo"`
-	Favicon *string `json:"favicon"`
-	Colors  struct {
-		Primary    *string `json:"primary"`
-		Accent     *string `json:"accent"`
-		Surface    *string `json:"surface"`
-		SurfaceAlt *string `json:"surface-alt"`
-		Text       *string `json:"text"`
-	} `json:"colors"`
+	Title      *string         `json:"title"`
+	Logo       *string         `json:"logo"`
+	Favicon    *string         `json:"favicon"`
+	Colors     brandingColors  `json:"colors"`
+	ColorsDark *brandingColors `json:"colorsDark"`
 }
 
 func defaultBranding() Branding {
 	return Branding{
-		Title:      "Foundries Update Server",
-		Logo:       "",
-		Favicon:    "",
-		Primary:    "rgb(2, 11, 64)",
-		Accent:     "#a3b4ff",
-		Surface:    "#f2f2f2",
-		SurfaceAlt: "#ffffff",
-		Text:       "#000000",
+		Title:          "Foundries Update Server",
+		Logo:           "",
+		Favicon:        "",
+		Primary:        "rgb(2, 11, 64)",
+		Accent:         "#a3b4ff",
+		Surface:        "#f2f2f2",
+		SurfaceAlt:     "#ffffff",
+		Text:           "#000000",
+		SurfaceDark:    "#11191f",
+		SurfaceAltDark: "#1a2632",
+		TextDark:       "#eef1f4",
 	}
 }
 
@@ -97,5 +113,10 @@ func LoadBranding(data []byte) Branding {
 	setColor(&b.Surface, f.Colors.Surface)
 	setColor(&b.SurfaceAlt, f.Colors.SurfaceAlt)
 	setColor(&b.Text, f.Colors.Text)
+	if f.ColorsDark != nil {
+		setColor(&b.SurfaceDark, f.ColorsDark.Surface)
+		setColor(&b.SurfaceAltDark, f.ColorsDark.SurfaceAlt)
+		setColor(&b.TextDark, f.ColorsDark.Text)
+	}
 	return b
 }

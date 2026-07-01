@@ -78,3 +78,51 @@ func TestBrandingFaviconDefaultsEmpty(t *testing.T) {
 		t.Errorf("Favicon = %q, want empty by default", b.Favicon)
 	}
 }
+
+func TestBrandingDarkDefaults(t *testing.T) {
+	b := LoadBranding(nil)
+	if b.SurfaceDark != "#11191f" {
+		t.Errorf("SurfaceDark = %q, want default", b.SurfaceDark)
+	}
+	if b.SurfaceAltDark != "#1a2632" {
+		t.Errorf("SurfaceAltDark = %q, want default", b.SurfaceAltDark)
+	}
+	if b.TextDark != "#eef1f4" {
+		t.Errorf("TextDark = %q, want default", b.TextDark)
+	}
+}
+
+func TestBrandingDarkOverrides(t *testing.T) {
+	input := []byte(`{"colorsDark":{"surface":"#12151c","surface-alt":"#1a1f29","text":"#e6e8ec"}}`)
+	b := LoadBranding(input)
+	if b.SurfaceDark != "#12151c" || b.SurfaceAltDark != "#1a1f29" || b.TextDark != "#e6e8ec" {
+		t.Errorf("dark overrides not applied: %+v", b)
+	}
+}
+
+func TestBrandingDarkPartialKeepsDefaults(t *testing.T) {
+	b := LoadBranding([]byte(`{"colorsDark":{"surface":"#12151c"}}`))
+	if b.SurfaceDark != "#12151c" {
+		t.Errorf("SurfaceDark = %q, want override", b.SurfaceDark)
+	}
+	if b.TextDark != "#eef1f4" {
+		t.Errorf("TextDark = %q, want default (unspecified)", b.TextDark)
+	}
+}
+
+func TestBrandingDarkRejectsInvalidColor(t *testing.T) {
+	b := LoadBranding([]byte(`{"colorsDark":{"text":"red; } body{}"}}`))
+	if b.TextDark != "#eef1f4" {
+		t.Errorf("TextDark = %q, want default (invalid rejected)", b.TextDark)
+	}
+}
+
+func TestBrandingLightUnaffectedByDark(t *testing.T) {
+	b := LoadBranding([]byte(`{"colors":{"surface":"#fafafa"}}`))
+	if b.Surface != "#fafafa" {
+		t.Errorf("Surface = %q, want light override", b.Surface)
+	}
+	if b.SurfaceDark != "#11191f" {
+		t.Errorf("SurfaceDark = %q, want default when colorsDark absent", b.SurfaceDark)
+	}
+}

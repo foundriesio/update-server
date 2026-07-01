@@ -9,10 +9,6 @@
     --surface-2:     {{ .SurfaceAlt }};
     --text-1:        {{ .Text }};
 
-    /* Bridge tokens into Pico so its components inherit the brand */
-    --pico-primary:       var(--brand-primary);
-    --pico-primary-hover: var(--brand-accent);
-
     /* Back-compat aliases for existing rules below */
     --bg-body:    var(--surface-1);
     --bg-content: var(--surface-2);
@@ -24,6 +20,20 @@ html, body {
     margin: 0;
     padding: 0;
     background-color: var(--bg-body);
+}
+
+/* Bridge our tokens into Pico's theme vars. Pico defines these under
+   :root:not([data-theme=dark]) (specificity 0,1,0); we must match that selector
+   so our bridge wins by later source order. A plain :root (0,0,1) loses to Pico.
+   This selector also matches in OS dark mode (no data-theme attribute is set),
+   so the bridge automatically picks up the dark --surface-*/--text-1 values that
+   the @media block re-themes below. */
+:root:not([data-theme=dark]) {
+    --pico-primary:               var(--brand-primary);
+    --pico-primary-hover:         var(--brand-accent);
+    --pico-background-color:      var(--surface-1);
+    --pico-card-background-color: var(--surface-2);
+    --pico-color:                 var(--text-1);
 }
 
 nav#topbar {
@@ -370,12 +380,27 @@ dialog.file-content > article > section > ul {
   min-width: 20em;
 }
 
-/* ponytail: dark-mode kept on fixed values for v1; tokenize in the redesign (step 2) */
+/* Dark palette is token-driven; operators override via branding.json "colorsDark".
+   Icons stay fixed white (see below) — the dark palette should stay dark.
+   Toggle-ready: to add a manual switch later, duplicate this :root under [data-theme=dark]. */
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg-body: #11191f;
-        --bg-content: #1a2632;
-        --text-dark: white;
+        --surface-1: {{ .SurfaceDark }};
+        --surface-2: {{ .SurfaceAltDark }};
+        --text-1:    {{ .TextDark }};
+    }
+
+    /* Dark interactive color + surface/text bridge. Pico declares its own
+       --pico-* dark values under :root:not([data-theme]) INSIDE this media
+       query (specificity 0,1,0); the outside-media bridge above cannot override
+       those, so the surface/text mappings must be repeated here to win. The
+       accent replaces the primary as the interactive color — a navy primary
+       fails contrast on a dark surface. */
+    :root:not([data-theme]) {
+        --pico-primary:               var(--brand-accent);
+        --pico-background-color:      var(--surface-1);
+        --pico-card-background-color: var(--surface-2);
+        --pico-color:                 var(--text-1);
     }
 
     nav#subnav a {
