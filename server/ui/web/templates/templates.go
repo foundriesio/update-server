@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-//go:embed *.html *.css
+//go:embed *.html *.css favicon.svg
 var Assets embed.FS
 var Templates *template.Template
 

@@ -49,3 +49,32 @@ func TestBrandingAcceptsValidColors(t *testing.T) {
 		t.Errorf("valid colors rejected: %+v", b)
 	}
 }
+
+func TestBrandingFaviconValid(t *testing.T) {
+	for _, name := range []string{"favicon.svg", "logo.ico", "icon.png", "ICON.PNG"} {
+		b := LoadBranding([]byte(`{"favicon":"` + name + `"}`))
+		if b.Favicon != name {
+			t.Errorf("Favicon = %q, want %q (valid extension kept)", b.Favicon, name)
+		}
+	}
+}
+
+func TestBrandingFaviconRejectsBadExtension(t *testing.T) {
+	b := LoadBranding([]byte(`{"favicon":"evil.txt"}`))
+	if b.Favicon != "" {
+		t.Errorf("Favicon = %q, want empty (bad extension rejected)", b.Favicon)
+	}
+}
+
+func TestBrandingFaviconRejectsTraversal(t *testing.T) {
+	b := LoadBranding([]byte(`{"favicon":"../../etc/x.svg"}`))
+	if b.Favicon != "" {
+		t.Errorf("Favicon = %q, want empty (traversal rejected)", b.Favicon)
+	}
+}
+
+func TestBrandingFaviconDefaultsEmpty(t *testing.T) {
+	if b := LoadBranding(nil); b.Favicon != "" {
+		t.Errorf("Favicon = %q, want empty by default", b.Favicon)
+	}
+}
