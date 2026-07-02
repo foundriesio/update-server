@@ -41,6 +41,11 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 
 	e.GET("/", h.index, h.requireSession)
 	e.GET("/css/:filename", h.css)
+	rateLimiter := authProvider.GetRateLimiterMiddleware()
+	e.GET("/auth/activate", h.authDevice, h.requireSession)
+	e.GET("/auth/confirm-activation", h.authDeviceConfirm, h.requireSession, rateLimiter)
+	e.POST("/auth/authorize-activation", h.authDeviceAuthorize, h.requireSession, rateLimiter)
+	e.POST("/auth/deny-activation", h.authDeviceDeny, h.requireSession, rateLimiter)
 	e.GET("/auth/logout", h.authLogout, h.requireSession)
 	e.GET("/configs", h.configsList, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/configs/device/:uuid", h.configsDeviceItem, h.requireSession, h.requireScope(users.ScopeDevicesR))

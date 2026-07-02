@@ -165,6 +165,19 @@ func createTables(db *sql.DB) error {
 			uploaded_by TEXT NOT NULL DEFAULT "",
 			PRIMARY KEY (tag, name)
 		) WITHOUT ROWID;
+
+		CREATE TABLE oauth2_device_flow(
+			device_code        VARCHAR(64) NOT NULL PRIMARY KEY,
+			user_code          VARCHAR(16) NOT NULL UNIQUE,
+			expires_at         INT,
+			token_expires      INT,
+			token_description  VARCHAR(80),
+			scopes             TEXT,
+			user_id            INT,
+			authorized         BOOL DEFAULT 0,
+			denied             BOOL DEFAULT 0,
+			FOREIGN KEY(user_id) REFERENCES user(id)
+		) WITHOUT ROWID;
 	`
 	if _, err := db.Exec(sqlStmt); err != nil {
 		return fmt.Errorf("unable to create devices db: %w", err)

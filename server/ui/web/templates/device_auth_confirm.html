@@ -1,0 +1,36 @@
+{{ template "header" .}}
+    <section class="content-section">
+      <h2>Activate</h2>
+      <p>A user or device is requesting access to your account with the following details:</p>
+      
+      <article>
+        <header><strong>Request</strong></header>
+        <table>
+          <tr>
+            <td><strong>User code:</strong></td>
+            <td>{{.UserCode}}</td>
+          </tr>
+          <tr>
+            <td><strong>Requested scopes:</strong></td>
+            <td>{{if .Scopes}}{{.Scopes}}{{else}}<em>All available scopes</em>{{end}}</td>
+          </tr>
+          <tr>
+            <td><strong>Access token would expire:</strong></td>
+            <td>{{tsToString .TokenExpires}}</td>
+          </tr>
+        </table>
+      </article>
+
+      <p>Do you want to authorize this access to your account?</p>
+
+      <form method="POST" action="/auth/authorize-activation" style="display: inline;">
+        <input type="hidden" name="_csrf" value="{{.CsrfToken}}">
+        <input type="hidden" name="user_code" value="{{.UserCode}}">
+        <label for="token_description">Token description (optional):</label>
+        <input type="text" name="token_description" placeholder="OAuth2 authorization"/>
+        <button type="submit" formaction="/auth/deny-activation" class="secondary">Deny</button>
+        <button type="submit">Authorize</button>
+      </form>
+    </section>
+
+{{ template "footer"}}
