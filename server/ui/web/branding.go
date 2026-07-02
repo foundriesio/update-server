@@ -38,27 +38,26 @@ type Branding struct {
 	TextDark       string // --text-1 in dark
 }
 
-// brandingColors is the on-disk color palette shape, reused for light and dark.
 // brandingColors is the on-disk color palette shape, reused for the light
 // "colors" object and the dark "colorsDark" object. In the dark object,
 // primary/accent are accepted for schema symmetry but not applied — brand
 // colors are shared across modes (only surfaces + text vary by mode).
 type brandingColors struct {
-	Primary    *string `json:"primary"`
-	Accent     *string `json:"accent"`
-	Surface    *string `json:"surface"`
-	SurfaceAlt *string `json:"surface-alt"`
-	Text       *string `json:"text"`
+	Primary    string `json:"primary"`
+	Accent     string `json:"accent"`
+	Surface    string `json:"surface"`
+	SurfaceAlt string `json:"surface-alt"`
+	Text       string `json:"text"`
 }
 
-// brandingFile is the on-disk JSON shape. Pointers distinguish "absent" (keep
-// default) from "explicitly set".
+// brandingFile is the on-disk JSON shape. Empty fields (absent or "") fall back
+// to the built-in defaults in Branding.
 type brandingFile struct {
-	Title      *string         `json:"title"`
-	Logo       *string         `json:"logo"`
-	Favicon    *string         `json:"favicon"`
-	Colors     brandingColors  `json:"colors"`
-	ColorsDark *brandingColors `json:"colorsDark"`
+	Title      string         `json:"title"`
+	Logo       string         `json:"logo"`
+	Favicon    string         `json:"favicon"`
+	Colors     brandingColors `json:"colors"`
+	ColorsDark brandingColors `json:"colorsDark"`
 }
 
 func defaultBranding() Branding {
@@ -89,22 +88,21 @@ func LoadBranding(data []byte) Branding {
 		slog.Warn("ignoring invalid branding.json, using defaults", "error", err)
 		return b
 	}
-	set := func(dst *string, src *string) {
-		if src != nil {
-			*dst = *src
+	set := func(dst *string, src string) {
+		if src != "" {
+			*dst = src
 		}
 	}
-	setColor := func(dst *string, src *string) {
-		if src != nil && cssColor.MatchString(*src) {
-			*dst = *src
+	setColor := func(dst *string, src string) {
+		if src != "" && cssColor.MatchString(src) {
+			*dst = src
 		}
 	}
 	set(&b.Title, f.Title)
 	set(&b.Logo, f.Logo)
-	if f.Favicon != nil {
-		v := *f.Favicon
-		if filepath.Base(v) == v && faviconExts[strings.ToLower(filepath.Ext(v))] {
-			b.Favicon = v
+	if f.Favicon != "" {
+		if filepath.Base(f.Favicon) == f.Favicon && faviconExts[strings.ToLower(filepath.Ext(f.Favicon))] {
+			b.Favicon = f.Favicon
 		}
 		// invalid (traversal or bad extension) → keep default "" (embedded favicon)
 	}
@@ -113,10 +111,8 @@ func LoadBranding(data []byte) Branding {
 	setColor(&b.Surface, f.Colors.Surface)
 	setColor(&b.SurfaceAlt, f.Colors.SurfaceAlt)
 	setColor(&b.Text, f.Colors.Text)
-	if f.ColorsDark != nil {
-		setColor(&b.SurfaceDark, f.ColorsDark.Surface)
-		setColor(&b.SurfaceAltDark, f.ColorsDark.SurfaceAlt)
-		setColor(&b.TextDark, f.ColorsDark.Text)
-	}
+	setColor(&b.SurfaceDark, f.ColorsDark.Surface)
+	setColor(&b.SurfaceAltDark, f.ColorsDark.SurfaceAlt)
+	setColor(&b.TextDark, f.ColorsDark.Text)
 	return b
 }
