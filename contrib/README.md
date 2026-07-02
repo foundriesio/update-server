@@ -24,6 +24,9 @@ communicate with. In order to use this you must first:
 
  $ go run github.com/foundriesio/update-server/cmd/server \
     --datadir .compose-server-data auth-init
+
+ $ go run github.com/foundriesio/update-server/cmd/server \
+    --datadir .compose-server-data tuf-init
 ```
 
 ## gen-certs.sh / fake-device.py

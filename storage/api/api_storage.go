@@ -529,7 +529,7 @@ func (s Storage) UploadConfigs(payload io.Reader) (err error) {
 	})
 }
 
-func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, payload io.Reader) error {
+func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOptions, payload io.Reader) error {
 	// First, check the database for uniqueness by (tag, name).
 	// Then, save the upload, and finally, insert into the database.
 	// This warrants the two-phase transaction, unless the user makes concurrent uploads of the same update.
@@ -544,7 +544,14 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, payload io.Rea
 		// This is not critical - log and let the "real" error/success return below.
 		slog.Error("Failed to clean upload directory", "error", cleanupErr)
 	}
-	if err := s.fs.Updates.SaveUpload(tag, updateName, payload, cleanup); err != nil {
+	var tufCreate func(updateDir string) error
+	if s.fs.Tuf.Enabled() {
+		tufCreate = func(updateDir string) error {
+			return s.generateUpdateTuf(updateDir, tag, opts)
+		}
+	}
+	err := s.fs.Updates.SaveUpload(tag, updateName, payload, tufCreate, cleanup)
+	if err != nil {
 		return err
 	}
 	return s.stmtUpdateInsert.run(tag, updateName, uploadedBy)

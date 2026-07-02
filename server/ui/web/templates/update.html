@@ -62,25 +62,29 @@
           <div>
             <fieldset>
               <legend><strong>Root expiration</strong></legend>
-              <p>{{index .Tuf "root.json" "signed" "expires"}}</p>
-            </fieldset>
-          </div>
-          <div>
-            <fieldset>
-              <legend><strong>Snapshot expiration</strong></legend>
-              <p>{{index .Tuf "snapshot.json" "signed" "expires"}}</p>
+              {{ $expires := index .Tuf "root.json" "signed" "expires" }}
+              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
             </fieldset>
           </div>
           <div>
             <fieldset>
               <legend><strong>Timestamp expiration</strong></legend>
-              <p>{{index .Tuf "timestamp.json" "signed" "expires"}}</p>
+              {{ $expires := index .Tuf "timestamp.json" "signed" "expires" }}
+              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
+            </fieldset>
+          </div>
+          <div>
+            <fieldset>
+              <legend><strong>Snapshot expiration</strong></legend>
+              {{ $expires := index .Tuf "snapshot.json" "signed" "expires" }}
+              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
             </fieldset>
           </div>
           <div>
             <fieldset>
               <legend><strong>Targets expiration</strong></legend>
-              <p>{{index .Tuf "targets.json" "signed" "expires"}}</p>
+              {{ $expires := index .Tuf "targets.json" "signed" "expires" }}
+              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
             </fieldset>
           </div>
         </div>
@@ -98,8 +102,34 @@
               <p>{{ .LatestTarget.Version }}</p>
             </fieldset>
           </div>
-          <div></div>
-          <div></div>
+          <div>
+            <fieldset>
+              <legend><strong>Hardware IDs</strong></legend>
+              {{ if .HardwareIds }}
+              <ul>
+              {{ range .HardwareIds }}
+                <li>{{ . }}</li>
+              {{ end }}
+              </ul>
+              {{ else }}
+              <p>None</p>
+              {{ end }}
+            </fieldset>
+          </div>
+          <div>
+            <fieldset>
+              <legend><strong>Tags</strong></legend>
+              {{ if .Tags }}
+              <ul>
+              {{ range .Tags }}
+                <li>{{ . }}</li>
+              {{ end }}
+              </ul>
+              {{ else }}
+              <p>None</p>
+              {{ end }}
+            </fieldset>
+          </div>
         </div>
         <div class="grid">
           <div>

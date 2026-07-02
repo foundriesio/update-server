@@ -41,6 +41,25 @@
           <label for="upload-name">Update name</label>
           <input type="text" id="upload-name" placeholder="e.g. v1.0" required />
 
+          <details id="upload-advanced">
+            <summary role="button">Advanced options</summary>
+            <p><small>These optional fields override the TUF target metadata that is
+                otherwise generated automatically from the update content.</small></p>
+
+            <label for="upload-version">Version</label>
+            <input type="number" id="upload-version" placeholder="Override the target version (AppVersion)" />
+
+            <label for="upload-target-name">Target name</label>
+            <input type="text" id="upload-target-name" placeholder="Override the target name" />
+
+            <label for="upload-ostree-hash">Ostree hash</label>
+            <input type="text" id="upload-ostree-hash" placeholder="Override the ostree hash" />
+
+            <label for="upload-apps">Apps</label>
+            <input type="text" id="upload-apps" placeholder="name=sha256,name2=sha256" />
+            <small>Comma-separated list of docker compose apps as <code>name=sha256</code>.</small>
+          </details>
+          
           <label for="upload-dir">Update directory</label>
           <input type="file" id="upload-dir" webkitdirectory multiple required />
 
@@ -221,6 +240,30 @@
         return;
       }
 
+      // Optional "advanced" overrides for the generated TUF target metadata.
+      const params = new URLSearchParams();
+      const version = document.getElementById('upload-version').value.trim();
+      if (version) {
+        params.set('version', version);
+      }
+      const targetName = document.getElementById('upload-target-name').value.trim();
+      if (targetName) {
+        params.set('name', targetName);
+      }
+      const ostreeHash = document.getElementById('upload-ostree-hash').value.trim();
+      if (ostreeHash) {
+        params.set('ostree-hash', ostreeHash);
+      }
+      const apps = document.getElementById('upload-apps').value.trim();
+      if (apps) {
+        for (const pair of apps.split(',')) {
+          const trimmed = pair.trim();
+          if (trimmed) {
+            params.append('apps', trimmed);
+          }
+        }
+      }
+
       btn.disabled = true;
       btn.textContent = 'Uploading...';
       progressDiv.style.display = 'block';
@@ -232,7 +275,8 @@
         const tarBlob = buildTarBlob(files);
         statusEl.textContent = 'Uploading: 0 B / ' + formatBytes(tarBlob.size);
 
-        const url = '/v1/updates/' + encodeURIComponent(tag) + '/' + encodeURIComponent(updateName);
+        const query = params.toString();
+        const url = '/v1/updates/' + encodeURIComponent(tag) + '/' + encodeURIComponent(updateName) + (query ? '?' + query : '');
 
         // Get CSRF token from meta tag
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;

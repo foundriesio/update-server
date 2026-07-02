@@ -65,4 +65,9 @@ func RegisterHandlers(e *echo.Echo, storage *storage.Storage, a auth.Provider) {
 	upd.PUT("/:tag/:update/rollouts/:rollout", h.rolloutPut, requireScope(users.ScopeUpdatesRU))
 	upd.GET("/:tag/:update/rollouts/:rollout/tail", h.rolloutTail, requireScope(users.ScopeUpdatesR))
 	upd.GET("/:tag/:update/tail", h.updateTail, requireScope(users.ScopeUpdatesR))
+
+	// TUF root metadata. The static "root.json" route returns the latest
+	// version; "<n>.root.json" returns a specific version.
+	g.GET("/tuf/root.json", h.tufRootLatest, requireScope(users.ScopeUpdatesR))
+	g.GET("/tuf/:version", h.tufRootVersion, requireScope(users.ScopeUpdatesR))
 }

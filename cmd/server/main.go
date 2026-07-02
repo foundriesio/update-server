@@ -22,6 +22,7 @@ type CommonArgs struct {
 	Csr      *CsrCmd      `arg:"subcommand:create-csr" help:"Create a TLS certificate signing request for this server"`
 	SignCsr  *CsrSignCmd  `arg:"subcommand:sign-csr" help:"Create the TLS certificate from the signing request"`
 	Serve    *ServeCmd    `arg:"subcommand:serve" help:"Run the REST API and device-gateway services"`
+	TufInit  *TufInitCmd  `arg:"subcommand:tuf-init" help:"Initialize TUF keys and root metadata for this server"`
 	UserAdd  *UserAddCmd  `arg:"subcommand:user-add" help:"Add a new user if local authentication is enabled"`
 	Version  *VersionCmd  `arg:"subcommand:version" help:"Print the version of the program"`
 
@@ -48,6 +49,8 @@ func main() {
 		err = args.SignCsr.Run(args)
 	case args.Serve != nil:
 		err = args.Serve.Run(args)
+	case args.TufInit != nil:
+		err = args.TufInit.Run(args)
 	case args.AuthInit != nil:
 		err = args.AuthInit.Run(args)
 	case args.UserAdd != nil:
