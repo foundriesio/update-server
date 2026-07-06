@@ -100,12 +100,28 @@ func (s *Signer) PublicAtsKey() AtsKey {
 	}
 }
 
-// sign signs the canonical JSON of signed and returns a Signature.
-func (s *Signer) Sign(signed any) (Signature, error) {
+// SignedMeta is the result of signing a metadata's "signed" component. Along
+// with the signature it carries the sha256 hash and length of the canonical
+// JSON that was signed. Snapshot and timestamp metadata use these to reference
+// the targets and snapshot metadata respectively.
+type SignedMeta struct {
+	Signature Signature
+	Sha256    HexBytes
+	Length    int64
+}
+
+// sign signs the canonical JSON of signed and returns a SignedMeta containing
+// the signature along with the sha256 hash and length of the signed bytes.
+func (s *Signer) Sign(signed any) (SignedMeta, error) {
 	msg, err := cjson.EncodeCanonical(signed)
 	if err != nil {
-		return Signature{}, fmt.Errorf("unable to marshal canonical JSON: %w", err)
+		return SignedMeta{}, fmt.Errorf("unable to marshal canonical JSON: %w", err)
 	}
 	sig := ed25519.Sign(s.private, msg)
-	return Signature{KeyID: s.Id, Method: SigEd25519, Signature: sig}, nil
+	sum := sha256.Sum256(msg)
+	return SignedMeta{
+		Signature: Signature{KeyID: s.Id, Method: SigEd25519, Signature: sig},
+		Sha256:    sum[:],
+		Length:    int64(len(msg)),
+	}, nil
 }

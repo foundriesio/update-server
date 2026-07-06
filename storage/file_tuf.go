@@ -142,11 +142,11 @@ func (h TufFsHandle) InitTuf() error {
 			Roles:              roles,
 		},
 	}
-	sig, err := signers[tuf.RoleRoot].Sign(root.Signed)
+	signed, err := signers[tuf.RoleRoot].Sign(root.Signed)
 	if err != nil {
 		return fmt.Errorf("unable to sign root metadata: %w", err)
 	}
-	root.Signatures = []tuf.Signature{sig}
+	root.Signatures = []tuf.Signature{signed.Signature}
 	return h.writeRoot(root)
 }
 
@@ -232,13 +232,13 @@ func (h TufFsHandle) ReadTufMeta(tag, update, name string, v any) error {
 	return nil
 }
 
-func (h TufFsHandle) Sign(role tuf.RoleName, v any) (tuf.Signature, error) {
+func (h TufFsHandle) Sign(role tuf.RoleName, v any) (tuf.SignedMeta, error) {
 	if !h.Enabled() {
-		return tuf.Signature{}, fmt.Errorf("TUF signing not available: call LoadTuf first")
+		return tuf.SignedMeta{}, fmt.Errorf("TUF signing not available: call LoadTuf first")
 	}
 	signer, ok := h.signers[role]
 	if !ok {
-		return tuf.Signature{}, fmt.Errorf("no signer loaded for TUF role %s", role)
+		return tuf.SignedMeta{}, fmt.Errorf("no signer loaded for TUF role %s", role)
 	}
 	return signer.Sign(v)
 }

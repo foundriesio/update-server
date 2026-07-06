@@ -176,7 +176,9 @@ func (t AtsTufTargets) GetLatestTargetVersion() int {
 // MetaItem references a version of another metadata file. The ota-tuf format
 // for snapshot and timestamp metadata only records the version.
 type MetaItem struct {
-	Version int `json:"version"`
+	Version int    `json:"version"`
+	Length  int64  `json:"length"`
+	Hashes  Hashes `json:"hashes"`
 }
 
 // SnapshotMeta is the "signed" component of a snapshot.json file.

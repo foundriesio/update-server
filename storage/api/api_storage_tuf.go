@@ -102,11 +102,11 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 		},
 	}
 
-	sig, err := s.fs.Tuf.Sign(tuf.RoleTargets, targets.Signed)
+	targetsMeta, err := s.fs.Tuf.Sign(tuf.RoleTargets, targets.Signed)
 	if err != nil {
 		return fmt.Errorf("unable to sign targets metadata: %w", err)
 	}
-	targets.Signatures = []tuf.Signature{sig}
+	targets.Signatures = []tuf.Signature{targetsMeta.Signature}
 
 	ss := tuf.AtsTufSnapshot{
 		Signed: tuf.SnapshotMeta{
@@ -118,16 +118,18 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 			Meta: map[string]tuf.MetaItem{
 				storage.TufTargetsFile: {
 					Version: targets.Signed.Version,
+					Length:  targetsMeta.Length,
+					Hashes:  tuf.Hashes{"sha256": targetsMeta.Sha256},
 				},
 			},
 		},
 	}
 
-	sig, err = s.fs.Tuf.Sign(tuf.RoleSnapshot, ss.Signed)
+	snapshotMeta, err := s.fs.Tuf.Sign(tuf.RoleSnapshot, ss.Signed)
 	if err != nil {
 		return fmt.Errorf("unable to sign snapshot metadata: %w", err)
 	}
-	ss.Signatures = []tuf.Signature{sig}
+	ss.Signatures = []tuf.Signature{snapshotMeta.Signature}
 
 	// When we generate a new timestamp role - we need to increase its version
 	// as well in order to let a client (aktualizr) side handle it properly
@@ -148,16 +150,18 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 			Meta: map[string]tuf.MetaItem{
 				storage.TufSnapshotFile: {
 					Version: ss.Signed.Version,
+					Length:  snapshotMeta.Length,
+					Hashes:  tuf.Hashes{"sha256": snapshotMeta.Sha256},
 				},
 			},
 		},
 	}
 
-	sig, err = s.fs.Tuf.Sign(tuf.RoleTimestamp, ts.Signed)
+	timestampMeta, err := s.fs.Tuf.Sign(tuf.RoleTimestamp, ts.Signed)
 	if err != nil {
 		return fmt.Errorf("unable to sign timestamp metadata: %w", err)
 	}
-	ts.Signatures = []tuf.Signature{sig}
+	ts.Signatures = []tuf.Signature{timestampMeta.Signature}
 
 	targetsJson, err := json.Marshal(targets)
 	if err != nil {
@@ -239,11 +243,11 @@ func (s Storage) refreshTufTimestamp(c context.Context, tag string, update Updat
 	}
 
 	ts.Signed.Expires = clock.Now().UTC().Add(s.fs.Tuf.TimestampExpiration).Truncate(time.Second)
-	sig, err := s.fs.Tuf.Sign(tuf.RoleTimestamp, ts.Signed)
+	signed, err := s.fs.Tuf.Sign(tuf.RoleTimestamp, ts.Signed)
 	if err != nil {
 		return fmt.Errorf("unable to sign timestamp metadata: %w", err)
 	}
-	ts.Signatures = []tuf.Signature{sig}
+	ts.Signatures = []tuf.Signature{signed.Signature}
 
 	tsJson, err := json.Marshal(ts)
 	if err != nil {
