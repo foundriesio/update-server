@@ -69,6 +69,42 @@ root metadata must be initialized:
   ./fioserver --datadir=./datadir tuf-init
 ```
 
+### Importing an existing fleet's TUF root
+
+If you already have a fleet of devices provisioned against a Foundries.io
+factory, initializing a brand new TUF root would leave those devices unable
+to validate metadata from this server. Instead, you can import the factory's
+existing root of trust so that already-provisioned devices continue to trust
+updates.
+
+The import reads every version of the factory's `root.json` from a tarball you
+provide, stores them so devices can walk the trust chain, and then generates a
+new root (version N+1) with fresh online keys for the `root`, `targets`,
+`snapshot`, and `timestamp` roles. The new root is signed by both the factory's
+offline root key (proving continuity of trust) and the new root key.
+
+You will need:
+
+* The factory's offline keys tarball (typically `offline-creds.tgz`),
+  which contains the offline root key used to sign the rotation.
+* A gzipped tarball containing all of the factory's `root.json` files (e.g.
+  `1.root.json`, `2.root.json`, ...). See `fioctl keys tuf show-root`.
+```
+  ./fioserver --datadir=./datadir tuf-init \
+    --import-keys ./offline-creds.tgz \
+    --import-roots ./roots.tgz
+```
+
+Options:
+
+* `--import-keys` — path to the fioctl offline keys tarball. Providing this
+  (or `--import-roots`) enables import mode.
+* `--import-roots` — path to a gzipped tarball containing all of the factory's
+  `root.json` files. See `fioctl keys tuf download-roots`.
+
+> **Note:** `tuf-init` requires `auth-init` to have been run first so that the
+> imported role keys can be encrypted at rest.
+
 ## Run the Server
 
 `./fioserv serve --datadir=datadir`
