@@ -94,7 +94,7 @@ func probeOstree(repoPath string, opts *TargetOptions) error {
 		return err
 	}
 
-	if data, err := repo.ReadFile(ref, "/etc/os-release"); err == nil {
+	if data, err := repo.ReadFile(ref, "/usr/lib/os-release"); err == nil {
 		if v := parseKeyValue(string(data), "IMAGE_VERSION"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil {
 				opts.AppVersion = n
