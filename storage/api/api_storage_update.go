@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/ostree"
 )
 
@@ -25,7 +26,7 @@ func (s Storage) generateUpdateTuf(updateDir, tag string, overrides TargetOption
 		Tag:     tag,
 	}
 
-	ostreeDir := filepath.Join(updateDir, "ostree")
+	ostreeDir := filepath.Join(updateDir, storage.UpdatesOstreeDir)
 	if isDir(ostreeDir) {
 		if err := probeOstree(ostreeDir, &opts); err != nil {
 			return fmt.Errorf("unable to probe ostree repo: %w", err)
