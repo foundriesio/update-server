@@ -56,6 +56,8 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 	}
 	if opts.AppVersion != 0 {
 		tgtVer = opts.AppVersion
+	} else {
+		tgtVer++ // increment the target version when no override is provided
 	}
 
 	custom := generatedTargetCustom{
