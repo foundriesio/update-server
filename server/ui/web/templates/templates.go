@@ -9,6 +9,8 @@ import (
 	"html/template"
 	"strings"
 	"time"
+
+	"github.com/foundriesio/update-server/clock"
 )
 
 //go:embed *.html *.css favicon.svg
@@ -33,6 +35,17 @@ func init() {
 		},
 		"tsToString": func(ts int64) string {
 			return time.Unix(ts, 0).Format(time.RFC3339)
+		},
+		"isExpired": func(expires any) bool {
+			s, ok := expires.(string)
+			if !ok || s == "" {
+				return false
+			}
+			t, err := time.Parse(time.RFC3339, s)
+			if err != nil {
+				return false
+			}
+			return clock.Now().After(t)
 		},
 		"add": func(a, b int) int {
 			return a + b

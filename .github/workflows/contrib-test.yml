@@ -41,6 +41,7 @@ jobs:
             "Type" : "noauth"
           }
           EOF
+          ./contrib/dev-shell go run github.com/foundriesio/update-server/cmd/server --datadir .compose-server-data tuf-init
 
       - name: Test server
         run: |
