@@ -4,11 +4,6 @@
 package main
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
 
@@ -29,37 +24,15 @@ func (c CsrCmd) Run(args CommonArgs) error {
 		return err
 	}
 
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	priv, csrBytes, err := buildCsr(c.DnsName, c.Factory)
 	if err != nil {
-		return fmt.Errorf("unexpected error generating private key for CSR: %w", err)
+		return err
 	}
 
-	subj := pkix.Name{
-		CommonName:         c.DnsName,
-		OrganizationalUnit: []string{c.Factory},
-	}
-
-	template := x509.CertificateRequest{
-		Subject:            subj,
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		DNSNames:           []string{c.DnsName},
-	}
-
-	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &template, priv)
+	privPem, err := marshalKeyPem(priv)
 	if err != nil {
-		return fmt.Errorf("unexpected error creating CSR: %w", err)
+		return err
 	}
-
-	privDer, err := x509.MarshalECPrivateKey(priv)
-	if err != nil {
-		return fmt.Errorf("unexpected error encoding private key: %w", err)
-	}
-	privPem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "EC PRIVATE KEY",
-			Bytes: privDer,
-		},
-	)
 	if err := fs.Certs.WriteFile(storage.CertsTlsKeyFile, privPem); err != nil {
 		return fmt.Errorf("unable to store TLS private key file: %w", err)
 	}
