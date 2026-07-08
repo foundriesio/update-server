@@ -16,7 +16,38 @@ For Linux and Mac, make sure to `chmod +x fioserver`.
 
 ## Configure Mutual TLS
 
-### Creat Certificate Signing requests for TLS
+There are two ways to set up the mutual TLS certificates which are used by 
+devices to authenticate with this server:
+
+* **Bootstrap a new PKI from scratch** with `pki-init` — use this if you do
+  not already have a FoundriesFactory PKI (see below).
+* **Sign a CSR with an existing factory PKI** using `create-csr` and
+  `sign-csr` — use this if you already have a factory root key and device
+  CAs (see [Sign with an existing factory PKI](#sign-with-an-existing-factory-pki)).
+
+### Bootstrap a new PKI from scratch
+
+If you don't have a pre-existing factory PKI, `pki-init` creates everything
+in one step:
+
+```
+  ./fioserver --datadir=./datadir pki-init --dnsname <HOSTNAME> --factory <FACTORY>
+```
+
+This generates, under `datadir/certs`:
+
+* a self-signed root CA (`root.key`/`root.crt`) with `OU=<FACTORY>`,
+* the server TLS keypair signed by the root CA (`tls.key`/`tls.pem`),
+* an intermediate device-signing CA (`device-ca.key`/`device-ca.crt`), and
+* `cas.pem`, containing the device CA so devices can authenticate.
+
+Import `root.crt` into your devices' trust store so they trust the server's
+TLS certificate. You can then skip ahead to
+[Configure User Authentication](#configure-user-authentication).
+
+### Sign with an existing factory PKI
+
+#### Creat Certificate Signing requests for TLS
 
 Devices need to trust the TLS connection they make to this server. In
 order to do this, you must create a CSR to be signed with the Factory
@@ -26,7 +57,7 @@ root key:
   ./fioserver --datadir=./datadir create-csr --dnsname <HOSTNAME> --factory <FACTORY>
 ```
 
-### Sign the Request
+#### Sign the Request
 
 Copy `datadir/certs/tls.csr` to the computer with your factory PKI. This
 file does not contain sensitive information, so it is safe to share as
@@ -40,7 +71,7 @@ This command will print the contents of the certificate. The contents are
 not sensitive. Go back to the update server system and create the
 file `datadir/certs/tls.pem` with this content.
 
-### Grant Access to Devices
+#### Grant Access to Devices
 
 This service needs to know what devices can connect to it. You can allow
 all valid factory devices to connect with:
