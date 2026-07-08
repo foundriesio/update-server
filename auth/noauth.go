@@ -69,6 +69,14 @@ func (p noauthProvider) GetSession(c echo.Context) (*Session, error) {
 func (noauthProvider) DropSession(echo.Context, *Session) {
 }
 
+func (noauthProvider) GetRateLimiterMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return next(c)
+		}
+	}
+}
+
 func init() {
 	RegisterProvider(&noauthProvider{})
 }

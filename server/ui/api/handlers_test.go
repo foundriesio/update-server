@@ -215,16 +215,25 @@ func (p testAuthProvider) GetSession(c echo.Context) (*auth.Session, error) {
 func (testAuthProvider) DropSession(echo.Context, *auth.Session) {
 }
 
+func (testAuthProvider) GetRateLimiterMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return next
+	}
+}
+
 func NewTestClient(t *testing.T) *testClient {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	fsS, err := apiStorage.NewFs(tmpDir)
 	require.Nil(t, err)
+	require.Nil(t, fsS.Auth.InitHmacSecret())
 	db, err := apiStorage.NewDb(filepath.Join(tmpDir, apiStorage.DbFile))
 	require.Nil(t, err)
 	apiS, err := apiStorage.NewStorage(db, fsS)
 	require.Nil(t, err)
 	gwS, err := gatewayStorage.NewStorage(db, fsS)
+	require.Nil(t, err)
+	userS, err := users.NewStorage(db, fsS)
 	require.Nil(t, err)
 
 	log, err := context.InitLogger("debug")
@@ -237,7 +246,7 @@ func NewTestClient(t *testing.T) *testClient {
 		Username:      "root",
 		AllowedScopes: 0,
 	}
-	RegisterHandlers(e, apiS, &testAuthProvider{user: u})
+	RegisterHandlers(e, apiS, userS, &testAuthProvider{user: u})
 
 	tc := testClient{
 		t:   t,
@@ -798,7 +807,6 @@ func TestApiRolloutPut(t *testing.T) {
 func TestApiRolloutDaemon(t *testing.T) {
 	tc := NewTestClient(t)
 
-	require.Nil(t, tc.fs.Auth.InitHmacSecret())
 	db, err := apiStorage.NewDb(filepath.Join(t.TempDir(), apiStorage.DbFile))
 	require.Nil(t, err)
 	usersS, err := users.NewStorage(db, tc.fs)
