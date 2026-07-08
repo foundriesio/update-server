@@ -31,7 +31,7 @@ func TestCreateUpdateGeneratesTufFromApps(t *testing.T) {
 	require.NoError(t, s.fs.Tuf.ReadTufMeta("main", "v1.0", storage.TufTargetsFile, &targets))
 	require.Len(t, targets.Signed.Targets, 1)
 
-	target, ok := targets.Signed.Targets["my-app-target-0"]
+	target, ok := targets.Signed.Targets["my-app-target-1"]
 	require.True(t, ok, "expected generated target keyed by name and version")
 
 	var custom generatedTargetCustom

@@ -4,10 +4,13 @@
 package api
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 
 	"github.com/foundriesio/update-server/clock"
 	"github.com/foundriesio/update-server/context"
@@ -56,6 +59,8 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 	}
 	if opts.AppVersion != 0 {
 		tgtVer = opts.AppVersion
+	} else {
+		tgtVer++ // increment the target version when no override is provided
 	}
 
 	custom := generatedTargetCustom{
@@ -102,11 +107,16 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 		},
 	}
 
-	targetsMeta, err := s.fs.Tuf.Sign(tuf.RoleTargets, targets.Signed)
+	targetsSig, err := s.fs.Tuf.Sign(tuf.RoleTargets, targets.Signed)
 	if err != nil {
 		return fmt.Errorf("unable to sign targets metadata: %w", err)
 	}
-	targets.Signatures = []tuf.Signature{targetsMeta.Signature}
+	targets.Signatures = []tuf.Signature{targetsSig}
+
+	targetsBytes, targetsMeta, err := marshallMeta(targets, targets.Signed.Version)
+	if err != nil {
+		return fmt.Errorf("unable to marshal targets metadata: %w", err)
+	}
 
 	ss := tuf.AtsTufSnapshot{
 		Signed: tuf.SnapshotMeta{
@@ -116,20 +126,21 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 				Expires: targets.Signed.Expires,
 			},
 			Meta: map[string]tuf.MetaItem{
-				storage.TufTargetsFile: {
-					Version: targets.Signed.Version,
-					Length:  targetsMeta.Length,
-					Hashes:  tuf.Hashes{"sha256": targetsMeta.Sha256},
-				},
+				storage.TufTargetsFile: targetsMeta,
 			},
 		},
 	}
 
-	snapshotMeta, err := s.fs.Tuf.Sign(tuf.RoleSnapshot, ss.Signed)
+	snapshotSig, err := s.fs.Tuf.Sign(tuf.RoleSnapshot, ss.Signed)
 	if err != nil {
 		return fmt.Errorf("unable to sign snapshot metadata: %w", err)
 	}
-	ss.Signatures = []tuf.Signature{snapshotMeta.Signature}
+	ss.Signatures = []tuf.Signature{snapshotSig}
+
+	ssBytes, ssMeta, err := marshallMeta(ss, ss.Signed.Version)
+	if err != nil {
+		return fmt.Errorf("unable to marshal snapshot metadata: %w", err)
+	}
 
 	// When we generate a new timestamp role - we need to increase its version
 	// as well in order to let a client (aktualizr) side handle it properly
@@ -147,40 +158,37 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 				Version: tsVersion,
 				Expires: clock.Now().UTC().Add(s.fs.Tuf.TimestampExpiration).Truncate(time.Second),
 			},
-			Meta: map[string]tuf.MetaItem{
-				storage.TufSnapshotFile: {
-					Version: ss.Signed.Version,
-					Length:  snapshotMeta.Length,
-					Hashes:  tuf.Hashes{"sha256": snapshotMeta.Sha256},
-				},
-			},
+			Meta: map[string]tuf.MetaItem{storage.TufSnapshotFile: ssMeta},
 		},
 	}
 
-	timestampMeta, err := s.fs.Tuf.Sign(tuf.RoleTimestamp, ts.Signed)
+	timestampSig, err := s.fs.Tuf.Sign(tuf.RoleTimestamp, ts.Signed)
 	if err != nil {
 		return fmt.Errorf("unable to sign timestamp metadata: %w", err)
 	}
-	ts.Signatures = []tuf.Signature{timestampMeta.Signature}
+	ts.Signatures = []tuf.Signature{timestampSig}
 
-	targetsJson, err := json.Marshal(targets)
-	if err != nil {
-		return fmt.Errorf("unable to marshal targets metadata: %w", err)
-	}
-	snapshotJson, err := json.Marshal(ss)
-	if err != nil {
-		return fmt.Errorf("unable to marshal snapshot metadata: %w", err)
-	}
-	timestampJson, err := json.Marshal(ts)
+	tsBytes, _, err := marshallMeta(ts, ts.Signed.Version)
 	if err != nil {
 		return fmt.Errorf("unable to marshal timestamp metadata: %w", err)
 	}
 
-	if err := s.fs.Tuf.WriteMeta(tufDir, targetsJson, snapshotJson, timestampJson); err != nil {
+	if err := s.fs.Tuf.WriteMeta(tufDir, targetsBytes, ssBytes, tsBytes); err != nil {
 		return fmt.Errorf("unable to write targets metadata: %w", err)
 	}
 
 	return nil
+}
+
+// marshallMeta encodes v as canonical JSON and returns its bytes, length, and
+// sha256 hash.
+func marshallMeta(v any, version int) ([]byte, tuf.MetaItem, error) {
+	b, err := cjson.EncodeCanonical(v)
+	if err != nil {
+		return nil, tuf.MetaItem{}, err
+	}
+	sum := sha256.Sum256(b)
+	return b, tuf.MetaItem{Version: version, Length: int64(len(b)), Hashes: tuf.Hashes{"sha256": sum[:]}}, nil
 }
 
 // getLatestVersions returns the highest TUF metadata version and the highest
@@ -247,7 +255,7 @@ func (s Storage) refreshTufTimestamp(c context.Context, tag string, update Updat
 	if err != nil {
 		return fmt.Errorf("unable to sign timestamp metadata: %w", err)
 	}
-	ts.Signatures = []tuf.Signature{signed.Signature}
+	ts.Signatures = []tuf.Signature{signed}
 
 	tsJson, err := json.Marshal(ts)
 	if err != nil {

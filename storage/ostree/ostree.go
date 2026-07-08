@@ -5,9 +5,11 @@ package ostree
 
 import (
 	"bytes"
+	"compress/flate"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,6 +187,39 @@ func lookupGVArray(data []byte, name string) string {
 	return ""
 }
 
+// readContentObject returns the raw file content for a content object hash,
+// handling both "bare" repositories (uncompressed ".file" objects) and
+// "archive"/"archive-z2" repositories (".filez" objects: a big-endian uint32
+// header size, 4 bytes of alignment padding, the GVariant file header, followed
+// by raw-DEFLATE-compressed content).
+func (r *Repo) readContentObject(fileHash string) ([]byte, error) {
+	if data, err := os.ReadFile(r.objectPath(fileHash, ".file")); err == nil {
+		return data, nil
+	}
+
+	raw, err := os.ReadFile(r.objectPath(fileHash, ".filez"))
+	if err != nil {
+		return nil, fmt.Errorf("reading file object %s: %w", fileHash[:8], err)
+	}
+	if len(raw) < 8 {
+		return nil, fmt.Errorf("filez object %s too small (%d bytes)", fileHash[:8], len(raw))
+	}
+	// 4-byte big-endian header size, then 4 bytes of alignment padding.
+	headerSize := int(binary.BigEndian.Uint32(raw[:4]))
+	contentStart := 8 + headerSize
+	if headerSize == 0 || contentStart > len(raw) {
+		return nil, fmt.Errorf("filez object %s has invalid header size %d", fileHash[:8], headerSize)
+	}
+
+	zr := flate.NewReader(bytes.NewReader(raw[contentStart:]))
+	defer zr.Close() // nolint:errcheck
+	content, err := io.ReadAll(zr)
+	if err != nil {
+		return nil, fmt.Errorf("decompressing file object %s: %w", fileHash[:8], err)
+	}
+	return content, nil
+}
+
 // ReadFile returns the contents of filePath from the given ref in the repo.
 // filePath should be an absolute path, e.g. "/usr/lib/sota/conf.d/40-hardware-id.toml".
 func (r *Repo) ReadFile(ref, filePath string) ([]byte, error) {
@@ -231,11 +266,7 @@ func (r *Repo) ReadFile(ref, filePath string) ([]byte, error) {
 		return nil, fmt.Errorf("file %q not found in %s", filename, filepath.Dir(filePath))
 	}
 
-	content, err := os.ReadFile(r.objectPath(fileHash, ".file"))
-	if err != nil {
-		return nil, fmt.Errorf("reading file object %s: %w", fileHash[:8], err)
-	}
-	return content, nil
+	return r.readContentObject(fileHash)
 }
 
 // ListHeads returns the names of all refs under refs/heads, including refs nested
