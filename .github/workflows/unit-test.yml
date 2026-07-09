@@ -20,7 +20,11 @@ jobs:
         uses: actions/checkout@v4
       - name: Run tests
         run: |
-          go test -v ./...
+          wget -O gotestsum.tgz https://github.com/gotestyourself/gotestsum/releases/download/v1.13.0/gotestsum_1.13.0_linux_amd64.tar.gz
+          tar -xf gotestsum.tgz
+          echo "524bb9d2639f87bdb76db4b32e3b09e0838eec8a5da73c4d30ea2bedc22cf1d7 gotestsum" | sha256sum --check
+
+          ./gotestsum
 
   swagger:
     name: swagger-docs
