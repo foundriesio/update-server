@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/foundriesio/update-server/storage"
@@ -49,9 +50,39 @@ func (c TufInitCmd) Run(args CommonArgs) error {
 		if err != nil {
 			return err
 		}
-		return fs.Tuf.ImportTuf(roots, keys)
+		if err := fs.Tuf.ImportTuf(roots, keys); err != nil {
+			return err
+		}
+		printRootKeyBackupNotice(fs)
+		return nil
 	}
-	return fs.Tuf.InitTuf()
+	if err := fs.Tuf.InitTuf(); err != nil {
+		return err
+	}
+	printRootKeyBackupNotice(fs)
+	return nil
+}
+
+// printRootKeyBackupNotice warns the operator that the newly created root key
+// is irreplaceable and must be backed up along with the HMAC secret used to
+// decrypt it.
+func printRootKeyBackupNotice(fs *storage.FsHandle) {
+	rootKeyPath := filepath.Join(fs.Config.TufDir(), "keys", "root.key")
+	hmacPath := filepath.Join(fs.Config.AuthDir(), storage.HmacFile)
+	fmt.Println()
+	fmt.Println("TUF initialization completed successfully.")
+	fmt.Println()
+	fmt.Println("IMPORTANT: A new root key was created at:")
+	fmt.Printf("    %s\n", rootKeyPath)
+	fmt.Println()
+	fmt.Println("This key is encrypted at rest using the HMAC secret at:")
+	fmt.Printf("    %s\n", hmacPath)
+	fmt.Println()
+	fmt.Println("Make a backup copy of BOTH files and store them somewhere safe NOW.")
+	fmt.Println("The root key is useless without the HMAC secret needed to decrypt it.")
+	fmt.Println("If either file is lost it CANNOT be recovered, and you will permanently")
+	fmt.Println("lose the ability to rotate or manage your TUF root of trust.")
+	fmt.Println()
 }
 
 // loadTufKeysArchive opens a fioctl offline keys tarball and extracts the

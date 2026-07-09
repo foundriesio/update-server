@@ -209,7 +209,7 @@ func TestImportTufMissingRootKey(t *testing.T) {
 	require.NoError(t, err)
 
 	err = fs.Tuf.ImportTuf([][]byte{rootBytes}, []tuf.AtsKey{pubKey})
-	require.ErrorContains(t, err, "does not contain a private key for any of the root role key ids")
+	require.ErrorContains(t, err, "unable to find root key signer for key IDs")
 	require.False(t, fs.Tuf.isInitialized())
 }
 

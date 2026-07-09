@@ -91,8 +91,7 @@ func (h TufFsHandle) importTuf(roots []importedRoot, candidateKeys []tuf.AtsKey)
 		return fmt.Errorf("imported root.json (version %d) has no root role", base.root.Signed.Version)
 	}
 
-	// Find the offline root signer(s) matching the imported root role key ids.
-	oldSigners, err := matchRootSigners(oldRootRole.KeyIDs, candidateKeys)
+	oldSigner, err := findFirstRootSigner(oldRootRole.KeyIDs, candidateKeys)
 	if err != nil {
 		return err
 	}
@@ -140,15 +139,11 @@ func (h TufFsHandle) importTuf(roots []importedRoot, candidateKeys []tuf.AtsKey)
 	if err != nil {
 		return fmt.Errorf("unable to sign new root metadata: %w", err)
 	}
-	signatures := []tuf.Signature{newSigned}
-	for _, old := range oldSigners {
-		oldSigned, err := old.Sign(newRoot.Signed)
-		if err != nil {
-			return fmt.Errorf("unable to sign new root metadata with imported key %s: %w", old.Id, err)
-		}
-		signatures = append(signatures, oldSigned)
+	oldSigned, err := oldSigner.Sign(newRoot.Signed)
+	if err != nil {
+		return fmt.Errorf("unable to sign new root metadata with imported key %s: %w", oldSigner.Id, err)
 	}
-	newRoot.Signatures = signatures
+	newRoot.Signatures = []tuf.Signature{newSigned, oldSigned}
 
 	// Persist every imported root verbatim, then the newly generated root.
 	if err := h.mkdirs(defaultDirAccess, true); err != nil {
@@ -163,31 +158,16 @@ func (h TufFsHandle) importTuf(roots []importedRoot, candidateKeys []tuf.AtsKey)
 	return h.writeRoot(newRoot)
 }
 
-// matchRootSigners returns an ImportSigner for every candidate private key
-// whose key id is listed in keyIDs. It errors if no matching key is found.
-func matchRootSigners(keyIDs []string, candidateKeys []tuf.AtsKey) ([]*tuf.ImportSigner, error) {
-	wanted := make(map[string]bool, len(keyIDs))
-	for _, id := range keyIDs {
-		wanted[id] = true
-	}
-
-	var signers []*tuf.ImportSigner
+func findFirstRootSigner(keyIDs []string, candidateKeys []tuf.AtsKey) (*tuf.ImportSigner, error) {
 	for _, key := range candidateKeys {
 		signer, err := tuf.ImportSignerFromAtsKey(key)
 		if err != nil {
 			// Not a usable signing key (e.g. public-only or unsupported type).
 			continue
 		}
-		if wanted[signer.Id] {
-			signers = append(signers, signer)
-			delete(wanted, signer.Id)
+		if slices.Contains(keyIDs, signer.Id) {
+			return signer, nil
 		}
 	}
-	if len(signers) == 0 {
-		return nil, fmt.Errorf(
-			"keys archive does not contain a private key for any of the root role key ids: %v",
-			keyIDs,
-		)
-	}
-	return signers, nil
+	return nil, fmt.Errorf("unable to find root key signer for key IDs: %v", keyIDs)
 }

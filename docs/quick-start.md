@@ -105,6 +105,14 @@ Options:
 > **Note:** `tuf-init` requires `auth-init` to have been run first so that the
 > imported role keys can be encrypted at rest.
 
+> **IMPORTANT:** A successful import generates a new root key at
+> `<datadir>/tufrepo/keys/root.key`. This key is encrypted at rest using the
+> HMAC secret at `<datadir>/auth/hmac.secret`, so you must back up BOTH files —
+> the `root.key` is useless without the `hmac.secret` needed to decrypt it.
+> Store copies of both somewhere safe immediately. If either file is lost it
+> CANNOT be recovered, and you will permanently lose the ability to rotate or
+> manage your TUF root of trust.
+
 ## Run the Server
 
 `./fioserv serve --datadir=datadir`
