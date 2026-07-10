@@ -30,6 +30,9 @@ func main() {
 	numDevices := flag.Int("num-devices", 5000, "number of device certs to generate")
 	hostname := flag.String("hostname", "dg-sat", "gateway hostname (server cert SAN)")
 	factory := flag.String("factory", "dg-satellite-fake", "device cert OU / factory name")
+	seedUpdateFlag := flag.Bool("seed-update", false, "seed a TUF target + rollout for the generated devices (off by default)")
+	updateTag := flag.String("update-tag", "main", "tag to seed the update under; must equal the Locust run's --device-tag")
+	updateName := flag.String("update-name", "perf-target-1", "update name to seed")
 	flag.Parse()
 
 	if *datadir == "" {
@@ -107,6 +110,7 @@ func main() {
 	}
 	close(jobs)
 
+	results := make([]deviceResult, *numDevices)
 	workers := runtime.NumCPU()
 	var wg sync.WaitGroup
 	wg.Add(workers)
@@ -114,16 +118,33 @@ func main() {
 		go func() {
 			defer wg.Done()
 			for j := range jobs {
-				genDevice(j.n, devicesDir, caCert, caKey, *factory, now)
+				results[j.n-1] = genDevice(j.n, devicesDir, caCert, caKey, *factory, now)
 			}
 		}()
 	}
 	wg.Wait()
 
 	fmt.Printf("generated %d devices in %s\n", *numDevices, time.Since(start).Round(time.Millisecond))
+
+	if *seedUpdateFlag {
+		uuids := make([]string, len(results))
+		pubkeys := make(map[string]string, len(results))
+		for i, r := range results {
+			uuids[i] = r.uuid
+			pubkeys[r.uuid] = r.pubkeyPEM
+		}
+		if err := seedUpdate(*datadir, *updateTag, *updateName, uuids, pubkeys); err != nil {
+			fatal("seed update:", err)
+		}
+	}
 }
 
-func genDevice(n int, devicesDir string, caCert *x509.Certificate, caKey *ecdsa.PrivateKey, factory string, now time.Time) {
+type deviceResult struct {
+	uuid      string
+	pubkeyPEM string
+}
+
+func genDevice(n int, devicesDir string, caCert *x509.Certificate, caKey *ecdsa.PrivateKey, factory string, now time.Time) deviceResult {
 	devKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		fatal(fmt.Sprintf("device-%d key:", n), err)
@@ -163,6 +184,19 @@ func genDevice(n int, devicesDir string, caCert *x509.Certificate, caKey *ecdsa.
 	if err := pem.Encode(f, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}); err != nil {
 		fatal("encode device key:", err)
 	}
+
+	// PEM-encoded SubjectPublicKeyInfo, matching the format authDevice's
+	// pubkey() extracts from a client cert at mTLS handshake time — the
+	// seeded device row must store the same encoding or a real Locust
+	// connection with this cert would 502 with "Key rotation is not
+	// supported" on first contact.
+	pubDER, err := x509.MarshalPKIXPublicKey(&devKey.PublicKey)
+	if err != nil {
+		fatal(fmt.Sprintf("device-%d marshal pubkey:", n), err)
+	}
+	pubPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubDER}))
+
+	return deviceResult{uuid: id, pubkeyPEM: pubPEM}
 }
 
 func writePEM(path, blockType string, der []byte) {
