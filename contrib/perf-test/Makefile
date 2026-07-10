@@ -3,17 +3,26 @@
 
 NUM_DEVICES ?= 5000
 DATA_DIR    ?= ./perf-test-data
+SEED_UPDATE ?= 0
+UPDATE_TAG  ?= main
+UPDATE_NAME ?= perf-target-1
+NUM_ADMINS  ?= 1
+UPDATE_FLOW_WEIGHT ?= 0
+
+COMPOSE_ENV = NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) SEED_UPDATE=$(SEED_UPDATE) \
+  UPDATE_TAG=$(UPDATE_TAG) UPDATE_NAME=$(UPDATE_NAME) NUM_ADMINS=$(NUM_ADMINS) \
+  UPDATE_FLOW_WEIGHT=$(UPDATE_FLOW_WEIGHT)
 
 .PHONY: run setup headless clean
 
 run: ## Web UI at http://localhost:8089
-	NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) docker compose up --build
+	$(COMPOSE_ENV) docker compose up --build
 
-setup: ## Generate certs + seed auth only (no load test)
-	NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) docker compose up --build setup
+setup: ## Generate certs + seed auth only (no load test). Add SEED_UPDATE=1 to also seed a TUF target + rollout.
+	$(COMPOSE_ENV) docker compose up --build setup
 
 headless: ## Headless run with CSV+HTML report (spawn-rate capped at 80/s)
-	NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) docker compose run --rm \
+	$(COMPOSE_ENV) docker compose run --rm \
 	  -e LOCUST_HEADLESS=true \
 	  locust locust \
 	    -f locustfile.py \
