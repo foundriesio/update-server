@@ -39,6 +39,7 @@ COPY --from=builder /out/gen-certs /usr/bin/gen-certs
 
 COPY contrib/perf-test/setup.sh   /perf/setup.sh
 COPY contrib/perf-test/harness.py /perf/harness.py
+COPY contrib/perf-test/admin.py   /perf/admin.py
 COPY contrib/perf-test/locustfile.py /perf/locustfile.py
 RUN chmod +x /perf/setup.sh
 
