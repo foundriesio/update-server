@@ -18,9 +18,9 @@ import (
 
 	"github.com/foundriesio/update-server/auth"
 	"github.com/foundriesio/update-server/server"
+	"github.com/foundriesio/update-server/server/ui/pagectx"
 	"github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/foundriesio/update-server/storage/users"
-	"github.com/foundriesio/update-server/version"
 )
 
 type handlers struct {
@@ -30,17 +30,19 @@ type handlers struct {
 	styleEtag   string
 	branding    Branding
 	brandingDir string
+	pages       PageBuilder
 }
 
 var EchoError = server.EchoError
 
-func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Provider, branding Branding, brandingDir string) {
+func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Provider, branding Branding, brandingDir string, pages PageBuilder) {
 	h := handlers{
 		users:       storage,
 		provider:    authProvider,
 		templates:   templates.Templates,
 		branding:    branding,
 		brandingDir: brandingDir,
+		pages:       pages,
 	}
 	var rendered bytes.Buffer
 	if err := h.templates.ExecuteTemplate(&rendered, "style.css", branding); err != nil {
@@ -95,34 +97,10 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	e.DELETE("/users/:username/tokens/:tokenID", h.userTokenDelete, h.requireSession)
 }
 
-type baseCtx struct {
-	User      *users.User
-	Title     string
-	BrandName string
-	LogoPath  string
-	NavItems  []navItem
-	CsrfToken string
-	Version   string
-}
+type baseCtx = pagectx.Base
 
 func (h handlers) baseCtx(c echo.Context, title, selected string) baseCtx {
-	var csrfToken string
-	if cookie, err := c.Cookie(auth.CsrfCookieName); err == nil {
-		csrfToken = cookie.Value
-	}
-	logoPath := ""
-	if h.branding.Logo != "" {
-		logoPath = "/branding/" + h.branding.Logo
-	}
-	return baseCtx{
-		User:      CtxGetSession(c.Request().Context()).User,
-		Title:     title,
-		BrandName: h.branding.Title,
-		LogoPath:  logoPath,
-		NavItems:  h.genNavItems(selected),
-		CsrfToken: csrfToken,
-		Version:   version.Version,
-	}
+	return h.pages.Base(c, title, selected)
 }
 
 func (h handlers) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
@@ -171,21 +149,7 @@ func (h handlers) favicon(c echo.Context) error {
 	return c.Blob(http.StatusOK, "image/svg+xml", b)
 }
 
-type navItem struct {
-	Title    string
-	Href     string
-	Selected bool
-}
-
-func (h handlers) genNavItems(selected string) []navItem {
-	navItems := []navItem{
-		{Title: "Devices", Href: "/devices", Selected: selected == "devices"},
-		{Title: "Configs", Href: "/configs", Selected: selected == "configs"},
-		{Title: "Updates", Href: "/updates", Selected: selected == "updates"},
-		{Title: "Users", Href: "/users", Selected: selected == "users"},
-	}
-	return navItems
-}
+type navItem = pagectx.NavItem
 
 func (h *handlers) authLogout(c echo.Context) error {
 	h.provider.DropSession(c, CtxGetSession(c.Request().Context()))

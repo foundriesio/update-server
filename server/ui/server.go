@@ -37,24 +37,25 @@ func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, 
 	}
 	e := server.NewEchoServer()
 
-	provider, err := auth.NewProvider(e, db, fs, users)
-	if err != nil {
-		return nil, err
-	}
-	slog.Info("Using authentication provider", "name", provider.Name())
-
 	brandingData, err := fs.Config.ReadBrandingConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read branding config: %w", err)
 	}
 	branding := webHandlers.LoadBranding(brandingData)
+	pageBuilder := webHandlers.NewPageBuilder(branding)
+
+	provider, err := auth.NewProvider(e, db, fs, users, pageBuilder)
+	if err != nil {
+		return nil, err
+	}
+	slog.Info("Using authentication provider", "name", provider.Name())
 
 	daemons := daemons.New(ctx, strg, users)
 
 	srv := server.NewServer(ctx, e, serverName, bindAddr, nil)
 	e.Use(auth.CsrfCheck)
 	apiHandlers.RegisterHandlers(e, strg, provider)
-	webHandlers.RegisterHandlers(e, users, provider, branding, fs.Config.BrandingDir())
+	webHandlers.RegisterHandlers(e, users, provider, branding, fs.Config.BrandingDir(), pageBuilder)
 	return &apiServer{server: srv, daemons: daemons}, nil
 }
 

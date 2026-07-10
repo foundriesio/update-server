@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/foundriesio/update-server/server/ui/pagectx"
 	"github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/users"
@@ -45,7 +46,7 @@ func (p oauth2BaseProvider) Name() string {
 	return p.name
 }
 
-func (p *oauth2BaseProvider) configure(e *echo.Echo, usersStorage *users.Storage, cfg *storage.AuthConfig) error {
+func (p *oauth2BaseProvider) configure(e *echo.Echo, usersStorage *users.Storage, cfg *storage.AuthConfig, pageCtx PageContextBuilder) error {
 	if cfg.Type != p.Name() {
 		return fmt.Errorf("invalid config type for %s provider: %s", p.Name(), cfg.Type)
 	}
@@ -63,6 +64,7 @@ func (p *oauth2BaseProvider) configure(e *echo.Echo, usersStorage *users.Storage
 	p.users = usersStorage
 	p.rateLimiter = NewRateLimiter(cfg.RateLimits)
 	p.renderer = p
+	p.pageCtx = pageCtx
 	p.sessionTimeout = time.Duration(cfg.SessionTimeoutHours) * time.Hour
 
 	e.GET(AuthLoginPath, p.handleLogin, p.rateLimiter.Middleware)
@@ -77,24 +79,16 @@ func (p oauth2BaseProvider) renderLoginPage(c echo.Context, reason string) error
 			"error": "authentication required",
 		})
 	}
-	var csrfToken string
-	if cookie, err := c.Cookie(CsrfCookieName); err == nil {
-		csrfToken = cookie.Value
-	}
 	context := struct {
-		Title     string
-		LoginTip  string
-		Name      string
-		Reason    string
-		User      *users.User
-		NavItems  []string
-		CsrfToken string
+		pagectx.Base
+		LoginTip string
+		Name     string
+		Reason   string
 	}{
-		Title:     "Login",
-		LoginTip:  p.loginTip,
-		Name:      p.displayName,
-		Reason:    reason,
-		CsrfToken: csrfToken,
+		Base:     p.pageCtx.Base(c, "Login", ""),
+		LoginTip: p.loginTip,
+		Name:     p.displayName,
+		Reason:   reason,
 	}
 	return templates.Templates.ExecuteTemplate(c.Response(), "oauth2-login.html", context)
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/foundriesio/update-server/server/ui/pagectx"
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
@@ -21,6 +22,13 @@ type Session struct {
 	Client *http.Client
 }
 
+// PageContextBuilder builds the shared base.html page context. It is
+// implemented by the web layer and injected into providers so that provider
+// login pages are rendered from the same single source as every other page.
+type PageContextBuilder interface {
+	Base(c echo.Context, title, selected string) pagectx.Base
+}
+
 // Provider defines the interface that an authentication provider must implement
 // to support a web server's authentication needs. This interface works for basic
 // username/password authentication as well as OAuth2-based authentication.
@@ -30,7 +38,7 @@ type Provider interface {
 	// Configure can be used to:
 	//  - set up routes on the Echo instance
 	//  - initialize any provider-specific settings
-	Configure(e *echo.Echo, users *users.Storage, authConfig *storage.AuthConfig) error
+	Configure(e *echo.Echo, users *users.Storage, authConfig *storage.AuthConfig, pageCtx PageContextBuilder) error
 
 	// GetUser retrieves the user based on either an API token or session cookie.
 	GetUser(c echo.Context) (*users.User, error)
@@ -46,14 +54,14 @@ const AuthCallbackPath = "/auth/callback"
 
 var providers map[string]Provider
 
-func NewProvider(e *echo.Echo, db *storage.DbHandle, fs *storage.FsHandle, users *users.Storage) (Provider, error) {
+func NewProvider(e *echo.Echo, db *storage.DbHandle, fs *storage.FsHandle, users *users.Storage, pageCtx PageContextBuilder) (Provider, error) {
 	authConfig, err := fs.Auth.GetAuthConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get auth config: %w", err)
 	}
 
 	if provider, ok := providers[authConfig.Type]; ok {
-		if err := provider.Configure(e, users, authConfig); err != nil {
+		if err := provider.Configure(e, users, authConfig, pageCtx); err != nil {
 			return nil, fmt.Errorf("failed to configure provider `%s`: %w", authConfig.Type, err)
 		}
 		return provider, nil

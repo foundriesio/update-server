@@ -24,7 +24,7 @@ func (noauthProvider) Name() string {
 	return "noauth"
 }
 
-func (p *noauthProvider) Configure(e *echo.Echo, storage *users.Storage, authConfig *storage.AuthConfig) (err error) {
+func (p *noauthProvider) Configure(e *echo.Echo, storage *users.Storage, authConfig *storage.AuthConfig, pageCtx PageContextBuilder) (err error) {
 	p.users = storage
 	p.scopes, err = users.ScopesFromSlice(authConfig.NewUserDefaultScopes)
 	return

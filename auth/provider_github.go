@@ -28,7 +28,7 @@ type ghProvider struct {
 	AllowedOrgs []string
 }
 
-func (p *ghProvider) Configure(e *echo.Echo, users *users.Storage, cfg *storage.AuthConfig) error {
+func (p *ghProvider) Configure(e *echo.Echo, users *users.Storage, cfg *storage.AuthConfig, pageCtx PageContextBuilder) error {
 	var cfgGithub authConfigGithub
 	if err := json.Unmarshal(cfg.Config, &cfgGithub); err != nil {
 		return fmt.Errorf("unable to unmarshal github config: %w", err)
@@ -45,7 +45,7 @@ func (p *ghProvider) Configure(e *echo.Echo, users *users.Storage, cfg *storage.
 		},
 	}
 	p.loginTip = fmt.Sprintf("You must grant access to one of these organizations: %s", strings.Join(p.AllowedOrgs, ", "))
-	return p.configure(e, users, cfg)
+	return p.configure(e, users, cfg, pageCtx)
 }
 
 type ghProfile struct {

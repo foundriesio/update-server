@@ -22,6 +22,7 @@ type commonProvider struct {
 	users       *users.Storage
 	rateLimiter *authRateLimiter
 	renderer    loginPageRenderer
+	pageCtx     PageContextBuilder
 }
 
 func (p *commonProvider) DropSession(c echo.Context, session *Session) {

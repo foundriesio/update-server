@@ -29,7 +29,7 @@ type googleProvider struct {
 	AllowedDomains []string
 }
 
-func (p *googleProvider) Configure(e *echo.Echo, userStorage *users.Storage, cfg *storage.AuthConfig) error {
+func (p *googleProvider) Configure(e *echo.Echo, userStorage *users.Storage, cfg *storage.AuthConfig, pageCtx PageContextBuilder) error {
 	var cfgGoogle authConfigGoogle
 	if err := json.Unmarshal(cfg.Config, &cfgGoogle); err != nil {
 		return fmt.Errorf("unable to unmarshal google config: %w", err)
@@ -42,7 +42,7 @@ func (p *googleProvider) Configure(e *echo.Echo, userStorage *users.Storage, cfg
 		Scopes:       []string{"openid", "email", "profile"},
 		Endpoint:     google.Endpoint,
 	}
-	return p.configure(e, userStorage, cfg)
+	return p.configure(e, userStorage, cfg, pageCtx)
 }
 
 type googleUser struct {

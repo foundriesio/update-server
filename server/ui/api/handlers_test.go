@@ -200,7 +200,7 @@ func (testAuthProvider) Name() string {
 	return "test"
 }
 
-func (p testAuthProvider) Configure(e *echo.Echo, userS *users.Storage, config *storage.AuthConfig) error {
+func (p testAuthProvider) Configure(e *echo.Echo, userS *users.Storage, config *storage.AuthConfig, pageCtx auth.PageContextBuilder) error {
 	return nil
 }
 

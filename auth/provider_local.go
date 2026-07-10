@@ -15,10 +15,10 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/foundriesio/update-server/server"
+	"github.com/foundriesio/update-server/server/ui/pagectx"
 	"github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/users"
-	"github.com/foundriesio/update-server/version"
 )
 
 const localLoginTemplate = "local-login.html"
@@ -58,7 +58,7 @@ func (p localProvider) Name() string {
 	return "local"
 }
 
-func (p *localProvider) Configure(e *echo.Echo, userStorage *users.Storage, cfg *storage.AuthConfig) error {
+func (p *localProvider) Configure(e *echo.Echo, userStorage *users.Storage, cfg *storage.AuthConfig, pageCtx PageContextBuilder) error {
 	if err := json.Unmarshal(cfg.Config, &p.authConfig); err != nil {
 		return fmt.Errorf("unable to unmarshal local config: %w", err)
 	}
@@ -66,6 +66,7 @@ func (p *localProvider) Configure(e *echo.Echo, userStorage *users.Storage, cfg 
 	p.users = userStorage
 	p.rateLimiter = NewRateLimiter(cfg.RateLimits)
 	p.renderer = p
+	p.pageCtx = pageCtx
 	p.sessionTimeout = time.Duration(cfg.SessionTimeoutHours) * time.Hour
 	p.newUserScopes, err = users.ScopesFromSlice(cfg.NewUserDefaultScopes)
 	if err != nil {
@@ -194,18 +195,13 @@ func (p localProvider) renderLoginPage(c echo.Context, reason string) error {
 	csrfToken := SetCsrfCookie(c, time.Now().Add(10*time.Minute))
 
 	context := struct {
-		Title     string
-		Reason    string
-		User      *users.User
-		NavItems  []string
-		CsrfToken string
-		Version   string
+		pagectx.Base
+		Reason string
 	}{
-		Title:     "Login",
-		Reason:    reason,
-		CsrfToken: csrfToken,
-		Version:   version.Version,
+		Base:   p.pageCtx.Base(c, "Login", ""),
+		Reason: reason,
 	}
+	context.CsrfToken = csrfToken
 	return templates.Templates.ExecuteTemplate(c.Response(), localLoginTemplate, context)
 }
 
@@ -239,24 +235,14 @@ func (p localProvider) GetSession(c echo.Context) (*Session, error) {
 }
 
 func (p *localProvider) handlePasswordPage(c echo.Context, session *Session) error {
-	var csrfToken string
-	if cookie, err := c.Cookie(CsrfCookieName); err == nil {
-		csrfToken = cookie.Value
-	}
 	context := struct {
-		Title     string
-		Message   string
-		User      *users.User
-		NavItems  []string
-		CsrfToken string
-		Version   string
+		pagectx.Base
+		Message string
 	}{
-		Title:     "Change Password",
-		Message:   "Your password has expired. Please choose a new password.",
-		User:      session.User,
-		CsrfToken: csrfToken,
-		Version:   version.Version,
+		Base:    p.pageCtx.Base(c, "Change Password", ""),
+		Message: "Your password has expired. Please choose a new password.",
 	}
+	context.User = session.User
 	return templates.Templates.ExecuteTemplate(c.Response(), localPasswordChangeTemplate, context)
 }
 
