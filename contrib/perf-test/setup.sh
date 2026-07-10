@@ -1,0 +1,60 @@
+#!/bin/bash -e
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+DATADIR=/data
+NUM_DEVICES=5000
+HOSTNAME=dg-sat
+
+while [ $# -gt 0 ]; do
+    case $1 in
+        --datadir)    DATADIR=$2;     shift 2 ;;
+        --num-devices) NUM_DEVICES=$2; shift 2 ;;
+        --hostname)   HOSTNAME=$2;    shift 2 ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+done
+
+mkdir -p "$DATADIR/auth"
+
+dg-sat --datadir "$DATADIR" auth-init
+dg-sat --datadir "$DATADIR" tuf-init
+
+cat > "$DATADIR/auth/auth-config.json" <<EOF
+{
+   "Type" : "local",
+   "Config": {},
+   "RateLimits": {
+     "AttemptsPerSecond": 4000
+   },
+   "NewUserDefaultScopes" : [
+      "users:read-update",
+      "devices:read-update"
+   ]
+}
+EOF
+
+dg-sat --datadir "$DATADIR" user-add \
+    --username admin --password admin \
+    --tokenfile "$DATADIR/auth/admin_token.txt" \
+    --allowedscopes users:read-update devices:read-update devices:delete updates:read-update
+
+gen-certs \
+    --datadir "$DATADIR" \
+    --num-devices "$NUM_DEVICES" \
+    --hostname "$HOSTNAME"
+
+# Start server in the background and wait until the REST API responds.
+dg-sat --datadir "$DATADIR" serve &
+SERVER_PID=$!
+
+echo "Waiting for server to start..."
+until curl -sf http://localhost:8080/v1/devices \
+        -H "Authorization: Bearer $(cat "$DATADIR/auth/admin_token.txt")"; do
+    kill -0 "$SERVER_PID" 2>/dev/null || { echo "ERROR: server exited unexpectedly"; exit 1; }
+    sleep 0.5
+done
+echo "Server ready — setup complete"
+
+kill "$SERVER_PID"
+wait "$SERVER_PID" 2>/dev/null || true

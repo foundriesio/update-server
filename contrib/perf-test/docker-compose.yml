@@ -1,0 +1,67 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+x-image: &image
+  build:
+    context: ../..
+    dockerfile: contrib/perf-test/Dockerfile
+
+volumes:
+  perf-data:
+
+services:
+  setup:
+    <<: *image
+    volumes:
+      - ${DATA_DIR:-./perf-test-data}:/data
+    command:
+      - /perf/setup.sh
+      - --datadir
+      - /data
+      - --num-devices
+      - "${NUM_DEVICES:-5000}"
+      - --hostname
+      - dg-sat
+
+  dg-sat:
+    <<: *image
+    volumes:
+      - ${DATA_DIR:-./perf-test-data}:/data
+    command:
+      - dg-sat
+      - --datadir
+      - /data
+      - serve
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    healthcheck:
+      # -f is unsuitable here: "/" requires a UI session and returns 401 when
+      # healthy. Any HTTP response (no -f) proves the listener is up.
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "http://localhost:8080/"]
+      interval: 2s
+      retries: 30
+
+  locust:
+    <<: *image
+    working_dir: /perf
+    volumes:
+      - ${DATA_DIR:-./perf-test-data}:/data
+    command:
+      - locust
+      - -f
+      - locustfile.py
+      - --host
+      - https://dg-sat:8443
+      - --num-devices
+      - "${NUM_DEVICES:-5000}"
+    environment:
+      DEVICE_DIR: /data/fake-devices
+      CERTS_DIR: /data/certs
+      NUM_DEVICES: "${NUM_DEVICES:-5000}"
+      DEVICE_TAG: main
+    depends_on:
+      dg-sat:
+        condition: service_healthy
+    ports:
+      - "8089:8089"
