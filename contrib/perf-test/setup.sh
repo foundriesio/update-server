@@ -5,12 +5,18 @@
 DATADIR=/data
 NUM_DEVICES=5000
 HOSTNAME=dg-sat
+SEED_UPDATE="${SEED_UPDATE:-0}"
+UPDATE_TAG="${UPDATE_TAG:-main}"
+UPDATE_NAME="${UPDATE_NAME:-perf-target-1}"
 
 while [ $# -gt 0 ]; do
     case $1 in
-        --datadir)    DATADIR=$2;     shift 2 ;;
+        --datadir)     DATADIR=$2;     shift 2 ;;
         --num-devices) NUM_DEVICES=$2; shift 2 ;;
-        --hostname)   HOSTNAME=$2;    shift 2 ;;
+        --hostname)    HOSTNAME=$2;    shift 2 ;;
+        --seed-update) SEED_UPDATE=1;  shift 1 ;;
+        --update-tag)  UPDATE_TAG=$2;  shift 2 ;;
+        --update-name) UPDATE_NAME=$2; shift 2 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
@@ -42,7 +48,10 @@ dg-sat --datadir "$DATADIR" user-add \
 gen-certs \
     --datadir "$DATADIR" \
     --num-devices "$NUM_DEVICES" \
-    --hostname "$HOSTNAME"
+    --hostname "$HOSTNAME" \
+    $([ "$SEED_UPDATE" = "1" ] && echo --seed-update) \
+    --update-tag "$UPDATE_TAG" \
+    --update-name "$UPDATE_NAME"
 
 # Start server in the background and wait until the REST API responds.
 dg-sat --datadir "$DATADIR" serve &
