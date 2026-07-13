@@ -135,6 +135,15 @@ make headless
 The HTML report lands at `./perf-test-data/locust-report.html` and CSV files
 under the same directory.
 
+Add `DRY_RUN=1` to any of `run`/`setup`/`headless` (or anything that depends
+on them — `headless-scenario`, the `locust-*` targets) to print the exact
+`docker compose` command that would run, with every variable/profile/scene
+already resolved, instead of actually running it:
+
+```
+make locust-update-check NUM_DEVICES=20 SEED_UPDATE=1 DRY_RUN=1
+```
+
 ## Scale knob
 
 ```

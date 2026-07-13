@@ -12,6 +12,7 @@ NUM_ADMINS  ?= 1
 SPAWN_RATE  ?= 80
 RUN_TIME    ?= 5m
 LOCUST_ARGS ?=
+DRY_RUN     ?=
 
 # PROFILE (scale/timing: NUM_DEVICES/SPAWN_RATE/RUN_TIME) and SCENE (task
 # selection: LOCUST_ARGS) are optional named presets under profiles/ and
@@ -31,30 +32,9 @@ endif
 COMPOSE_ENV = NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) SEED_UPDATE=$(SEED_UPDATE) \
   UPDATE_TAG=$(UPDATE_TAG) UPDATE_NAME=$(UPDATE_NAME) NUM_ADMINS=$(NUM_ADMINS)
 
-.PHONY: help run setup headless headless-scenario \
-  locust-update-check locust-update locust-admin locust-steady-state \
-  clean
-
-help: ## Show this help
-	@echo "Usage: make <target> [VAR=value ...]"
-	@echo
-	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
-	@echo
-	@echo "Common variables: NUM_DEVICES, SEED_UPDATE, UPDATE_TAG, NUM_ADMINS — see README."
-	@echo "PROFILE=<name> (scale/timing) and SCENE=<name> (task selection), used with"
-	@echo "headless-scenario, e.g. \`make headless-scenario PROFILE=smoke SCENE=update-check\`:"
-	@echo "  profiles: $$(ls profiles 2>/dev/null | sed 's/\.mk$$//' | tr '\n' ' ')"
-	@echo "  scenes:   $$(ls scenes 2>/dev/null | sed 's/\.mk$$//' | tr '\n' ' ')"
-
-run: ## Web UI at http://localhost:8089
-	$(COMPOSE_ENV) docker compose up --build
-
-setup: ## Generate certs + seed auth only (no load test). Add SEED_UPDATE=1 to also seed a TUF target + rollout.
-	$(COMPOSE_ENV) docker compose up --build setup
-
-headless: ## Headless run with CSV+HTML report. Add LOCUST_ARGS="PerfUser --tags update:check" to run an isolated scenario, or use headless-scenario/locust-* below.
-	$(COMPOSE_ENV) docker compose run --rm \
+RUN_CMD      = $(COMPOSE_ENV) docker compose up --build
+SETUP_CMD    = $(COMPOSE_ENV) docker compose up --build setup
+HEADLESS_CMD = $(COMPOSE_ENV) docker compose run --rm \
 	  -e LOCUST_HEADLESS=true \
 	  locust locust \
 	    -f locustfile.py \
@@ -67,6 +47,45 @@ headless: ## Headless run with CSV+HTML report. Add LOCUST_ARGS="PerfUser --tags
 	    --html /data/locust-report.html \
 	    --num-devices $(NUM_DEVICES) \
 	    $(LOCUST_ARGS)
+
+.PHONY: help run setup headless headless-scenario \
+  locust-update-check locust-update locust-admin locust-steady-state \
+  clean
+
+help: ## Show this help
+	@echo "Usage: make <target> [VAR=value ...]"
+	@echo
+	@echo "Targets:"
+	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo
+	@echo "Common variables: NUM_DEVICES, SEED_UPDATE, UPDATE_TAG, NUM_ADMINS — see README."
+	@echo "DRY_RUN=1 prints the docker compose command instead of running it (works on"
+	@echo "run/setup/headless and anything that depends on them)."
+	@echo "PROFILE=<name> (scale/timing) and SCENE=<name> (task selection), used with"
+	@echo "headless-scenario, e.g. \`make headless-scenario PROFILE=smoke SCENE=update-check\`:"
+	@echo "  profiles: $$(ls profiles 2>/dev/null | sed 's/\.mk$$//' | tr '\n' ' ')"
+	@echo "  scenes:   $$(ls scenes 2>/dev/null | sed 's/\.mk$$//' | tr '\n' ' ')"
+
+run: ## Web UI at http://localhost:8089. Add DRY_RUN=1 to print the command instead of running it.
+ifdef DRY_RUN
+	@echo $(RUN_CMD)
+else
+	$(RUN_CMD)
+endif
+
+setup: ## Generate certs + seed auth only (no load test). Add SEED_UPDATE=1 to also seed a TUF target + rollout.
+ifdef DRY_RUN
+	@echo $(SETUP_CMD)
+else
+	$(SETUP_CMD)
+endif
+
+headless: ## Headless run with CSV+HTML report. Add LOCUST_ARGS="PerfUser --tags update:check" for an isolated scenario, or use headless-scenario/locust-* below. Add DRY_RUN=1 to print the command instead of running it.
+ifdef DRY_RUN
+	@echo $(HEADLESS_CMD)
+else
+	$(HEADLESS_CMD)
+endif
 
 headless-scenario: headless ## Compose a named profile + scene: make headless-scenario PROFILE=smoke SCENE=update-check
 
