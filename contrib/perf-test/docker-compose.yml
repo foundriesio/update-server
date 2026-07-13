@@ -66,7 +66,6 @@ services:
       DEVICE_TAG: "${UPDATE_TAG:-main}"
       ADMIN_TOKEN_FILE: /data/auth/admin_token.txt
       NUM_ADMINS: "${NUM_ADMINS:-1}"
-      UPDATE_FLOW_WEIGHT: "${UPDATE_FLOW_WEIGHT:-0}"
     depends_on:
       dg-sat:
         condition: service_healthy
