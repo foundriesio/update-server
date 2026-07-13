@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
+.DEFAULT_GOAL := help
+
 NUM_DEVICES ?= 5000
 DATA_DIR    ?= ./perf-test-data
 SEED_UPDATE ?= 0
@@ -29,9 +31,21 @@ endif
 COMPOSE_ENV = NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) SEED_UPDATE=$(SEED_UPDATE) \
   UPDATE_TAG=$(UPDATE_TAG) UPDATE_NAME=$(UPDATE_NAME) NUM_ADMINS=$(NUM_ADMINS)
 
-.PHONY: run setup headless headless-scenario \
+.PHONY: help run setup headless headless-scenario \
   locust-update-check locust-update locust-admin locust-steady-state \
   clean
+
+help: ## Show this help
+	@echo "Usage: make <target> [VAR=value ...]"
+	@echo
+	@echo "Targets:"
+	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo
+	@echo "Common variables: NUM_DEVICES, SEED_UPDATE, UPDATE_TAG, NUM_ADMINS — see README."
+	@echo "PROFILE=<name> (scale/timing) and SCENE=<name> (task selection), used with"
+	@echo "headless-scenario, e.g. \`make headless-scenario PROFILE=smoke SCENE=update-check\`:"
+	@echo "  profiles: $$(ls profiles 2>/dev/null | sed 's/\.mk$$//' | tr '\n' ' ')"
+	@echo "  scenes:   $$(ls scenes 2>/dev/null | sed 's/\.mk$$//' | tr '\n' ' ')"
 
 run: ## Web UI at http://localhost:8089
 	$(COMPOSE_ENV) docker compose up --build
