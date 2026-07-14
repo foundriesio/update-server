@@ -2,6 +2,7 @@
   "Type": "github",
   "SessionTimeoutHours": 48,
   "NewUserDefaultScopes": [
+    "devices:create",
     "devices:delete",
     "devices:read",
     "devices:read-update",
