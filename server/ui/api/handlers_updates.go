@@ -37,7 +37,7 @@ func (h handlers) updateCreate(c echo.Context) error {
 		Name:       c.QueryParam("name"),
 		OstreeHash: c.QueryParam("ostree-hash"),
 		Apps:       parseAppsParam(c.QueryParams()["apps"]),
-		BaseUrl:    baseURL(c),
+		BaseUrl:    c.Request().Host,
 	}
 	if v := c.QueryParam("version"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -61,12 +61,6 @@ func (h handlers) updateCreate(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusCreated)
-}
-
-// baseURL returns the scheme://host base URL of the incoming request, used to
-// build proxied app/target URIs.
-func baseURL(c echo.Context) string {
-	return c.Scheme() + "://" + c.Request().Host
 }
 
 // parseAppsParam parses repeated "apps" query values of the form
