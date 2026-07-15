@@ -243,6 +243,22 @@
         return;
       }
 
+      const hardwareId = document.getElementById('upload-hardware-id').value.trim();
+
+      // When the chosen directory has no "ostree_tree" subdirectory, the
+      // hardware id and target name cannot be derived from the update content
+      // and must be supplied via the advanced options.
+      const hasOstreeTree = Array.from(files).some((file) => {
+        const rel = file.webkitRelativePath || '';
+        return rel.split('/').slice(1).includes('ostree_tree');
+      });
+      if (!hasOstreeTree && !hardwareId) {
+        document.getElementById('upload-advanced').open = true;
+        document.getElementById('upload-hardware-id').focus();
+        alert('The selected directory has no "ostree_tree" subdirectory. Please set "Hardware ID" in the advanced options.');
+        return;
+      }
+
       // Optional "advanced" overrides for the generated TUF target metadata.
       const params = new URLSearchParams();
       const version = document.getElementById('upload-version').value.trim();
@@ -257,7 +273,6 @@
       if (ostreeHash) {
         params.set('ostree-hash', ostreeHash);
       }
-      const hardwareId = document.getElementById('upload-hardware-id').value.trim();
       if (hardwareId) {
         params.set('hardware-id', hardwareId);
       }
