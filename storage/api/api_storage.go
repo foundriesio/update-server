@@ -554,7 +554,12 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 	if err != nil {
 		return err
 	}
-	return s.stmtUpdateInsert.run(tag, updateName, uploadedBy)
+	if err := s.stmtUpdateInsert.run(tag, updateName, uploadedBy); err != nil {
+		return err
+	}
+	// Create an empty file so that users don't get errors trying to tail the update/rollout
+	_ = s.fs.Updates.Logs.AppendFile(tag, updateName, storage.LogRolloutsFile, "")
+	return nil
 }
 
 type stmtDeviceGet storage.DbStmt
