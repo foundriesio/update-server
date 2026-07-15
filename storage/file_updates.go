@@ -22,6 +22,8 @@ type Update struct {
 	Name       string `json:"name"`
 	UploadedAt int64  `json:"uploaded-at"`
 	UploadedBy string `json:"uploaded-by"`
+
+	DeviceCount int `json:"device-count"`
 }
 
 type updatesFsHandleWrap struct {

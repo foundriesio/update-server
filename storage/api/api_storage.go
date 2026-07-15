@@ -851,9 +851,13 @@ type stmtUpdateList storage.DbStmt
 
 func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateList", `
-		SELECT tag, name, uploaded_at, uploaded_by FROM updates
-		WHERE (? = '' OR tag = ?)
-		ORDER BY tag, uploaded_at, name`)
+		SELECT u.tag, u.name, u.uploaded_at, u.uploaded_by, COUNT(d.uuid)
+		FROM updates u
+		LEFT JOIN devices d
+			ON d.tag = u.tag AND d.update_name = u.name AND d.deleted = false
+		WHERE (? = '' OR u.tag = ?)
+		GROUP BY u.tag, u.name
+		ORDER BY u.tag, u.uploaded_at, u.name`)
 	return
 }
 
@@ -867,7 +871,7 @@ func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
 	for rows.Next() {
 		var u Update
 		var t string
-		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy); err != nil {
+		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.DeviceCount); err != nil {
 			return nil, err
 		}
 		res[t] = append(res[t], u)

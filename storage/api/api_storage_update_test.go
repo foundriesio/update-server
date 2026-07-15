@@ -5,12 +5,14 @@ package api
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/gateway"
 	storageTesting "github.com/foundriesio/update-server/storage/testing"
 	"github.com/foundriesio/update-server/storage/tuf"
 )
@@ -63,4 +65,65 @@ func TestCreateUpdateUsesUploadedTuf(t *testing.T) {
 	raw, err := s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
 	require.NoError(t, err)
 	assert.JSONEq(t, validTargets, raw)
+}
+
+func TestListUpdatesDeviceCount(t *testing.T) {
+	tmpdir := t.TempDir()
+	dbFile := filepath.Join(tmpdir, "sql.db")
+	db, err := storage.NewDb(dbFile)
+	require.NoError(t, err)
+	fs, err := storage.NewFs(tmpdir)
+	require.NoError(t, err)
+
+	s, err := NewStorage(db, fs)
+	require.NoError(t, err)
+
+	dg, err := gateway.NewStorage(db, fs)
+	require.NoError(t, err)
+
+	// Seed updates: two on "main", one on "dev".
+	require.NoError(t, s.InsertUpdate("main", "v1.0", "tester"))
+	require.NoError(t, s.InsertUpdate("main", "v2.0", "tester"))
+	require.NoError(t, s.InsertUpdate("dev", "v1.0", "tester"))
+
+	// Create and check in devices on the "main" tag.
+	for _, uuid := range []string{"uuid-1", "uuid-2", "uuid-3", "uuid-4"} {
+		d, err := dg.DeviceCreate(uuid, "pubkey-"+uuid)
+		require.NoError(t, err)
+		require.NoError(t, d.CheckIn("target", "main", "hash", ""))
+	}
+
+	// Assign two devices to v1.0 and one to v2.0.
+	assigned, err := s.SetUpdateName("main", "v1.0", []string{"uuid-1", "uuid-2"}, nil)
+	require.NoError(t, err)
+	require.Len(t, assigned, 2)
+	assigned, err = s.SetUpdateName("main", "v2.0", []string{"uuid-3"}, nil)
+	require.NoError(t, err)
+	require.Len(t, assigned, 1)
+
+	// Assign uuid-4 to v1.0 then delete it: deleted devices must not be counted.
+	assigned, err = s.SetUpdateName("main", "v1.0", []string{"uuid-4"}, nil)
+	require.NoError(t, err)
+	require.Len(t, assigned, 1)
+	d, err := s.DeviceGet("uuid-4")
+	require.NoError(t, err)
+	require.NoError(t, d.Delete())
+
+	updates, err := s.ListUpdates("main")
+	require.NoError(t, err)
+	require.Len(t, updates["main"], 2)
+
+	counts := map[string]int{}
+	for _, u := range updates["main"] {
+		counts[u.Name] = u.DeviceCount
+	}
+	assert.Equal(t, 2, counts["v1.0"], "v1.0 should count only its two non-deleted devices")
+	assert.Equal(t, 1, counts["v2.0"], "v2.0 should count its single assigned device")
+
+	// An update with no assigned devices reports a count of zero.
+	all, err := s.ListUpdates("")
+	require.NoError(t, err)
+	require.Len(t, all["dev"], 1)
+	assert.Equal(t, "v1.0", all["dev"][0].Name)
+	assert.Equal(t, 0, all["dev"][0].DeviceCount)
 }
