@@ -5,6 +5,8 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -126,4 +128,68 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 	require.Len(t, all["dev"], 1)
 	assert.Equal(t, "v1.0", all["dev"][0].Name)
 	assert.Equal(t, 0, all["dev"][0].DeviceCount)
+}
+
+func TestDeleteUpdate(t *testing.T) {
+	tmpdir := t.TempDir()
+	dbFile := filepath.Join(tmpdir, "sql.db")
+	db, err := storage.NewDb(dbFile)
+	require.NoError(t, err)
+	fs, err := storage.NewFs(tmpdir)
+	require.NoError(t, err)
+
+	s, err := NewStorage(db, fs)
+	require.NoError(t, err)
+
+	dg, err := gateway.NewStorage(db, fs)
+	require.NoError(t, err)
+
+	// Deleting a non-existent update (unknown tag) returns ErrNotExist.
+	err = s.DeleteUpdate("main", "v1.0")
+	require.ErrorIs(t, err, os.ErrNotExist)
+
+	// Seed an update with an on-disk directory.
+	require.NoError(t, s.InsertUpdate("main", "v1.0", "tester"))
+	require.NoError(t, s.fs.Updates.Tuf.WriteFile("main", "v1.0", storage.TufTargetsFile, "{}"))
+
+	// Deleting a non-existent name within an existing tag returns ErrNotExist.
+	err = s.DeleteUpdate("main", "v2.0")
+	require.ErrorIs(t, err, os.ErrNotExist)
+
+	// An update with an assigned device cannot be deleted.
+	d, err := dg.DeviceCreate("uuid-1", "pubkey-1")
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("target", "main", "hash", ""))
+	assigned, err := s.SetUpdateName("main", "v1.0", []string{"uuid-1"}, nil)
+	require.NoError(t, err)
+	require.Len(t, assigned, 1)
+
+	err = s.DeleteUpdate("main", "v1.0")
+	require.ErrorIs(t, err, ErrUpdateInUse)
+
+	// The update and its files still exist after a refused delete.
+	updates, err := s.ListUpdates("main")
+	require.NoError(t, err)
+	require.Len(t, updates["main"], 1)
+	_, err = s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
+	require.NoError(t, err)
+
+	// Once no non-deleted device is assigned, the update can be deleted.
+	dev, err := s.DeviceGet("uuid-1")
+	require.NoError(t, err)
+	require.NoError(t, dev.Delete())
+	require.NoError(t, s.DeleteUpdate("main", "v1.0"))
+
+	// The database row is gone.
+	updates, err = s.ListUpdates("main")
+	require.NoError(t, err)
+	require.Empty(t, updates["main"])
+
+	// The on-disk directory is gone.
+	_, err = s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
+	require.True(t, errors.Is(err, os.ErrNotExist), "expected update files to be removed, got %v", err)
+
+	// Deleting an already-deleted update returns ErrNotExist.
+	err = s.DeleteUpdate("main", "v1.0")
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
