@@ -24,6 +24,7 @@ type UpdateTufResp map[string]map[string]any
 // @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   version query int false "Override the target version (AppVersion)"
+// @Param   hardware-id query string false "Override the hardware id"
 // @Param   name query string false "Override the target name"
 // @Param   ostree-hash query string false "Override the ostree hash"
 // @Param   apps query string false "Override docker compose apps as name=sha256[,name=sha256]"
@@ -36,6 +37,7 @@ func (h handlers) updateCreate(c echo.Context) error {
 	opts := storage.TargetOptions{
 		Name:       c.QueryParam("name"),
 		OstreeHash: c.QueryParam("ostree-hash"),
+		HardwareId: c.QueryParam("hardware-id"),
 		Apps:       parseAppsParam(c.QueryParams()["apps"]),
 		BaseUrl:    c.Request().Host,
 	}

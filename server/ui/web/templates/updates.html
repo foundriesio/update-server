@@ -52,6 +52,9 @@
             <label for="upload-target-name">Target name</label>
             <input type="text" id="upload-target-name" placeholder="Override the target name" />
 
+            <label for="upload-hardware-id">Hardware ID</label>
+            <input type="text" id="upload-hardware-id" placeholder="Override the hardware id" />
+
             <label for="upload-ostree-hash">Ostree hash</label>
             <input type="text" id="upload-ostree-hash" placeholder="Override the ostree hash" />
 
@@ -253,6 +256,10 @@
       const ostreeHash = document.getElementById('upload-ostree-hash').value.trim();
       if (ostreeHash) {
         params.set('ostree-hash', ostreeHash);
+      }
+      const hardwareId = document.getElementById('upload-hardware-id').value.trim();
+      if (hardwareId) {
+        params.set('hardware-id', hardwareId);
       }
       const apps = document.getElementById('upload-apps').value.trim();
       if (apps) {

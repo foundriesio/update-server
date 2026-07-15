@@ -59,6 +59,7 @@ func (u UpdatesApi) TailRollout(tag, updateName, rollout string) (io.ReadCloser,
 // supplied when creating an update.
 type CreateUpdateOptions struct {
 	Version    int               // Override the target version (AppVersion)
+	HardwareId string            // Override the hardware id
 	Name       string            // Override the target name
 	OstreeHash string            // Override the ostree hash
 	Apps       map[string]string // Override docker compose apps (name -> sha256)
@@ -71,6 +72,9 @@ func (o CreateUpdateOptions) query() string {
 	}
 	if o.Name != "" {
 		values.Set("name", o.Name)
+	}
+	if o.HardwareId != "" {
+		values.Set("hardware-id", o.HardwareId)
 	}
 	if o.OstreeHash != "" {
 		values.Set("ostree-hash", o.OstreeHash)

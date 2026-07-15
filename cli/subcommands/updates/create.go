@@ -4,6 +4,7 @@
 package updates
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -34,6 +35,7 @@ func init() {
 	flags := createCmd.Flags()
 	flags.Int("version", 0, "Override the target version (AppVersion)")
 	flags.String("name", "", "Override the target name")
+	flags.String("hardware-id", "", "Override the hardware id")
 	flags.String("ostree-hash", "", "Override the ostree hash")
 	flags.StringSlice("apps", nil, "Override docker compose apps as name=sha256 (repeatable or comma separated)")
 	UpdatesCmd.AddCommand(createCmd)
@@ -47,6 +49,9 @@ func createOptions(cmd *cobra.Command) (api.CreateUpdateOptions, error) {
 		return opts, err
 	}
 	if opts.Name, err = flags.GetString("name"); err != nil {
+		return opts, err
+	}
+	if opts.HardwareId, err = flags.GetString("hardware-id"); err != nil {
 		return opts, err
 	}
 	if opts.OstreeHash, err = flags.GetString("ostree-hash"); err != nil {
@@ -78,6 +83,12 @@ func createUpdate(updates api.UpdatesApi, tag, updateName, path string, opts api
 		return fmt.Errorf("failed to stat directory '%s': %w", path, err)
 	} else if !stat.Mode().IsDir() {
 		return fmt.Errorf("a '%s' is neither a directory nor a symlink to a directory", path)
+	}
+
+	if opts.HardwareId == "" {
+		if _, err := os.Stat(path + "ostree_repo"); err != nil {
+			return errors.New("hardware-id must be specified when uploading an update without an `ostree_repo` directory")
+		}
 	}
 
 	progress, sourcer := subcommands.TarProgress(subcommands.ArchiveSourcer(path))
