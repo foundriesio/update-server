@@ -710,6 +710,56 @@ func TestApiUpdateList(t *testing.T) {
 	tc.GET("/updates/bad^tag", 404)
 }
 
+func TestApiUpdateDelete(t *testing.T) {
+	tc := NewTestClient(t)
+
+	// Seed an update with an on-disk directory.
+	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout1", "foo"))
+
+	// No permission / wrong scope.
+	tc.DELETE("/updates/tag1/update1", 403)
+	tc.u.AllowedScopes = users.ScopeUpdatesRU
+	tc.DELETE("/updates/tag1/update1", 403)
+
+	tc.u.AllowedScopes = users.ScopeUpdatesD
+
+	// 404 for a non-existent update.
+	tc.DELETE("/updates/tag1/no-such-update", 404)
+
+	// Synthetic tag/update validation must still return 404.
+	tc.DELETE("/updates/bad^tag/update42", 404)
+	tc.DELETE("/updates/tag/update=bad", 404)
+
+	updatesDir := tc.fs.Config.UpdatesDir()
+
+	// Successful delete removes both the DB row and the on-disk directory.
+	tc.DELETE("/updates/tag1/update1", 204)
+	updates, err := tc.api.ListUpdates("tag1")
+	require.Nil(t, err)
+	assert.Empty(t, updates["tag1"])
+	_, err = os.Stat(filepath.Join(updatesDir, "tag1", "update1"))
+	assert.True(t, os.IsNotExist(err))
+
+	// Deleting an update that a device is assigned to is a conflict.
+	require.Nil(t, tc.api.InsertUpdate("tag2", "update2", "user1"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update2", "rollout1", "foo"))
+	d, err := tc.gw.DeviceCreate("dev1", "pubkey1")
+	require.Nil(t, err)
+	require.Nil(t, d.CheckIn("", "tag2", "", ""))
+	_, err = tc.api.SetUpdateName("tag2", "update2", []string{"dev1"}, nil)
+	require.Nil(t, err)
+
+	tc.DELETE("/updates/tag2/update2", 409)
+
+	// The update and its directory survive the rejected delete.
+	updates, err = tc.api.ListUpdates("tag2")
+	require.Nil(t, err)
+	require.Len(t, updates["tag2"], 1)
+	_, err = os.Stat(filepath.Join(updatesDir, "tag2", "update2"))
+	require.NoError(t, err)
+}
+
 func TestApiRolloutList(t *testing.T) {
 	tc := NewTestClient(t)
 	tc.GET("/updates/tag/update/rollouts", 403)

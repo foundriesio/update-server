@@ -6,6 +6,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -63,6 +64,30 @@ func (h handlers) updateCreate(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+// @Summary Delete an update
+// @Description Requires scope: updates:delete. Fails with 409 if any device is still assigned to the update.
+// @Tags    Updates
+// @Success 204
+// @Failure 404
+// @Failure 409
+// @Param   tag path string true "Update tag"
+// @Param   update path string true "Update name"
+// @Router  /updates/{tag}/{update} [delete]
+func (h handlers) updateDelete(c echo.Context) error {
+	tag := c.Param("tag")
+	update := c.Param("update")
+
+	if err := h.storage.DeleteUpdate(tag, update); err != nil {
+		if errors.Is(err, storage.ErrUpdateInUse) {
+			return EchoError(c, err, http.StatusConflict, "Update has devices assigned and cannot be deleted")
+		} else if errors.Is(err, os.ErrNotExist) {
+			return c.NoContent(http.StatusNotFound)
+		}
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to delete update")
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 // parseAppsParam parses repeated "apps" query values of the form
