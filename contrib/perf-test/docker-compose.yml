@@ -14,6 +14,10 @@ services:
     <<: *image
     volumes:
       - ${DATA_DIR:-./perf-test-data}:/data
+    environment:
+      SEED_UPDATE: "${SEED_UPDATE:-0}"
+      UPDATE_TAG: "${UPDATE_TAG:-main}"
+      UPDATE_NAME: "${UPDATE_NAME:-perf-target-1}"
     command:
       - /perf/setup.sh
       - --datadir
@@ -59,9 +63,10 @@ services:
       DEVICE_DIR: /data/fake-devices
       CERTS_DIR: /data/certs
       NUM_DEVICES: "${NUM_DEVICES:-5000}"
-      DEVICE_TAG: main
+      DEVICE_TAG: "${UPDATE_TAG:-main}"
       ADMIN_TOKEN_FILE: /data/auth/admin_token.txt
       NUM_ADMINS: "${NUM_ADMINS:-1}"
+      UPDATE_FLOW_WEIGHT: "${UPDATE_FLOW_WEIGHT:-0}"
     depends_on:
       fioserver:
         condition: service_healthy
