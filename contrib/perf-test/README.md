@@ -5,6 +5,11 @@ against fioserver using a Go-generated cert fleet and a Locust workload split
 across two actors: simulated devices (mTLS, `:8443`) and an admin client
 (Bearer token, `:8080`).
 
+Run `make` (or `make help`) from this directory for a full list of targets
+and the available `PROFILE=`/`SCENE=` names — it's generated from the
+Makefile's own doc-comments and the `profiles/`/`scenes/` directories, so
+it never drifts out of date with what's actually implemented.
+
 ## Tasks
 
 - **Device registration** is implicit — any device's first mTLS request
