@@ -34,6 +34,7 @@ $(CACHE)/venv/bin/activate: requirements.txt
 
 run: build
 	$(CACHE)/venv/bin/pytest -s -v test_connection.py
+	$(CACHE)/venv/bin/pytest -s -v test_fiocli.py
 
 clean:
 	rm -rf .cache 
