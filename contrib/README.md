@@ -2,6 +2,12 @@
 
 This directory contains tools useful for local development
 
+## perf-test
+
+Self-contained Locust-based mTLS performance test that seeds and drives
+thousands of fake devices against the update server. See
+`perf-test/README.md`.
+
 ## dev-shell
 
 This script builds a container with all the required dependencies for
