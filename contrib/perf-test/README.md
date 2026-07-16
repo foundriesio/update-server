@@ -11,15 +11,104 @@ across two actors: simulated devices (mTLS, `:8443`) and an admin client
   auto-registers it (`authDevice`'s `DeviceCreate`). No dedicated task; the
   ramp-up phase of any run exercises it.
 - **`GET /device`, `GET /config`, `POST /events`** — steady-state device
-  check-in traffic, weighted 5/2/3. Always on.
+  check-in traffic, weighted 5/2/3. Tags: `device:check-in`, `device:config`,
+  `device:events`.
 - **`GET /v1/devices`** (paginated) — admin device listing, run by a small,
   fixed-size pool of admin users (`--num-admins`, default 1) independent of
-  `-u`/`--num-devices`, so it never displaces device registrations.
+  `-u`/`--num-devices`, so it never displaces device registrations. Tag:
+  `admin:list-devices`.
 - **Check for update + download** (`UpdateFlow`) — an ordered sequence:
   `GET /repo/timestamp.json` → `/repo/snapshot.json` → `/repo/targets.json` →
-  `POST /ostree/download-urls` → `GET /ostree/config`. Off by default
-  (`--update-flow-weight 0`); see "Seeding a TUF target" below for why, and
-  how to turn it on.
+  `POST /ostree/download-urls` → `GET /ostree/config`. Tags: `update` (the
+  whole sequence), `update:check` (the first three steps only),
+  `update:download` (the last two only). See "Running isolated scenarios"
+  below — this flow only succeeds once a rollout has been seeded (see
+  "Seeding a TUF target"), so a default/unseeded run should pass
+  `--exclude-tags update` or it will 404/400 on every step.
+
+## Running isolated scenarios
+
+Every task is tagged, so you can run one scenario at a time — `ceteris
+paribus`, without steady-state device/admin/update traffic all competing for
+the same SQLite writer simultaneously. Locust's `--tags`/`--exclude-tags`
+prune the task list *before* the run starts; pass the `User` class name(s)
+too so Locust doesn't also spawn a class left with zero tasks after
+filtering (it errors if it does):
+
+```
+# Only the admin device-listing endpoint
+locust -f locustfile.py PerfAdminUser --tags admin:list-devices ...
+
+# Only check-for-update (no download)
+locust -f locustfile.py PerfUser --tags update:check ...
+
+# Check-for-update + download together
+locust -f locustfile.py PerfUser --tags update ...
+
+# Steady-state device traffic only, explicitly excluding the update flow
+locust -f locustfile.py PerfUser --exclude-tags update ...
+```
+
+### Named targets
+
+The four scenarios above are also available as dedicated `make` targets, so
+there's nothing to remember beyond the target name:
+
+```
+make locust-admin         NUM_DEVICES=20                    # admin:list-devices only
+make locust-update-check  NUM_DEVICES=20 SEED_UPDATE=1       # update:check only
+make locust-update        NUM_DEVICES=20 SEED_UPDATE=1       # update:check + update:download
+make locust-steady-state  NUM_DEVICES=20                     # device:* only, safe unseeded
+```
+
+These are thin wrappers over `headless` with `LOCUST_ARGS` preset — every
+other `headless` variable (`NUM_DEVICES`, `SEED_UPDATE`, `SPAWN_RATE`,
+`RUN_TIME`, ...) still applies exactly as documented elsewhere in this file.
+
+### Profiles and scenes
+
+**Profiles** (under `profiles/`) are named scale/timing presets
+(`NUM_DEVICES`/`SPAWN_RATE`/`RUN_TIME`); **scenes** (under `scenes/`) are
+named task-selection presets (`LOCUST_ARGS`, i.e. the same `--tags`/`User`-
+class combinations as the named targets above). Compose either or both via
+`PROFILE=`/`SCENE=` on the `headless-scenario` target:
+
+```
+make headless-scenario PROFILE=smoke SCENE=update-check
+make headless-scenario PROFILE=full  SCENE=admin-only SEED_UPDATE=1
+```
+
+Built-in profiles: `smoke` (10 devices, 10/s, 10s — fast sanity check
+before committing to scale) and `full` (5000 devices, 80/s, 5m — today's
+default, made explicit and reusable by name). Built-in scenes:
+`update-check`, `update`, `admin-only`, `steady-state` — one per named
+target above, same effect.
+
+Any value from a profile/scene can still be overridden on the command
+line, since command-line assignments always take precedence over a
+`.mk` file's assignments regardless of include order:
+
+```
+make headless-scenario PROFILE=smoke SCENE=update-check NUM_DEVICES=5
+```
+
+Add a new profile or scene by dropping a `NAME.mk` file with plain
+`VAR := value` assignments into `profiles/` or `scenes/` — no code changes
+needed.
+
+Through plain `make headless` (bypassing the named targets/profiles/scenes
+entirely), pass selection flags via `LOCUST_ARGS` directly (the Makefile's
+`headless` recipe already passes `-f locustfile.py`, `--host`, and the
+other fixed flags, then appends `$(LOCUST_ARGS)` at the end — Locust
+accepts positional `User` class names anywhere after the flags):
+
+```
+make headless NUM_DEVICES=20 SEED_UPDATE=1 LOCUST_ARGS="PerfUser --tags update:check"
+```
+
+Fine-grained tags: `device:check-in`, `device:config`, `device:events`,
+`admin:list-devices`, `update:check`, `update:download`. Coarse tag:
+`update` (covers both `update:check` and `update:download`).
 
 ## Quick start
 
@@ -57,13 +146,16 @@ server restart or async wait involved.
 
 ```
 make setup NUM_DEVICES=10 SEED_UPDATE=1
-make headless NUM_DEVICES=10 SEED_UPDATE=1 UPDATE_FLOW_WEIGHT=1
+make headless NUM_DEVICES=10 SEED_UPDATE=1 LOCUST_ARGS="PerfUser --tags update"
 ```
 
-`UPDATE_FLOW_WEIGHT` (default 0) must be set >0 separately — seeding the
-fixture and enabling the Locust task are independent knobs, so you can seed
-without immediately hammering `/repo/*`/`/ostree/*` if you just want the
-target to show up in the UI.
+The update flow is tagged (`update`/`update:check`/`update:download`, see
+"Running isolated scenarios" above) rather than gated by its own flag —
+seeding the fixture and selecting the update scenario are independent
+steps, so you can seed without immediately hammering `/repo/*`/`/ostree/*`
+if you just want the target to show up in the UI, or run a plain
+`make headless` (no `LOCUST_ARGS`) and pass `--exclude-tags update` if
+you'd rather keep the update flow out of a mixed run entirely.
 
 `UPDATE_TAG` (default `main`) must equal `DEVICE_TAG` (also `main` by
 default) — a device's `x-ats-tags` check-in header must match the tag the
@@ -105,3 +197,20 @@ make clean
   `admin.py` always builds full `http://.../v1/devices` URLs instead,
   including when following pagination `Link` headers (which the server
   returns as relative paths).
+- **`--tags`/`--exclude-tags` alone can spawn a `User` class with zero tasks
+  left.** Locust prunes `.tasks` by tag but doesn't drop the `User` class
+  itself from the spawn pool, so e.g. `--tags admin:list-devices` without
+  also restricting to `PerfAdminUser` still tries to spawn `PerfUser`
+  instances too — which then crash immediately with "No tasks defined" once
+  filtering has emptied their task list. Always pass the relevant `User`
+  class name(s) positionally alongside `--tags`/`--exclude-tags` (see
+  "Running isolated scenarios" above).
+- **`PROFILE=`/`SCENE=` only work via `Makefile`'s top-level `include`, not
+  target-specific variables.** `ifneq ($(PROFILE),)` / `include
+  profiles/$(PROFILE).mk` is evaluated once, at parse time, before any
+  `target: VAR = value` assignment ever takes effect — so the named
+  `locust-*` targets set `LOCUST_ARGS` directly rather than setting `SCENE`
+  and relying on the same include mechanism. Keep this in mind if adding
+  more named targets: only `PROFILE=`/`SCENE=` supplied on the actual
+  command line (or via `docker compose`/`make` recursive invocation) reach
+  the `include` lines.
