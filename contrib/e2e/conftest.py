@@ -19,12 +19,49 @@ from pathlib import Path
 
 import docker as docker_sdk
 import pytest
+import requests
 
 REPO_ROOT = Path(__file__).parent
 CACHE_DIR = REPO_ROOT / ".cache"
 
 CONTAINER_NAME = "fioup-e2e"
 SERVER_UI_PORT = 8080
+
+SOTA_TOML = """\
+[import]
+tls_cacert_path = "/var/sota/root.crt"
+tls_clientcert_path = "/var/sota/client.pem"
+tls_pkey_path = "/var/sota/pkey.pem"
+
+[uptane]
+key_source = "file"
+polling_sec = 30
+repo_server = "https://update-server:8443/repo"
+
+[provision]
+primary_ecu_hardware_id = "intel-corei7-64"
+server = "https://update-server:8443"
+
+[pacman]
+compose_apps_root = "/var/sota/compose-apps"
+compose_apps_proxy = "https://update-server:8443/app-proxy-url"
+ostree_server = "https://update-server:8443/ostree"
+packages_file = "/usr/package.manifest"
+reset_apps = " "
+reset_apps_root = "/var/sota/reset-apps"
+tags = "main"
+type = "ostree+compose_apps"
+
+[storage]
+path = "/var/sota/"
+type = "sqlite"
+
+[tls]
+server = "https://update-server:8443"
+ca_source = "file"
+cert_source = "file"
+pkey_source = "file"
+"""
 
 
 def _check_tools():
@@ -60,6 +97,19 @@ class DockerClient:
                 f"stdout={stdout}\nstderr={stderr}"
             )
         return stdout, stderr
+
+    def put(self, src: Path, dst: str):
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w") as tar:
+            tar.add(str(src), arcname=os.path.basename(dst))
+        buf.seek(0)
+        self._container.put_archive(os.path.dirname(dst) or "/", buf.getvalue())
+
+    def put_text(self, text: str, dst: str):
+        with tempfile.NamedTemporaryFile("w") as tmp:
+            tmp.write(text)
+            tmp.flush()
+            self.put(Path(tmp.name), dst)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -131,3 +181,134 @@ def fioup_device(preflight):
             container.remove(force=True)
         except docker_sdk.errors.NotFound:
             pass
+
+
+@pytest.fixture(scope="session")
+def registered_device(update_server, fioup_device) -> dict:
+    """Run fioup check-in and wait for the device to appear in update-server."""
+    print("[setup] Copying device credentials ...", flush=True)
+    fioup_device.run("mkdir -p /var/sota")
+    device_dir = update_server / "device"
+    fioup_device.put(device_dir / "root.crt", "/var/sota/root.crt")
+    fioup_device.put(device_dir / "client.pem", "/var/sota/client.pem")
+    fioup_device.put(device_dir / "pkey.pem", "/var/sota/pkey.pem")
+    fioup_device.put_text(SOTA_TOML, "/var/sota/sota.toml")
+
+    print("\n[setup] Running fioup check-in ...", flush=True)
+    stdout, stderr = fioup_device.run("fioup check", check=False)
+
+    try:
+        resp = requests.get(f"http://localhost:{SERVER_UI_PORT}/v1/devices", timeout=5)
+        resp.raise_for_status()
+        devices = resp.json()
+        if devices and devices[0].get("last-seen", 0) > 0:
+            device = devices[0]
+            print(f"[setup] Device registered: {device['uuid']}", flush=True)
+            return device
+    except requests.exceptions.RequestException as exc:
+        print(f"[setup] failed to checkin with: stdout({stdout}) stderr({stderr})", flush=True)
+        pytest.fail(f"update-server /v1/devices request failed: {exc}")
+
+    raise RuntimeError(f"Device did not appear in update-server: stdout({stdout}) stderr({stderr})")
+
+
+@pytest.fixture(scope="session")
+def update_server(request, fioserver_bin):
+    """Generate PKI, start update-server; yield datadir Path."""
+    datadir = Path(tempfile.mkdtemp(prefix="fioserver-"))
+    gen_pki = REPO_ROOT / "gen_pki.sh"
+
+    print("\n[setup] Generating PKI ...", flush=True)
+    result = subprocess.run(
+        [
+            "bash",
+            str(gen_pki),
+            str(datadir),
+            str(fioserver_bin),
+            "update-server",
+            "e2e-factory",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    print(result.stdout)
+
+    print("[setup] Initialising auth (noauth/test mode) ...", flush=True)
+    subprocess.run(
+        [str(fioserver_bin), "--datadir", str(datadir), "auth-init", "--test"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [str(fioserver_bin), "--datadir", str(datadir), "tuf-init"],
+        check=True,
+        capture_output=True,
+    )
+
+    print("[setup] Starting update-server server ...", flush=True)
+    log_path = datadir / "server.log"
+    log_file = open(log_path, "w")
+    proc = subprocess.Popen(
+        [str(fioserver_bin), "serve", "--datadir", str(datadir)],
+        stdout=log_file,
+        stderr=log_file,
+    )
+
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        try:
+            requests.get(f"http://localhost:{SERVER_UI_PORT}", timeout=2)
+            break
+        except requests.exceptions.ConnectionError:
+            time.sleep(1)
+    else:
+        proc.kill()
+        log_file.close()
+        print(log_path.read_text())
+        raise RuntimeError("update-server did not start within 30s")
+
+    print(f"[setup] update-server running (pid={proc.pid})", flush=True)
+
+    yield datadir
+
+    proc.terminate()
+    proc.wait(timeout=10)
+    log_file.close()
+    if request.session.testsfailed:
+        print("\n[teardown] update-server log:\n" + log_path.read_text(), flush=True)
+    shutil.rmtree(datadir, ignore_errors=True)
+
+
+def _run_fiocli(fiocli_bin: Path, home: Path, *args) -> str:
+    try:
+        result = subprocess.run(
+            [str(fiocli_bin), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "HOME": str(home)},
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"[fiocli] command failed: {' '.join(str(a) for a in args)}", flush=True)
+        if e.stderr:
+            print(e.stderr, flush=True)
+        raise
+    return result.stdout
+
+
+@pytest.fixture(scope="session")
+def fiocli(fiocli_bin, update_server):
+    """Log in once and return a callable that runs fiocli subcommands."""
+    home = update_server / "fiocli-home"
+    (home / ".config").mkdir(exist_ok=True, parents=True)
+    _run_fiocli(
+        fiocli_bin,
+        home,
+        "login",
+        "--token",
+        "doesnotmatter",
+        "pytestfixture",
+        "http://localhost:8080",
+    )
+    return lambda *args: _run_fiocli(fiocli_bin, home, *args)
