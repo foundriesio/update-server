@@ -33,6 +33,17 @@ func (u UpdatesApi) Get(tag, updateName string) ([]string, error) {
 	return rollouts, u.api.Get(endpoint, &rollouts)
 }
 
+// UpdateTuf holds the TUF metadata for an update keyed by role file name
+// (e.g. "root.json", "targets.json"). Each value is the parsed JSON of the
+// corresponding metadata file.
+type UpdateTuf = map[string]map[string]any
+
+func (u UpdatesApi) GetTuf(tag, updateName string) (UpdateTuf, error) {
+	var tuf UpdateTuf
+	endpoint := "/v1/updates/" + tag + "/" + updateName + "/tuf"
+	return tuf, u.api.Get(endpoint, &tuf)
+}
+
 func (u UpdatesApi) Tail(tag, updateName string) (io.ReadCloser, error) {
 	endpoint := "/v1/updates/" + tag + "/" + updateName + "/tail"
 	return u.api.GetStream(endpoint)
