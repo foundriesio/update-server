@@ -4,48 +4,14 @@
 import json
 import uuid
 
-from locust import SequentialTaskSet, events, task
+import locust
+from locust import SequentialTaskSet, task
 
 from admin import PerfAdminUser  # noqa: F401  (imported for its Locust User side effects)
 from harness import DeviceUser
 
-DEFAULT_UPDATE_FLOW_WEIGHT = 0
 
-
-class UpdateFlowConfig:
-    weight = DEFAULT_UPDATE_FLOW_WEIGHT
-
-
-@events.init_command_line_parser.add_listener
-def _add_update_flow_args(parser, **_kwargs):
-    parser.add_argument(
-        "--update-flow-weight",
-        env_var="UPDATE_FLOW_WEIGHT",
-        default=str(DEFAULT_UPDATE_FLOW_WEIGHT),
-        type=int,
-        help="Relative weight of the check-for-update/download task sequence. "
-        "0 (default) disables it entirely — only enable this once the fixture "
-        "has seeded a rollout for these devices (see gen-certs --seed-update), "
-        "or every run will 404/400 on /repo/* and /ostree/*.",
-    )
-
-
-@events.init.add_listener
-def _resolve_update_flow_config(environment, **_kwargs):
-    opts = environment.parsed_options
-    UpdateFlowConfig.weight = opts.update_flow_weight
-    # PerfUser.tasks is built once, at class-definition time, by TaskSet's
-    # metaclass (see locust/user/task.py get_tasks_from_base_classes) — it
-    # can't read a CLI flag that hasn't been parsed yet. So the weighted
-    # {callable: weight} mapping declared on the class is fixed at import
-    # time; to make the weight configurable we rebuild .tasks here, once
-    # parsed_options is available, using the same {task: weight} expansion
-    # the metaclass would have done.
-    tasks = [PerfUser.get_device] * 5 + [PerfUser.get_config] * 2 + [PerfUser.post_events] * 3
-    tasks += [UpdateFlow] * UpdateFlowConfig.weight
-    PerfUser.tasks = tasks
-
-
+@locust.tag("update")
 class UpdateFlow(SequentialTaskSet):
     """Ordered check-for-update + download flow.
 
@@ -54,6 +20,12 @@ class UpdateFlow(SequentialTaskSet):
     by one step (e.g. the target name parsed from targets.json) is flow-scoped
     on this TaskSet instance, not the User or a module global, so it doesn't
     leak across unrelated tasks or other users.
+
+    Only meaningful once a rollout has been seeded for these devices (see
+    gen-certs --seed-update) — otherwise every step 404s/400s. Run in
+    isolation with --tags update:check (timestamp/snapshot/targets only) or
+    --tags update (the full check+download sequence), or keep it out of an
+    unseeded run entirely with --exclude-tags update.
     """
 
     def on_start(self) -> None:
@@ -61,14 +33,17 @@ class UpdateFlow(SequentialTaskSet):
         self._ostree_hash = None
 
     @task
+    @locust.tag("update:check")
     def get_timestamp(self) -> None:
         self._get_role("timestamp.json")
 
     @task
+    @locust.tag("update:check")
     def get_snapshot(self) -> None:
         self._get_role("snapshot.json")
 
     @task
+    @locust.tag("update:check")
     def get_targets(self) -> None:
         body = self._get_role("targets.json")
         if body is None:
@@ -85,6 +60,7 @@ class UpdateFlow(SequentialTaskSet):
                 break
 
     @task
+    @locust.tag("update:download")
     def request_download_urls(self) -> None:
         with self.user.client.post(
             "/ostree/download-urls",
@@ -96,6 +72,7 @@ class UpdateFlow(SequentialTaskSet):
                 self.user._fail(resp, f"download-urls {resp.status_code}: {resp.text}")
 
     @task
+    @locust.tag("update:download")
     def download_ostree_config(self) -> None:
         self._get_ostree("config")
 
@@ -123,10 +100,7 @@ class UpdateFlow(SequentialTaskSet):
 
 
 class PerfUser(DeviceUser):
-    # .tasks is rebuilt in _resolve_update_flow_config() once CLI args are
-    # parsed (see that function's docstring/comment for why); the methods
-    # below are defined directly rather than via @task since the decorator's
-    # weights would otherwise be baked in at class-definition time.
+    @locust.tag("device:check-in")
     def get_device(self) -> None:
         with self.client.get(
             "/device",
@@ -137,6 +111,7 @@ class PerfUser(DeviceUser):
             if not resp.ok:
                 self._fail(resp, f"{resp.status_code}: {resp.text}")
 
+    @locust.tag("device:config")
     def get_config(self) -> None:
         with self.client.get(
             "/config",
@@ -147,6 +122,7 @@ class PerfUser(DeviceUser):
             if not resp.ok:
                 self._fail(resp, f"{resp.status_code}: {resp.text}")
 
+    @locust.tag("device:events")
     def post_events(self) -> None:
         correlation_id = str(uuid.uuid4())
         payload = json.dumps(
@@ -184,3 +160,16 @@ class PerfUser(DeviceUser):
         ) as resp:
             if not resp.ok:
                 self._fail(resp, f"{resp.status_code}: {resp.text}")
+
+    # Explicit weighted mapping instead of @task(n) decorators: get_tasks_from_
+    # base_classes() (locust/user/task.py) populates .tasks from *either* an
+    # explicit `tasks = {...}` dict *or* @task-decorated methods found by
+    # scanning class_dict — using both on the same methods double-counts them.
+    # @locust.tag() above has no such conflict; it only sets .locust_tag_set.
+    tasks = {
+        get_device: 5,
+        get_config: 2,
+        post_events: 3,
+        UpdateFlow: 1,
+    }
+
