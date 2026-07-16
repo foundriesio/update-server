@@ -1,7 +1,9 @@
 # perf-test — self-contained mTLS Locust performance test
 
-Measures device mTLS registration and steady-state gateway load against
-fioserver using a Go-generated cert fleet and a Locust workload.
+Measures device mTLS registration and admin API load against fioserver using a
+Go-generated cert fleet and a Locust workload split across two actors:
+simulated devices (mTLS, `:8443`) and an admin client (Bearer token,
+`:8080`).
 
 ## Tasks
 
@@ -9,6 +11,9 @@ fioserver using a Go-generated cert fleet and a Locust workload.
   auto-registers it (`authDevice`'s `DeviceCreate`). No dedicated task; the
   ramp-up phase of any run exercises it.
 - **`GET /device`** — steady-state device check-in traffic. Always on.
+- **`GET /v1/devices`** (paginated) — admin device listing, run by a small,
+  fixed-size pool of admin users (`--num-admins`, default 1) independent of
+  `-u`/`--num-devices`, so it never displaces device registrations.
 
 ## Quick start
 
@@ -57,3 +62,9 @@ make clean
 - **Service ordering is enforced via compose health checks.** `fioserver`
   will not start until `setup` completes (certs must exist before the TLS
   listener opens); `locust` will not connect until `fioserver` is healthy.
+- **Admin traffic uses absolute URLs.** Locust's runner overwrites every
+  registered User class's `host` attribute with the mTLS device host right
+  before each spawn, so `AdminUser` can't rely on `self.host`/`base_url` —
+  `admin.py` always builds full `http://.../v1/devices` URLs instead,
+  including when following pagination `Link` headers (which the server
+  returns as relative paths).

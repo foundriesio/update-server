@@ -3,6 +3,7 @@
 
 from locust import task
 
+from admin import PerfAdminUser  # noqa: F401  (imported for its Locust User side effects)
 from harness import DeviceUser
 
 

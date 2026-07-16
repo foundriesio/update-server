@@ -3,6 +3,9 @@
 
 NUM_DEVICES ?= 5000
 DATA_DIR    ?= ./perf-test-data
+NUM_ADMINS  ?= 1
+
+.PHONY: run setup headless clean
 
 .PHONY: run setup headless clean
 
@@ -10,10 +13,10 @@ setup: ## Generate certs + seed auth only (no load test)
 	NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) docker compose up --build setup
 
 run: ## Web UI at http://localhost:8089 (runs setup first via compose depends_on)
-	NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) docker compose up --build
+	NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) NUM_ADMINS=$(NUM_ADMINS) docker compose up --build
 
 headless: ## Headless run with CSV+HTML report (spawn-rate capped at 80/s)
-	NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) docker compose run --rm \
+	NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) NUM_ADMINS=$(NUM_ADMINS) docker compose run --rm \
 	  -e LOCUST_HEADLESS=true \
 	  locust locust \
 	    -f locustfile.py \

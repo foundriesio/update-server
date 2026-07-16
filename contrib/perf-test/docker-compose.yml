@@ -60,6 +60,8 @@ services:
       CERTS_DIR: /data/certs
       NUM_DEVICES: "${NUM_DEVICES:-5000}"
       DEVICE_TAG: main
+      ADMIN_TOKEN_FILE: /data/auth/admin_token.txt
+      NUM_ADMINS: "${NUM_ADMINS:-1}"
     depends_on:
       fioserver:
         condition: service_healthy
