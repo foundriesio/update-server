@@ -1,3 +1,5 @@
 docker>=7.0
 pytest>=8
 requests>=2.31
+playwright>=1.40
+pytest-playwright>=0.4

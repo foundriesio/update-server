@@ -31,10 +31,12 @@ $(CACHE)/venv/bin/activate: requirements.txt
 	mkdir -p $(CACHE)
 	python3 -m venv $(CACHE)/venv
 	$(CACHE)/venv/bin/pip install -r requirements.txt
+	$(CACHE)/venv/bin/playwright install chromium
 
 run: build
 	$(CACHE)/venv/bin/pytest -s -v test_connection.py
 	$(CACHE)/venv/bin/pytest -s -v test_fiocli.py
+	$(CACHE)/venv/bin/pytest -s -v test_remote_actions.py
 
 clean:
 	rm -rf .cache 
