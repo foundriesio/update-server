@@ -117,6 +117,19 @@ class DockerClient:
             self.put(Path(tmp.name), dst)
 
 
+class ContainerDocker:
+    """Invokes the docker CLI against the dockerd running inside the container.
+
+    Usage: docker("ps"), docker("images"), ...
+    """
+
+    def __init__(self, client: "DockerClient"):
+        self._client = client
+
+    def __call__(self, args: str, check: bool = True) -> tuple[str, str]:
+        return self._client.run(f"docker {args}", check=check)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def preflight():
     _check_tools()
@@ -186,6 +199,26 @@ def fioup_device(preflight):
             container.remove(force=True)
         except docker_sdk.errors.NotFound:
             pass
+
+
+@pytest.fixture(scope="session")
+def docker(fioup_device) -> ContainerDocker:
+    """Wait for the in-container dockerd to be ready and yield a docker caller.
+
+    Usage: docker("ps"), docker("images"), ...
+    """
+    print("\n[setup] Waiting for dockerd in container ...", flush=True)
+    deadline = time.time() + 60
+    while True:
+        try:
+            fioup_device.run("docker info")
+            break
+        except RuntimeError:
+            if time.time() > deadline:
+                raise TimeoutError("dockerd did not become ready within 60s")
+            time.sleep(2)
+    print("[setup] Dockerd ready", flush=True)
+    return ContainerDocker(fioup_device)
 
 
 @pytest.fixture(scope="session")
@@ -317,6 +350,45 @@ def fiocli(fiocli_bin, update_server):
         "http://localhost:8080",
     )
     return lambda *args: _run_fiocli(fiocli_bin, home, *args)
+
+
+@pytest.fixture(scope="session")
+def fiocli_tail(fiocli_bin, update_server):
+    """Return a factory that starts a fiocli subcommand in a background thread.
+
+    Usage::
+
+        stop = fiocli_tail("updates", "tail", ...)
+        # ... do work ...
+        output = stop()   # terminates the process and returns collected stdout
+    """
+    home = update_server / "fiocli-home"
+
+    def _start(*args):
+        buf = []
+        proc = subprocess.Popen(
+            [str(fiocli_bin), *args],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True,
+            env={**os.environ, "HOME": str(home)},
+        )
+
+        def _reader():
+            for line in proc.stdout:
+                buf.append(line)
+
+        t = threading.Thread(target=_reader, daemon=True)
+        t.start()
+
+        def stop():
+            proc.terminate()
+            proc.wait(timeout=10)
+            t.join(timeout=5)
+            return "".join(buf)
+
+        return stop
+
+    return _start
 
 
 @pytest.fixture(scope="session")

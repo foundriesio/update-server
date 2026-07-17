@@ -40,6 +40,7 @@ run: build
 	$(CACHE)/venv/bin/pytest -s -v test_updates.py
 	$(CACHE)/venv/bin/pytest -s -v test_webui.py
 	$(CACHE)/venv/bin/pytest -s -v test_webui_settings.py
+	$(CACHE)/venv/bin/pytest -s -v test_e2e_update_flow.py
 
 clean:
 	rm -rf .cache 
