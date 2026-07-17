@@ -27,6 +27,11 @@ CACHE_DIR = REPO_ROOT / ".cache"
 CONTAINER_NAME = "fioup-e2e"
 SERVER_UI_PORT = 8080
 
+APP_IMAGE = (
+    "hub.foundries.io/lmp/shellhttpd"
+    "@sha256:589b63dd3ab24a016472145101858fc5124970c10ef5cabfb8d877b90e198603"
+)
+
 SOTA_TOML = """\
 [import]
 tls_cacert_path = "/var/sota/root.crt"
@@ -312,3 +317,37 @@ def fiocli(fiocli_bin, update_server):
         "http://localhost:8080",
     )
     return lambda *args: _run_fiocli(fiocli_bin, home, *args)
+
+
+@pytest.fixture(scope="session")
+def sample_update(composectl_bin) -> Path:
+    """Build the OTA update artifact in .cache/update/ (cached across sessions).
+
+    Structure:
+      .cache/update/apps/  -  OCI app bundle from composectl pull
+    """
+    print("[setup] Creating sample update content ...", flush=True)
+    update_dir = CACHE_DIR / "update"
+    apps_dir = update_dir / "apps"
+
+    if apps_dir.exists() and any(apps_dir.iterdir()):
+        return update_dir
+
+    apps_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        subprocess.check_output(
+            [
+                composectl_bin,
+                "pull",
+                f"-i{apps_dir}",
+                f"-s{apps_dir}",
+                APP_IMAGE,
+            ],
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"[setup] composectl pull failed: {e}", flush=True)
+        if e.stderr:
+            print(e.stderr, flush=True)
+        raise
+    return update_dir

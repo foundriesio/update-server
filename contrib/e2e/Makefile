@@ -37,6 +37,7 @@ run: build
 	$(CACHE)/venv/bin/pytest -s -v test_connection.py
 	$(CACHE)/venv/bin/pytest -s -v test_fiocli.py
 	$(CACHE)/venv/bin/pytest -s -v test_remote_actions.py
+	$(CACHE)/venv/bin/pytest -s -v test_updates.py
 	$(CACHE)/venv/bin/pytest -s -v test_webui.py
 	$(CACHE)/venv/bin/pytest -s -v test_webui_settings.py
 
