@@ -5,14 +5,11 @@ package main
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"math/big"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/foundriesio/update-server/storage"
 )
@@ -48,35 +45,17 @@ func (c CsrSignCmd) Run(args CommonArgs) error {
 		return err
 	}
 
-	max := big.NewInt(0).Exp(big.NewInt(2), big.NewInt(160), nil)
-	serial, err := rand.Int(rand.Reader, max)
+	serial, err := newSerial()
 	if err != nil {
-		return fmt.Errorf("error generating certificate serial number: %w", err)
+		return err
 	}
 
-	crtTemplate := &x509.Certificate{
-		Subject:      csr.Subject,
-		Issuer:       caCrt.Subject,
-		SerialNumber: serial,
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(0, 0, c.ExpiryDays),
+	crtTemplate := tlsCertTemplate(csr, caCrt, serial, c.ExpiryDays)
 
-		IsCA:        false,
-		KeyUsage:    x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:    csr.DNSNames,
-	}
-
-	certDer, err := x509.CreateCertificate(rand.Reader, crtTemplate, caCrt, &tlsKey.PublicKey, caKey)
+	certPem, err := signCert(crtTemplate, caCrt, &tlsKey.PublicKey, caKey)
 	if err != nil {
 		return fmt.Errorf("error signing TLS cert: %w", err)
 	}
-	certPem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: certDer,
-		},
-	)
 
 	if err := fs.Certs.WriteFile(storage.CertsTlsPemFile, certPem); err != nil {
 		return fmt.Errorf("unable to store TLS certificate: %w", err)

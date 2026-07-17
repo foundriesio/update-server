@@ -39,13 +39,26 @@ func (s CertsFsHandle) WriteFile(name string, content []byte) error {
 }
 
 func (s CertsFsHandle) AssertCleanTls() error {
-	for _, name := range []string{
+	return s.assertClean([]string{
 		CertsTlsCsrFile, CertsTlsKeyFile, CertsTlsPemFile,
-	} {
+	})
+}
+
+func (s CertsFsHandle) AssertCleanPki() error {
+	return s.assertClean([]string{
+		CertsTlsCsrFile, CertsTlsKeyFile, CertsTlsPemFile,
+		CertsRootKeyFile, CertsRootPemFile,
+		CertsDeviceCaKeyFile, CertsDeviceCaPemFile,
+		CertsCasPemFile,
+	})
+}
+
+func (s CertsFsHandle) assertClean(names []string) error {
+	for _, name := range names {
 		if _, err := os.Stat(filepath.Join(s.root, name)); err == nil {
-			return fmt.Errorf("a TLS file %s already exists: %w", name, os.ErrExist)
+			return fmt.Errorf("a certificate file %s already exists: %w", name, os.ErrExist)
 		} else if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("failed to check if a TLS file %s exists: %w", name, err)
+			return fmt.Errorf("failed to check if a certificate file %s exists: %w", name, err)
 		}
 	}
 	return nil

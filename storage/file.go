@@ -37,6 +37,11 @@ const (
 	CertsTlsKeyFile = "tls.key"
 	CertsTlsPemFile = "tls.pem"
 
+	CertsRootKeyFile     = "root.key"
+	CertsRootPemFile     = "root.crt"
+	CertsDeviceCaKeyFile = "device-ca.key"
+	CertsDeviceCaPemFile = "device-ca.crt"
+
 	AuthConfigFile     = "auth-config.json"
 	BrandingConfigFile = "branding.json"
 	HmacFile           = "hmac.secret"
