@@ -4,12 +4,8 @@
 package main
 
 import (
-	"crypto/ecdsa"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/foundriesio/update-server/storage"
 )
@@ -26,21 +22,21 @@ func (c CsrSignCmd) Run(args CommonArgs) error {
 		return err
 	}
 
-	caCrt, err := loadCert(c.CaCert)
+	caCrt, err := storage.LoadPemFile(c.CaCert, x509.ParseCertificate)
 	if err != nil {
 		return err
 	}
 
-	caKey, err := loadKey(c.CaKey)
+	caKey, err := storage.LoadPemFile(c.CaKey, x509.ParseECPrivateKey)
 	if err != nil {
 		return err
 	}
 
-	csr, err := loadCsr(fs.Certs.FilePath(storage.CertsTlsCsrFile))
+	csr, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsCsrFile), x509.ParseCertificateRequest)
 	if err != nil {
 		return err
 	}
-	tlsKey, err := loadKey(fs.Certs.FilePath(storage.CertsTlsKeyFile))
+	tlsKey, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsKeyFile), x509.ParseECPrivateKey)
 	if err != nil {
 		return err
 	}
@@ -62,46 +58,4 @@ func (c CsrSignCmd) Run(args CommonArgs) error {
 	}
 
 	return nil
-}
-
-func loadCert(path string) (*x509.Certificate, error) {
-	cert, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read cert: %w", err)
-	}
-
-	first, rest := pem.Decode(cert)
-	if first == nil || len(strings.TrimSpace(string(rest))) > 0 {
-		return nil, fmt.Errorf("malformed PEM data for %s", path)
-	}
-
-	return x509.ParseCertificate(first.Bytes)
-}
-
-func loadCsr(path string) (*x509.CertificateRequest, error) {
-	csr, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read csr: %w", err)
-	}
-
-	first, rest := pem.Decode(csr)
-	if first == nil || len(strings.TrimSpace(string(rest))) > 0 {
-		return nil, fmt.Errorf("malformed PEM data for %s", path)
-	}
-
-	return x509.ParseCertificateRequest(first.Bytes)
-}
-
-func loadKey(path string) (*ecdsa.PrivateKey, error) {
-	key, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read pkey: %w", err)
-	}
-
-	first, rest := pem.Decode(key)
-	if first == nil || len(strings.TrimSpace(string(rest))) > 0 {
-		return nil, fmt.Errorf("malformed PEM data for %s", path)
-	}
-
-	return x509.ParseECPrivateKey(first.Bytes)
 }

@@ -6,7 +6,6 @@ package main
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
 	"time"
 
@@ -56,11 +55,7 @@ func (c PkiInitCmd) Run(args CommonArgs) error {
 	}
 	// signCert produced a self-signed cert; parse it back so it can be used
 	// to issue child certificates.
-	rootBlock, _ := pem.Decode(rootPem)
-	if rootBlock == nil {
-		return fmt.Errorf("unexpected error decoding root CA PEM")
-	}
-	rootCrt, err := x509.ParseCertificate(rootBlock.Bytes)
+	rootCrt, err := storage.PemBytesToObject(rootPem, x509.ParseCertificate)
 	if err != nil {
 		return fmt.Errorf("error parsing root CA: %w", err)
 	}

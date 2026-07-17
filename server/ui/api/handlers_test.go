@@ -6,9 +6,16 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -216,6 +223,10 @@ func (testAuthProvider) DropSession(echo.Context, *auth.Session) {
 }
 
 func NewTestClient(t *testing.T) *testClient {
+	return NewTestClientWithCA(t, "")
+}
+
+func NewTestClientWithCA(t *testing.T, org string) *testClient {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	fsS, err := apiStorage.NewFs(tmpDir)
@@ -227,6 +238,61 @@ func NewTestClient(t *testing.T) *testClient {
 	gwS, err := gatewayStorage.NewStorage(db, fsS)
 	require.Nil(t, err)
 
+	var deviceCa *DeviceCa
+	if len(org) > 0 {
+		caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.Nil(t, err)
+		caKeyDer, err := x509.MarshalECPrivateKey(caKey)
+		require.Nil(t, err)
+		caKeyPem := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: caKeyDer})
+
+		caTemplate := x509.Certificate{
+			SerialNumber: big.NewInt(1),
+			Subject: pkix.Name{
+				CommonName:         "test-ca",
+				OrganizationalUnit: []string{"test-ou"},
+			},
+			NotBefore:             time.Now(),
+			NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
+			KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+			BasicConstraintsValid: true,
+			IsCA:                  true,
+		}
+		caCertDer, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, &caKey.PublicKey, caKey)
+		require.Nil(t, err)
+		caCertPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertDer})
+		caCert, err := x509.ParseCertificate(caCertDer)
+		require.Nil(t, err)
+
+		require.Nil(t, fsS.Certs.WriteFile(storage.CertsDeviceCaKeyFile, caKeyPem))
+		require.Nil(t, fsS.Certs.WriteFile(storage.CertsDeviceCaPemFile, caCertPem))
+		require.Nil(t, fsS.Certs.WriteFile(storage.CertsRootPemFile, caCertPem)) // doesn't matter for tests, just needs to exist
+
+		// --- Create a tls.pem cert signed by the CA ---
+		tlsTemplate := x509.Certificate{
+			SerialNumber: big.NewInt(2),
+			Subject: pkix.Name{
+				CommonName:   "localhost",
+				Organization: []string{"TestOrg"},
+			},
+			DNSNames:    []string{"localhost"},
+			NotBefore:   time.Now(),
+			NotAfter:    time.Now().Add(365 * 24 * time.Hour),
+			KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		}
+		tlsKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.Nil(t, err)
+		tlsCertDER, err := x509.CreateCertificate(rand.Reader, &tlsTemplate, caCert, &tlsKey.PublicKey, caKey)
+		require.Nil(t, err)
+		tlsCertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: tlsCertDER})
+		require.Nil(t, fsS.Certs.WriteFile(storage.CertsTlsPemFile, tlsCertPEM))
+
+		deviceCa, err = LoadDeviceCa(fsS)
+		require.Nil(t, err)
+		require.NotNil(t, deviceCa)
+	}
+
 	log, err := context.InitLogger("debug")
 	require.Nil(t, err)
 	ctx = CtxWithLog(ctx, log)
@@ -237,7 +303,7 @@ func NewTestClient(t *testing.T) *testClient {
 		Username:      "root",
 		AllowedScopes: 0,
 	}
-	RegisterHandlers(e, apiS, &testAuthProvider{user: u})
+	RegisterHandlers(e, deviceCa, apiS, &testAuthProvider{user: u})
 
 	tc := testClient{
 		t:   t,
@@ -970,6 +1036,70 @@ data: {"uuid":"test-device-1","correlationId":"uuid-1","target-name":"intel-core
 	tc.assertDone(done3)
 
 	// TODO: Add rollout tail tests
+}
+
+func TestApiDeviceCreate(t *testing.T) {
+	tc := NewTestClientWithCA(t, "test-ou")
+	tc.u.AllowedScopes = users.ScopeDevicesC
+
+	// Generate device key and CSR
+	devKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.Nil(t, err)
+	devCsrTemplate := x509.CertificateRequest{
+		Subject: pkix.Name{
+			CommonName:         "test-uuid-1",
+			OrganizationalUnit: []string{"test-ou"},
+		},
+	}
+	devCsrDER, err := x509.CreateCertificateRequest(rand.Reader, &devCsrTemplate, devKey)
+	require.Nil(t, err)
+	devCsrPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: devCsrDER})
+
+	// Create device via API
+	req := DeviceCreateRequest{
+		Uuid:       "test-uuid-1",
+		Name:       "test-device",
+		Group:      "",
+		HardwareId: "hwid-1",
+		Csr:        string(devCsrPEM),
+	}
+	body, err := json.Marshal(req)
+	require.Nil(t, err)
+	resp := tc.POST("/devices", http.StatusCreated, bytes.NewReader(body), "content-type", "application/json")
+	tc.POST("/devices", http.StatusConflict, bytes.NewReader(body), "content-type", "application/json")
+
+	time.Sleep(500 * time.Millisecond) // Ensure any previous rate limit buckets are reset
+	var devResp DeviceCreateResponse
+	require.Nil(t, json.Unmarshal(resp, &devResp))
+	assert.Contains(t, devResp.RootCrt, "BEGIN CERTIFICATE")
+	assert.Contains(t, devResp.ClientPem, "BEGIN CERTIFICATE")
+	assert.Contains(t, devResp.SotaToml, "compose_apps_proxy = \"")
+
+	// Try a bad OU
+	devCsrTemplate = x509.CertificateRequest{
+		Subject: pkix.Name{
+			CommonName:         "test-uuid-2",
+			OrganizationalUnit: []string{"bad-ou"},
+		},
+	}
+	devCsrDER, err = x509.CreateCertificateRequest(rand.Reader, &devCsrTemplate, devKey)
+	require.Nil(t, err)
+	devCsrPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: devCsrDER})
+	req = DeviceCreateRequest{
+		Uuid:       "test-uuid-2",
+		Name:       "test-devic",
+		Group:      "",
+		HardwareId: "hwid-1",
+		Csr:        string(devCsrPEM),
+	}
+	body, err = json.Marshal(req)
+	require.Nil(t, err)
+	tc.POST("/devices", http.StatusBadRequest, bytes.NewReader(body), "content-type", "application/json")
+
+	// Test rate limiting by sending rapid requests - 1st should succeed, next will be rate limited
+	time.Sleep(500 * time.Millisecond) // Ensure any previous rate limit buckets are reset
+	tc.POST("/devices", http.StatusBadRequest, bytes.NewReader(body), "content-type", "application/json")
+	tc.POST("/devices", http.StatusTooManyRequests, bytes.NewReader(body), "content-type", "application/json")
 }
 
 func TestApiDeviceDelete(t *testing.T) {

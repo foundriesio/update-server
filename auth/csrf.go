@@ -42,7 +42,7 @@ func CsrfCheck(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		// Skip CSRF check for token-authenticated API requests
-		if c.Request().Header.Get("Authorization") != "" {
+		if c.Request().Header.Get("Authorization") != "" || c.Request().Header.Get("OSF-TOKEN") != "" {
 			return next(c)
 		}
 

@@ -4,12 +4,11 @@
 package ui
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/context"
 	"github.com/foundriesio/update-server/server"
 	apiHandlers "github.com/foundriesio/update-server/server/ui/api"
 	"github.com/foundriesio/update-server/server/ui/daemons"
@@ -27,6 +26,7 @@ type daemon interface {
 }
 
 func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, bindAddr string) (server.Server, error) {
+	log := context.CtxGetLog(ctx)
 	strg, err := api.NewStorage(db, fs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load %s storage: %w", serverName, err)
@@ -48,13 +48,20 @@ func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, 
 	if err != nil {
 		return nil, err
 	}
-	slog.Info("Using authentication provider", "name", provider.Name())
+	log.Info("Using authentication provider", "name", provider.Name())
 
 	daemons := daemons.New(ctx, strg, users)
 
+	ca, err := apiHandlers.LoadDeviceCa(fs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load device CA: %w", err)
+	} else if ca != nil {
+		log.Info("Device CA is configured, enabling device registration endpoint")
+	}
+
 	srv := server.NewServer(ctx, e, serverName, bindAddr, nil)
 	e.Use(auth.CsrfCheck)
-	apiHandlers.RegisterHandlers(e, strg, provider)
+	apiHandlers.RegisterHandlers(e, ca, strg, provider)
 	webHandlers.RegisterHandlers(e, users, provider, branding, fs.Config.BrandingDir(), pageBuilder)
 	return &apiServer{server: srv, daemons: daemons}, nil
 }

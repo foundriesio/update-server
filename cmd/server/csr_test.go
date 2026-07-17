@@ -43,7 +43,7 @@ func TestCsr(t *testing.T) {
 	}
 	require.Nil(t, sign.Run(common))
 
-	cert, err := loadCert(fs.Certs.FilePath(storage.CertsTlsPemFile))
+	cert, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsPemFile), x509.ParseCertificate)
 	require.Nil(t, err)
 	require.Equal(t, "example.com", cert.Subject.CommonName)
 
@@ -55,7 +55,7 @@ func TestCsr(t *testing.T) {
 
 func createSelfSignedRoot(t *testing.T, fs *storage.FsHandle) (string, string) {
 	caKeyFile := fs.Certs.FilePath(storage.CertsTlsKeyFile) // reuse the key we already generated
-	key, err := loadKey(caKeyFile)
+	key, err := storage.LoadPemFile(caKeyFile, x509.ParseECPrivateKey)
 	require.Nil(t, err)
 
 	ca := &x509.Certificate{

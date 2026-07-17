@@ -26,6 +26,7 @@ const (
 
 	ScopeDevicesR  = scopeR << scopeShiftDevices
 	ScopeDevicesRU = (scopeU | scopeR) << scopeShiftDevices
+	ScopeDevicesC  = scopeC << scopeShiftDevices
 	ScopeDevicesD  = scopeD << scopeShiftDevices
 
 	ScopeUpdatesR  = scopeR << scopeShiftUpdates
@@ -40,6 +41,7 @@ const (
 var maskToString = map[Scopes]string{
 	ScopeDevicesR:  "devices:read",
 	ScopeDevicesRU: "devices:read-update",
+	ScopeDevicesC:  "devices:create",
 	ScopeDevicesD:  "devices:delete",
 
 	ScopeUpdatesR:  "updates:read",

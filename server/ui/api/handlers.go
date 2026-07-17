@@ -6,6 +6,7 @@ package api
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/time/rate"
 
 	"github.com/foundriesio/update-server/auth"
 	"github.com/foundriesio/update-server/server"
@@ -14,13 +15,18 @@ import (
 )
 
 type handlers struct {
+	ca      *DeviceCa
 	storage *storage.Storage
 }
 
 var EchoError = server.EchoError
 
-func RegisterHandlers(e *echo.Echo, storage *storage.Storage, a auth.Provider) {
-	h := handlers{storage: storage}
+func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, a auth.Provider) {
+	h := handlers{
+		ca:      ca,
+		storage: storage,
+	}
+
 	g := e.Group("/v1")
 	g.Use(authUser(a))
 
@@ -37,6 +43,11 @@ func RegisterHandlers(e *echo.Echo, storage *storage.Storage, a auth.Provider) {
 	g.GET("/configs/device/:uuid/applied", h.deviceAppliedConfigsGet, requireScope(users.ScopeDevicesR))
 	g.GET("/configs/device/:uuid/history", h.deviceConfigsHistory, requireScope(users.ScopeDevicesR))
 	g.GET("/devices", h.deviceList, requireScope(users.ScopeDevicesR))
+	if ca != nil {
+		// Limit this API to 2 devices per-second
+		rl := middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(2)))
+		g.POST("/devices", h.deviceCreate, requireScope(users.ScopeDevicesC), rl)
+	}
 	g.GET("/devices/:uuid", h.deviceGet, requireScope(users.ScopeDevicesR))
 	g.DELETE("/devices/:uuid", h.deviceDelete, requireScope(users.ScopeDevicesD))
 	g.GET("/denied-devices", h.deniedDevicesList, requireScope(users.ScopeDevicesR))
