@@ -17,7 +17,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/foundriesio/update-server/storage"
@@ -39,12 +38,7 @@ func LoadDeviceCa(fs *storage.FsHandle) (*DeviceCa, error) {
 		}
 		return nil, err
 	}
-	first, rest := pem.Decode(buf)
-	if first == nil || len(strings.TrimSpace(string(rest))) > 0 {
-		return nil, fmt.Errorf("malformed PEM data for %s", storage.CertsDeviceCaKeyFile)
-	}
-
-	key, err := x509.ParseECPrivateKey(first.Bytes)
+	key, err := storage.PemBytesToObject(buf, x509.ParseECPrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -56,12 +50,7 @@ func LoadDeviceCa(fs *storage.FsHandle) (*DeviceCa, error) {
 		}
 		return nil, err
 	}
-	first, rest = pem.Decode(buf)
-	if first == nil || len(strings.TrimSpace(string(rest))) > 0 {
-		return nil, fmt.Errorf("malformed PEM data for %s", storage.CertsDeviceCaPemFile)
-	}
-
-	cert, err := x509.ParseCertificate(first.Bytes)
+	cert, err := storage.PemBytesToObject(buf, x509.ParseCertificate)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +70,7 @@ func LoadDeviceCa(fs *storage.FsHandle) (*DeviceCa, error) {
 	if err != nil {
 		return nil, err
 	}
-	first, rest = pem.Decode(buf)
-	if first == nil || len(strings.TrimSpace(string(rest))) > 0 {
-		return nil, fmt.Errorf("malformed PEM data for %s", storage.CertsTlsPemFile)
-	}
-
-	tlsCert, err := x509.ParseCertificate(first.Bytes)
+	tlsCert, err := storage.PemBytesToObject(buf, x509.ParseCertificate)
 	if err != nil {
 		return nil, err
 	}

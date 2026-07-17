@@ -40,7 +40,7 @@ func TestPkiInit(t *testing.T) {
 		require.Nil(t, err, "missing file %s", name)
 	}
 
-	rootCrt, err := loadCert(fs.Certs.FilePath(storage.CertsRootPemFile))
+	rootCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsRootPemFile), x509.ParseCertificate)
 	require.Nil(t, err)
 	require.True(t, rootCrt.IsCA)
 	require.Equal(t, []string{"example"}, rootCrt.Subject.OrganizationalUnit)
@@ -49,7 +49,7 @@ func TestPkiInit(t *testing.T) {
 	roots.AddCert(rootCrt)
 
 	// TLS cert chains to the root and carries the expected subject.
-	tlsCrt, err := loadCert(fs.Certs.FilePath(storage.CertsTlsPemFile))
+	tlsCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsPemFile), x509.ParseCertificate)
 	require.Nil(t, err)
 	require.Equal(t, "example.com", tlsCrt.Subject.CommonName)
 	require.Equal(t, []string{"example"}, tlsCrt.Subject.OrganizationalUnit)
@@ -62,7 +62,7 @@ func TestPkiInit(t *testing.T) {
 	require.Nil(t, err)
 
 	// Device CA is a CA that chains to the root.
-	deviceCrt, err := loadCert(fs.Certs.FilePath(storage.CertsDeviceCaPemFile))
+	deviceCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsDeviceCaPemFile), x509.ParseCertificate)
 	require.Nil(t, err)
 	require.True(t, deviceCrt.IsCA)
 	_, err = deviceCrt.Verify(x509.VerifyOptions{
