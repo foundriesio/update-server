@@ -49,3 +49,19 @@ jobs:
           trap 'docker compose --project-directory ./contrib down' EXIT
           sleep 3s
           ./contrib/fake-device.py -d .compose-server-data/fake-devices/device-1 /device
+
+  e2e-builds:
+    name: e2e-builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '~1.24'
+      - name: Clone the code
+        uses: actions/checkout@v4
+
+      - name: Check that e2e test can build a test image
+        run: |
+           cd contrib/e2e
+           make build
