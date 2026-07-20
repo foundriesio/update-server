@@ -254,23 +254,6 @@ def registered_device(update_server, fioup_device) -> dict:
 def update_server(request, fioserver_bin):
     """Generate PKI, start update-server; yield datadir Path."""
     datadir = Path(tempfile.mkdtemp(prefix="fioserver-"))
-    gen_pki = REPO_ROOT / "gen_pki.sh"
-
-    print("\n[setup] Generating PKI ...", flush=True)
-    result = subprocess.run(
-        [
-            "bash",
-            str(gen_pki),
-            str(datadir),
-            str(fioserver_bin),
-            "update-server",
-            "e2e-factory",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    print(result.stdout)
 
     print("[setup] Initialising auth (noauth/test mode) ...", flush=True)
     subprocess.run(
@@ -278,6 +261,25 @@ def update_server(request, fioserver_bin):
         check=True,
         capture_output=True,
     )
+    
+    print("\n[setup] Generating PKI ...", flush=True)
+    subprocess.run(
+        [str(fioserver_bin), "--datadir", str(datadir), "pki-init", "--dnsname", "update-server", "--factory", "e2e-factory"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+        str(REPO_ROOT / "add_device.sh"),
+        str(datadir),
+        "update-server",
+        "e2e-factory",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
     subprocess.run(
         [str(fioserver_bin), "--datadir", str(datadir), "tuf-init"],
         check=True,
