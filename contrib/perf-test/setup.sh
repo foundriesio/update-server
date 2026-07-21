@@ -23,6 +23,18 @@ done
 
 mkdir -p "$DATADIR/auth"
 
+# auth-init/tuf-init refuse to run against a datadir that already has an HMAC
+# secret / TUF root key (by design — overwriting either is unrecoverable), so
+# re-running setup against a leftover datadir fails deep inside fioserver with
+# a bare "hmac secret exists at: ..." error. Catch it here instead, with a
+# pointer to the fix (matching the README's "Always run `make clean` before
+# re-running" warning about stale certs vs. the DB).
+if [ -f "$DATADIR/auth/hmac.secret" ]; then
+    echo "ERROR: $DATADIR already has an initialized fioserver datadir." >&2
+    echo "Run 'make clean' (or delete $DATADIR) before re-running setup." >&2
+    exit 1
+fi
+
 fioserver --datadir "$DATADIR" auth-init
 fioserver --datadir "$DATADIR" tuf-init
 
