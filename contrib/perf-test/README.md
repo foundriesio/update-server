@@ -127,16 +127,30 @@ click **Start swarming**.
 ## Headless / CI
 
 ```
+make up
 make headless
 ```
+
+`make up` builds and starts `fioserver` (and the one-time `setup` step ahead
+of it), waiting until it reports healthy. `headless` (and the `locust-*`/
+`headless-scenario` targets built on it) then run directly against that
+already-running stack and can be repeated as many times as you like —
+`make locust-admin`, `make locust-update-check`, etc. — without redoing
+`setup` in between. `headless` fails fast with a clear error if `fioserver`
+isn't up yet, rather than let Locust run straight into connection-refused.
 
 The HTML report lands at `./perf-test-data/locust-report.html` and CSV files
 under the same directory.
 
-Add `DRY_RUN=1` to any of `run`/`setup`/`headless` (or anything that depends
-on them — `headless-scenario`, the `locust-*` targets) to print the exact
-`docker compose` command that would run, with every variable/profile/scene
-already resolved, instead of actually running it:
+Tear the stack down with `make clean` once you're done (see "Cleanup" below).
+
+`make run` (the web UI target) is unaffected by any of this — it still
+brings up the whole stack itself, one-shot, exactly as before.
+
+Add `DRY_RUN=1` to any of `run`/`setup`/`up`/`headless` (or anything that
+depends on them — `headless-scenario`, the `locust-*` targets) to print the
+exact `docker compose` command that would run, with every variable/profile/
+scene already resolved, instead of actually running it:
 
 ```
 make locust-update-check NUM_DEVICES=20 SEED_UPDATE=1 DRY_RUN=1
@@ -152,15 +166,15 @@ make run NUM_DEVICES=1000
 
 By default, `/repo/*` and `/ostree/*` 404/400 — a device has no update
 assigned until a rollout is created for it. Pass `SEED_UPDATE=1` to `make
-setup`/`make run`/`make headless` to have `gen-certs` seed one automatically:
+setup`/`make run`/`make up` to have `gen-certs` seed one automatically:
 a minimal unsigned-but-structurally-valid TUF target plus a real 256KiB
 ostree object, assigned by UUID to every generated device via a synchronous
 rollout — all done before `fioserver serve` ever starts, so there's no
 server restart or async wait involved.
 
 ```
-make setup NUM_DEVICES=10 SEED_UPDATE=1
-make headless NUM_DEVICES=10 SEED_UPDATE=1 LOCUST_ARGS="PerfUser --tags update"
+make up NUM_DEVICES=10 SEED_UPDATE=1
+make headless NUM_DEVICES=10 LOCUST_ARGS="PerfUser --tags update"
 ```
 
 The update flow is tagged (`update`/`update:check`/`update:download`, see
@@ -202,9 +216,15 @@ make clean
   ECDSA P-256 device certs in-process in a few seconds (no openssl forks).
   Seeding a TUF target (`--seed-update`) adds negligible time — well under a
   second even at 5 000 devices.
-- **Service ordering is enforced via compose health checks.** `fioserver`
-  will not start until `setup` completes (certs must exist before the TLS
-  listener opens); `locust` will not connect until `fioserver` is healthy.
+- **Service ordering is enforced via compose health checks for `run`/`up`.**
+  `fioserver` will not start until `setup` completes (certs must exist
+  before the TLS listener opens). `headless`/`locust-*` instead run with
+  `--no-deps` against whatever's already up (see "Headless / CI" above) —
+  re-resolving `locust`'s full dependency chain on every run would recreate
+  the already-exited `setup` container to re-verify its
+  `service_completed_successfully` condition, which then fails outright
+  since `auth-init`/`tuf-init` refuse to run twice against an initialized
+  datadir.
 - **Admin traffic uses absolute URLs.** Locust's runner overwrites every
   registered User class's `host` attribute with the mTLS device host right
   before each spawn, so `AdminUser` can't rely on `self.host`/`base_url` —
