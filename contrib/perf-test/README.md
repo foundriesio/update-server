@@ -125,6 +125,85 @@ Swap the tag for any other from "Running isolated scenarios" below
 (`device:config`, `device:events`, `admin:list-devices`, `update:check`,
 `update:download`) to target a different endpoint.
 
+**Check for update only, no download:**
+
+```
+make up
+make locust-update-check
+```
+
+Same rollout as the full update flow, but stops after `/repo/targets.json`
+— useful when you want metadata-endpoint load without the bandwidth/time
+cost of also exercising `/ostree/download-urls` + `/ostree/config`.
+
+**Run several scenarios back-to-back against one stack:**
+
+`make up` only needs to run once — `headless`/`locust-*` (`--no-deps`, see
+"Notes" below) reuse whatever's already up, so you can collect a full set
+of reports from one `perf-test-data` without redoing setup in between:
+
+```
+make up
+make locust-steady-state
+make locust-admin
+make locust-update
+```
+
+Each run overwrites the previous `locust-report.html`/CSVs in place — copy
+them elsewhere between runs if you want to keep all three reports.
+
+See "More scenarios" below for a few less-common but still useful recipes
+(fast sanity checks, exercising the unseeded 404 path on purpose, and
+admin-only load at scale).
+
+## More scenarios
+
+A few recipes you'll reach for less often than "Common tasks" above, but
+that are still worth knowing exist.
+
+**Quick sanity check before a full run:**
+
+Validate that a scenario actually works — right tags, right seeding — at
+10 devices/10s before committing to the 5000-device/5-minute default:
+
+```
+make up PROFILE=smoke
+make headless-scenario PROFILE=smoke SCENE=update
+```
+
+`PROFILE=smoke` on `up` matters too, not just on `headless-scenario` — it
+sets `NUM_DEVICES=10`, so `setup` generates 10 certs instead of the
+5000-device default, keeping the whole sanity check fast end-to-end. Swap
+`SCENE=` for any of `update-check`, `admin-only`, `steady-state` (see
+"Profiles and scenes" below) to smoke-test a different scenario the same
+way.
+
+**Exercise the unseeded 404/400 path on purpose:**
+
+`SEED_UPDATE` defaults to `1` (see "TUF target seeding" below), so by
+default there's nothing to 404 on. To specifically verify fioserver's
+error responses stay fast and correct under load — e.g. after touching the
+`/repo/*`/`/ostree/*` handlers — run the update flow against a
+deliberately unseeded server:
+
+```
+make up SEED_UPDATE=0
+make headless LOCUST_ARGS="PerfUser --tags update"
+```
+
+**Admin API load independent of device scale:**
+
+`admin:list-devices` runs on a small, fixed-size pool of admin users
+(`NUM_ADMINS`, default 1) that's completely independent of `-u`/
+`--num-devices` (see "Tasks" below) — bump the admin pool on its own to
+stress pagination/listing concurrency without also scaling (or even
+running) device check-in traffic:
+
+```
+make up
+make locust-admin NUM_ADMINS=10
+```
+
 ## Tasks
 
 - **Device registration** is implicit — any device's first mTLS request
