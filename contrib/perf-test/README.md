@@ -10,6 +10,69 @@ and the available `PROFILE=`/`SCENE=` names — it's generated from the
 Makefile's own doc-comments and the `profiles/`/`scenes/` directories, so
 it never drifts out of date with what's actually implemented.
 
+## Getting started
+
+**Web UI, one-shot:**
+
+```
+make run
+```
+
+Open <http://localhost:8089>, set the number of users and spawn rate, click
+**Start swarming**.
+
+**Headless / CI, repeatable runs against a stack you keep up:**
+
+```
+make up          # starts fioserver (and one-time setup) in the background
+make headless    # runs Locust headless against it; repeat as many times as you like
+```
+
+`headless` fails fast with a clear error if `fioserver` isn't up yet, rather
+than let Locust run straight into connection-refused. Named shortcuts for
+common scenarios (`make locust-admin`, `make locust-update-check`, ...) skip
+`headless`'s `LOCUST_ARGS=` incantation — see "Running isolated scenarios"
+below. `make run` (the web UI target) is unaffected by any of this — it
+still brings up the whole stack itself, one-shot.
+
+> **Heads up:** by default (`SEED_UPDATE=0`), the commands above will show
+> failed/404 requests for the check-for-update/download flow — that's
+> expected, not a bug. Either ignore them, add `SEED_UPDATE=1` to seed a
+> target first (see "Seeding a TUF target" below), or exclude that flow with
+> `LOCUST_ARGS="PerfUser --exclude-tags update"` (see "Running isolated
+> scenarios" below). Locust exits nonzero whenever a run has any failed
+> requests, so `make headless` (and `locust-*`/`headless-scenario`) will
+> itself exit nonzero on a default unseeded run — expected here too, not a
+> sign the run failed to execute. Scripting `make up && make headless`?
+> Either seed/exclude as above first, or don't rely on `headless`'s exit
+> code to mean "zero request failures."
+
+The HTML report lands at `./perf-test-data/locust-report.html` by default
+(CSVs alongside it; the path follows `DATA_DIR` if you override it) after
+any headless run.
+
+**Common variables**, settable on any target (`make run NUM_DEVICES=1000`).
+This is the full list; `make help` prints an abbreviated version of it:
+
+| Variable      | Default            | Meaning                                 |
+|---------------|---------------------|------------------------------------------|
+| `NUM_DEVICES` | `5000`              | Simulated device fleet size             |
+| `SEED_UPDATE` | `0`                 | Seed a TUF target + rollout (see below) |
+| `SPAWN_RATE`  | `80`                | New devices/sec in headless mode        |
+| `RUN_TIME`    | `5m`                | Headless run duration                   |
+| `DATA_DIR`    | `./perf-test-data`  | Where certs, keys, and reports land     |
+| `UPDATE_TAG`  | `main`              | Tag to seed the update under (see below)|
+| `NUM_ADMINS`  | `1`                 | Size of the fixed admin-user pool       |
+
+Add `DRY_RUN=1` to `run`/`setup`/`up`/`headless` (or anything built on them)
+to print the resolved `docker compose` command instead of running it.
+
+When you're done: `make clean` (see "Cleanup" below).
+
+The rest of this document covers task details, isolated-scenario tooling,
+TUF seeding, and troubleshooting notes — skip ahead only if "Getting
+started" above doesn't cover what you need.
+
 ## Tasks
 
 - **Device registration** is implicit — any device's first mTLS request
@@ -115,53 +178,6 @@ Fine-grained tags: `device:check-in`, `device:config`, `device:events`,
 `admin:list-devices`, `update:check`, `update:download`. Coarse tag:
 `update` (covers both `update:check` and `update:download`).
 
-## Quick start
-
-```
-make run
-```
-
-Open <http://localhost:8089>, set the number of users and spawn rate, then
-click **Start swarming**.
-
-## Headless / CI
-
-```
-make up
-make headless
-```
-
-`make up` builds and starts `fioserver` (and the one-time `setup` step ahead
-of it), waiting until it reports healthy. `headless` (and the `locust-*`/
-`headless-scenario` targets built on it) then run directly against that
-already-running stack and can be repeated as many times as you like —
-`make locust-admin`, `make locust-update-check`, etc. — without redoing
-`setup` in between. `headless` fails fast with a clear error if `fioserver`
-isn't up yet, rather than let Locust run straight into connection-refused.
-
-The HTML report lands at `./perf-test-data/locust-report.html` and CSV files
-under the same directory.
-
-Tear the stack down with `make clean` once you're done (see "Cleanup" below).
-
-`make run` (the web UI target) is unaffected by any of this — it still
-brings up the whole stack itself, one-shot, exactly as before.
-
-Add `DRY_RUN=1` to any of `run`/`setup`/`up`/`headless` (or anything that
-depends on them — `headless-scenario`, the `locust-*` targets) to print the
-exact `docker compose` command that would run, with every variable/profile/
-scene already resolved, instead of actually running it:
-
-```
-make locust-update-check NUM_DEVICES=20 SEED_UPDATE=1 DRY_RUN=1
-```
-
-## Scale knob
-
-```
-make run NUM_DEVICES=1000
-```
-
 ## Seeding a TUF target
 
 By default, `/repo/*` and `/ostree/*` 404/400 — a device has no update
@@ -219,7 +235,7 @@ make clean
 - **Service ordering is enforced via compose health checks for `run`/`up`.**
   `fioserver` will not start until `setup` completes (certs must exist
   before the TLS listener opens). `headless`/`locust-*` instead run with
-  `--no-deps` against whatever's already up (see "Headless / CI" above) —
+  `--no-deps` against whatever's already up (see "Getting started" above) —
   re-resolving `locust`'s full dependency chain on every run would recreate
   the already-exited `setup` container to re-verify its
   `service_completed_successfully` condition, which then fails outright

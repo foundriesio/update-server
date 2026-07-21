@@ -29,8 +29,25 @@ ifneq ($(SCENE),)
 include scenes/$(SCENE).mk
 endif
 
+# HOST_UID/HOST_GID: containers run as the invoking host user (see
+# docker-compose.yml's `user:`) so files written into the DATA_DIR bind mount
+# (auth/hmac.secret, tuf/keys/*.key, etc.) come out host-user-owned instead of
+# root-owned — root-owned output there used to break `make clean`'s rm -rf,
+# and could make a later --build choke trying to read it as part of the
+# (repo-root) build context. Named HOST_* rather than UID/GID: UID is a
+# readonly shell variable in bash/dash, so `UID=... docker compose ...`
+# fails outright with "UID: readonly variable".
 COMPOSE_ENV = NUM_DEVICES=$(NUM_DEVICES) DATA_DIR=$(DATA_DIR) SEED_UPDATE=$(SEED_UPDATE) \
-  UPDATE_TAG=$(UPDATE_TAG) UPDATE_NAME=$(UPDATE_NAME) NUM_ADMINS=$(NUM_ADMINS)
+  UPDATE_TAG=$(UPDATE_TAG) UPDATE_NAME=$(UPDATE_NAME) NUM_ADMINS=$(NUM_ADMINS) \
+  HOST_UID=$(shell id -u) HOST_GID=$(shell id -g)
+
+# Docker auto-creates a bind mount's host-side source directory if it's
+# missing — but the daemon does that as root, before `user:` ever applies,
+# which would put us right back to a root-owned DATA_DIR. Pre-create it as
+# the invoking user first so Docker just finds it already there.
+define ensure_data_dir
+	@mkdir -p $(DATA_DIR)
+endef
 
 RUN_CMD      = $(COMPOSE_ENV) docker compose up --build
 SETUP_CMD    = $(COMPOSE_ENV) docker compose up --build setup
@@ -87,6 +104,7 @@ run: ## Web UI at http://localhost:8089. Add DRY_RUN=1 to print the command inst
 ifdef DRY_RUN
 	@echo $(RUN_CMD)
 else
+	$(ensure_data_dir)
 	$(RUN_CMD)
 endif
 
@@ -94,6 +112,7 @@ setup: ## Generate certs + seed auth only (no load test). Add SEED_UPDATE=1 to a
 ifdef DRY_RUN
 	@echo $(SETUP_CMD)
 else
+	$(ensure_data_dir)
 	$(SETUP_CMD)
 endif
 
@@ -101,6 +120,7 @@ up: ## Start the persistent stack (setup once, then fioserver) so headless/locus
 ifdef DRY_RUN
 	@echo $(UP_CMD)
 else
+	$(ensure_data_dir)
 	$(UP_CMD)
 endif
 
