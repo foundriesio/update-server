@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -86,7 +87,7 @@ func createUpdate(updates api.UpdatesApi, tag, updateName, path string, opts api
 	}
 
 	if opts.HardwareId == "" {
-		if _, err := os.Stat(path + "ostree_repo"); err != nil {
+		if _, err := os.Stat(filepath.Join(path, "ostree_repo")); err != nil {
 			return errors.New("hardware-id must be specified when uploading an update without an `ostree_repo` directory")
 		}
 	}
