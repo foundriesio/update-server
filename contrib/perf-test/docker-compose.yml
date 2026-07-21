@@ -23,7 +23,7 @@ services:
     volumes:
       - ${DATA_DIR:-./perf-test-data}:/data
     environment:
-      SEED_UPDATE: "${SEED_UPDATE:-0}"
+      SEED_UPDATE: "${SEED_UPDATE:-1}"
       UPDATE_TAG: "${UPDATE_TAG:-main}"
       UPDATE_NAME: "${UPDATE_NAME:-perf-target-1}"
     command:

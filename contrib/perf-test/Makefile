@@ -3,16 +3,19 @@
 
 .DEFAULT_GOAL := help
 
+# SEED_UPDATE defaults on: an unseeded run 404s/400s on every check-for-
+# update/download request (see README's "TUF target seeding"), which was a
+# recurring first-run surprise. Pass SEED_UPDATE=0 to opt out (e.g. to
+# isolate device check-in traffic without any rollout in the DB at all).
 NUM_DEVICES ?= 5000
 DATA_DIR    ?= ./perf-test-data
-SEED_UPDATE ?= 0
+SEED_UPDATE ?= 1
 UPDATE_TAG  ?= main
 UPDATE_NAME ?= perf-target-1
 NUM_ADMINS  ?= 1
 SPAWN_RATE  ?= 80
 RUN_TIME    ?= 5m
 LOCUST_ARGS ?=
-DRY_RUN     ?=
 
 # PROFILE (scale/timing: NUM_DEVICES/SPAWN_RATE/RUN_TIME) and SCENE (task
 # selection: LOCUST_ARGS) are optional named presets under profiles/ and
@@ -92,45 +95,28 @@ help: ## Show this help
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 	@echo
-	@echo "Common variables: NUM_DEVICES, SEED_UPDATE, UPDATE_TAG, NUM_ADMINS — see README."
-	@echo "DRY_RUN=1 prints the docker compose command instead of running it (works on"
-	@echo "run/setup/up/headless and anything that depends on them)."
+	@echo "Common variables: NUM_DEVICES, SEED_UPDATE (default 1), UPDATE_TAG,"
+	@echo "NUM_ADMINS — see README."
 	@echo "PROFILE=<name> (scale/timing) and SCENE=<name> (task selection), used with"
 	@echo "headless-scenario, e.g. \`make headless-scenario PROFILE=smoke SCENE=update-check\`:"
 	@echo "  profiles: $$(ls profiles 2>/dev/null | sed 's/\.mk$$//' | tr '\n' ' ')"
 	@echo "  scenes:   $$(ls scenes 2>/dev/null | sed 's/\.mk$$//' | tr '\n' ' ')"
 
-run: ## Web UI at http://localhost:8089. Add DRY_RUN=1 to print the command instead of running it.
-ifdef DRY_RUN
-	@echo $(RUN_CMD)
-else
+run: ## Web UI at http://localhost:8089.
 	$(ensure_data_dir)
 	$(RUN_CMD)
-endif
 
-setup: ## Generate certs + seed auth only (no load test). Add SEED_UPDATE=1 to also seed a TUF target + rollout.
-ifdef DRY_RUN
-	@echo $(SETUP_CMD)
-else
+setup: ## Generate certs + seed auth only (no load test). Add SEED_UPDATE=0 to skip seeding a TUF target + rollout.
 	$(ensure_data_dir)
 	$(SETUP_CMD)
-endif
 
-up: ## Start the persistent stack (setup once, then fioserver) so headless/locust-* can run repeatedly without redoing setup. Add DRY_RUN=1 to print the command instead of running it.
-ifdef DRY_RUN
-	@echo $(UP_CMD)
-else
+up: ## Start the persistent stack (setup once, then fioserver) so headless/locust-* can run repeatedly without redoing setup.
 	$(ensure_data_dir)
 	$(UP_CMD)
-endif
 
-headless: ## Headless run against a stack already started with `make up` (fails fast if it isn't). Add LOCUST_ARGS="PerfUser --tags update:check" for an isolated scenario, or use headless-scenario/locust-* below. Add DRY_RUN=1 to print the command instead of running it.
-ifdef DRY_RUN
-	@echo $(HEADLESS_CMD)
-else
+headless: ## Headless run against a stack already started with `make up` (fails fast if it isn't). Add LOCUST_ARGS="PerfUser --tags update:check" for an isolated scenario, or use headless-scenario/locust-* below.
 	$(require_fioserver_up)
 	$(HEADLESS_CMD)
-endif
 
 headless-scenario: headless ## Compose a named profile + scene: make headless-scenario PROFILE=smoke SCENE=update-check
 
@@ -141,16 +127,16 @@ headless-scenario: headless ## Compose a named profile + scene: make headless-sc
 # target-specific variable assignment like `target: SCENE = ...` ever
 # takes effect, so that mechanism can't be reused here.
 locust-update-check: LOCUST_ARGS = PerfUser --tags update:check
-locust-update-check: headless ## Check for update only (no download); needs SEED_UPDATE=1
+locust-update-check: headless ## Check for update only (no download)
 
 locust-update: LOCUST_ARGS = PerfUser --tags update
-locust-update: headless ## Full check-for-update + download flow; needs SEED_UPDATE=1
+locust-update: headless ## Full check-for-update + download flow
 
 locust-admin: LOCUST_ARGS = PerfAdminUser --tags admin:list-devices
 locust-admin: headless ## Admin device-listing only, no device traffic
 
 locust-steady-state: LOCUST_ARGS = PerfUser --exclude-tags update
-locust-steady-state: headless ## Steady-state device traffic only, safe unseeded
+locust-steady-state: headless ## Steady-state device traffic only, safe with or without SEED_UPDATE
 
 clean: ## Tear down containers and delete seeded data volume (required before re-running)
 	-docker compose down -v

@@ -18,8 +18,17 @@ it never drifts out of date with what's actually implemented.
 make run
 ```
 
-Open <http://localhost:8089>, set the number of users and spawn rate, click
-**Start swarming**.
+Open <http://localhost:8089>. You'll be asked for two numbers before you can
+click **Start swarming**:
+
+- **Number of users** — how many of the generated devices run concurrently
+  in this swarm. Can be anywhere from 1 up to `NUM_DEVICES` (the total fleet
+  size `gen-certs` created, 5000 by default); each simulated device stops
+  itself once the pool of pre-generated devices is exhausted.
+- **Spawn rate** — how many new users (devices) Locust starts per second
+  during ramp-up, until "Number of users" is reached. Keep this at or below
+  80/s — see "Notes" below for why higher rates produce misleading
+  latency numbers rather than real request failures.
 
 **Headless / CI, repeatable runs against a stack you keep up:**
 
@@ -35,17 +44,18 @@ common scenarios (`make locust-admin`, `make locust-update-check`, ...) skip
 below. `make run` (the web UI target) is unaffected by any of this — it
 still brings up the whole stack itself, one-shot.
 
-> **Heads up:** by default (`SEED_UPDATE=0`), the commands above will show
-> failed/404 requests for the check-for-update/download flow — that's
-> expected, not a bug. Either ignore them, add `SEED_UPDATE=1` to seed a
-> target first (see "Seeding a TUF target" below), or exclude that flow with
-> `LOCUST_ARGS="PerfUser --exclude-tags update"` (see "Running isolated
-> scenarios" below). Locust exits nonzero whenever a run has any failed
-> requests, so `make headless` (and `locust-*`/`headless-scenario`) will
-> itself exit nonzero on a default unseeded run — expected here too, not a
-> sign the run failed to execute. Scripting `make up && make headless`?
-> Either seed/exclude as above first, or don't rely on `headless`'s exit
-> code to mean "zero request failures."
+In headless mode, "number of users" and "spawn rate" from the web UI become
+`NUM_DEVICES` (`-u`) and `SPAWN_RATE` (`-r`) — both apply to every command
+above, and `NUM_DEVICES` again doubles as the fleet size `gen-certs` creates
+(so headless mode always runs every generated device, unlike the web UI
+where you can swarm fewer than the full fleet).
+
+`SEED_UPDATE` defaults to `1`: `make setup`/`make up`/`make run` seed a TUF
+target + rollout automatically, so the check-for-update/download flow
+succeeds out of the box. Pass `SEED_UPDATE=0` if you specifically want an
+empty/unseeded server (e.g. to test the 404 path itself, or to skip the
+extra setup work when you know you'll exclude that flow anyway — see
+"Running isolated scenarios" below).
 
 The HTML report lands at `./perf-test-data/locust-report.html` by default
 (CSVs alongside it; the path follows `DATA_DIR` if you override it) after
@@ -57,21 +67,63 @@ This is the full list; `make help` prints an abbreviated version of it:
 | Variable      | Default            | Meaning                                 |
 |---------------|---------------------|------------------------------------------|
 | `NUM_DEVICES` | `5000`              | Simulated device fleet size             |
-| `SEED_UPDATE` | `0`                 | Seed a TUF target + rollout (see below) |
+| `SEED_UPDATE` | `1`                 | Seed a TUF target + rollout (see below) |
 | `SPAWN_RATE`  | `80`                | New devices/sec in headless mode        |
 | `RUN_TIME`    | `5m`                | Headless run duration                   |
 | `DATA_DIR`    | `./perf-test-data`  | Where certs, keys, and reports land     |
 | `UPDATE_TAG`  | `main`              | Tag to seed the update under (see below)|
 | `NUM_ADMINS`  | `1`                 | Size of the fixed admin-user pool       |
 
-Add `DRY_RUN=1` to `run`/`setup`/`up`/`headless` (or anything built on them)
-to print the resolved `docker compose` command instead of running it.
-
 When you're done: `make clean` (see "Cleanup" below).
 
-The rest of this document covers task details, isolated-scenario tooling,
-TUF seeding, and troubleshooting notes — skip ahead only if "Getting
-started" above doesn't cover what you need.
+The rest of this document covers common task recipes, tagging/scenario
+detail, TUF seeding, and troubleshooting notes — skip ahead only if
+"Getting started" above doesn't cover what you need.
+
+## Common tasks
+
+A few concrete recipes for things you're likely to actually want to run.
+All use the full default fleet (`NUM_DEVICES=5000`) and the default
+`SEED_UPDATE=1` unless noted — see "Running isolated scenarios" and "TUF
+target seeding" below for the underlying mechanism.
+
+**Steady-state device traffic + admin listing, no update flow:**
+
+```
+make up
+make headless LOCUST_ARGS="--exclude-tags update"
+```
+
+No positional `User` class name here (unlike the named `locust-*` targets
+below) — that's deliberate: omitting it spawns *every* `User` class
+(`PerfUser` + `PerfAdminUser`), so both device check-in and admin listing
+run together; `--exclude-tags update` only prunes the update-flow tasks out
+of `PerfUser`, leaving its steady-state tasks and all of `PerfAdminUser`
+untouched.
+
+**Full update flow at scale (check-for-update + download):**
+
+```
+make up
+make locust-update
+```
+
+**Find one endpoint's max throughput:**
+
+Isolate a single tagged task with `--tags`, then read the observed RPS and
+latency percentiles off the report. Spawn rate stays capped at 80/s (see
+"Notes" below) regardless of scale, so past a few hundred simulated devices
+you're measuring the server's actual per-endpoint ceiling, not ramp-up
+speed:
+
+```
+make up
+make headless NUM_DEVICES=5000 LOCUST_ARGS="PerfUser --tags device:check-in"
+```
+
+Swap the tag for any other from "Running isolated scenarios" below
+(`device:config`, `device:events`, `admin:list-devices`, `update:check`,
+`update:download`) to target a different endpoint.
 
 ## Tasks
 
@@ -89,10 +141,10 @@ started" above doesn't cover what you need.
   `GET /repo/timestamp.json` → `/repo/snapshot.json` → `/repo/targets.json` →
   `POST /ostree/download-urls` → `GET /ostree/config`. Tags: `update` (the
   whole sequence), `update:check` (the first three steps only),
-  `update:download` (the last two only). See "Running isolated scenarios"
-  below — this flow only succeeds once a rollout has been seeded (see
-  "Seeding a TUF target"), so a default/unseeded run should pass
-  `--exclude-tags update` or it will 404/400 on every step.
+  `update:download` (the last two only). Only succeeds once a rollout has
+  been seeded — on by default (see "TUF target seeding" below); pass
+  `SEED_UPDATE=0` and this flow will 404/400 on every step unless you also
+  exclude it with `--exclude-tags update` (see "Running isolated scenarios").
 
 ## Running isolated scenarios
 
@@ -123,10 +175,10 @@ The four scenarios above are also available as dedicated `make` targets, so
 there's nothing to remember beyond the target name:
 
 ```
-make locust-admin         NUM_DEVICES=20                    # admin:list-devices only
-make locust-update-check  NUM_DEVICES=20 SEED_UPDATE=1       # update:check only
-make locust-update        NUM_DEVICES=20 SEED_UPDATE=1       # update:check + update:download
-make locust-steady-state  NUM_DEVICES=20                     # device:* only, safe unseeded
+make locust-admin         NUM_DEVICES=20   # admin:list-devices only
+make locust-update-check  NUM_DEVICES=20   # update:check only
+make locust-update        NUM_DEVICES=20   # update:check + update:download
+make locust-steady-state  NUM_DEVICES=20   # device:* only, works with or without SEED_UPDATE
 ```
 
 These are thin wrappers over `headless` with `LOCUST_ARGS` preset — every
@@ -143,7 +195,7 @@ class combinations as the named targets above). Compose either or both via
 
 ```
 make headless-scenario PROFILE=smoke SCENE=update-check
-make headless-scenario PROFILE=full  SCENE=admin-only SEED_UPDATE=1
+make headless-scenario PROFILE=full  SCENE=admin-only
 ```
 
 Built-in profiles: `smoke` (10 devices, 10/s, 10s — fast sanity check
@@ -171,35 +223,37 @@ other fixed flags, then appends `$(LOCUST_ARGS)` at the end — Locust
 accepts positional `User` class names anywhere after the flags):
 
 ```
-make headless NUM_DEVICES=20 SEED_UPDATE=1 LOCUST_ARGS="PerfUser --tags update:check"
+make headless NUM_DEVICES=20 LOCUST_ARGS="PerfUser --tags update:check"
 ```
 
 Fine-grained tags: `device:check-in`, `device:config`, `device:events`,
 `admin:list-devices`, `update:check`, `update:download`. Coarse tag:
 `update` (covers both `update:check` and `update:download`).
 
-## Seeding a TUF target
+## TUF target seeding
 
-By default, `/repo/*` and `/ostree/*` 404/400 — a device has no update
-assigned until a rollout is created for it. Pass `SEED_UPDATE=1` to `make
-setup`/`make run`/`make up` to have `gen-certs` seed one automatically:
-a minimal unsigned-but-structurally-valid TUF target plus a real 256KiB
-ostree object, assigned by UUID to every generated device via a synchronous
-rollout — all done before `fioserver serve` ever starts, so there's no
-server restart or async wait involved.
+Without a rollout, `/repo/*` and `/ostree/*` 404/400 — a device has no
+update assigned. `SEED_UPDATE` defaults to `1`, so `make setup`/`make run`/
+`make up` have `gen-certs` seed one automatically: a minimal
+unsigned-but-structurally-valid TUF target plus a real 256KiB ostree object,
+assigned by UUID to every generated device via a synchronous rollout — all
+done before `fioserver serve` ever starts, so there's no server restart or
+async wait involved. Pass `SEED_UPDATE=0` to skip this (e.g. to test the
+404 path itself, or to save the extra setup work on a run that will
+`--exclude-tags update` anyway):
 
 ```
-make up NUM_DEVICES=10 SEED_UPDATE=1
+make up NUM_DEVICES=10
 make headless NUM_DEVICES=10 LOCUST_ARGS="PerfUser --tags update"
 ```
 
 The update flow is tagged (`update`/`update:check`/`update:download`, see
 "Running isolated scenarios" above) rather than gated by its own flag —
 seeding the fixture and selecting the update scenario are independent
-steps, so you can seed without immediately hammering `/repo/*`/`/ostree/*`
-if you just want the target to show up in the UI, or run a plain
-`make headless` (no `LOCUST_ARGS`) and pass `--exclude-tags update` if
-you'd rather keep the update flow out of a mixed run entirely.
+steps, so with the default `SEED_UPDATE=1` you can run a plain `make
+headless` (no `LOCUST_ARGS`) and pass `--exclude-tags update` if you'd
+rather keep the update flow out of a mixed run despite the fixture being
+present, or seed and run `--tags update` to exercise it directly.
 
 `UPDATE_TAG` (default `main`) must equal `DEVICE_TAG` (also `main` by
 default) — a device's `x-ats-tags` check-in header must match the tag the
