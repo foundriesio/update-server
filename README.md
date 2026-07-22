@@ -12,8 +12,10 @@ The project also includes a user-facing REST API and Web UI for managing devices
 Follow the [Quick Start](./docs/quick-start.md) guide to get a server running in development mode.
 
 ## Adding updates
-The update server uses a content format compatible with [Offline Updates](https://docs.foundries.io/latest/user-guide/offline-update/offline-update.html)
-to serve devices their TUF, OSTree, and Container data. Follow the
+The update server uses a content format compatible with [Offline Updates](https://docs.foundries.io/96/user-guide/offline-update/offline-update.html)
+to serve devices their TUF, OSTree, and Container data. Before uploading,
+see [How to build an Update](./docs/build-an-update.md) for producing that
+content in the first place. Then follow the
 [updates](./docs/updates.md) guide for setting this up.
 
 ## API access
