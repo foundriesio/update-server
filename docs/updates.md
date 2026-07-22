@@ -4,7 +4,9 @@
 
 Update content is the *exact* contents of what `fioctl targets
 offline-update` produces (an `ostree_repo` and/or an `apps` directory,
-and optionally a `tuf` directory).
+and optionally a `tuf` directory). See
+[How to build an Update](./build-an-update.md) for producing that content
+in the first place.
 
 ### Uploading a Update
 
