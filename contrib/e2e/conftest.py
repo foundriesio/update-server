@@ -320,6 +320,77 @@ def update_server(request, fioserver_bin):
     shutil.rmtree(datadir, ignore_errors=True)
 
 
+@pytest.fixture(scope="session")
+def update_server_local_auth(request, fioserver_bin):
+    """Generate PKI, start update-server with local username/password auth.
+
+    Kept separate from `update_server` (rather than parameterizing it) so
+    switching auth modes here doesn't change behavior for the many other
+    tests that already depend on `update_server`'s noauth/test config.
+    """
+    datadir = Path(tempfile.mkdtemp(prefix="fioserver-local-auth-"))
+
+    print("[setup] Initialising auth (local username/password mode) ...", flush=True)
+    subprocess.run(
+        [str(fioserver_bin), "--datadir", str(datadir), "auth-init", "--local"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            str(fioserver_bin), "--datadir", str(datadir),
+            "user-add", "--username", "admin", "--password", "admin",
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+    print("\n[setup] Generating PKI ...", flush=True)
+    subprocess.run(
+        [str(fioserver_bin), "--datadir", str(datadir), "pki-init", "--dnsname", "update-server", "--factory", "e2e-factory"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [str(fioserver_bin), "--datadir", str(datadir), "tuf-init"],
+        check=True,
+        capture_output=True,
+    )
+
+    print("[setup] Starting update-server server (local auth) ...", flush=True)
+    log_path = datadir / "server.log"
+    log_file = open(log_path, "w")
+    proc = subprocess.Popen(
+        [str(fioserver_bin), "serve", "--datadir", str(datadir)],
+        stdout=log_file,
+        stderr=log_file,
+    )
+
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        try:
+            requests.get(f"http://localhost:{SERVER_UI_PORT}", timeout=2)
+            break
+        except requests.exceptions.ConnectionError:
+            time.sleep(1)
+    else:
+        proc.kill()
+        log_file.close()
+        print(log_path.read_text())
+        raise RuntimeError("update-server (local auth) did not start within 30s")
+
+    print(f"[setup] update-server (local auth) running (pid={proc.pid})", flush=True)
+
+    yield datadir
+
+    proc.terminate()
+    proc.wait(timeout=10)
+    log_file.close()
+    if request.session.testsfailed:
+        print("\n[teardown] update-server (local auth) log:\n" + log_path.read_text(), flush=True)
+    shutil.rmtree(datadir, ignore_errors=True)
+
+
 def _run_fiocli(fiocli_bin: Path, home: Path, *args) -> str:
     try:
         result = subprocess.run(
