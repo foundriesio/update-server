@@ -12,6 +12,9 @@
 
     <link rel="stylesheet" href="/css/pico_min_211.css">
     <link rel="stylesheet" href="/css/style.css">
+    {{/* Keep in sync with the "csrf-fetch-script" block below — duplicated
+         (not called) so standalone pages like local-login.html don't need
+         to wrap in this "header" block just to get the CSRF fetch patch. */}}
     <script>
     (function() {
       const token = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -68,6 +71,28 @@
 
     <main class="container">
 
+{{end}}
+
+{{define "csrf-fetch-script"}}
+    {{/* Keep in sync with the inline script in the "header" block above. */}}
+    <script>
+    (function() {
+      const token = document.querySelector('meta[name="csrf-token"]')?.content;
+      if (token) {
+        const origFetch = window.fetch;
+        window.fetch = function(url, opts) {
+          opts = opts || {};
+          opts.headers = opts.headers || {};
+          if (opts.headers instanceof Headers) {
+            if (!opts.headers.has('X-CSRF-Token')) opts.headers.set('X-CSRF-Token', token);
+          } else {
+            if (!opts.headers['X-CSRF-Token']) opts.headers['X-CSRF-Token'] = token;
+          }
+          return origFetch.call(this, url, opts);
+        };
+      }
+    })();
+    </script>
 {{end}}
 
 {{define "footer"}}
