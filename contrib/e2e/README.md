@@ -76,6 +76,7 @@ make clean
 | `test_remote_actions.py` | `fioup run-and-report`; verifying the result via CLI and the web UI, plus artifact download. |
 | `test_updates.py` | Uploading an OTA update artifact and finding it in `updates list`. |
 | `test_webui.py` | Web UI smoke tests and device-table rendering. |
+| `test_login.py` | Local username/password login: page render, invalid-credential error, and successful-login redirect/cookie. |
 | `test_webui_settings.py` | Creating an API token via the settings dialog and checking the audit log. |
 | `test_e2e_update_flow.py` | Full flow: upload an update, create a rollout, install on the device, and verify events plus the running container. |
 
@@ -87,6 +88,9 @@ and device are set up once per run:
 - `update_server` — generates PKI (`add_device.sh` signs a device cert against
   the generated device CA), initializes TUF and test-mode auth, and starts
   `fioserver serve`, yielding its data directory.
+- `update_server_local_auth` — a separate `fioserver` instance (own PKI/TUF,
+  no device registration) initialized with local username/password auth and
+  a seeded `admin`/`admin` user, for `test_login.py`'s login-flow coverage.
 - `fioup_device` / `docker` — launch the `fioup` container and wait for its
   inner `dockerd` to be ready.
 - `registered_device` — copies the generated device credentials plus a
