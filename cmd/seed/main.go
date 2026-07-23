@@ -12,6 +12,7 @@ import (
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/api"
 	"github.com/foundriesio/update-server/storage/gateway"
+	"github.com/foundriesio/update-server/storage/users"
 )
 
 // dummyPubKey is a hardcoded RSA public key PEM block. It is only displayed in
@@ -28,8 +29,10 @@ LQIDAQAB
 
 var groups = []string{"alpha", "beta", "gamma", "delta", "epsilon"}
 
-// openStorage opens the filesystem, database, gateway, and API storage handles
-// for the given datadir. It is shared by seedDevices and seedUpdates.
+// openStorage opens the filesystem, database, gateway, and API storage
+// handles for the given datadir. It is shared by all seed* functions except
+// seedUsers, which needs the HMAC secret created by `auth-init` and so opens
+// its own users.Storage handle.
 func openStorage(datadir string) (*storage.FsHandle, *api.Storage, *gateway.Storage, error) {
 	fs, err := storage.NewFs(datadir)
 	if err != nil {
@@ -50,6 +53,21 @@ func openStorage(datadir string) (*storage.FsHandle, *api.Storage, *gateway.Stor
 	return fs, ap, gw, nil
 }
 
+// openUserStorage opens the user storage handle for the given datadir. It
+// requires the HMAC secret created by `fioserver auth-init`.
+func openUserStorage(datadir string) (*users.Storage, error) {
+	fs, err := storage.NewFs(datadir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load filesystem: %w", err)
+	}
+	db, err := storage.NewDb(fs.Config.DbFile())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load database: %w", err)
+	}
+	return users.NewStorage(db, fs)
+}
+
+// seedDevices creates numDevices mock devices.
 func seedDevices(datadir string, numDevices int) error {
 	_, ap, gw, err := openStorage(datadir)
 	if err != nil {
@@ -68,7 +86,8 @@ func seedDevices(datadir string, numDevices int) error {
 			return fmt.Errorf("DeviceGet(%s): %w", uuid, err)
 		}
 		var d *gateway.Device
-		if existing != nil {
+		isNew := existing == nil
+		if !isNew {
 			log.Printf("skip  %s (already exists)", uuid)
 			skipped++
 			d = existing
@@ -109,15 +128,19 @@ func seedDevices(datadir string, numDevices int) error {
 			return fmt.Errorf("PatchDeviceLabels(%s): %w", uuid, err)
 		}
 
-		tomlConfig := fmt.Sprintf(`[device]
-  uuid = "%s"
-  tag = "main"
-
-[pacman]
-  type = "ostree+compose_apps"
-`, uuid)
-		if err := ap.SaveDeviceConfig(uuid, tomlConfig, "noauth-fake-user", "seed"); err != nil {
-			return fmt.Errorf("SaveDeviceConfig(%s): %w", uuid, err)
+		if isNew {
+			if err := seedDeviceConfigHistory(ap, uuid); err != nil {
+				return err
+			}
+			if err := seedDeviceAppsStates(d, i); err != nil {
+				return fmt.Errorf("SaveAppsStates(%s): %w", uuid, err)
+			}
+			if err := seedDeviceAppliedConfigs(d); err != nil {
+				return fmt.Errorf("SaveAppliedConfigs(%s): %w", uuid, err)
+			}
+			if err := seedDeviceTests(d, targetName, i); err != nil {
+				return fmt.Errorf("seed tests(%s): %w", uuid, err)
+			}
 		}
 	}
 
@@ -141,12 +164,25 @@ func main() {
 		log.Fatalf("seed devices failed: %v", err)
 	}
 
+	fs, ap, gw, err := openStorage(*datadir)
+	if err != nil {
+		log.Fatalf("seed: open storage: %v", err)
+	}
+
+	if err := seedGlobalConfigs(ap); err != nil {
+		log.Fatalf("seed global/group configs failed: %v", err)
+	}
+
+	us, err := openUserStorage(*datadir)
+	if err != nil {
+		log.Fatalf("seed users: open storage: %v", err)
+	}
+	if err := seedUsers(us); err != nil {
+		log.Fatalf("seed users failed: %v", err)
+	}
+
 	if *numUpdates > 0 {
-		fs, ap, _, err := openStorage(*datadir)
-		if err != nil {
-			log.Fatalf("seed updates: open storage: %v", err)
-		}
-		if err := seedUpdates(fs, ap, *numUpdates); err != nil {
+		if err := seedUpdates(fs, ap, gw, *numUpdates); err != nil {
 			log.Fatalf("seed updates failed: %v", err)
 		}
 	}

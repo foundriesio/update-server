@@ -9,6 +9,7 @@ import (
 
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/api"
+	"github.com/foundriesio/update-server/storage/gateway"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,8 +22,14 @@ func TestSeedUpdates(t *testing.T) {
 	require.NoError(t, err)
 	apiStorage, err := api.NewStorage(db, fs)
 	require.NoError(t, err)
+	gw, err := gateway.NewStorage(db, fs)
+	require.NoError(t, err)
 
-	err = seedUpdates(fs, apiStorage, 2)
+	// Seed one alpha-group device so the first update's rollout has something
+	// to commit against and generate device events for.
+	require.NoError(t, seedDevices(datadir, 1))
+
+	err = seedUpdates(fs, apiStorage, gw, 2)
 	require.NoError(t, err)
 
 	// Verify both updates are listed.
@@ -67,12 +74,28 @@ func TestSeedUpdates(t *testing.T) {
 	require.Contains(t, target.Custom.Tags, "main", "target tags must include 'main'")
 	require.Equal(t, "148", target.Custom.Version, "target version must be the numeric string '148'")
 
-	// Verify rollout was created.
+	// Verify rollout was created and committed for update 148.
 	rollouts, err := apiStorage.ListRollouts("main", "148")
 	require.NoError(t, err)
 	require.Contains(t, rollouts, "seed-rollout", "expected seed-rollout to be created for update 148")
 
-	// Verify idempotency: seed again and ensure we get 0 created, 2 skipped.
-	err = seedUpdates(fs, apiStorage, 2)
+	rollout, err := apiStorage.GetRollout("main", "148", "seed-rollout")
+	require.NoError(t, err)
+	require.True(t, rollout.Commit, "expected seed-rollout for update 148 to be committed")
+	require.Contains(t, rollout.Effect, "seed-device-00001", "expected alpha-group device to be assigned the update")
+
+	// Verify the device received a fake update-event history.
+	apiDevice, err := apiStorage.DeviceGet("seed-device-00001")
+	require.NoError(t, err)
+	require.NotNil(t, apiDevice)
+	updateIds, err := apiDevice.Updates()
+	require.NoError(t, err)
+	require.NotEmpty(t, updateIds, "expected device to have update-event history")
+	events, err := apiDevice.Events(updateIds[0])
+	require.NoError(t, err)
+	require.NotEmpty(t, events, "expected device update events to be seeded")
+
+	// Verify idempotency: seed again and ensure it doesn't fail or double-commit.
+	err = seedUpdates(fs, apiStorage, gw, 2)
 	require.NoError(t, err, "second seedUpdates call should not fail (idempotent)")
 }

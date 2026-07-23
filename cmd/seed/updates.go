@@ -11,6 +11,7 @@ import (
 
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/api"
+	"github.com/foundriesio/update-server/storage/gateway"
 )
 
 // updateRegistered reports whether (tag, name) is already in the updates table.
@@ -196,8 +197,10 @@ func rootJSON(i int, expires string) string {
 }
 
 // seedUpdates creates `count` fake update entries (TUF metadata + token dirs +
-// one rollout each) under <datadir>/updates/main/.
-func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, count int) error {
+// one rollout each) under <datadir>/updates/main/. The first update's rollout
+// is committed against the "alpha" group and fed a fake device-event history,
+// so the rollout tail log and per-device update pages aren't empty.
+func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, gw *gateway.Storage, count int) error {
 	const tag = "main"
 	const baseVersion = 148
 
@@ -278,6 +281,23 @@ func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, count int) error
 				Groups: []string{"alpha"},
 			}); err != nil {
 				return fmt.Errorf("CreateRollout for %s/%s: %w", tag, name, err)
+			}
+
+			// Only the first update's rollout is committed against the "alpha"
+			// group, so exactly one update gets a full device-event history.
+			if i == 0 {
+				if err := apiStorage.CommitRollout(tag, name, rolloutName, api.Rollout{
+					Groups: []string{"alpha"},
+				}); err != nil {
+					return fmt.Errorf("CommitRollout for %s/%s: %w", tag, name, err)
+				}
+				rollout, err := apiStorage.GetRollout(tag, name, rolloutName)
+				if err != nil {
+					return fmt.Errorf("GetRollout for %s/%s: %w", tag, name, err)
+				}
+				if err := seedRolloutEvents(gw, name, rollout.Effect); err != nil {
+					return fmt.Errorf("seed rollout events for %s/%s: %w", tag, name, err)
+				}
 			}
 			log.Printf("create update %s/%s + rollout %s", tag, name, rolloutName)
 			created++
