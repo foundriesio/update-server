@@ -1,0 +1,302 @@
+/* Go-templated like style.css — {{.Primary}} etc. resolve from the Branding
+   struct (server/ui/web/branding.go) at request time via /css/:filename. */
+
+/* ── Tokens ──────────────────────────────────────────────────────────────
+   Brand + surface + text values come from the Branding struct. The
+   accent-tinted hairlines and the code-wash tint are DERIVED from
+   --brand-accent via color-mix() so they track an operator's custom Accent
+   (branding.json) instead of being frozen to the default lavender. The
+   neutral greys and danger accents have no Branding field and stay literal.
+
+   style.css declares --brand-primary/--surface-*/--text-1 for LIGHT and for
+   OS-auto dark (@media prefers-color-scheme). The login pages add a *manual*
+   theme toggle, which style.css deliberately does not implement
+   ("Toggle-ready: duplicate under [data-theme=dark]"). So login.css owns a
+   self-contained palette keyed off [data-theme="dark"] — the exact mechanism
+   the mockups use — rather than depending on style.css load order. */
+:root {
+    --brand-primary: {{ .Primary }};
+    --brand-accent:  {{ .Accent }};
+    --surface-2:     {{ .SurfaceAlt }};
+    --text-1:        {{ .Text }};
+
+    --text-2:        #555555;
+    --text-3:        #707070;
+    --border-1:      #e2e2e2;
+    --border-2:      #cfcfcf;
+    --focus-ring:    var(--brand-primary);
+    /* Faint accent hairline (was rgba(163,180,255,.2)); same in both themes. */
+    --brand-accent-hairline: color-mix(in srgb, var(--brand-accent) 20%, transparent);
+    /* Static accent wash behind inline <code> (was rgba(163,180,255,.08)). */
+    --surface-hover: color-mix(in srgb, var(--brand-accent) 8%, transparent);
+    --danger:        #dc2626;
+    --danger-tint:   rgba(220, 38, 38, 0.08);
+}
+
+/* Manual dark mode. Beyond the local palette this must re-bridge Pico's own
+   --pico-* button/focus tokens to the brand accent: pico_min_211.css ships an
+   unconditional [data-theme=dark]{--pico-primary:#01aaff;...} block, and
+   style.css's bridges explicitly exclude [data-theme=dark], so without this
+   override the native "Sign in" / OAuth buttons render in Pico's stock blue.
+   The vars below mirror the primary-family + surface/color set that Pico's
+   own dark block defines. */
+[data-theme="dark"] {
+    --surface-2:     {{ .SurfaceAltDark }};
+    --text-1:        {{ .TextDark }};
+
+    --text-2:        #a9b4c2;
+    --text-3:        #8b96a3;
+    --border-1:      #2a3441;
+    --border-2:      #3a4657;
+    --focus-ring:    var(--brand-accent);
+    --surface-hover: color-mix(in srgb, var(--brand-accent) 12%, transparent);
+    --danger:        #f87171;
+    --danger-tint:   rgba(248, 113, 113, 0.14);
+
+    /* A navy primary fails contrast on the dark surface, so the accent becomes
+       the interactive fill and the primary becomes its inverse (a legible dark
+       label on the light-lavender button). */
+    --pico-primary:                  var(--brand-accent);
+    --pico-primary-background:       var(--brand-accent);
+    --pico-primary-border:           var(--brand-accent);
+    --pico-primary-underline:        var(--brand-accent-hairline);
+    --pico-primary-hover:            var(--brand-accent);
+    --pico-primary-hover-background: var(--brand-accent);
+    --pico-primary-hover-border:     var(--brand-accent);
+    --pico-primary-hover-underline:  var(--brand-accent);
+    --pico-primary-focus:            var(--brand-accent-hairline);
+    --pico-primary-inverse:          var(--brand-primary);
+    --pico-background-color:         var(--surface-2);
+    --pico-card-background-color:    var(--surface-2);
+    --pico-color:                    var(--text-1);
+}
+
+/* ── Layout: full-height two-column split ────────────────────────────────
+   Left = navy brand panel; right = the form/action on the flat surface.
+   Collapses to a single column (brand panel becomes a slim header bar) at
+   860px, matching the mockups. */
+.login-split {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    min-height: 100vh;
+}
+
+/* ── Left brand panel ────────────────────────────────────────────────────
+   Internal padding is derived from Pico's --pico-spacing (1rem) rather than
+   raw pixels, per the redesign brief. */
+.login-brand {
+    margin: 0;
+    padding: calc(var(--pico-spacing) * 2.5) calc(var(--pico-spacing) * 2.75);
+    display: flex;
+    flex-direction: column;
+    background: var(--brand-primary);
+    color: #fff;
+    border-right: 1px solid var(--brand-accent-hairline);
+}
+
+/* Optional operator logo above the wordmark (sized like the topbar logo). */
+.login-brand-logo {
+    height: 1.8rem;
+    width: auto;
+    margin-bottom: var(--pico-spacing);
+}
+
+.login-brand-lockup {
+    font-family: var(--pico-font-family-monospace);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+/* Pushes the heading + tagline block down so the lockup stays pinned to the
+   top and the footer to the bottom of the flex column. */
+.login-panel-body {
+    margin-top: auto;
+}
+
+.login-panel-body h1 {
+    margin: 0 0 0.875rem;
+    padding: 0;
+    border: none;
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    color: #fff;
+}
+
+.login-tagline {
+    margin: 0;
+    max-width: 34ch;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.login-panel-footer {
+    margin-top: calc(var(--pico-spacing) * 2);
+    font-family: var(--pico-font-family-monospace);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Right content panel ─────────────────────────────────────────────────
+   position: relative anchors the floating theme toggle. */
+.login-form-panel {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(var(--pico-spacing) * 2.5) calc(var(--pico-spacing) * 2.75);
+    background: var(--surface-2);
+}
+
+/* Ghost icon button, floated top-right — deliberately overrides Pico's filled
+   primary button styling because it must read as chrome, not an action. */
+#theme-toggle {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px;
+    width: auto;
+    background: none;
+    color: var(--text-2);
+    border: 1px solid var(--border-1);
+    border-radius: 4px;
+    cursor: pointer;
+}
+#theme-toggle:hover {
+    color: var(--text-1);
+    border-color: var(--border-2);
+}
+#theme-toggle:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+#theme-toggle svg { display: block; }
+/* Icon swap keyed off the manual [data-theme] attribute on <html>. */
+#theme-toggle .icon-dark { display: none; }
+[data-theme="dark"] #theme-toggle .icon-light { display: none; }
+[data-theme="dark"] #theme-toggle .icon-dark { display: block; }
+
+.login-form-wrap {
+    width: 100%;
+    max-width: 360px;
+}
+
+.login-eyebrow {
+    margin: 0 0 6px;
+    font-family: var(--pico-font-family-monospace);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-3);
+}
+
+.login-title {
+    margin: 0 0 6px;
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-1);
+}
+
+.login-sub {
+    margin: 0 0 calc(var(--pico-spacing) * 1.5);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--text-2);
+}
+
+/* ── Error banner ────────────────────────────────────────────────────────
+   Pico's --pico-form-element-invalid-* tokens only restyle form controls, so
+   a standalone alert banner needs its own rule. */
+.login-error {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    margin: 0 0 calc(var(--pico-spacing) * 1.25);
+    padding: 11px 14px;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--danger);
+    background: var(--danger-tint);
+    border: 1px solid var(--danger);
+    border-radius: 4px;
+}
+.login-error svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* ── OAuth "Continue with {provider}" action ─────────────────────────────
+   Rendered as <a role="button">, which Pico already styles as a filled
+   primary button — we only add the full-width + flex layout Pico's inline
+   a[role=button] lacks so the provider icon and label stay centred together.
+   Colours/padding/border come from Pico (bridged to the brand palette by
+   style.css in light/OS-dark and by the [data-theme=dark] block above under
+   the manual toggle); we intentionally do NOT restate them. */
+.login-oauth-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    width: 100%;
+}
+.login-oauth-btn svg { flex-shrink: 0; }
+
+/* ── Restriction line (optional org/domain constraint) ───────────────────*/
+.login-restriction {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    margin: calc(var(--pico-spacing) * 1.25) 0 0;
+    padding-top: 18px;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--text-2);
+    border-top: 1px solid var(--border-1);
+}
+.login-restriction svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--text-3);
+}
+.login-restriction code {
+    font-family: var(--pico-font-family-monospace);
+    font-size: 0.75rem;
+    color: var(--text-1);
+    background: var(--surface-hover);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+/* ── Responsive: collapse to a single column ─────────────────────────────*/
+@media (max-width: 860px) {
+    .login-split {
+        grid-template-columns: 1fr;
+    }
+    .login-brand {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        padding: calc(var(--pico-spacing) * 1.375) var(--pico-spacing);
+        border-right: none;
+        border-bottom: 1px solid var(--brand-accent-hairline);
+    }
+    .login-panel-body,
+    .login-panel-footer {
+        display: none;
+    }
+    .login-form-panel {
+        align-items: flex-start;
+        padding: calc(var(--pico-spacing) * 2.75) var(--pico-spacing);
+    }
+}
