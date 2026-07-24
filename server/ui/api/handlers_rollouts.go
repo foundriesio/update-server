@@ -72,7 +72,7 @@ func (h *handlers) updateReport(c echo.Context) error {
 // @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/report [get]
+// @Router  /updates/{tag}/{update}/rollouts/{rollout}/report [get]
 func (h *handlers) updateRolloutReport(c echo.Context) error {
 	tag := c.Param("tag")
 	updateName := c.Param("update")
