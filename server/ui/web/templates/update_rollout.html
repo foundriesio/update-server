@@ -24,6 +24,9 @@
          <fieldset>
             <legend><strong>Rollout summary</strong></legend>
             <ul>
+            {{ if len .Report.MissingDevices }}
+              <li><strong>Missing Devices:</strong> <a href="#" onclick="showSamplingModal('Missing Devices', {{ json .Report.MissingDevices }}); return false;">{{ len .Report.MissingDevices }} devices</a></li>
+            {{ end }}
             {{ if len .Report.Summaries }}
               {{ range $status, $summary := .Report.Summaries }}
                 <li><strong>{{ $status }}:</strong> <a href="#" onclick="showSamplingModal('{{ $status }}', {{ json $summary.Sampling }}); return false;">{{ $summary.TotalDevices }} devices</a></li>

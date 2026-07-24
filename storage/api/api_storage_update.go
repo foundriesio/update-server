@@ -25,8 +25,11 @@ type StatusSummary struct {
 	Sampling     []string `json:"sampling"`
 }
 
+// MissingDevices is a list of device UUIDs that were expected to participate
+// in the rollout but were not found in the rollout log.
 type UpdateReport struct {
-	Summaries map[string]*StatusSummary `json:"summaries"`
+	Summaries      map[string]*StatusSummary `json:"summaries"`
+	MissingDevices []string                  `json:"missing,omitempty"`
 }
 
 func (s Storage) updateReport(tag, name string, uuids map[string]any) (*UpdateReport, error) {
@@ -70,6 +73,14 @@ func (s Storage) updateReport(tag, name string, uuids map[string]any) (*UpdateRe
 			continue
 		}
 		summary.Sampling = append(summary.Sampling, uuid)
+
+		if uuids != nil {
+			delete(uuids, uuid)
+		}
+	}
+	report.MissingDevices = make([]string, 0, len(uuids))
+	for uuid := range uuids {
+		report.MissingDevices = append(report.MissingDevices, uuid)
 	}
 
 	return report, nil

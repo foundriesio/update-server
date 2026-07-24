@@ -49,6 +49,12 @@ func showRollout(updates api.UpdatesApi, tag, updateName, rollout string) {
 			fmt.Printf("    Sampling of devices: %s\n", strings.Join(summary.Sampling, ", "))
 		}
 	}
+	if len(report.MissingDevices) > 0 {
+		fmt.Printf("\n  Missing Devices: %d\n", len(report.MissingDevices))
+		if showReportSamplings {
+			fmt.Printf("    %s\n", strings.Join(report.MissingDevices, ", "))
+		}
+	}
 	fmt.Println()
 
 	if len(rolloutData.Groups) > 0 {
