@@ -8,6 +8,7 @@
             <th>Tag</th>
             <th>Update name</th>
             <th>Uploaded at</th>
+            <th>Device count</th>
             <th>Uploaded by</th>
           </tr>
         </thead>
@@ -18,6 +19,7 @@
             <td>{{ $key }}</td>
             <td><a href="/updates/{{$key}}/{{ $update.Name }}">{{ $update.Name }}</a></td>
             <td>{{ tsToString $update.UploadedAt }}</td>
+            <td>{{ $update.DeviceCount }}</td>
             <td>{{ $update.UploadedBy }}</td>
           </tr>
           {{ end }}

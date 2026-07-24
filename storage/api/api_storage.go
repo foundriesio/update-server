@@ -11,6 +11,7 @@ import (
 	"io"
 	"iter"
 	"log/slog"
+	"os"
 	"slices"
 	"strings"
 
@@ -72,6 +73,7 @@ var (
 	IsDbError             = storage.IsDbError
 	ErrDbConstraintUnique = storage.ErrDbConstraintUnique
 	ErrInvalidUpdate      = storage.ErrInvalidUpdate
+	ErrUpdateInUse        = storage.ErrUpdateInUse
 )
 
 // DeviceListOpts lets you set the order devices will be returned
@@ -130,6 +132,7 @@ type Storage struct {
 	stmtUndenyDevice     stmtUndenyDevice
 	stmtDeviceSetLabels  stmtDeviceSetLabels
 	stmtDeviceSetUpdate  stmtDeviceSetUpdate
+	stmtUpdateDelete     stmtUpdateDelete
 	stmtUpdateInsert     stmtUpdateInsert
 	stmtUpdateList       stmtUpdateList
 }
@@ -214,6 +217,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDevicePut,
 		&handle.stmtUpdateInsert,
 		&handle.stmtUpdateList,
+		&handle.stmtUpdateDelete,
 	); err != nil {
 		return nil, err
 	}
@@ -356,6 +360,20 @@ func (s Storage) ListUpdates(tag string) (map[string][]Update, error) {
 
 func (s Storage) DeviceCreate(uuid, pubkey string, labels Labels) error {
 	return s.stmtDevicePut.run(uuid, pubkey, labels)
+}
+
+// DeleteUpdate removes an update's database row and on-disk directory. It
+// refuses (returning ErrUpdateInUse) if any non-denied device is still assigned
+// to the update. It returns ErrNotExist if the update does not exist.
+func (s Storage) DeleteUpdate(tag, name string) error {
+	existed, err := s.stmtUpdateDelete.run(tag, name)
+	if err != nil {
+		return err
+	}
+	if !existed {
+		return os.ErrNotExist
+	}
+	return s.fs.Updates.Delete(tag, name)
 }
 
 func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[string]any, error) {
@@ -851,9 +869,13 @@ type stmtUpdateList storage.DbStmt
 
 func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateList", `
-		SELECT tag, name, uploaded_at, uploaded_by FROM updates
-		WHERE (? = '' OR tag = ?)
-		ORDER BY tag, uploaded_at, name`)
+		SELECT u.tag, u.name, u.uploaded_at, u.uploaded_by, COUNT(d.uuid)
+		FROM updates u
+		LEFT JOIN devices d
+			ON d.tag = u.tag AND d.update_name = u.name AND d.deleted = false
+		WHERE (? = '' OR u.tag = ?)
+		GROUP BY u.tag, u.name
+		ORDER BY u.tag, u.uploaded_at, u.name`)
 	return
 }
 
@@ -867,10 +889,35 @@ func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
 	for rows.Next() {
 		var u Update
 		var t string
-		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy); err != nil {
+		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.DeviceCount); err != nil {
 			return nil, err
 		}
 		res[t] = append(res[t], u)
 	}
 	return res, rows.Err()
+}
+
+type stmtUpdateDelete storage.DbStmt
+
+func (s *stmtUpdateDelete) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiUpdateDelete", `
+		DELETE FROM updates 
+		WHERE tag = ?
+  		AND name = ?;`)
+	return
+}
+
+func (s *stmtUpdateDelete) run(tag, name string) (bool, error) {
+	res, err := s.Stmt.Exec(tag, name)
+	if err != nil {
+		if err.Error() == ErrUpdateInUse.Error() {
+			return false, ErrUpdateInUse
+		}
+		return false, err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return rowsAffected > 0, nil
 }

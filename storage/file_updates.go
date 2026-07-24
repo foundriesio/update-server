@@ -22,6 +22,8 @@ type Update struct {
 	Name       string `json:"name"`
 	UploadedAt int64  `json:"uploaded-at"`
 	UploadedBy string `json:"uploaded-by"`
+
+	DeviceCount int `json:"device-count"`
 }
 
 type updatesFsHandleWrap struct {
@@ -45,6 +47,19 @@ func (s *updatesFsHandleWrap) init(root string) {
 	s.Tuf.category = UpdatesTufDir
 	s.Logs.root = root
 	s.Logs.category = UpdatesLogsDir
+}
+
+// Delete removes the entire on-disk directory for an update (all categories:
+// tuf, ostree_repo, apps, rollouts, logs). A missing directory is not an error.
+func (s updatesFsHandleWrap) Delete(tag, update string) error {
+	dir := filepath.Join(s.root, tag, update)
+	if err := os.RemoveAll(dir); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("error deleting file storage for update %s/%s: %w", tag, update, err)
+	}
+	return nil
 }
 
 // checkUpdateTargets ensures that the update contains a valid targets.json file by looking for:

@@ -11,6 +11,7 @@ import (
 )
 
 var ErrDbConstraintUnique = errors.New("sqllite.ErrConstraintUnique")
+var ErrUpdateInUse = errors.New("update is referenced by one or more devices")
 
 func IsDbError(err error, code any) bool {
 	return false

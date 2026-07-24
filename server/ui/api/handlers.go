@@ -70,6 +70,7 @@ func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, a au
 	// upd.GET("/:tag/:update", h.updateGet, requireScope(users.ScopeDevicesR))
 	upd.POST("/:tag/:update", h.updateCreate, requireScope(users.ScopeUpdatesRU),
 		gzipContentTypeAsContentEncoding, middleware.Decompress())
+	upd.DELETE("/:tag/:update", h.updateDelete, requireScope(users.ScopeUpdatesD))
 	upd.GET("/:tag/:update/tuf", h.updateGetTuf, requireScope(users.ScopeUpdatesR))
 	upd.GET("/:tag/:update/rollouts", h.rolloutList, requireScope(users.ScopeUpdatesR))
 	upd.GET("/:tag/:update/rollouts/:rollout", h.rolloutGet, requireScope(users.ScopeUpdatesR))

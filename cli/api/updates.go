@@ -104,3 +104,8 @@ func (u UpdatesApi) CreateUpdate(tag, updateName string, opts CreateUpdateOption
 	_, err := u.api.Post(endpoint, body, HttpHeader("Content-Type", "application/x-tar"), HttpHeader("Content-Encoding", "gzip"))
 	return err
 }
+
+func (u UpdatesApi) Delete(tag, updateName string) error {
+	endpoint := "/v1/updates/" + tag + "/" + updateName
+	return u.api.Delete(endpoint)
+}

@@ -20,6 +20,7 @@ type DbHandle struct {
 
 var (
 	ErrDbConstraintUnique = sqllite.ErrConstraintUnique
+	ErrUpdateInUse        = errors.New("update is referenced by one or more devices")
 )
 
 func IsDbError(err error, code sqllite.ErrNoExtended) bool {
@@ -165,7 +166,22 @@ func createTables(db *sql.DB) error {
 			uploaded_by TEXT NOT NULL DEFAULT "",
 			PRIMARY KEY (tag, name)
 		) WITHOUT ROWID;
+
+		CREATE TRIGGER prevent_delete_update_in_use
+			BEFORE DELETE ON updates
+			FOR EACH ROW
+			WHEN EXISTS (
+				SELECT 1
+				FROM devices
+				WHERE tag = OLD.tag
+				AND update_name = OLD.name
+				AND deleted = 0
+			)
+			BEGIN
+				SELECT RAISE(ABORT, '%s');
+			END;
 	`
+	sqlStmt = fmt.Sprintf(sqlStmt, ErrUpdateInUse.Error())
 	if _, err := db.Exec(sqlStmt); err != nil {
 		return fmt.Errorf("unable to create devices db: %w", err)
 	}

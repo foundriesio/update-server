@@ -28,8 +28,14 @@ func TestScopesFromString(t *testing.T) {
 		},
 		{
 			name:    "Nonexistent scope",
-			scopes:  "devices:read,updates:delete",
+			scopes:  "devices:read,updates:create",
 			wantErr: true,
+		},
+		{
+			name:   "Updates delete scope",
+			scopes: "updates:delete",
+			want:   ScopeUpdatesD,
+			has:    []Scopes{ScopeUpdatesD},
 		},
 		{
 			name:   "Handle white space",
