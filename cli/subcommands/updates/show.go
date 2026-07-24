@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/foundriesio/update-server/cli/api"
 	"github.com/spf13/cobra"
 )
 
 var showTufDetails bool
+var showReportSamplings bool
 
 var showCmd = &cobra.Command{
 	Use:   "show <tag> <update-name>",
@@ -28,6 +30,7 @@ var showCmd = &cobra.Command{
 
 func init() {
 	showCmd.Flags().BoolVar(&showTufDetails, "tuf-details", false, "Print the raw TUF metadata")
+	showCmd.Flags().BoolVar(&showReportSamplings, "show-samplings", false, "Print the sampling of devices in the rollout summary")
 	UpdatesCmd.AddCommand(showCmd)
 }
 
@@ -38,6 +41,8 @@ func showUpdate(updates api.UpdatesApi, tag, updateName string) {
 	fmt.Println("# Details")
 	fmt.Printf("Update: %s\n", updateName)
 	fmt.Printf("Tag: %s\n\n", tag)
+
+	showRolloutSummary(updates, tag, updateName)
 	showRollouts(updates, tag, updateName)
 
 	fmt.Println("# TUF metadata")
@@ -68,6 +73,23 @@ func showUpdate(updates api.UpdatesApi, tag, updateName string) {
 
 	fmt.Println("  Apps:")
 	printApps(custom)
+}
+
+func showRolloutSummary(updates api.UpdatesApi, tag, updateName string) {
+	fmt.Println("# Rollout summary")
+	report, err := updates.GetReport(tag, updateName)
+	if err != nil {
+		fmt.Printf("Error fetching rollout summary: %v\n\n", err)
+		return
+	}
+
+	for status, summary := range report.Summaries {
+		fmt.Printf("  %s: %d\n", status, summary.TotalDevices)
+		if showReportSamplings {
+			fmt.Printf("    Sampling of devices: %s\n", strings.Join(summary.Sampling, ", "))
+		}
+	}
+	fmt.Println()
 }
 
 func showRollouts(updates api.UpdatesApi, tag, updateName string) {
