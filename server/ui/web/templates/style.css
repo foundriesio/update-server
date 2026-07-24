@@ -26,14 +26,27 @@ html, body {
    :root:not([data-theme=dark]) (specificity 0,1,0); we must match that selector
    so our bridge wins by later source order. A plain :root (0,0,1) loses to Pico.
    This selector also matches in OS dark mode (no data-theme attribute is set),
-   so the bridge automatically picks up the dark --surface-*/--text-1 values that
-   the @media block re-themes below. */
+   so the bridge automatically picks up the dark --surface-* / --text-1 values that
+   the @media block re-themes below.
+
+   Button/link fills are driven by the whole --pico-primary-* family, not just
+   --pico-primary — --pico-primary-background/-border paint a filled button,
+   so leaving them unset meant buttons kept rendering in Pico's stock blue
+   regardless of --brand-primary. */
 :root:not([data-theme=dark]) {
-    --pico-primary:               var(--brand-primary);
-    --pico-primary-hover:         var(--brand-accent);
-    --pico-background-color:      var(--surface-1);
-    --pico-card-background-color: var(--surface-2);
-    --pico-color:                 var(--text-1);
+    --pico-primary:                  var(--brand-primary);
+    --pico-primary-background:       var(--brand-primary);
+    --pico-primary-border:           var(--brand-primary);
+    --pico-primary-underline:        var(--brand-primary);
+    --pico-primary-hover:            var(--brand-accent);
+    --pico-primary-hover-background: var(--brand-accent);
+    --pico-primary-hover-border:     var(--brand-accent);
+    --pico-primary-hover-underline:  var(--brand-accent);
+    --pico-primary-focus:            var(--brand-accent);
+    --pico-primary-inverse:          #fff;
+    --pico-background-color:         var(--surface-1);
+    --pico-card-background-color:    var(--surface-2);
+    --pico-color:                    var(--text-1);
 }
 
 nav#topbar {
@@ -395,12 +408,23 @@ dialog.file-content > article > section > ul {
        query (specificity 0,1,0); the outside-media bridge above cannot override
        those, so the surface/text mappings must be repeated here to win. The
        accent replaces the primary as the interactive color — a navy primary
-       fails contrast on a dark surface. */
+       fails contrast on a dark surface. Same primary-family caveat as the
+       light-mode bridge above: --pico-primary-background/-border must be set
+       too, or filled buttons stay Pico's stock blue. */
     :root:not([data-theme]) {
-        --pico-primary:               var(--brand-accent);
-        --pico-background-color:      var(--surface-1);
-        --pico-card-background-color: var(--surface-2);
-        --pico-color:                 var(--text-1);
+        --pico-primary:                  var(--brand-accent);
+        --pico-primary-background:       var(--brand-accent);
+        --pico-primary-border:           var(--brand-accent);
+        --pico-primary-underline:        var(--brand-accent);
+        --pico-primary-hover:            var(--brand-accent);
+        --pico-primary-hover-background: var(--brand-accent);
+        --pico-primary-hover-border:     var(--brand-accent);
+        --pico-primary-hover-underline:  var(--brand-accent);
+        --pico-primary-focus:            var(--brand-accent);
+        --pico-primary-inverse:          var(--brand-primary);
+        --pico-background-color:         var(--surface-1);
+        --pico-card-background-color:    var(--surface-2);
+        --pico-color:                    var(--text-1);
     }
 
     nav#subnav a {
