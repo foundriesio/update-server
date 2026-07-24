@@ -89,11 +89,11 @@ class DeviceUser(HttpUser):
         self.client.verify = root
         self._idx = idx
 
-    def _headers(self) -> dict:
+    def _headers(self, target: str | None = None, ostreehash: str | None = None) -> dict:
         return {
             "x-ats-tags": DeviceConfig.device_tag,
-            "x-ats-target": "perf-target-1",
-            "x-ats-ostreehash": "0" * 64,
+            "x-ats-target": target or "perf-target-1",
+            "x-ats-ostreehash": ostreehash or "0" * 64,
         }
 
     def _fail(self, resp, msg: str) -> None:

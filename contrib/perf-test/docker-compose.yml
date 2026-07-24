@@ -5,6 +5,14 @@ x-image: &image
   build:
     context: ../..
     dockerfile: contrib/perf-test/Dockerfile
+  # Run as the host user (Makefile passes HOST_UID/HOST_GID) instead of the
+  # image default root, so files fioserver/gen-certs write into the DATA_DIR
+  # bind mount (auth/hmac.secret, tuf/keys/*.key, certs/, fake-devices/) come
+  # out host-user-owned rather than root-owned. Root-owned output there used
+  # to break `make clean`'s rm -rf for non-root users, and could make a later
+  # `docker compose ... --build` choke trying to read it as part of the
+  # (repo-root) build context. Defaults to 1000:1000 if invoked outside make.
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
 
 volumes:
   perf-data:
@@ -14,6 +22,10 @@ services:
     <<: *image
     volumes:
       - ${DATA_DIR:-./perf-test-data}:/data
+    environment:
+      SEED_UPDATE: "${SEED_UPDATE:-1}"
+      UPDATE_TAG: "${UPDATE_TAG:-main}"
+      UPDATE_NAME: "${UPDATE_NAME:-perf-target-1}"
     command:
       - /perf/setup.sh
       - --datadir
@@ -59,7 +71,7 @@ services:
       DEVICE_DIR: /data/fake-devices
       CERTS_DIR: /data/certs
       NUM_DEVICES: "${NUM_DEVICES:-5000}"
-      DEVICE_TAG: main
+      DEVICE_TAG: "${UPDATE_TAG:-main}"
       ADMIN_TOKEN_FILE: /data/auth/admin_token.txt
       NUM_ADMINS: "${NUM_ADMINS:-1}"
     depends_on:

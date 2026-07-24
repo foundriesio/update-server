@@ -10,6 +10,7 @@ device registrations by stealing virtual users from -u NUM_DEVICES.
 
 import re
 
+import locust
 from locust import HttpUser, constant, events, task
 
 DEFAULT_ADMIN_TOKEN_FILE = "/data/auth/admin_token.txt"
@@ -101,6 +102,7 @@ class AdminUser(HttpUser):
 
 class PerfAdminUser(AdminUser):
     @task
+    @locust.tag("admin:list-devices")
     def list_devices(self) -> None:
         path = f"/v1/devices?limit={AdminConfig.device_list_limit}&offset=0"
         while path:

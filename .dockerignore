@@ -1,0 +1,7 @@
+.git/
+bin/
+release/
+.local-data/
+.compose-server-data/
+gen-certs
+contrib/perf-test/perf-test-data/
