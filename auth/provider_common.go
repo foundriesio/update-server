@@ -86,6 +86,11 @@ func (p *commonProvider) GetUser(c echo.Context) (*users.User, error) {
 func (p *commonProvider) GetSession(c echo.Context) (*Session, error) {
 	cookie, err := c.Cookie(AuthCookieName)
 	if err != nil {
+		if err == http.ErrNoCookie {
+			// No session cookie at all is the normal, unauthenticated case
+			// (e.g. a fresh visit) — not a login failure worth reporting.
+			return nil, p.renderer.renderLoginPage(c, "")
+		}
 		return nil, p.renderer.renderLoginPage(c, err.Error())
 	} else if len(cookie.Value) == 0 {
 		return nil, p.renderer.renderLoginPage(c, "")
