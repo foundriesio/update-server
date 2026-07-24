@@ -8,7 +8,7 @@
    (branding.json) instead of being frozen to the default lavender. The
    neutral greys and danger accents have no Branding field and stay literal.
 
-   style.css declares --brand-primary/--surface-*/--text-1 for LIGHT and for
+   style.css declares --brand-primary / --surface-* / --text-1 for LIGHT and for
    OS-auto dark (@media prefers-color-scheme). The login pages add a *manual*
    theme toggle, which style.css deliberately does not implement
    ("Toggle-ready: duplicate under [data-theme=dark]"). So login.css owns a
