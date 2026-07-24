@@ -5,6 +5,7 @@ package updates
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/foundriesio/update-server/cli/api"
 	"github.com/spf13/cobra"
@@ -23,6 +24,7 @@ var showRolloutCmd = &cobra.Command{
 }
 
 func init() {
+	showRolloutCmd.Flags().BoolVar(&showReportSamplings, "show-samplings", false, "Print the sampling of devices in the rollout summary")
 	UpdatesCmd.AddCommand(showRolloutCmd)
 }
 
@@ -34,6 +36,26 @@ func showRollout(updates api.UpdatesApi, tag, updateName, rollout string) {
 	fmt.Printf("Update: %s\n", updateName)
 	fmt.Printf("Tag: %s\n", tag)
 	fmt.Printf("Committed: %v\n\n", rolloutData.Commit)
+
+	report, err := updates.GetRolloutReport(tag, updateName, rollout)
+	if err != nil {
+		fmt.Printf("Error fetching rollout report: %v\n", err)
+		return
+	}
+	fmt.Println("Summary:")
+	for status, summary := range report.Summaries {
+		fmt.Printf("  %s: %d\n", status, summary.TotalDevices)
+		if showReportSamplings {
+			fmt.Printf("    Sampling of devices: %s\n", strings.Join(summary.Sampling, ", "))
+		}
+	}
+	if len(report.MissingDevices) > 0 {
+		fmt.Printf("\n  Missing Devices: %d\n", len(report.MissingDevices))
+		if showReportSamplings {
+			fmt.Printf("    %s\n", strings.Join(report.MissingDevices, ", "))
+		}
+	}
+	fmt.Println()
 
 	if len(rolloutData.Groups) > 0 {
 		fmt.Println("Groups:")

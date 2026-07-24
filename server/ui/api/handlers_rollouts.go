@@ -24,6 +24,7 @@ import (
 
 type Rollout = storage.Rollout
 type Update = storage.Update
+type UpdateReport = storage.UpdateReport
 
 // @Summary List updates
 // @Description Requires scope: updates:read or updates:read-update
@@ -43,6 +44,44 @@ func (h *handlers) updateList(c echo.Context) error {
 		}
 		return c.JSON(http.StatusOK, updates)
 	}
+}
+
+// @Summary Get summary of update
+// @Description Requires scope: updates:read or updates:read-update
+// @Tags    Updates
+// @Produce json
+// @Success 200 {object} UpdateReport
+// @Param   tag path string true "Update tag"
+// @Param   update path string true "Update name"
+// @Router  /updates/{tag}/{update}/report [get]
+func (h *handlers) updateReport(c echo.Context) error {
+	tag := c.Param("tag")
+	updateName := c.Param("update")
+	report, err := h.storage.UpdateReport(tag, updateName)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to get update report")
+	}
+	return c.JSON(http.StatusOK, report)
+}
+
+// @Summary Get summary of update
+// @Description Requires scope: updates:read or updates:read-update
+// @Tags    Updates
+// @Produce json
+// @Success 200 {object} UpdateReport
+// @Param   tag path string true "Update tag"
+// @Param   update path string true "Update name"
+// @Param   rollout path string true "Rollout name"
+// @Router  /updates/{tag}/{update}/rollouts/{rollout}/report [get]
+func (h *handlers) updateRolloutReport(c echo.Context) error {
+	tag := c.Param("tag")
+	updateName := c.Param("update")
+	rolloutName := c.Param("rollout")
+	report, err := h.storage.RolloutReport(tag, updateName, rolloutName)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to get rollout report")
+	}
+	return c.JSON(http.StatusOK, report)
 }
 
 // @Summary Tail update logs

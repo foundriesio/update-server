@@ -2,21 +2,42 @@
     <section class="content-section">
       <h2>{{.Title}}</h2>
 
-      <fieldset>
-        <legend><strong>Tag</strong></legend>
-        <p>{{.Tag}}</p>
-      </fieldset>
+      <div class="grid">
+        <div>
+          <fieldset>
+            <legend><strong>Tag</strong></legend>
+            <p>{{.Tag}}</p>
+          </fieldset>
 
-      <fieldset>
-        <legend><strong>Name</strong></legend>
-        <p>{{.Name}}</p>
-      </fieldset>
-      
-      <fieldset>
-        <legend><strong>Rollout</strong></legend>
-        <p>{{.Rollout}}</p>
-      </fieldset>
+          <fieldset>
+            <legend><strong>Name</strong></legend>
+            <p>{{.Name}}</p>
+          </fieldset>
+          
+          <fieldset>
+            <legend><strong>Rollout</strong></legend>
+            <p>{{.Rollout}}</p>
+          </fieldset>
+        </div>
 
+        <div>
+         <fieldset>
+            <legend><strong>Rollout summary</strong></legend>
+            <ul>
+            {{ if len .Report.MissingDevices }}
+              <li><strong>Missing Devices:</strong> <a href="#" onclick="showSamplingModal('Missing Devices', {{ json .Report.MissingDevices }}); return false;">{{ len .Report.MissingDevices }} devices</a></li>
+            {{ end }}
+            {{ if len .Report.Summaries }}
+              {{ range $status, $summary := .Report.Summaries }}
+                <li><strong>{{ $status }}:</strong> <a href="#" onclick="showSamplingModal('{{ $status }}', {{ json $summary.Sampling }}); return false;">{{ $summary.TotalDevices }} devices</a></li>
+              {{ end }}
+            {{ else }}
+              <li>No rollout summary available.</li>
+            {{ end }}
+            </ul>
+          </fieldset> 
+        </div>
+      </div>
       <button onclick='location.href="/updates/{{$.Tag}}/{{$.Name}}/rollouts/{{.Rollout}}/tail";'>Follow progress</button>
     </section>
 
@@ -64,5 +85,37 @@
       </table>
       {{ end }}
     </section>
+
+    <dialog id="samplingModal">
+      <article>
+        <header>
+          <button aria-label="Close" rel="prev" onclick="samplingModal.close()"></button>
+          <h3>Devices - <span id="samplingStatus"></span></h3>
+        </header>
+        <div id="samplingContent">
+          <ul id="samplingList"></ul>
+        </div>
+        <footer>
+          <button role="button" onclick="samplingModal.close()">Close</button>
+        </footer>
+      </article>
+    </dialog>
+
+    <script>
+      function showSamplingModal(status, samplingList) {
+        document.getElementById('samplingStatus').textContent = status;
+        const list = document.getElementById('samplingList');
+        list.innerHTML = '';
+        samplingList.forEach(uuid => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = '/devices/' + uuid;
+          a.textContent = uuid;
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+        samplingModal.show();
+      }
+    </script>
 
 {{ template "footer"}}

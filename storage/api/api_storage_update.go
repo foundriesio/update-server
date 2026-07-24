@@ -5,6 +5,8 @@ package api
 
 import (
 	"crypto/sha256"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -15,6 +17,90 @@ import (
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/ostree"
 )
+
+// StatusSummary is a summary of the last known state. It includes the total
+// number of devices and a sampling (max 100) of device UUIDs in this state.
+type StatusSummary struct {
+	TotalDevices int      `json:"total-devices"`
+	Sampling     []string `json:"sampling"`
+}
+
+// MissingDevices is a list of device UUIDs that were expected to participate
+// in the rollout but were not found in the rollout log.
+type UpdateReport struct {
+	Summaries      map[string]*StatusSummary `json:"summaries"`
+	MissingDevices []string                  `json:"missing,omitempty"`
+}
+
+func (s Storage) updateReport(tag, name string, uuids map[string]any) (*UpdateReport, error) {
+	lastStates := make(map[string]string)
+
+	// Collect the last known state for each device in the rollout.
+	for line, err := range s.TailRolloutsLog(tag, name, nil) {
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				// No rollout log yet, return an empty report.
+				return &UpdateReport{
+					Summaries: make(map[string]*StatusSummary),
+				}, nil
+			}
+			return nil, err
+		}
+		var status DeviceStatus
+		if err = json.Unmarshal([]byte(line), &status); err == nil {
+			if uuids != nil {
+				if _, ok := uuids[status.Uuid]; !ok {
+					continue
+				}
+			}
+			lastStates[status.Uuid] = status.Status
+		}
+	}
+
+	report := &UpdateReport{
+		Summaries: make(map[string]*StatusSummary),
+	}
+	for uuid := range lastStates {
+		summary, ok := report.Summaries[lastStates[uuid]]
+		if !ok {
+			summary = &StatusSummary{
+				Sampling: make([]string, 0, 100),
+			}
+			report.Summaries[lastStates[uuid]] = summary
+		}
+		summary.TotalDevices++
+		if len(summary.Sampling) >= 100 {
+			continue
+		}
+		summary.Sampling = append(summary.Sampling, uuid)
+
+		if uuids != nil {
+			delete(uuids, uuid)
+		}
+	}
+	report.MissingDevices = make([]string, 0, len(uuids))
+	for uuid := range uuids {
+		report.MissingDevices = append(report.MissingDevices, uuid)
+	}
+
+	return report, nil
+}
+
+func (s Storage) UpdateReport(tag, name string) (*UpdateReport, error) {
+	return s.updateReport(tag, name, nil)
+}
+
+func (s Storage) RolloutReport(tag, updateName, rolloutName string) (*UpdateReport, error) {
+	rollout, err := s.GetRollout(tag, updateName, rolloutName)
+	if err != nil {
+		return nil, err
+	}
+	filter := make(map[string]any, len(rollout.Effect))
+	for _, uuid := range rollout.Effect {
+		filter[uuid] = nil
+	}
+	return s.updateReport(tag, updateName, filter)
+}
 
 // generateUpdateTuf probes the uploaded ostree/apps content for an update and
 // generates its TUF metadata via AddTarget. Values discovered from the upload

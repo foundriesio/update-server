@@ -13,6 +13,7 @@ import (
 
 type Rollout = models.Rollout
 type Update = models.Update
+type UpdateReport = models.UpdateReport
 
 type UpdatesApi struct {
 	api *Api
@@ -31,6 +32,12 @@ func (u UpdatesApi) Get(tag, updateName string) ([]string, error) {
 	var rollouts []string
 	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts"
 	return rollouts, u.api.Get(endpoint, &rollouts)
+}
+
+func (u UpdatesApi) GetReport(tag, updateName string) (UpdateReport, error) {
+	var report UpdateReport
+	endpoint := "/v1/updates/" + tag + "/" + updateName + "/report"
+	return report, u.api.Get(endpoint, &report)
 }
 
 // UpdateTuf holds the TUF metadata for an update keyed by role file name
@@ -53,6 +60,12 @@ func (u UpdatesApi) GetRollout(tag, updateName, rollout string) (Rollout, error)
 	var r Rollout
 	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout
 	return r, u.api.Get(endpoint, &r)
+}
+
+func (u UpdatesApi) GetRolloutReport(tag, updateName, rollout string) (UpdateReport, error) {
+	var report UpdateReport
+	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout + "/report"
+	return report, u.api.Get(endpoint, &report)
 }
 
 func (u UpdatesApi) CreateRollout(tag, updateName, rollout string, data Rollout) error {
