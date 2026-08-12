@@ -1,0 +1,20 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Caddy fronts the UI in the no-load-balancer topology, terminating TLS with
+# Let's Encrypt on 80/443 and proxying to the plain-HTTP UI port.
+#
+# Caddy must never touch 8443: the device gateway terminates its own mTLS and
+# needs the client certificate intact.
+#
+# reverse_proxy sets X-Forwarded-Proto automatically, which the UI needs -- it
+# builds its own API base URL from the request scheme, so without that header it
+# would emit http:// links and call itself over plain HTTP.
+{
+	admin off
+}
+
+{$FIOSERVER_HOSTNAME} {
+	encode gzip
+	reverse_proxy 127.0.0.1:8080
+}
