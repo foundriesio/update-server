@@ -130,6 +130,19 @@ the UI's own REST calls, which is the real test that `X-Forwarded-Proto` and the
 self-call are both working. If those pages error, check `journalctl -u fioserver`
 for attempts to reach `http://`.
 
+By default that journal is only reachable through SSM on the instance itself.
+Set `enable_cloudwatch_logs = true` to also ship it to CloudWatch Logs, at the
+group named `/<name_prefix>/<hostname>` (retained for
+`cloudwatch_log_retention_days`, 30 by default):
+
+```bash
+aws logs tail "$(terraform output -raw cloudwatch_log_group_name)" --follow
+```
+
+The CloudWatch agent is always installed in the AMI but disabled at boot; this
+variable only decides whether Terraform configures and starts it. It adds
+CloudWatch Logs ingestion/storage cost on top of the resources below.
+
 To verify device mTLS, generate a device certificate against the deployed PKI and
 use it (on the instance, where `/data` is the datadir).
 

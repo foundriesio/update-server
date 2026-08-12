@@ -38,3 +38,8 @@ output "iam_role_name" {
   description = "Name of the instance's IAM role."
   value       = aws_iam_role.server.name
 }
+
+output "cloudwatch_log_group_name" {
+  description = "CloudWatch Logs group receiving the fioserver journal, or null when enable_cloudwatch_logs is false."
+  value       = var.enable_cloudwatch_logs ? aws_cloudwatch_log_group.fioserver[0].name : null
+}
