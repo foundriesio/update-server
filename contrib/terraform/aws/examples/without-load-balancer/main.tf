@@ -67,6 +67,9 @@ module "server" {
   enable_caddy = true
   assign_eip   = true
 
+  enable_cloudwatch_logs        = var.enable_cloudwatch_logs
+  cloudwatch_log_retention_days = var.cloudwatch_log_retention_days
+
   snapshot_retention_days = var.snapshot_retention_days
   tags                    = var.tags
 }

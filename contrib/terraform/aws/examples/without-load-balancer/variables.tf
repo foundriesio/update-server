@@ -77,6 +77,18 @@ variable "snapshot_retention_days" {
   default     = 60
 }
 
+variable "enable_cloudwatch_logs" {
+  type        = bool
+  description = "Ship the fioserver.service journal to CloudWatch Logs via the CloudWatch agent."
+  default     = false
+}
+
+variable "cloudwatch_log_retention_days" {
+  type        = number
+  description = "Retention for the CloudWatch log group, when enable_cloudwatch_logs is set."
+  default     = 30
+}
+
 variable "tags" {
   type        = map(string)
   description = "Extra tags applied to every resource."
