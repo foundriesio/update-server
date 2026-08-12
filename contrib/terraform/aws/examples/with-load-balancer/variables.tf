@@ -44,6 +44,12 @@ variable "gateway_port" {
   default     = 8443
 }
 
+variable "enable_ipv6" {
+  type        = bool
+  description = "Deploy dual-stack: VPC/subnets get an IPv6 CIDR, the ALB/NLB run dual-stack, and AAAA records are created alongside the A records."
+  default     = true
+}
+
 variable "ami_id" {
   type        = string
   description = "AMI built by contrib/terraform/aws/packer."

@@ -18,7 +18,25 @@ Two topologies are provided:
 | DNS Names | two (UI and gateway for the 2 LBs) | one |
 | Extra cost | yes | no |
 
-Both share the same modules and the same AMI.
+Both share the same modules and the same AMI. Both are dual-stack by default:
+the VPC gets an Amazon-provided IPv6 CIDR, subnets get a `/64` each, and every
+security-group rule that allows `0.0.0.0/0` gets an `::/0` sibling. Set
+`enable_ipv6 = false` to opt out and stay IPv4-only.
+
+In the load-balancer topology, the ALB and NLB run in `dualstack` mode and
+Route53 gets an `AAAA` alias record next to each `A` record; the instance
+itself stays IPv4-only, since the load balancers already terminate IPv6
+client connections and forward to its private IPv4 address — giving the
+instance its own public IPv6 would let the device gateway be reached
+directly, bypassing the NLB.
+
+In the Caddy topology the instance is the only public endpoint, so it gets a
+public IPv6 address of its own (`ipv6_address_count = 1`) alongside its
+Elastic IP. That address is *not* an EIP — Elastic IPs are IPv4-only — but it
+stays stable across reboots because it's tied to the instance's network
+interface rather than reassigned like an auto-assigned IPv4 would be.
+Terraform creates the matching `AAAA` record automatically when
+`hosted_zone_id` is set.
 
 ## Why it is shaped this way
 
@@ -123,6 +141,14 @@ aws secretsmanager put-secret-value \
 HOST=$(terraform output -raw ui_url)
 curl -sI "$HOST/favicon"            # 200
 curl -sI "http://${HOST#https://}"  # 301 to HTTPS
+```
+
+With `enable_ipv6` on (the default), confirm the AAAA record resolves and is
+reachable:
+
+```bash
+dig +short AAAA "${HOST#https://}"
+curl -6sI "$HOST/favicon"            # 200
 ```
 
 Then log in through a browser and open a device or update page. That exercises

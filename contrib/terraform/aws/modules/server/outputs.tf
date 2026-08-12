@@ -16,6 +16,11 @@ output "public_ip" {
   value       = var.assign_eip ? aws_eip.server[0].public_ip : aws_instance.server.public_ip
 }
 
+output "ipv6_address" {
+  description = "Public IPv6 address, or null when enable_ipv6 is false. Elastic IPs are IPv4-only, so this is the instance's own address, not an EIP."
+  value       = var.enable_ipv6 ? try(aws_instance.server.ipv6_addresses[0], null) : null
+}
+
 output "data_volume_id" {
   description = "ID of the persistent data volume."
   value       = aws_ebs_volume.data.id

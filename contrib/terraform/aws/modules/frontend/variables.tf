@@ -53,6 +53,12 @@ variable "gateway_port" {
   default     = 8443
 }
 
+variable "enable_ipv6" {
+  type        = bool
+  description = "Run the ALB and NLB dual-stack (IPv4 and IPv6). Targets stay IPv4."
+  default     = true
+}
+
 variable "access_logs" {
   type = object({
     bucket  = string

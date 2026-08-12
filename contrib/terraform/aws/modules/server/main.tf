@@ -180,6 +180,7 @@ resource "aws_instance" "server" {
   vpc_security_group_ids = [var.security_group_id]
   iam_instance_profile   = aws_iam_instance_profile.server.name
   key_name               = var.ssh_key_name == "" ? null : var.ssh_key_name
+  ipv6_address_count     = var.enable_ipv6 ? 1 : 0
 
   # Configuration only -- never secrets. The instance fetches those from Secrets
   # Manager using its instance profile, so nothing sensitive lands in user_data
