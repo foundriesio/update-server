@@ -115,6 +115,12 @@ variable "cloudwatch_log_retention_days" {
   default     = 30
 }
 
+variable "enable_ipv6" {
+  type        = bool
+  description = "Assign the instance a public IPv6 address in addition to IPv4."
+  default     = true
+}
+
 variable "tags" {
   type        = map(string)
   description = "Extra tags applied to every resource."

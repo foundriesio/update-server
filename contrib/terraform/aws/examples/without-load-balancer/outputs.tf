@@ -16,6 +16,11 @@ output "public_ip" {
   value       = module.server.public_ip
 }
 
+output "ipv6_address" {
+  description = "Public IPv6 address, or null when enable_ipv6 is false. Point an AAAA record here if managing DNS yourself."
+  value       = module.server.ipv6_address
+}
+
 output "instance_id" {
   description = "Instance ID, for `aws ssm start-session --target <id>`."
   value       = module.server.instance_id

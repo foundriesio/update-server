@@ -32,6 +32,17 @@ variable "gateway_port" {
   default     = 8443
 }
 
+variable "enable_ipv6" {
+  type        = bool
+  description = <<-EOT
+    Give the instance a public IPv6 address in addition to its Elastic IP,
+    and create an AAAA record alongside the A record. Elastic IPs are
+    IPv4-only, so IPv6 reachability here is the instance's own address, not
+    an EIP -- it stays stable across reboots because it's tied to the ENI.
+  EOT
+  default     = true
+}
+
 variable "ami_id" {
   type        = string
   description = "AMI built by contrib/terraform/aws/packer."

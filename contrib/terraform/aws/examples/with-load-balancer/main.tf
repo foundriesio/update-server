@@ -38,6 +38,7 @@ module "network" {
   allowed_ssh_cidr   = var.allowed_ssh_cidr
   enable_alb_ingress = true
   gateway_port       = var.gateway_port
+  enable_ipv6        = var.enable_ipv6
   tags               = var.tags
 }
 
@@ -64,6 +65,12 @@ module "server" {
   # new port -- it makes the instance itself scannable at its own address.
   assign_eip = true
 
+  # The instance itself does not need a public IPv6: the dual-stack ALB/NLB
+  # terminate IPv6 client connections and forward to its private IPv4
+  # address. Giving the instance its own public IPv6 would let the device
+  # gateway be reached directly, bypassing the NLB.
+  enable_ipv6 = false
+
   enable_cloudwatch_logs        = var.enable_cloudwatch_logs
   cloudwatch_log_retention_days = var.cloudwatch_log_retention_days
 
@@ -77,6 +84,7 @@ module "dns" {
   hostname         = var.hostname
   gateway_hostname = var.gateway_hostname
   hosted_zone_id   = var.hosted_zone_id
+  enable_ipv6      = var.enable_ipv6
 
   alb_dns_name = module.frontend.alb_dns_name
   alb_zone_id  = module.frontend.alb_zone_id
@@ -97,6 +105,7 @@ module "frontend" {
   certificate_arn       = module.dns.certificate_arn
   gateway_port          = var.gateway_port
   access_logs           = var.access_logs
+  enable_ipv6           = var.enable_ipv6
 
   tags = var.tags
 }
