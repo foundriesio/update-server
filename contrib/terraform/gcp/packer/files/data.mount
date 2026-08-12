@@ -1,0 +1,23 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Mount the persistent data disk by LABEL rather than its deterministic
+# /dev/disk/by-id/google-fiodata path (see modules/server's explicit
+# device_name and fioserver-volume-init). The label is set once by that
+# script, and matching AWS's by-label mount here means a disk swapped in by
+# hand -- relabeled rather than reattached with the same device_name -- still
+# works without editing this unit.
+
+[Unit]
+Description=fioserver data volume
+Requires=fioserver-volume-init.service
+After=fioserver-volume-init.service
+
+[Mount]
+What=/dev/disk/by-label/fiodata
+Where=/data
+Type=ext4
+Options=defaults,noatime
+
+[Install]
+WantedBy=local-fs.target

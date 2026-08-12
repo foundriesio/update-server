@@ -1,0 +1,39 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# The update server itself.
+#
+# The UI must accept network connections from the HTTPS load balancer.
+# The gateway always binds 0.0.0.0:$FIOSERVER_GATEWAY_ADDR's port (8443 by
+# default) -- it terminates mTLS itself and must never sit behind an L7 proxy.
+
+[Unit]
+Description=Foundries update server
+Requires=data.mount fioserver-bootstrap.service
+After=data.mount fioserver-bootstrap.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/fioserver/env
+ExecStart=/usr/local/bin/fioserver --datadir /data serve \
+    --uiaddr ${FIOSERVER_UI_ADDR} \
+    --gatewayaddr ${FIOSERVER_GATEWAY_ADDR}
+Restart=always
+RestartSec=5s
+
+# Hardening. ProtectSystem=strict makes the whole filesystem read-only for this
+# unit, which suits the read-only root image; /data is the only writable path it
+# needs.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+ReadWritePaths=/data
+
+[Install]
+WantedBy=multi-user.target
