@@ -13,6 +13,22 @@
     --bg-body:    var(--surface-1);
     --bg-content: var(--surface-2);
     --text-dark:  var(--text-1);
+
+    /* Devices-table tokens — static, not operator-configurable (only the
+       brand tokens above are templated via branding.json). Values lifted
+       from docs/superpowers/redesign/devices-list-labels/variant-details.html. */
+    --text-2:        #555555;
+    --text-3:        #707070;
+    --border-1:      #e2e2e2;
+    --border-2:      #cfcfcf;
+    --interactive:   var(--brand-primary);
+    --surface-hover: color-mix(in srgb, var(--brand-accent) 8%, transparent);
+    --chip-group-bg: color-mix(in srgb, var(--brand-accent) 16%, transparent);
+    --chip-tag-bg:   rgba(180, 138, 74, 0.14);
+    --chip-tag-text: #8a6238;
+    --danger:        #dc2626;
+    --danger-tint:   rgba(220, 38, 38, 0.08);
+    --mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
 }
 
 html, body {
@@ -431,6 +447,17 @@ dialog.file-content > article > section > ul {
         --surface-1: {{ .SurfaceDark }};
         --surface-2: {{ .SurfaceAltDark }};
         --text-1:    {{ .TextDark }};
+
+        --text-2:        #a9b4c2;
+        --text-3:        #8b96a3;
+        --border-1:      #2a3441;
+        --border-2:      #3a4657;
+        --interactive:   var(--brand-accent);
+        --surface-hover: color-mix(in srgb, var(--brand-accent) 12%, transparent);
+        --chip-tag-bg:   rgba(214, 165, 110, 0.16);
+        --chip-tag-text: #d9b98a;
+        --danger:        #f87171;
+        --danger-tint:   rgba(248, 113, 113, 0.14);
     }
 
     /* Dark interactive color + surface/text bridge. Pico declares its own
