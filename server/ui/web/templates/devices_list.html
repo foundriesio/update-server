@@ -1,11 +1,23 @@
 {{ template "header" .}}
-    <section class="content-section">
+    <section>
       <h2>{{.Title}}</h2>
 
-      <table class="striped">
+      <div class="device-table">
+      <table aria-label="Registered devices">
+        <colgroup>
+          <col style="width: 18%">
+          <col style="width: 14%">
+          <col style="width: 10%">
+          <col style="width: 10%">
+          <col style="width: 16%">
+          <col>
+          <col style="width: 8%">
+          <col style="width: 8%">
+          <col style="width: 44px">
+        </colgroup>
         <thead>
           <tr>
-            <th class="sortable">
+            <th class="sortable" scope="col">
               {{ if eq .Sort "uuid-asc" }}
                 <a href="/devices?sort=uuid-desc" title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "uuid-desc" }}
@@ -14,7 +26,7 @@
                 <a href="/devices?sort=uuid-asc" title="Sort by UUID">UUID <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
-            <th class="sortable">
+            <th class="sortable" scope="col">
               {{ if eq .Sort "name-asc" }}
                 <a href="/devices?sort=name-desc" title="Sorted ascending, click for descending">Name <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "name-desc" }}
@@ -23,16 +35,16 @@
                 <a href="/devices?sort=name-asc" title="Sort by Name">Name <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
-            <th class="sortable">
+            <th class="sortable" scope="col">
               {{ if eq .Sort "created-at-asc" }}
-                <a href="/devices?sort=created-at-desc" title="Sorted ascending, click for descending">Created at <span class="sort-active">▲</span></a>
+                <a href="/devices?sort=created-at-desc" title="Sorted ascending, click for descending">Created <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "created-at-desc" }}
-                <a href="/devices?sort=created-at-asc" title="Sorted descending, click for ascending">Created at <span class="sort-active">▼</span></a>
+                <a href="/devices?sort=created-at-asc" title="Sorted descending, click for ascending">Created <span class="sort-active">▼</span></a>
               {{ else }}
-                <a href="/devices?sort=created-at-asc" title="Sort by Created at">Created at <span class="sort-idle">⇅</span></a>
+                <a href="/devices?sort=created-at-asc" title="Sort by Created">Created <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
-            <th class="sortable">
+            <th class="sortable" scope="col">
               {{ if eq .Sort "last-seen-asc" }}
                 <a href="/devices?sort=last-seen-desc" title="Sorted ascending, click for descending">Last seen <span class="sort-active">▲</span></a>
               {{ else if eq .Sort "last-seen-desc" }}
@@ -41,50 +53,86 @@
                 <a href="/devices?sort=last-seen-asc" title="Sort by Last seen">Last seen <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
-            <th>Target</th>
-            <th>Tag</th>
-            <th>Group</th>
-            <th>Labels</th>
-            <th></th>
+            <th scope="col">Target</th>
+            <th scope="col">Labels</th>
+            <th scope="col">Group</th>
+            <th scope="col">Tag</th>
+            <th class="cell-delete" scope="col" aria-label="Actions"></th>
           </tr>
         </thead>
         <tbody>
           {{ range .Devices }}
-          <tr>
-            <td><a href="/devices/{{.Uuid}}">{{.Uuid}}</a></td>
-	    <td>{{.Labels.name}}</td>
-            <td>{{tsToString .CreatedAt}}</td>
-            <td>{{tsToString .LastSeen}}</td>
-            <td>{{.Target}}</td>
-            <td>{{.Tag}}</td>
-	    <td>{{.Labels.group}}</td>
-            <td>
-              {{/* A name and a group labels (if present) go in separate columns */}}
-              {{ range $key, $value := .Labels }}
-                {{if and (ne $key "name") (ne $key "group")}}<p><strong>{{$key}}:</strong> {{$value}}</p>{{end}}
+          <tr class="device-row" data-href="/devices/{{.Uuid}}">
+            <td class="cell-uuid"><a href="/devices/{{.Uuid}}">{{.Uuid}}</a></td>
+            <td class="cell-name">{{.Labels.name}}</td>
+            <td class="cell-ts">{{tsToString .CreatedAt}}</td>
+            <td class="cell-ts">{{tsToString .LastSeen}}</td>
+            <td class="cell-target">{{.Target}}</td>
+            <td class="cell-labels">
+              {{ $labels := otherLabels .Labels }}
+              {{ if not $labels }}
+                <span class="labels-empty" aria-label="No labels" role="img">—</span>
+              {{ else }}
+                <div class="labels-cell">
+                  <span class="label-chip"><span class="lk">{{ (index $labels 0).Key }}</span><span class="lv">{{ (index $labels 0).Value }}</span></span>
+                  {{ if gt (len $labels) 1 }}
+                    <details class="labels-more">
+                      <summary aria-label="Show {{ sub (len $labels) 1 }} more labels">+{{ sub (len $labels) 1 }}</summary>
+                      <div class="labels-panel">
+                        {{ range $i, $l := $labels }}{{ if gt $i 0 }}<span class="label-chip"><span class="lk">{{ $l.Key }}</span><span class="lv">{{ $l.Value }}</span></span>{{ end }}{{ end }}
+                      </div>
+                    </details>
+                  {{ end }}
+                </div>
               {{ end }}
             </td>
-            <td>
-              {{ if $.CanDelete }}<i class="trash" title="Delete device" onclick="showDeleteDialog('{{.Uuid}}', '{{.Labels.name}}')"></i>{{ end }}
+            <td class="cell-group">{{ if .Labels.group }}{{.Labels.group}}{{ else }}<span class="cell-empty">—</span>{{ end }}</td>
+            <td class="cell-tag">{{ if .Tag }}{{.Tag}}{{ else }}<span class="cell-empty">—</span>{{ end }}</td>
+            <td class="cell-delete">
+              {{ if $.CanDelete }}
+              <button type="button" class="btn-delete" aria-label="Delete device" title="Delete device" onclick="showDeleteDialog('{{.Uuid}}', '{{.Labels.name}}')">
+                <i class="trash" aria-hidden="true"></i>
+              </button>
+              {{ end }}
             </td>
           </tr>
           {{ end }}
         </tbody>
       </table>
+      </div>
+
+<script>
+(function() {
+  document.querySelectorAll('.device-row').forEach(function(row) {
+    row.addEventListener('click', function(e) {
+      if (e.target.closest('.btn-delete')) return;
+      if (e.target.closest('a')) return;
+      window.location.href = row.dataset.href;
+    });
+  });
+}());
+</script>
 
       {{ if or .HasPrev .HasNext }}
-      <nav>
-        <div>
-          {{ if .HasPrev }}
-            <a href="/devices?page=1{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">&laquo; First</a>
-            <a href="/devices?page={{sub .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">&larr; Previous</a>
-          {{ end }}
+      <nav class="pagination" aria-label="Devices pagination">
+        <div class="pagination-left">
+          <span class="pagination-summary">Page {{.Page}} of {{.TotalPages}}</span>
         </div>
-        <span>Showing page {{.Page}} of {{.TotalPages}} pages.</span>
-        <div>
+        <div class="pagination-controls">
+          {{ if .HasPrev }}
+            <a href="/devices?page=1{{if .Sort}}&amp;sort={{.Sort}}{{end}}" class="page-link" aria-label="First page">«</a>
+            <a href="/devices?page={{sub .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" class="page-link" aria-label="Previous page">‹</a>
+          {{ else }}
+            <span class="page-link" aria-disabled="true" aria-label="First page">«</span>
+            <span class="page-link" aria-disabled="true" aria-label="Previous page">‹</span>
+          {{ end }}
+          <span class="page-current" aria-current="page" aria-label="Page {{.Page}}">{{.Page}}</span>
           {{ if .HasNext }}
-            <a href="/devices?page={{add .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">Next &rarr;</a>
-            <a href="/devices?page={{.TotalPages}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" role="button">Last &raquo;</a>
+            <a href="/devices?page={{add .Page 1}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" class="page-link" aria-label="Next page">›</a>
+            <a href="/devices?page={{.TotalPages}}{{if .Sort}}&amp;sort={{.Sort}}{{end}}" class="page-link" aria-label="Last page">»</a>
+          {{ else }}
+            <span class="page-link" aria-disabled="true" aria-label="Next page">›</span>
+            <span class="page-link" aria-disabled="true" aria-label="Last page">»</span>
           {{ end }}
         </div>
       </nav>
@@ -142,4 +190,4 @@ function deleteDevice(uuid) {
 </script>
 {{ end }}
 
-{{ template "footer"}}
+{{ template "footer" .}}
