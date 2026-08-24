@@ -12,6 +12,18 @@
 
     <link rel="stylesheet" href="/css/pico_min_211.css">
     <link rel="stylesheet" href="/css/style.css">
+    {{/* Runs before first paint so there's no flash of the wrong theme.
+         Reads an explicit user preference from localStorage; if none exists
+         yet, seeds from the OS preference for this first render only — after
+         any click on #theme-toggle (see the "footer" block's script), the
+         stored preference always wins regardless of OS setting. */}}
+    <script>
+    (function() {
+      var stored = localStorage.getItem('theme');
+      var dark = stored === 'dark' || (stored === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+    </script>
     {{/* Keep in sync with the "csrf-fetch-script" block below — duplicated
          (not called) so standalone pages like local-login.html don't need
          to wrap in this "header" block just to get the CSRF fetch patch. */}}
@@ -36,40 +48,70 @@
   </head>
 
   <body>
-    <nav id="topbar">
-      <div class="container">
+    <a href="#main" class="skip-link">Skip to main content</a>
+    <div id="app">
+      <header id="topbar">
+        {{ if .NavItems }}
+        <button id="nav-toggle" type="button" aria-expanded="true" aria-controls="sidenav" aria-label="Toggle navigation" title="Toggle navigation">
+          <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
+            <rect y="0"  width="18" height="2" rx="1" fill="currentColor"/>
+            <rect y="6"  width="18" height="2" rx="1" fill="currentColor"/>
+            <rect y="12" width="18" height="2" rx="1" fill="currentColor"/>
+          </svg>
+        </button>
+        {{ end }}
+
         {{ if .LogoPath }}<img src="{{.LogoPath}}" alt="{{.BrandName}}" class="brand-logo">{{ end }}
-        <strong class="brand">{{.BrandName}}</strong>
+        <span class="topbar-brand">{{.BrandName}}</span>
 
-        <div style="display: flex; align-items: center; gap: 1rem;">
-        <a href="https://github.com/foundriesio/update-server/blob/main/README.md" style="color: white; text-decoration: none;">Docs</a>
+        <nav class="topbar-right" aria-label="Global actions">
+          <a href="https://github.com/foundriesio/update-server/blob/main/README.md">Docs</a>
+          <button id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+            <svg class="icon-light" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.3"/>
+              <g stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+                <line x1="8" y1="0.8" x2="8" y2="2.6"/>
+                <line x1="8" y1="13.4" x2="8" y2="15.2"/>
+                <line x1="0.8" y1="8" x2="2.6" y2="8"/>
+                <line x1="13.4" y1="8" x2="15.2" y2="8"/>
+                <line x1="2.7" y1="2.7" x2="4" y2="4"/>
+                <line x1="12" y1="12" x2="13.3" y2="13.3"/>
+                <line x1="2.7" y1="13.3" x2="4" y2="12"/>
+                <line x1="12" y1="4" x2="13.3" y2="2.7"/>
+              </g>
+            </svg>
+            <svg class="icon-dark" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M13.5 9.3A6 6 0 1 1 6.7 2.5a5 5 0 0 0 6.8 6.8Z" fill="currentColor"/>
+            </svg>
+          </button>
 
-        {{ if .User }}
-        <details class="dropdown">
-          <summary><i class="user"></i>{{.User.Username}}</summary>
-          <ul>
-            <li><a href="/settings">Settings</a></li>
-            <li><a href="/auth/logout">Logout</a></li>
-            <li> </li>
-            <li><small><em>Server: {{.Version}}</em></small></li>
+          {{ if .User }}
+          <details class="dropdown">
+            <summary class="user-badge">{{ initials .User.Username }}</summary>
+            <ul>
+              <li><a href="/settings">Settings</a></li>
+              <li><a href="/auth/logout">Logout</a></li>
+            </ul>
+          </details>
+          {{ end }}
+        </nav>
+      </header>
+
+      {{ if .NavItems }}
+      <aside id="sidenav" aria-label="Section navigation">
+        <nav>
+          <ul role="list">
+            {{ range .NavItems }}
+              <li><a href="{{.Href}}" {{if .Selected}}class="active" aria-current="page"{{end}}>{{.Title}}</a></li>
+            {{ end }}
           </ul>
-        </details>
-        {{ end }}
-        </div>
-      </div>
-    </nav>
+        </nav>
+        <div id="sidenav-version">{{.Version}}</div>
+      </aside>
+      <div id="sidenav-scrim" aria-hidden="true"></div>
+      {{ end }}
 
-    {{ if .NavItems }}
-    <nav id="subnav">
-      <div class="container">
-        {{ range .NavItems }}
-          <a href="{{.Href}}" {{if .Selected}}class="selected"{{end}}>{{.Title}}</a>
-        {{ end }}
-      </div>
-    </nav>
-    {{ end }}
-
-    <main class="container">
+      <main id="main">
 
 {{end}}
 
@@ -96,7 +138,171 @@
 {{end}}
 
 {{define "footer"}}
-    </main>
+      </main>
+    </div><!-- /#app -->
+
+    {{ if .NavItems }}
+    <script>
+    (function () {
+      var app = document.getElementById('app');
+      var sidenav = document.getElementById('sidenav');
+      var scrim = document.getElementById('sidenav-scrim');
+      var navToggle = document.getElementById('nav-toggle');
+
+      var OVERLAY_BREAKPOINT = '(max-width: 860px)';
+
+      function isOverlayBreakpoint() {
+        return !!(window.matchMedia && window.matchMedia(OVERLAY_BREAKPOINT).matches);
+      }
+
+      var drawerOpen = false;
+      var lastFocusedBeforeOpen = null;
+
+      // Sidenav collapse state (>=860px push mechanism only), persisted
+      // across reloads. Below 860px this saved preference is intentionally
+      // NOT applied — the overlay drawer always starts closed on load.
+      var NAV_STORAGE_KEY = 'sidenav-collapsed';
+      var savedNavPref = localStorage.getItem(NAV_STORAGE_KEY);
+      var navExpanded;
+      if (savedNavPref === 'true' || savedNavPref === 'false') {
+        navExpanded = savedNavPref !== 'true';
+      } else {
+        navExpanded = !(window.matchMedia && window.matchMedia(OVERLAY_BREAKPOINT).matches);
+      }
+
+      // Keyboard users must not be able to Tab into #sidenav's links while
+      // it isn't the actively presented navigation (collapsed via desktop
+      // push, or closed as an off-canvas drawer on mobile) — the CSS alone
+      // only hides it visually/pointer-wise, not from the accessibility
+      // tree or Tab order.
+      function applyNavState() {
+        if (isOverlayBreakpoint()) {
+          navToggle.setAttribute('aria-expanded', String(drawerOpen));
+          app.classList.remove('nav-collapsed');
+          sidenav.inert = !drawerOpen;
+          return;
+        }
+        navToggle.setAttribute('aria-expanded', String(navExpanded));
+        if (navExpanded) {
+          app.classList.remove('nav-collapsed');
+        } else {
+          app.classList.add('nav-collapsed');
+        }
+        sidenav.inert = !navExpanded;
+      }
+      applyNavState();
+
+      function getDrawerFocusable() {
+        return Array.prototype.slice.call(sidenav.querySelectorAll('a'));
+      }
+
+      function drawerKeydown(e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeDrawer();
+          return;
+        }
+        if (e.key === 'Tab') {
+          var focusable = getDrawerFocusable();
+          if (!focusable.length) return;
+          var first = focusable[0];
+          var last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+
+      function openDrawer() {
+        if (drawerOpen || !isOverlayBreakpoint()) return;
+        drawerOpen = true;
+        sidenav.inert = false;
+        lastFocusedBeforeOpen = document.activeElement;
+        sidenav.classList.add('is-open');
+        scrim.classList.add('is-visible');
+        navToggle.setAttribute('aria-expanded', 'true');
+        document.addEventListener('keydown', drawerKeydown);
+        var focusable = getDrawerFocusable();
+        if (focusable.length) focusable[0].focus();
+      }
+
+      function closeDrawer() {
+        if (!drawerOpen) return;
+        drawerOpen = false;
+        sidenav.classList.remove('is-open');
+        scrim.classList.remove('is-visible');
+        navToggle.setAttribute('aria-expanded', 'false');
+        if (isOverlayBreakpoint()) sidenav.inert = true;
+        document.removeEventListener('keydown', drawerKeydown);
+        var toRefocus = lastFocusedBeforeOpen || navToggle;
+        lastFocusedBeforeOpen = null;
+        toRefocus.focus();
+      }
+
+      scrim.addEventListener('click', closeDrawer);
+      getDrawerFocusable().forEach(function (link) {
+        link.addEventListener('click', closeDrawer);
+      });
+
+      window.addEventListener('resize', function () {
+        if (drawerOpen && !isOverlayBreakpoint()) {
+          closeDrawer();
+        }
+        applyNavState();
+      });
+
+      navToggle.addEventListener('click', function () {
+        if (isOverlayBreakpoint()) {
+          if (drawerOpen) {
+            closeDrawer();
+          } else {
+            openDrawer();
+          }
+          return;
+        }
+        navExpanded = !navExpanded;
+        applyNavState();
+        localStorage.setItem(NAV_STORAGE_KEY, String(!navExpanded));
+      });
+    })();
+    </script>
+    {{ end }}
+
+    <script>
+    (function () {
+      var THEME_STORAGE_KEY = 'theme';
+      var themeToggle = document.getElementById('theme-toggle');
+      var html = document.documentElement;
+
+      function setTheme(theme) {
+        if (theme === 'dark') {
+          html.setAttribute('data-theme', 'dark');
+          themeToggle.setAttribute('aria-label', 'Switch to light mode');
+          themeToggle.setAttribute('title', 'Switch to light mode');
+        } else {
+          html.removeAttribute('data-theme');
+          themeToggle.setAttribute('aria-label', 'Switch to dark mode');
+          themeToggle.setAttribute('title', 'Switch to dark mode');
+        }
+      }
+
+      // Sync the button's label/title with whatever the head script decided
+      // on page load (it may have set data-theme="dark" before this script
+      // ran, in which case the button's default light-mode label is stale).
+      setTheme(html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+
+      themeToggle.addEventListener('click', function () {
+        var isDark = html.getAttribute('data-theme') === 'dark';
+        var next = isDark ? 'light' : 'dark';
+        setTheme(next);
+        localStorage.setItem(THEME_STORAGE_KEY, next);
+      });
+    })();
+    </script>
   </body>
 </html>
 {{end}}
