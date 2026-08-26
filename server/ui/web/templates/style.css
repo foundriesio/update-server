@@ -1,6 +1,6 @@
 :root {
     color-scheme: light dark;
-    font-size: 15px;
+    font-size: 16px;
 
     /* Brand tokens — the operator-customizable design system (colors only) */
     --brand-primary: {{ .Primary }};
@@ -47,6 +47,36 @@ html, body {
     --pico-background-color:         var(--surface-1);
     --pico-card-background-color:    var(--surface-2);
     --pico-color:                    var(--text-1);
+}
+
+/* ── Type scale — overrides Pico's rem-based heading defaults ────────────
+   Fluid h1–h3 via clamp() (min @ 320 px viewport → max @ 1280 px).
+   h4–h6 are fixed; weight/case/tracking carry the hierarchy at those sizes.
+   Override --pico-font-size (not font-size directly) so Pico's own rule
+   reads the value cleanly without a specificity fight. */
+h1 {
+    --pico-font-size:   clamp(22px, calc(20px + 0.625vw), 28px);
+    --pico-line-height: 1.15;
+}
+h2 {
+    --pico-font-size:   clamp(18px, calc(16.67px + 0.417vw), 22px);
+    --pico-line-height: 1.2;
+}
+h3 {
+    --pico-font-size:   clamp(16px, calc(15px + 0.313vw), 19px);
+    --pico-line-height: 1.25;
+}
+h4 {
+    --pico-font-size:   17px;
+    --pico-line-height: 1.3;
+}
+h5 {
+    --pico-font-size:   13px;
+    --pico-line-height: 1.4;
+}
+h6 {
+    --pico-font-size:   11px;
+    --pico-line-height: 1.4;
 }
 
 nav#topbar {
