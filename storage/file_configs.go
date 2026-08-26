@@ -136,7 +136,7 @@ func (s ConfigsFsHandle) SaveUpload(payload io.Reader, onCleanupFailure func(err
 	txDir := ".configs-upload-" + rand.Text()[:10]
 	root, destDir := filepath.Split(s.root)
 	h := tarFsHandle{root: root}
-	return h.unpackTar(payload, destDir,
+	_, err := h.unpackTar(payload, destDir,
 		TarUnpackReplaceDest(true),
 		TarUnpackUseTmpFile("configs.tar"),
 		TarUnpackUseTmpDir(txDir),
@@ -151,6 +151,7 @@ func (s ConfigsFsHandle) SaveUpload(payload io.Reader, onCleanupFailure func(err
 			},
 		}),
 	)
+	return err
 }
 
 func (s ConfigsFsHandle) PurgeDeviceConfigHistory(uuid string, keepLatest int) error {

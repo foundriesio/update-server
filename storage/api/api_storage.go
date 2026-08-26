@@ -73,6 +73,7 @@ var (
 	IsDbError             = storage.IsDbError
 	ErrDbConstraintUnique = storage.ErrDbConstraintUnique
 	ErrInvalidUpdate      = storage.ErrInvalidUpdate
+	ErrUpdateTooLarge     = storage.ErrUpdateTooLarge
 	ErrUpdateInUse        = storage.ErrUpdateInUse
 )
 
@@ -120,6 +121,8 @@ type Rollout struct {
 type Storage struct {
 	db *storage.DbHandle
 	fs *storage.FsHandle
+
+	maxUpdateSize int64
 
 	stmtDeviceCount      stmtDeviceCount
 	stmtDeviceDelete     stmtDeviceDelete
@@ -201,8 +204,23 @@ func (d Device) AppsStates() ([]AppsStates, error) {
 	return states, nil
 }
 
-func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
+// StorageOption configures optional Storage behavior at construction time.
+type StorageOption func(*Storage)
+
+// WithMaxUpdateSize caps the number of bytes an uploaded update may expand to on
+// disk (counted against actual decompressed/extracted content). 0 (the default)
+// means unlimited.
+func WithMaxUpdateSize(n int64) StorageOption {
+	return func(s *Storage) {
+		s.maxUpdateSize = n
+	}
+}
+
+func NewStorage(db *storage.DbHandle, fs *storage.FsHandle, opts ...StorageOption) (*Storage, error) {
 	handle := Storage{db: db, fs: fs}
+	for _, opt := range opts {
+		opt(&handle)
+	}
 
 	if err := db.InitStmt(
 		&handle.stmtDeviceCount,
@@ -574,11 +592,11 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 			return s.generateUpdateTuf(updateDir, tag, opts)
 		}
 	}
-	err := s.fs.Updates.SaveUpload(tag, updateName, payload, tufCreate, cleanup)
+	size, err := s.fs.Updates.SaveUpload(tag, updateName, payload, s.maxUpdateSize, tufCreate, cleanup)
 	if err != nil {
 		return err
 	}
-	if err := s.stmtUpdateInsert.run(tag, updateName, uploadedBy); err != nil {
+	if err := s.stmtUpdateInsert.run(tag, updateName, uploadedBy, size); err != nil {
 		return err
 	}
 	// Create an empty file so that users don't get errors trying to tail the update/rollout
@@ -850,26 +868,26 @@ type stmtUpdateInsert storage.DbStmt
 
 func (s *stmtUpdateInsert) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateInsert", `
-		INSERT INTO updates(tag, name, uploaded_at, uploaded_by) VALUES(?, ?, unixepoch('now'), ?)`)
+		INSERT INTO updates(tag, name, uploaded_at, uploaded_by, size_bytes) VALUES(?, ?, unixepoch('now'), ?, ?)`)
 	return
 }
 
-func (s *stmtUpdateInsert) run(tag, name, uploadedBy string) error {
-	_, err := s.Stmt.Exec(tag, name, uploadedBy)
+func (s *stmtUpdateInsert) run(tag, name, uploadedBy string, sizeBytes int64) error {
+	_, err := s.Stmt.Exec(tag, name, uploadedBy, sizeBytes)
 	return err
 }
 
 // InsertUpdate is intended for unit tests that need to seed the updates table
 // without going through the full upload path.
 func (s Storage) InsertUpdate(tag, name, uploadedBy string) error {
-	return s.stmtUpdateInsert.run(tag, name, uploadedBy)
+	return s.stmtUpdateInsert.run(tag, name, uploadedBy, 0)
 }
 
 type stmtUpdateList storage.DbStmt
 
 func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateList", `
-		SELECT u.tag, u.name, u.uploaded_at, u.uploaded_by, COUNT(d.uuid)
+		SELECT u.tag, u.name, u.uploaded_at, u.uploaded_by, u.size_bytes, COUNT(d.uuid)
 		FROM updates u
 		LEFT JOIN devices d
 			ON d.tag = u.tag AND d.update_name = u.name AND d.deleted = false
@@ -889,7 +907,7 @@ func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
 	for rows.Next() {
 		var u Update
 		var t string
-		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.DeviceCount); err != nil {
+		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.SizeBytes, &u.DeviceCount); err != nil {
 			return nil, err
 		}
 		res[t] = append(res[t], u)

@@ -59,6 +59,8 @@ func (h handlers) updateCreate(c echo.Context) error {
 			return EchoError(c, err, http.StatusBadRequest, err.Error())
 		case errors.Is(err, storage.ErrDbConstraintUnique):
 			return EchoError(c, err, http.StatusConflict, "Update with this name and tag already exists")
+		case errors.Is(err, storage.ErrUpdateTooLarge):
+			return EchoError(c, err, http.StatusRequestEntityTooLarge, err.Error())
 		}
 		return EchoError(c, err, http.StatusInternalServerError, err.Error())
 	}

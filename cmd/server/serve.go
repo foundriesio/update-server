@@ -20,8 +20,9 @@ import (
 type ServeCmd struct {
 	startedCb func(uiAddress, gatewayAddress string)
 
-	UiAddr      string `default:":8080"`
-	GatewayAddr string `default:":8443"`
+	UiAddr        string `default:":8080"`
+	GatewayAddr   string `default:":8443"`
+	MaxUpdateSize int64  `default:"0" help:"Maximum size in bytes an uploaded update's unpacked content may occupy on disk (0 = unlimited)"`
 }
 
 func (c *ServeCmd) Run(args CommonArgs) error {
@@ -36,7 +37,7 @@ func (c *ServeCmd) Run(args CommonArgs) error {
 	if err != nil {
 		return fmt.Errorf("failed to load database: %w", err)
 	}
-	uiServer, err := ui.NewServer(args.ctx, db, fs, c.UiAddr, c.GatewayAddr)
+	uiServer, err := ui.NewServer(args.ctx, db, fs, c.UiAddr, c.GatewayAddr, c.MaxUpdateSize)
 	if err != nil {
 		return err
 	}

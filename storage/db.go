@@ -164,6 +164,7 @@ func createTables(db *sql.DB) error {
 			name        VARCHAR(80) NOT NULL,
 			uploaded_at INT NOT NULL DEFAULT 0,
 			uploaded_by TEXT NOT NULL DEFAULT "",
+			size_bytes  INT NOT NULL DEFAULT 0,
 			PRIMARY KEY (tag, name)
 		) WITHOUT ROWID;
 

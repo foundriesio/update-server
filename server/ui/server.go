@@ -25,7 +25,7 @@ type daemon interface {
 	Shutdown()
 }
 
-func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, bindAddr, gatewayAddr string) (server.Server, error) {
+func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, bindAddr, gatewayAddr string, maxUpdateSize int64) (server.Server, error) {
 	log := context.CtxGetLog(ctx)
 
 	authConfig, err := fs.Auth.GetAuthConfig()
@@ -33,7 +33,7 @@ func NewServer(ctx context.Context, db *storage.DbHandle, fs *storage.FsHandle, 
 		return nil, fmt.Errorf("failed to get auth config: %w", err)
 	}
 
-	strg, err := api.NewStorage(db, fs)
+	strg, err := api.NewStorage(db, fs, api.WithMaxUpdateSize(maxUpdateSize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load %s storage: %w", serverName, err)
 	}

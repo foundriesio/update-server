@@ -67,6 +67,34 @@ func TestCreateUpdateUsesUploadedTuf(t *testing.T) {
 	raw, err := s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
 	require.NoError(t, err)
 	assert.JSONEq(t, validTargets, raw)
+
+	updates, err := s.ListUpdates("main")
+	require.NoError(t, err)
+	require.Len(t, updates["main"], 1)
+	assert.Equal(t, int64(len(validTargets)+len(`{"signed":{}}`)+len("[core]\n")), updates["main"][0].SizeBytes)
+}
+
+func TestCreateUpdateRejectsOversizedUpload(t *testing.T) {
+	tmpdir := t.TempDir()
+	dbFile := filepath.Join(tmpdir, "sql.db")
+	db, err := storage.NewDb(dbFile)
+	require.NoError(t, err)
+	fs, err := storage.NewFs(tmpdir)
+	require.NoError(t, err)
+
+	s, err := NewStorage(db, fs, WithMaxUpdateSize(10))
+	require.NoError(t, err)
+
+	tar := storageTesting.CreateTarBuffer(t, map[string]string{
+		"ostree_repo/config": "this content is well over ten bytes long",
+	})
+	err = s.CreateUpdate("main", "v1.0", "tester", TargetOptions{}, tar)
+	require.ErrorIs(t, err, ErrUpdateTooLarge)
+
+	// No update was registered for the rejected upload.
+	updates, err := s.ListUpdates("main")
+	require.NoError(t, err)
+	require.Empty(t, updates["main"])
 }
 
 func TestListUpdatesDeviceCount(t *testing.T) {

@@ -16,12 +16,16 @@ import (
 	"strings"
 )
 
-var ErrInvalidUpdate = errors.New("invalid update archive")
+var (
+	ErrInvalidUpdate  = errors.New("invalid update archive")
+	ErrUpdateTooLarge = errors.New("update exceeds maximum allowed size")
+)
 
 type Update struct {
 	Name       string `json:"name"`
 	UploadedAt int64  `json:"uploaded-at"`
 	UploadedBy string `json:"uploaded-by"`
+	SizeBytes  int64  `json:"size-bytes"`
 
 	DeviceCount int `json:"device-count"`
 }
@@ -96,7 +100,7 @@ func checkUpdateTargets(targetsPath, tag string) error {
 	return fmt.Errorf("no target with tag '%s' found in targets.json", tag)
 }
 
-func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, tufCreateFunc func(string) error, onCleanupFailure func(error)) error {
+func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, maxSize int64, tufCreateFunc func(string) error, onCleanupFailure func(error)) (int64, error) {
 	const (
 		appsDir   = UpdatesAppsDir + string(filepath.Separator)
 		ostreeDir = UpdatesOstreeDir + string(filepath.Separator)
@@ -107,10 +111,11 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 	root, destDir := filepath.Split(s.root)
 	destDir = filepath.Join(destDir, tag, update)
 	h := tarFsHandle{root: root}
-	return h.unpackTar(payload, destDir,
+	size, err := h.unpackTar(payload, destDir,
 		TarUnpackReplaceDest(true), // Replace updates with the same tag and name - uniqueness is checked on the database level.
 		TarUnpackUseTmpFile("update.tar"),
 		TarUnpackUseTmpDir(txDir),
+		TarUnpackMaxSize(maxSize),
 		TarUnpackOnEvents(tarUnpackEvents{
 			onTmpCleanupError: onCleanupFailure,
 			onTarHeaderSeen: func(hdr *TarHeader) (skip bool, err error) {
@@ -146,6 +151,10 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 			},
 		}),
 	)
+	if errors.Is(err, ErrUnpackTooLarge) {
+		err = fmt.Errorf("%w: %v", ErrUpdateTooLarge, err)
+	}
+	return size, err
 }
 
 type UpdatesFsHandle struct {

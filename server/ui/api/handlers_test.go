@@ -1778,6 +1778,70 @@ func TestApiUpdateCreate(t *testing.T) {
 		"Content-Type", "application/x-tar")
 }
 
+// newSizeLimitedTestClient returns a minimal testClient (no device CA) backed
+// by a Storage constructed with the given MaxUpdateSize.
+func newSizeLimitedTestClient(t *testing.T, maxUpdateSize int64) *testClient {
+	t.Helper()
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	fsS, err := apiStorage.NewFs(tmpDir)
+	require.Nil(t, err)
+	require.Nil(t, fsS.Auth.InitHmacSecret())
+	db, err := apiStorage.NewDb(filepath.Join(tmpDir, apiStorage.DbFile))
+	require.Nil(t, err)
+	apiS, err := apiStorage.NewStorage(db, fsS, apiStorage.WithMaxUpdateSize(maxUpdateSize))
+	require.Nil(t, err)
+	userS, err := users.NewStorage(db, fsS, &storage.AuthConfig{})
+	require.Nil(t, err)
+
+	log, err := context.InitLogger("debug")
+	require.Nil(t, err)
+	ctx = CtxWithLog(ctx, log)
+
+	e := server.NewEchoServer()
+	u := &users.User{Username: "root", AllowedScopes: users.ScopeUpdatesRU}
+	RegisterHandlers(e, nil, apiS, userS, &testAuthProvider{user: u})
+
+	return &testClient{t: t, ctx: ctx, fs: fsS, api: apiS, u: u, e: e}
+}
+
+func TestApiUpdateCreateTooLarge(t *testing.T) {
+	tc := newSizeLimitedTestClient(t, 10)
+
+	validTargets := `{"signed": {"targets": {"foo": {"custom": {"tags": ["main"]}}}}}`
+	oversizedTar := tarBuffer(t, map[string]string{
+		"tuf/root.json":      `{"signed":{}}`,
+		"tuf/targets.json":   validTargets,
+		"ostree_repo/config": strings.Repeat("x", 1024),
+	})
+	data := tc.POST("/updates/main/v1.0", http.StatusRequestEntityTooLarge, bytes.NewReader(oversizedTar.Bytes()),
+		"Content-Type", "application/x-tar")
+	assert.Contains(t, string(data), "exceeds maximum allowed size")
+
+	// The rejected upload was not registered.
+	updates, err := tc.api.ListUpdates("main")
+	require.NoError(t, err)
+	require.Empty(t, updates["main"])
+}
+
+func TestApiUpdateCreateGzipBombRejected(t *testing.T) {
+	// A highly-compressible 50MB all-zero ostree file, well over our 1MB limit,
+	// compressed down to a tiny gzip stream - confirms the size limit is enforced
+	// against decompressed content, not Content-Length or the compressed transfer size.
+	tc := newSizeLimitedTestClient(t, 1024*1024)
+
+	bombTar := tarBuffer(t, map[string]string{
+		"tuf/root.json":      `{"signed":{}}`,
+		"tuf/targets.json":   `{"signed": {"targets": {"foo": {"custom": {"tags": ["main"]}}}}}`,
+		"ostree_repo/config": strings.Repeat("\x00", 50*1024*1024),
+	})
+	gzBomb := gzipBuffer(t, bombTar)
+
+	data := tc.POST("/updates/main/v1.0", http.StatusRequestEntityTooLarge, bytes.NewReader(gzBomb.Bytes()),
+		"Content-Type", "application/gzip")
+	assert.Contains(t, string(data), "exceeds maximum allowed size")
+}
+
 var tarBuffer = storageTesting.CreateTarBuffer
 
 func gzipBuffer(t *testing.T, data *bytes.Buffer) *bytes.Buffer {
