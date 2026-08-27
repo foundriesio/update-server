@@ -33,6 +33,8 @@
     --danger:        #dc2626;
     --danger-tint:   rgba(220, 38, 38, 0.08);
     --mono:          'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    --accordion-row-hover: rgba(0, 5, 40, 0.23);
+    --accordion-row-open:  rgba(20, 180, 225, 0.31);
 }
 
 html, body {
@@ -258,7 +260,7 @@ dialog.file-content > article > section {
   height: fit-content;
   max-height: min(60em, 70vh);
   max-width: min(80em, 80vw);
-  overflow: scroll;
+  overflow: auto;
 }
 
 dialog.file-content > article > section > p {
@@ -319,7 +321,7 @@ dialog.file-content > article > section > ul {
 }
 
 .accordion-row-wrapper > details > summary:hover {
-  background-color: rgba(0, 5, 40, 0.23);
+  background-color: var(--accordion-row-hover);
 }
 
 .accordion-row-wrapper > details > summary > div {
@@ -327,7 +329,7 @@ dialog.file-content > article > section > ul {
 }
 
 .accordion-row-wrapper > details[open] > summary > div {
-  background-color: rgba(20, 180, 225, 0.31);
+  background-color: var(--accordion-row-open);
 }
 
 .accordion-table-header > div,
@@ -516,11 +518,13 @@ dialog.file-content > article > section > ul {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.cell-uuid a {
+.cell-uuid a,
+.cell-name a {
     color: var(--interactive);
     text-decoration: none;
 }
-.cell-uuid a:hover {
+.cell-uuid a:hover,
+.cell-name a:hover {
     text-decoration: underline;
 }
 .cell-name {
@@ -540,22 +544,6 @@ dialog.file-content > article > section > ul {
 .cell-target {
     font-family: var(--mono);
     font-size: 0.8rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.cell-group {
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    color: var(--interactive);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.cell-tag {
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    color: var(--chip-tag-text);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1042,4 +1030,23 @@ summary.user-badge::after {
         opacity: 1;
         pointer-events: auto;
     }
+}
+
+@media (max-width: 640px) {
+  /* Chrome re-indexes visible cells to consecutive col slots after display:none
+     hides intermediate columns: Name→col[0], LastSeen→col[1], Delete→col[2] */
+  .device-table col:nth-child(1) { width: auto !important; }
+  .device-table col:nth-child(2) { width: 120px !important; }
+  .device-table col:nth-child(3) { width: 44px !important; }
+  .device-table col:nth-child(4),
+  .device-table col:nth-child(5),
+  .device-table col:nth-child(6),
+  .device-table col:nth-child(7),
+  .device-table col:nth-child(8) { width: 0 !important; }
+  .device-table th:nth-child(2), .device-table th:nth-child(3),
+  .device-table th:nth-child(5), .device-table th:nth-child(6),
+  .device-table th:nth-child(7),
+  .device-table td:nth-child(2), .device-table td:nth-child(3),
+  .device-table td:nth-child(5), .device-table td:nth-child(6),
+  .device-table td:nth-child(7) { display: none; }
 }
