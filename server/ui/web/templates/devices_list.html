@@ -1,6 +1,6 @@
 {{ template "header" .}}
     <section>
-      <h2>{{.Title}}</h2>
+      <h1>{{.Title}}</h1>
 
       <div class="device-table">
       <table aria-label="Registered devices">
@@ -11,21 +11,11 @@
           <col style="width: 10%">
           <col style="width: 16%">
           <col>
-          <col style="width: 8%">
-          <col style="width: 8%">
+          <col style="width: 12%">
           <col style="width: 44px">
         </colgroup>
         <thead>
           <tr>
-            <th class="sortable" scope="col">
-              {{ if eq .Sort "uuid-asc" }}
-                <a href="/devices?sort=uuid-desc" title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
-              {{ else if eq .Sort "uuid-desc" }}
-                <a href="/devices?sort=uuid-asc" title="Sorted descending, click for ascending">UUID <span class="sort-active">▼</span></a>
-              {{ else }}
-                <a href="/devices?sort=uuid-asc" title="Sort by UUID">UUID <span class="sort-idle">⇅</span></a>
-              {{ end }}
-            </th>
             <th class="sortable" scope="col">
               {{ if eq .Sort "name-asc" }}
                 <a href="/devices?sort=name-desc" title="Sorted ascending, click for descending">Name <span class="sort-active">▲</span></a>
@@ -33,6 +23,15 @@
                 <a href="/devices?sort=name-asc" title="Sorted descending, click for ascending">Name <span class="sort-active">▼</span></a>
               {{ else }}
                 <a href="/devices?sort=name-asc" title="Sort by Name">Name <span class="sort-idle">⇅</span></a>
+              {{ end }}
+            </th>
+            <th class="sortable" scope="col">
+              {{ if eq .Sort "uuid-asc" }}
+                <a href="/devices?sort=uuid-desc" title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
+              {{ else if eq .Sort "uuid-desc" }}
+                <a href="/devices?sort=uuid-asc" title="Sorted descending, click for ascending">UUID <span class="sort-active">▼</span></a>
+              {{ else }}
+                <a href="/devices?sort=uuid-asc" title="Sort by UUID">UUID <span class="sort-idle">⇅</span></a>
               {{ end }}
             </th>
             <th class="sortable" scope="col">
@@ -55,16 +54,15 @@
             </th>
             <th scope="col">Target</th>
             <th scope="col">Labels</th>
-            <th scope="col">Group</th>
-            <th scope="col">Tag</th>
+            <th scope="col">Group / Tag</th>
             <th class="cell-delete" scope="col" aria-label="Actions"></th>
           </tr>
         </thead>
         <tbody>
           {{ range .Devices }}
           <tr class="device-row" data-href="/devices/{{.Uuid}}">
-            <td class="cell-uuid"><a href="/devices/{{.Uuid}}">{{.Uuid}}</a></td>
-            <td class="cell-name">{{.Labels.name}}</td>
+            <td class="cell-name"><a href="/devices/{{.Uuid}}">{{if .Labels.name}}{{.Labels.name}}{{else}}{{.Uuid}}{{end}}</a></td>
+            <td class="cell-uuid" title="{{.Uuid}}">{{.Uuid}}</td>
             <td class="cell-ts">{{tsToString .CreatedAt}}</td>
             <td class="cell-ts">{{tsToString .LastSeen}}</td>
             <td class="cell-target">{{.Target}}</td>
@@ -86,11 +84,17 @@
                 </div>
               {{ end }}
             </td>
-            <td class="cell-group">{{ if .Labels.group }}{{.Labels.group}}{{ else }}<span class="cell-empty">—</span>{{ end }}</td>
-            <td class="cell-tag">{{ if .Tag }}{{.Tag}}{{ else }}<span class="cell-empty">—</span>{{ end }}</td>
+            <td class="cell-tags">
+              {{ if or .Labels.group .Tag }}
+              <div class="tag-cloud">
+                {{ if .Labels.group }}<span class="chip chip-group">{{.Labels.group}}</span>{{ end }}
+                {{ if .Tag }}<span class="chip chip-tag">{{.Tag}}</span>{{ end }}
+              </div>
+              {{ else }}<span class="cell-empty">—</span>{{ end }}
+            </td>
             <td class="cell-delete">
               {{ if $.CanDelete }}
-              <button type="button" class="btn-delete" aria-label="Delete device" title="Delete device" onclick="showDeleteDialog('{{.Uuid}}', '{{.Labels.name}}')">
+              <button type="button" class="btn-delete" aria-label="Delete device {{if .Labels.name}}{{.Labels.name}}{{else}}{{.Uuid}}{{end}}" title="Delete device" onclick="showDeleteDialog('{{.Uuid}}', '{{.Labels.name}}')">
                 <i class="trash" aria-hidden="true"></i>
               </button>
               {{ end }}

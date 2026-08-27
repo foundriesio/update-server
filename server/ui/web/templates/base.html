@@ -99,7 +99,7 @@
 
       {{ if .NavItems }}
       <aside id="sidenav" aria-label="Section navigation">
-        <nav>
+        <nav aria-label="Main navigation">
           <ul role="list">
             {{ range .NavItems }}
               <li><a href="{{.Href}}" {{if .Selected}}class="active" aria-current="page"{{end}}>{{.Title}}</a></li>
