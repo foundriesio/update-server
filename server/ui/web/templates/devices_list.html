@@ -144,22 +144,48 @@
     </section>
 
 {{ if .CanDelete }}
-<dialog id="deleteDialog">
+<dialog id="deleteDialog" aria-labelledby="dlg-title">
   <article>
-    <h3>Delete Device</h3>
-    <p>Are you sure you want to delete this device?</p>
-    <p><strong>UUID:</strong> <span id="deleteUuid"></span></p>
-    <p id="deleteNameRow" style="display:none"><strong>Name:</strong> <span id="deleteName"></span></p>
-    <p>This action cannot be undone.</p>
-    <footer>
-      <button class="secondary" onclick="document.getElementById('deleteDialog').close()">Cancel</button>
-      <button id="deleteConfirmBtn">Delete</button>
-    </footer>
+    <div class="dlg-header">
+      <h2 id="dlg-title">Delete Device</h2>
+      <button class="dlg-close" id="dlg-close-btn" type="button" aria-label="Close dialog">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="dlg-body">
+      <div class="identity-block">
+        <div class="identity-row">
+          <span class="identity-label">UUID</span>
+          <span class="identity-value" id="deleteUuid"></span>
+        </div>
+        <div class="identity-row" id="deleteNameRow" style="display:none">
+          <span class="identity-label">Name</span>
+          <span class="identity-value" id="deleteName"></span>
+        </div>
+      </div>
+      <p class="dlg-consequence">
+        Removing this device will disconnect it from all update targets.
+        Historical data is not preserved.
+      </p>
+      <div class="confirm-row">
+        <input type="checkbox" id="confirm-cb" aria-describedby="dlg-title">
+        <label for="confirm-cb">I understand this action cannot be undone</label>
+      </div>
+    </div>
+    <div class="dlg-footer">
+      <button class="dlg-btn dlg-btn-cancel" id="dlg-cancel-btn" type="button">Cancel</button>
+      <button class="dlg-btn dlg-btn-delete" id="deleteConfirmBtn" type="button" disabled aria-disabled="true">Delete</button>
+    </div>
   </article>
 </dialog>
 
 <script>
 function showDeleteDialog(uuid, name) {
+  var cb = document.getElementById('confirm-cb');
+  var deleteBtn = document.getElementById('deleteConfirmBtn');
   document.getElementById('deleteUuid').textContent = uuid;
   var nameRow = document.getElementById('deleteNameRow');
   if (name) {
@@ -168,29 +194,44 @@ function showDeleteDialog(uuid, name) {
   } else {
     nameRow.style.display = 'none';
   }
-  var btn = document.getElementById('deleteConfirmBtn');
-  btn.onclick = function() { deleteDevice(uuid); };
+  cb.checked = false;
+  deleteBtn.disabled = true;
+  deleteBtn.setAttribute('aria-disabled', 'true');
+  deleteBtn.onclick = function() { deleteDevice(uuid); };
   document.getElementById('deleteDialog').showModal();
 }
 
 function deleteDevice(uuid) {
-  fetch('/v1/devices/' + uuid, {
-    method: 'DELETE',
-  })
-  .then(async response => {
-    document.getElementById('deleteDialog').close();
-    if (response.ok) {
-      window.location.reload();
-    } else {
-      const errorText = await response.text();
-      alert('Error deleting device: ' + errorText);
-    }
-  })
-  .catch(error => {
-    document.getElementById('deleteDialog').close();
-    alert('Error deleting device: ' + error.message);
-  });
+  fetch('/v1/devices/' + uuid, { method: 'DELETE' })
+    .then(function(response) {
+      document.getElementById('deleteDialog').close();
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        response.text().then(function(errorText) {
+          alert('Error deleting device: ' + errorText);
+        });
+      }
+    })
+    .catch(function(error) {
+      document.getElementById('deleteDialog').close();
+      alert('Error deleting device: ' + error.message);
+    });
 }
+
+(function() {
+  document.getElementById('confirm-cb').addEventListener('change', function() {
+    var deleteBtn = document.getElementById('deleteConfirmBtn');
+    deleteBtn.disabled = !this.checked;
+    deleteBtn.setAttribute('aria-disabled', String(!this.checked));
+  });
+  document.getElementById('dlg-close-btn').addEventListener('click', function() {
+    document.getElementById('deleteDialog').close();
+  });
+  document.getElementById('dlg-cancel-btn').addEventListener('click', function() {
+    document.getElementById('deleteDialog').close();
+  });
+}());
 </script>
 {{ end }}
 
