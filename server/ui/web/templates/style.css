@@ -32,6 +32,8 @@
     --chip-tag-text: #8a6238;
     --danger:        #dc2626;
     --danger-tint:   rgba(220, 38, 38, 0.08);
+    --danger-hover:  #b91c1c;
+    --border-2:      #cfcfcf;
     --mono:          'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
     --accordion-row-hover: rgba(0, 5, 40, 0.23);
     --accordion-row-open:  rgba(20, 180, 225, 0.31);
@@ -389,6 +391,8 @@ dialog.file-content > article > section > ul {
     --chip-tag-text: #d9b98a;
     --danger:        #f87171;
     --danger-tint:   rgba(248, 113, 113, 0.14);
+    --danger-hover:  #ef4444;
+    --border-2:      #3a4657;
 
     /* Dark interactive color + surface/text bridge for Pico's own --pico-* vars
        (see the light-mode bridge near the top of this file for the rationale —
@@ -1049,4 +1053,147 @@ summary.user-badge::after {
   .device-table td:nth-child(2), .device-table td:nth-child(3),
   .device-table td:nth-child(5), .device-table td:nth-child(6),
   .device-table td:nth-child(7) { display: none; }
+}
+
+/* ── Delete confirm dialog ─────────────────────────────── */
+#deleteDialog > article {
+    padding: 0;
+    max-width: 460px;
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    box-shadow: none;
+}
+.dlg-header {
+    padding: 18px 24px 16px;
+    display: flex;
+    align-items: center;
+}
+.dlg-header h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-1);
+}
+.dlg-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.1s, background 0.1s;
+}
+.dlg-close:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
+}
+.dlg-close:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.dlg-body {
+    padding: 0 24px 20px;
+}
+.identity-block {
+    background: var(--surface-1);
+    border-radius: 3px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+.identity-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 3px 0;
+}
+.identity-row + .identity-row {
+    border-top: 1px solid var(--border-1);
+    margin-top: 3px;
+    padding-top: 6px;
+}
+.identity-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    min-width: 36px;
+    flex-shrink: 0;
+}
+.identity-value {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-1);
+    word-break: break-all;
+}
+.dlg-consequence {
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin: 0 0 16px;
+}
+.confirm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+#confirm-cb {
+    margin: 0;
+    margin-top: 1px;
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    accent-color: var(--danger);
+}
+.confirm-row label {
+    font-size: 13px;
+    color: var(--text-2);
+    cursor: pointer;
+    line-height: 1.5;
+}
+.dlg-footer {
+    padding: 16px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.dlg-btn {
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    margin: 0;
+}
+.dlg-btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.dlg-btn-cancel {
+    background: var(--surface-2);
+    color: var(--text-1);
+    border: 1px solid var(--border-2);
+}
+.dlg-btn-cancel:hover {
+    background: var(--surface-hover);
+}
+.dlg-btn-delete {
+    background: var(--danger);
+    color: #fff;
+    border: none;
+}
+.dlg-btn-delete:hover:not(:disabled) {
+    background: var(--danger-hover);
+}
+.dlg-btn-delete:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
