@@ -1,3 +1,14 @@
+/* Pico ships as its own unlayered stylesheet. Per the cascade spec, ANY unlayered
+   CSS beats ANY layered CSS regardless of source order or specificity — so once every
+   rule below is wrapped in a named @layer, Pico's defaults would otherwise win outright.
+   Importing it into an explicit "pico" layer, ordered first (lowest priority), is the
+   standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
+@import url('/css/pico_min_211.css') layer(pico);
+
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog;
+
+@layer tokens {
+
 :root {
     color-scheme: light dark;
     font-size: 16px;
@@ -39,12 +50,20 @@
     --accordion-row-open:  rgba(20, 180, 225, 0.31);
 }
 
+} /* end @layer tokens (part 1) */
+
+@layer utils {
+
 html, body {
     height: 100%;
     margin: 0;
     padding: 0;
     background-color: var(--bg-body);
 }
+
+} /* end @layer utils (part 1) */
+
+@layer pico-bridge {
 
 /* Bridge our tokens into Pico's theme vars. Pico defines these under
    :root:not([data-theme=dark]) (specificity 0,2,0); we must match that selector
@@ -72,6 +91,10 @@ html, body {
     --pico-card-background-color:    var(--surface-2);
     --pico-color:                    var(--text-1);
 }
+
+} /* end @layer pico-bridge */
+
+@layer typography {
 
 /* ── Type scale — overrides Pico's rem-based heading defaults ────────────
    Fluid h1–h3 via clamp() (min @ 320 px viewport → max @ 1280 px).
@@ -103,6 +126,10 @@ h6 {
     --pico-line-height: 1.4;
 }
 
+} /* end @layer typography */
+
+@layer table {
+
 th.sortable a {
     color: inherit;
     text-decoration: none;
@@ -121,6 +148,10 @@ th.sortable a:hover {
     opacity: 1;
 }
 
+} /* end @layer table (legacy sort styles) */
+
+@layer utils {
+
 div.device-details dt {
     font-weight: bold;
 }
@@ -135,6 +166,10 @@ div.device-details dd {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     margin-bottom: 1.5rem;
 }
+
+} /* end @layer utils (part 2) */
+
+@layer icons {
 
 i.check {
     display: inline-block;
@@ -236,6 +271,10 @@ i.ocr-fork::before {
   opacity: 1;
 }
 
+} /* end @layer icons (part 1) */
+
+@layer dialog {
+
 dialog.file-content {
   text-align: left;
 }
@@ -274,9 +313,17 @@ dialog.file-content > article > section > ul {
   padding-left: 1.5rem;
 }
 
+} /* end @layer dialog (part 1: file-content dialog) */
+
+@layer utils {
+
 .hidden {
  display: none !important;
 }
+
+} /* end @layer utils (part 3) */
+
+@layer accordion {
 
 /* Accordion table utilizes the grid system to build a table with expandable accordions.
  * Each table row is formed by a <details> element wrapped into an accordion-row-wrapper div.
@@ -371,6 +418,10 @@ dialog.file-content > article > section > ul {
   min-width: 20em;
 }
 
+} /* end @layer accordion */
+
+@layer tokens {
+
 /* Dark palette is token-driven; operators override via branding.json "colorsDark".
    Dark mode is driven by an explicit data-theme="dark" attribute on <html>, set
    by a head-script (base.html) on load and toggled by the #theme-toggle button
@@ -414,19 +465,31 @@ dialog.file-content > article > section > ul {
     --pico-color:                    var(--text-1);
 }
 
+} /* end @layer tokens (part 2) */
+
+@layer utils {
+
 [data-theme="dark"] .content-section {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
+} /* end @layer utils (part 4) */
+
+@layer icons {
+
 [data-theme="dark"] i.check {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5 10l4 4 6-8" stroke="%23fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
 }
+
+} /* end @layer icons (part 2) */
 
 /* ── Devices table (device list redesign) ───────────────────────────────
    Ported from a design mockup. Scoped entirely under the class names below;
    nothing else on the site is affected. Tokens (--text-2, --text-3, --border-1,
    --interactive, --surface-hover, --chip-*, --danger-*, --mono) are defined in
    the :root block near the top of this file. */
+
+@layer utils {
 
 .sr-only {
     position: absolute;
@@ -439,6 +502,10 @@ dialog.file-content > article > section > ul {
     white-space: nowrap;
     border: 0;
 }
+
+} /* end @layer utils (part 5) */
+
+@layer table {
 
 .device-table {
     overflow-x: auto;
@@ -693,6 +760,10 @@ dialog.file-content > article > section > ul {
     display: flex;
 }
 
+} /* end @layer table */
+
+@layer pagination {
+
 /* ── Pagination ────────────────────────────────────────── */
 .pagination {
     margin-top: 1.25rem;
@@ -750,6 +821,10 @@ dialog.file-content > article > section > ul {
     border: 1px solid var(--interactive);
     font-weight: 700;
 }
+
+} /* end @layer pagination */
+
+@layer shell {
 
 /* ── App shell (topbar + sidenav navigation redesign) ─────────────────────
    Ported from docs/superpowers/redesign/devices-list-labels/variant-details.html.
@@ -1055,6 +1130,10 @@ summary.user-badge::after {
   .device-table td:nth-child(7) { display: none; }
 }
 
+} /* end @layer shell */
+
+@layer dialog {
+
 /* ── Delete confirm dialog ─────────────────────────────── */
 #deleteDialog > article {
     padding: 0;
@@ -1197,3 +1276,6 @@ summary.user-badge::after {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+} /* end @layer dialog (part 2: delete dialog) */
+
