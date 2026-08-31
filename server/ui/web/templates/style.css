@@ -5,7 +5,7 @@
    standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
 @import url('/css/pico_min_211.css') layer(pico);
 
-@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog;
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail;
 
 @layer tokens {
 
@@ -48,6 +48,8 @@
     --mono:          'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
     --accordion-row-hover: rgba(0, 5, 40, 0.23);
     --accordion-row-open:  rgba(20, 180, 225, 0.31);
+    --success:       #16a34a;
+    --warning:       #d97706;
 }
 
 } /* end @layer tokens (part 1) */
@@ -444,6 +446,8 @@ dialog.file-content > article > section > ul {
     --danger-tint:   rgba(248, 113, 113, 0.14);
     --danger-hover:  #ef4444;
     --border-2:      #3a4657;
+    --success:       #22c55e;
+    --warning:       #f59e0b;
 
     /* Dark interactive color + surface/text bridge for Pico's own --pico-* vars
        (see the light-mode bridge near the top of this file for the rationale —
@@ -1278,4 +1282,353 @@ summary.user-badge::after {
 }
 
 } /* end @layer dialog (part 2: delete dialog) */
+
+/* ── Device detail page (device-detail redesign) ────────────────────────
+   Ported from docs/superpowers/redesign/device-detail/device-v3.html.
+   Reuses existing tokens (--text-*, --border-*, --interactive, --mono,
+   --chip-group-bg, --chip-tag-*, --danger, --focus-ring) instead of
+   inventing new ones; --success/--warning are the only new tokens (added
+   to the tokens layer above), used only by the status dot. Anchor color
+   comes free from Pico's own bridge (--pico-primary-underline etc. already
+   equal --interactive) — no `a { color: ... }` override needed here. */
+
+@layer device-detail {
+
+/* Capped at the same width as the original mockup (860px) on desktop.
+   Below 860px the app shell already switches the sidenav to an overlay
+   drawer (see the existing #main breakpoint further up this file) — that's
+   also where this page drops its own cap, so it gets progressively more
+   width as the viewport narrows and the full viewport on mobile, without
+   a second bespoke breakpoint. */
+.device-overview {
+    max-width: 860px;
+}
+@media (max-width: 860px) {
+    .device-overview {
+        max-width: none;
+    }
+}
+
+/* Pico sets a bare `nav { justify-content: space-between }` default —
+   both .breadcrumb and .device-tabs below are plain <nav> elements, so
+   without this explicit override their items spread across the full row
+   instead of clustering at the start. */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-3);
+    margin-bottom: 24px;
+}
+.breadcrumb a {
+    color: var(--text-3);
+}
+.breadcrumb a:hover {
+    color: var(--text-2);
+}
+.breadcrumb__sep {
+    color: var(--border-2);
+}
+.breadcrumb__current {
+    color: var(--text-2);
+}
+
+.device-identity {
+    margin-bottom: 28px;
+}
+.device-identity__name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+.device-identity__name {
+    margin: 0;
+}
+.device-identity__uuid {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-2);
+}
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: none;
+}
+.status-indicator:hover {
+    text-decoration: underline;
+}
+.status-indicator__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    flex-shrink: 0;
+}
+.status-indicator__dot.is-danger {
+    background: var(--danger);
+}
+.status-indicator__dot.is-warning {
+    background: var(--warning);
+}
+
+.device-tabs {
+    display: flex;
+    justify-content: flex-start;
+    border-bottom: 1px solid var(--border-1);
+    margin-bottom: 28px;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.device-tabs::-webkit-scrollbar {
+    display: none;
+}
+.device-tab {
+    font-size: 0.8rem;
+    color: var(--text-2);
+    text-decoration: none;
+    padding: 8px 16px 9px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.1s, border-color 0.1s;
+    white-space: nowrap;
+}
+.device-tab:hover {
+    color: var(--text-1);
+    text-decoration: none;
+}
+.device-tab.is-active {
+    color: var(--interactive);
+    border-bottom-color: var(--interactive);
+    font-weight: 600;
+}
+.device-tab:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+
+.meta-section {
+    margin-bottom: 28px;
+}
+.meta-section__title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 12px;
+}
+.meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+}
+@media (max-width: 640px) {
+    .meta-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.meta-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.meta-grid > .meta-row:nth-child(even) {
+    padding-left: 20px;
+    border-left: 1px solid var(--border-1);
+}
+@media (max-width: 640px) {
+    /* Single column now — every row is full-width, so the "right column"
+       border/indent that :nth-child(even) applies above for the 2-col
+       layout must be dropped, or it leaves a dangling left border on
+       alternating rows (present in the original mockup too, unnoticed
+       there since it was never checked at this width). Must come after
+       the unconditional rule above — same specificity, so source order
+       decides the winner regardless of the media query. */
+    .meta-grid > .meta-row:nth-child(even) {
+        padding-left: 0;
+        border-left: none;
+    }
+    /* label + value + row-action no longer fit one unwrapped line at
+       phone widths (esp. the Labels row: label + chips + "manage") —
+       let the row wrap and drop the right-edge pin so "manage" lands on
+       its own line instead of overflowing off-screen. */
+    .meta-row {
+        flex-wrap: wrap;
+    }
+    .meta-row-action {
+        margin-left: 0;
+    }
+}
+.meta-row--full {
+    grid-column: 1 / -1;
+    padding-left: 0 !important;
+    border-left: none !important;
+}
+.meta-label {
+    min-width: 130px;
+    font-size: 0.8rem;
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+.meta-value {
+    font-size: 0.85rem;
+    color: var(--text-1);
+    word-break: break-word;
+}
+.meta-value.is-mono,
+.meta-value .is-mono {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+}
+
+/* A row-level action (e.g. "manage" next to the Labels row) is a flex
+   sibling of .meta-label/.meta-value, not nested inside .meta-value —
+   pinned to the row's right edge via the flexbox auto-margin trick, so
+   its position never depends on how many chips .meta-value wraps to. */
+.meta-row-action {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.dd-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    line-height: 1.6;
+}
+.dd-chip--label {
+    background: var(--chip-group-bg);
+    color: var(--interactive);
+}
+.dd-chip--tag {
+    background: var(--chip-tag-bg);
+    color: var(--chip-tag-text);
+}
+.dd-chip--app {
+    background: var(--surface-1);
+    color: var(--text-2);
+    border: 1px solid var(--border-1);
+}
+
+.update-history {
+    margin-bottom: 28px;
+}
+.update-history__title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 10px;
+}
+.history-list {
+    border-top: 1px solid var(--border-1);
+}
+.history-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.history-entry__target {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+}
+.history-entry__meta {
+    font-size: 0.78rem;
+    color: var(--text-3);
+}
+
+.flat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.flat-table td {
+    padding: 8px 0;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-1);
+    color: var(--text-1);
+    background: transparent;
+}
+.flat-table td:first-child {
+    color: var(--text-3);
+    font-size: 0.8rem;
+    width: 160px;
+    padding-right: 16px;
+    white-space: nowrap;
+}
+.flat-table td.is-mono {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+}
+
+pre.code-block {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--text-1);
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+}
+
+.collapsible-section {
+    margin-bottom: 24px;
+}
+.collapsible-section > summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    list-style: none;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 0;
+}
+.collapsible-section > summary::-webkit-details-marker {
+    display: none;
+}
+.collapsible-section > summary::marker {
+    display: none;
+}
+.collapsible-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+.collapsible-toggle {
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    color: var(--interactive);
+    pointer-events: none;
+}
+.collapsible-toggle::before {
+    content: "show";
+}
+.collapsible-section[open] > summary .collapsible-toggle::before {
+    content: "hide";
+}
+.collapsible-body {
+    padding: 14px 0 0;
+}
+
+} /* end @layer device-detail */
 
