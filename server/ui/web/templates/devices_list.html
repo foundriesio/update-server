@@ -63,8 +63,8 @@
           <tr class="device-row" data-href="/devices/{{.Uuid}}">
             <td class="cell-name"><a href="/devices/{{.Uuid}}">{{if .Labels.name}}{{.Labels.name}}{{else}}{{.Uuid}}{{end}}</a></td>
             <td class="cell-uuid" title="{{.Uuid}}">{{.Uuid}}</td>
-            <td class="cell-ts">{{tsToString .CreatedAt}}</td>
-            <td class="cell-ts">{{tsToString .LastSeen}}</td>
+            <td class="cell-ts">{{tsToDate .CreatedAt}}</td>
+            <td class="cell-ts">{{tsToDate .LastSeen}}</td>
             <td class="cell-target">{{.Target}}</td>
             <td class="cell-labels">
               {{ $labels := otherLabels .Labels }}
