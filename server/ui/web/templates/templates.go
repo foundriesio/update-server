@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"slices"
 	"strings"
 	"time"
 
@@ -18,6 +19,39 @@ import (
 //go:embed *.html *.css favicon.svg
 var Assets embed.FS
 var Templates *template.Template
+
+// LabelPair is a single device label key/value, used by devices_list.html's
+// "+N" label-expand widget (see OtherLabels).
+type LabelPair struct {
+	Key   string
+	Value string
+}
+
+// OtherLabels returns labels other than "name"/"group" (which already have
+// their own table columns), sorted by key for deterministic rendering.
+func OtherLabels(labels map[string]string) []LabelPair {
+	out := make([]LabelPair, 0, len(labels))
+	for k, v := range labels {
+		if k == "name" || k == "group" {
+			continue
+		}
+		out = append(out, LabelPair{Key: k, Value: v})
+	}
+	slices.SortFunc(out, func(a, b LabelPair) int { return strings.Compare(a.Key, b.Key) })
+	return out
+}
+
+// Initials returns a single uppercase letter derived from username — the
+// first character, uppercased. Usernames here aren't necessarily real names
+// (could be an email, "admin", etc.), so this deliberately doesn't attempt
+// multi-word initials (e.g. "John Doe" -> "JD").
+func Initials(username string) string {
+	if username == "" {
+		return ""
+	}
+	r := []rune(username)
+	return strings.ToUpper(string(r[0]))
+}
 
 func init() {
 	// go:embed bakes in whatever bytes the checkout had; a clone without
@@ -54,6 +88,9 @@ func init() {
 		"tsToString": func(ts int64) string {
 			return time.Unix(ts, 0).Format(time.RFC3339)
 		},
+		"tsToDate": func(ts int64) string {
+			return time.Unix(ts, 0).Format(time.DateOnly)
+		},
 		"isExpired": func(expires any) bool {
 			s, ok := expires.(string)
 			if !ok || s == "" {
@@ -71,7 +108,9 @@ func init() {
 		"sub": func(a, b int) int {
 			return a - b
 		},
-		"contains": strings.Contains,
+		"contains":    strings.Contains,
+		"otherLabels": OtherLabels,
+		"initials":    Initials,
 		"json": func(v any) (template.JS, error) {
 			b, err := json.Marshal(v)
 			return template.JS(b), err

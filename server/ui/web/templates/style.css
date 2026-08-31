@@ -1,3 +1,14 @@
+/* Pico ships as its own unlayered stylesheet. Per the cascade spec, ANY unlayered
+   CSS beats ANY layered CSS regardless of source order or specificity — so once every
+   rule below is wrapped in a named @layer, Pico's defaults would otherwise win outright.
+   Importing it into an explicit "pico" layer, ordered first (lowest priority), is the
+   standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
+@import url('/css/pico_min_211.css') layer(pico);
+
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog;
+
+@layer tokens {
+
 :root {
     color-scheme: light dark;
     font-size: 16px;
@@ -13,7 +24,35 @@
     --bg-body:    var(--surface-1);
     --bg-content: var(--surface-2);
     --text-dark:  var(--text-1);
+
+    /* App-shell layout tokens — static, not operator-configurable. */
+    --nav-w:       220px;
+    --topbar-h:    48px;
+    --focus-ring:  var(--interactive);
+
+    /* Devices-table tokens — static, not operator-configurable (only the
+       brand tokens above are templated via branding.json). Values lifted
+       from docs/superpowers/redesign/devices-list-labels/variant-details.html. */
+    --text-2:        #555555;
+    --text-3:        #707070;
+    --border-1:      #e2e2e2;
+    --interactive:   var(--brand-primary);
+    --surface-hover: color-mix(in srgb, var(--brand-accent) 8%, transparent);
+    --chip-group-bg: color-mix(in srgb, var(--brand-accent) 16%, transparent);
+    --chip-tag-bg:   rgba(180, 138, 74, 0.14);
+    --chip-tag-text: #8a6238;
+    --danger:        #dc2626;
+    --danger-tint:   rgba(220, 38, 38, 0.08);
+    --danger-hover:  #b91c1c;
+    --border-2:      #cfcfcf;
+    --mono:          'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    --accordion-row-hover: rgba(0, 5, 40, 0.23);
+    --accordion-row-open:  rgba(20, 180, 225, 0.31);
 }
+
+} /* end @layer tokens (part 1) */
+
+@layer utils {
 
 html, body {
     height: 100%;
@@ -22,12 +61,16 @@ html, body {
     background-color: var(--bg-body);
 }
 
+} /* end @layer utils (part 1) */
+
+@layer pico-bridge {
+
 /* Bridge our tokens into Pico's theme vars. Pico defines these under
-   :root:not([data-theme=dark]) (specificity 0,1,0); we must match that selector
-   so our bridge wins by later source order. A plain :root (0,0,1) loses to Pico.
-   This selector also matches in OS dark mode (no data-theme attribute is set),
-   so the bridge automatically picks up the dark --surface-* / --text-1 values that
-   the @media block re-themes below.
+   :root:not([data-theme=dark]) (specificity 0,2,0); we must match that selector
+   so our bridge wins by later source order. A plain :root (0,1,0) loses to Pico.
+   This selector matches whenever dark mode isn't explicitly on — i.e. the
+   default light theme. The dark counterpart of this bridge lives inside the
+   :root[data-theme="dark"] block below.
 
    Button/link fills are driven by the whole --pico-primary-* family, not just
    --pico-primary — --pico-primary-background/-border paint a filled button,
@@ -48,6 +91,10 @@ html, body {
     --pico-card-background-color:    var(--surface-2);
     --pico-color:                    var(--text-1);
 }
+
+} /* end @layer pico-bridge */
+
+@layer typography {
 
 /* ── Type scale — overrides Pico's rem-based heading defaults ────────────
    Fluid h1–h3 via clamp() (min @ 320 px viewport → max @ 1280 px).
@@ -79,73 +126,9 @@ h6 {
     --pico-line-height: 1.4;
 }
 
-nav#topbar {
-    background-color: var(--brand-primary);
-    padding: 0.75rem 0;
-}
+} /* end @layer typography */
 
-nav#topbar .container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: white;
-}
-
-/* Larger brand text */
-#topbar .brand {
-    font-size: 1.8rem;
-    font-weight: 600;
-    color: white;
-}
-
-#topbar .brand-logo { height: 1.8rem; width: auto; margin-right: 0.5rem; vertical-align: middle; }
-
-nav#topbar a,
-nav#topbar summary {
-    color: white;
-}
-
-nav#topbar a:hover,
-nav#topbar summary:hover {
-    color: var(--brand-accent);
-}
-
-/* User dropdown */
-nav#topbar details.dropdown summary {
-    color: var(--text-dark);
-    cursor: pointer; /* ensures pointer cursor */
-}
-
-nav#topbar details.dropdown ul a {
-    color: var(--text-dark);
-}
-
-nav#subnav {
-    background: var(--bg-content);
-    padding: 0.5rem 0;
-}
-
-nav#subnav .container {
-    display: flex;
-    gap: 1.5rem; /* spacing between tabs */
-}
-
-nav#subnav a {
-    color: var(--brand-primary);
-    font-size: 1.2rem;
-    text-decoration: none !important;   /* remove underline */
-    padding-bottom: 2px;
-    border-bottom: 2px solid transparent;
-}
-
-nav#subnav a:hover {
-    text-decoration: none !important;
-    border-bottom-color: var(--brand-primary);
-}
-
-nav#subnav a.selected {
-    border-bottom: 2px solid var(--brand-primary);
-}
+@layer table {
 
 th.sortable a {
     color: inherit;
@@ -165,6 +148,10 @@ th.sortable a:hover {
     opacity: 1;
 }
 
+} /* end @layer table (legacy sort styles) */
+
+@layer utils {
+
 div.device-details dt {
     font-weight: bold;
 }
@@ -180,13 +167,9 @@ div.device-details dd {
     margin-bottom: 1.5rem;
 }
 
-i.user {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="6" r="4" fill="%23000"/><path d="M3 17c0-3.3 2.7-6 7-6s7 2.7 7 6H3z" fill="%23000"/></svg>');
-    vertical-align: middle;
-}
+} /* end @layer utils (part 2) */
+
+@layer icons {
 
 i.check {
     display: inline-block;
@@ -288,6 +271,10 @@ i.ocr-fork::before {
   opacity: 1;
 }
 
+} /* end @layer icons (part 1) */
+
+@layer dialog {
+
 dialog.file-content {
   text-align: left;
 }
@@ -314,7 +301,7 @@ dialog.file-content > article > section {
   height: fit-content;
   max-height: min(60em, 70vh);
   max-width: min(80em, 80vw);
-  overflow: scroll;
+  overflow: auto;
 }
 
 dialog.file-content > article > section > p {
@@ -326,9 +313,17 @@ dialog.file-content > article > section > ul {
   padding-left: 1.5rem;
 }
 
+} /* end @layer dialog (part 1: file-content dialog) */
+
+@layer utils {
+
 .hidden {
  display: none !important;
 }
+
+} /* end @layer utils (part 3) */
+
+@layer accordion {
 
 /* Accordion table utilizes the grid system to build a table with expandable accordions.
  * Each table row is formed by a <details> element wrapped into an accordion-row-wrapper div.
@@ -375,7 +370,7 @@ dialog.file-content > article > section > ul {
 }
 
 .accordion-row-wrapper > details > summary:hover {
-  background-color: rgba(0, 5, 40, 0.23);
+  background-color: var(--accordion-row-hover);
 }
 
 .accordion-row-wrapper > details > summary > div {
@@ -383,7 +378,7 @@ dialog.file-content > article > section > ul {
 }
 
 .accordion-row-wrapper > details[open] > summary > div {
-  background-color: rgba(20, 180, 225, 0.31);
+  background-color: var(--accordion-row-open);
 }
 
 .accordion-table-header > div,
@@ -423,59 +418,864 @@ dialog.file-content > article > section > ul {
   min-width: 20em;
 }
 
+} /* end @layer accordion */
+
+@layer tokens {
+
 /* Dark palette is token-driven; operators override via branding.json "colorsDark".
-   Icons stay fixed white (see below) — the dark palette should stay dark.
-   Toggle-ready: to add a manual switch later, duplicate this :root under [data-theme=dark]. */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --surface-1: {{ .SurfaceDark }};
-        --surface-2: {{ .SurfaceAltDark }};
-        --text-1:    {{ .TextDark }};
+   Dark mode is driven by an explicit data-theme="dark" attribute on <html>, set
+   by a head-script (base.html) on load and toggled by the #theme-toggle button
+   — there is NO prefers-color-scheme fallback. With JavaScript disabled, the app
+   always renders in light mode; this is a deliberate, accepted simplification. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: {{ .SurfaceDark }};
+    --surface-2: {{ .SurfaceAltDark }};
+    --text-1:    {{ .TextDark }};
+
+    --text-2:        #a9b4c2;
+    --text-3:        #8b96a3;
+    --border-1:      #2a3441;
+    --interactive:   var(--brand-accent);
+    --surface-hover: color-mix(in srgb, var(--brand-accent) 12%, transparent);
+    --chip-tag-bg:   rgba(214, 165, 110, 0.16);
+    --chip-tag-text: #d9b98a;
+    --danger:        #f87171;
+    --danger-tint:   rgba(248, 113, 113, 0.14);
+    --danger-hover:  #ef4444;
+    --border-2:      #3a4657;
+
+    /* Dark interactive color + surface/text bridge for Pico's own --pico-* vars
+       (see the light-mode bridge near the top of this file for the rationale —
+       --pico-primary-background/-border must be set too, or filled buttons stay
+       Pico's stock blue). The accent replaces the primary as the interactive
+       color — a navy primary fails contrast on a dark surface. */
+    --pico-primary:                  var(--brand-accent);
+    --pico-primary-background:       var(--brand-accent);
+    --pico-primary-border:           var(--brand-accent);
+    --pico-primary-underline:        var(--brand-accent);
+    --pico-primary-hover:            var(--brand-accent);
+    --pico-primary-hover-background: var(--brand-accent);
+    --pico-primary-hover-border:     var(--brand-accent);
+    --pico-primary-hover-underline:  var(--brand-accent);
+    --pico-primary-focus:            var(--brand-accent);
+    --pico-primary-inverse:          var(--brand-primary);
+    --pico-background-color:         var(--surface-1);
+    --pico-card-background-color:    var(--surface-2);
+    --pico-color:                    var(--text-1);
+}
+
+} /* end @layer tokens (part 2) */
+
+@layer utils {
+
+[data-theme="dark"] .content-section {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+} /* end @layer utils (part 4) */
+
+@layer icons {
+
+[data-theme="dark"] i.check {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5 10l4 4 6-8" stroke="%23fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+}
+
+} /* end @layer icons (part 2) */
+
+/* ── Devices table (device list redesign) ───────────────────────────────
+   Ported from a design mockup. Scoped entirely under the class names below;
+   nothing else on the site is affected. Tokens (--text-2, --text-3, --border-1,
+   --interactive, --surface-hover, --chip-*, --danger-*, --mono) are defined in
+   the :root block near the top of this file. */
+
+@layer utils {
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+} /* end @layer utils (part 5) */
+
+@layer table {
+
+.device-table {
+    overflow-x: auto;
+}
+.device-table table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    font-size: 0.87rem;
+}
+.device-table thead th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 0.6rem 0.85rem;
+    background: var(--surface-1);
+    white-space: nowrap;
+    border-bottom: none;
+}
+.device-table thead th:first-child {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+.device-table thead th:last-child {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+.device-table th.sortable a {
+    color: inherit;
+    text-decoration: none;
+    text-transform: inherit;
+}
+.device-table th.sortable a:hover {
+    color: var(--interactive);
+    text-decoration: none;
+}
+.device-table .sort-idle {
+    opacity: 0.5;
+    font-size: 0.85em;
+}
+.device-table .sort-active {
+    opacity: 1;
+    color: var(--interactive);
+}
+
+.device-table tbody tr td {
+    border: 1px solid var(--border-1);
+    border-left: none;
+    border-right: none;
+}
+.device-table tbody tr td:first-child {
+    border-left: 1px solid var(--border-1);
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+.device-table tbody tr td:last-child {
+    border-right: 1px solid var(--border-1);
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+.device-row td { cursor: pointer; }
+.device-table tbody tr:hover td {
+    background: var(--surface-hover);
+}
+.device-table tbody tr td {
+    background: var(--surface-2);
+    padding: 12px 14px;
+    color: var(--text-1);
+    vertical-align: middle;
+}
+
+.cell-uuid {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cell-uuid a,
+.cell-name a {
+    color: var(--interactive);
+    text-decoration: none;
+}
+.cell-uuid a:hover,
+.cell-name a:hover {
+    text-decoration: underline;
+}
+.cell-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cell-ts {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cell-target {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cell-empty {
+    color: var(--text-3);
+}
+.cell-delete {
+    text-align: right;
+    width: 2.75rem;
+}
+.device-table td.cell-delete {
+    padding: 12px 6px;
+}
+.btn-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-3);
+    padding: 4px 6px;
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0;
+    transition: color 0.1s, background 0.1s;
+}
+.btn-delete:hover {
+    color: var(--danger);
+    background: var(--danger-tint);
+}
+.btn-delete:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+/* Group/Tag chip cloud — merges the two separate Tag/Group columns into one. */
+.tag-cloud {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    display: inline-block;
+}
+.chip-group {
+    color: var(--interactive);
+    background: var(--chip-group-bg);
+}
+.chip-tag {
+    color: var(--chip-tag-text);
+    background: var(--chip-tag-bg);
+}
+
+/* Labels column — quieter neutral outline chips (arbitrary operator metadata,
+   not part of the Group/Tag color pairing above), with a "+N" expand-in-place
+   disclosure for anything past the first label. */
+.labels-empty {
+    font-family: var(--mono);
+    color: var(--text-3);
+}
+.label-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4ch;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    line-height: 1.4;
+    padding: 2px 6px;
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    background: transparent;
+    white-space: nowrap;
+    max-width: 100%;
+}
+.label-chip .lk { color: var(--text-3); }
+.label-chip .lk::after { content: ":"; }
+.label-chip .lv {
+    color: var(--text-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.labels-cell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 4px;
+}
+.labels-cell details.labels-more {
+    display: contents;
+    margin: 0;
+    flex-shrink: 0;
+}
+.labels-more > summary {
+    display: inline-flex;
+    align-items: center;
+    list-style: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1;
+    height: 20px;
+    padding: 2px 7px;
+    border: 1px solid var(--border-1);
+    border-radius: 999px;
+    color: var(--text-2);
+    background: var(--border-1);
+    white-space: nowrap;
+    transition: color 0.1s, border-color 0.1s, background 0.1s;
+    margin: 0;
+}
+.labels-more > summary::marker { display: none; }
+.labels-more > summary::-webkit-details-marker { display: none; }
+.labels-more > summary::after { display: none; content: none; }
+.labels-more > summary:hover {
+    color: var(--interactive);
+    border-color: var(--interactive);
+}
+.labels-more[open] > summary {
+    color: var(--interactive);
+    border-color: var(--interactive);
+    background: var(--surface-hover);
+}
+.labels-panel {
+    display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin-top: 6px;
+}
+.labels-more[open] > .labels-panel {
+    display: flex;
+}
+
+} /* end @layer table */
+
+@layer pagination {
+
+/* ── Pagination ────────────────────────────────────────── */
+.pagination {
+    margin-top: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.pagination-summary {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.page-link,
+.page-current {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    min-width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border-radius: 2px;
+}
+.page-link {
+    color: var(--text-2);
+    border: 1px solid var(--border-1);
+    background: var(--surface-2);
+    text-decoration: none;
+    transition: border-color 0.1s, color 0.1s;
+}
+.page-link:hover {
+    border-color: var(--interactive);
+    color: var(--interactive);
+    text-decoration: none;
+}
+.page-link[aria-disabled="true"] {
+    color: var(--text-3);
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.page-current {
+    color: var(--surface-2);
+    background: var(--interactive);
+    border: 1px solid var(--interactive);
+    font-weight: 700;
+}
+
+} /* end @layer pagination */
+
+@layer shell {
+
+/* ── App shell (topbar + sidenav navigation redesign) ─────────────────────
+   Ported from docs/superpowers/redesign/devices-list-labels/variant-details.html.
+   Uses --nav-w/--topbar-h/--focus-ring (declared in the :root block near the
+   top of this file) plus the existing --interactive/--surface-hover/--border-1/
+   --text-1/-2/-3/--mono tokens already established by the devices-table redesign. */
+
+.skip-link {
+    position: absolute;
+    left: -999px;
+    top: 0;
+    background: var(--surface-1);
+    color: var(--text-1);
+    padding: 10px 18px;
+    font-weight: 600;
+    z-index: 1000;
+    border-radius: 0 0 4px 0;
+}
+.skip-link:focus {
+    left: 0;
+}
+
+#app {
+    display: grid;
+    grid-template-rows: var(--topbar-h) 1fr;
+    grid-template-columns: var(--nav-w) 1fr;
+    grid-template-areas: "topbar topbar" "sidenav main";
+    min-height: 100vh;
+    transition: grid-template-columns 0.18s ease;
+}
+#app.nav-collapsed {
+    grid-template-columns: 0 1fr;
+}
+
+/* ── Top bar ───────────────────────────────────────────── */
+#topbar {
+    grid-area: topbar;
+    background: var(--brand-primary);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+#nav-toggle,
+#theme-toggle {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 6px 8px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: background 0.1s;
+}
+#nav-toggle:hover,
+#theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+#nav-toggle:focus-visible,
+#theme-toggle:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+#nav-toggle svg,
+#theme-toggle svg {
+    display: block;
+}
+#theme-toggle .icon-dark {
+    display: none;
+}
+[data-theme="dark"] #theme-toggle .icon-light {
+    display: none;
+}
+[data-theme="dark"] #theme-toggle .icon-dark {
+    display: block;
+}
+.topbar-brand {
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+#topbar .brand-logo {
+    height: 1.8rem;
+    width: auto;
+    vertical-align: middle;
+}
+.topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.topbar-right a {
+    color: rgba(255, 255, 255, 0.75);
+    text-decoration: none;
+    transition: color 0.1s;
+}
+.topbar-right a:hover {
+    color: #fff;
+}
+.topbar-right a:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+summary.user-badge {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    background: color-mix(in srgb, var(--brand-accent) 25%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--brand-accent) 50%, transparent) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #fff !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    list-style: none !important;
+}
+summary.user-badge::-webkit-details-marker {
+    display: none !important;
+}
+summary.user-badge::marker {
+    display: none !important;
+}
+summary.user-badge::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* The avatar badge sits at the far right edge of the topbar. Pico's default
+   dropdown menu anchors to the LEFT edge of its trigger and grows rightward
+   (details.dropdown>summary+ul { left: 0; }) — with a trigger this close to
+   the viewport's right edge, the menu runs off-screen and causes a horizontal
+   scrollbar on the whole page. Anchor it to the right edge of the avatar
+   instead, so it opens leftward and stays on-screen. */
+.topbar-right details.dropdown > summary + ul {
+    left: auto;
+    right: 0;
+}
+
+/* ── Side nav ──────────────────────────────────────────── */
+#sidenav {
+    grid-area: sidenav;
+    background: var(--surface-2);
+    border-right: 1px solid var(--border-1);
+    overflow: hidden;
+    position: sticky;
+    top: var(--topbar-h);
+    height: calc(100vh - var(--topbar-h));
+    display: flex;
+    flex-direction: column;
+}
+#sidenav nav {
+    width: var(--nav-w);
+    padding: 20px 0 0;
+    flex: 1 0 auto;
+}
+#sidenav-version {
+    width: var(--nav-w);
+    padding: 12px 20px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+#sidenav nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+#sidenav nav ul li {
+    position: relative;
+}
+#sidenav nav ul li a {
+    display: block;
+    padding: 9px 20px;
+    color: var(--text-2);
+    font-weight: 500;
+    transition: color 0.1s;
+}
+#sidenav nav ul li a:hover {
+    color: var(--text-1);
+    text-decoration: none;
+}
+#sidenav nav ul li a.active {
+    color: var(--interactive);
+    font-weight: 800;
+    background: var(--surface-hover);
+}
+#sidenav nav ul li a.active::before {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--interactive);
+}
+#sidenav nav ul li a:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+
+#app.nav-collapsed #sidenav {
+    overflow: hidden;
+    pointer-events: none;
+}
+
+#sidenav-scrim {
+    display: none;
+}
+
+/* ── Main content ──────────────────────────────────────── */
+#main {
+    grid-area: main;
+    background: var(--surface-2);
+    padding: 32px 40px;
+    min-width: 0;
+    overflow-x: clip;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--topbar-h));
+}
+
+@media (max-width: 860px) {
+    #main {
+        padding: 16px 12px;
     }
 
-    /* Dark interactive color + surface/text bridge. Pico declares its own
-       --pico-* dark values under :root:not([data-theme]) INSIDE this media
-       query (specificity 0,1,0); the outside-media bridge above cannot override
-       those, so the surface/text mappings must be repeated here to win. The
-       accent replaces the primary as the interactive color — a navy primary
-       fails contrast on a dark surface. Same primary-family caveat as the
-       light-mode bridge above: --pico-primary-background/-border must be set
-       too, or filled buttons stay Pico's stock blue. */
-    :root:not([data-theme]) {
-        --pico-primary:                  var(--brand-accent);
-        --pico-primary-background:       var(--brand-accent);
-        --pico-primary-border:           var(--brand-accent);
-        --pico-primary-underline:        var(--brand-accent);
-        --pico-primary-hover:            var(--brand-accent);
-        --pico-primary-hover-background: var(--brand-accent);
-        --pico-primary-hover-border:     var(--brand-accent);
-        --pico-primary-hover-underline:  var(--brand-accent);
-        --pico-primary-focus:            var(--brand-accent);
-        --pico-primary-inverse:          var(--brand-primary);
-        --pico-background-color:         var(--surface-1);
-        --pico-card-background-color:    var(--surface-2);
-        --pico-color:                    var(--text-1);
+    /* Below 860px the sidenav becomes an off-canvas overlay drawer (base.html's
+       footer script drives is-open/scrim), replacing the ≥860px push-collapse
+       mechanism — the grid always collapses to a single column here
+       regardless of the persisted nav-collapsed preference, since that
+       preference only applies to the push mechanism. */
+    #app,
+    #app.nav-collapsed {
+        grid-template-columns: 1fr;
+        grid-template-areas: "topbar" "main";
+        transition: none;
     }
-
-    nav#subnav a {
-        color: var(--brand-accent);
+    #sidenav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100vh;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        z-index: 200;
+        pointer-events: auto;
     }
-    nav#subnav a:hover {
-        border-bottom-color: var(--brand-accent);
+    #sidenav nav,
+    #sidenav-version {
+        width: 280px;
     }
-    nav#subnav a.selected {
-        border-bottom-color: var(--brand-accent);
+    #sidenav.is-open {
+        transform: translateX(0);
     }
-
-    .content-section {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    #sidenav-scrim {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 150;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
     }
-
-    i.user {
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="6" r="4" fill="%23fff"/><path d="M3 17c0-3.3 2.7-6 7-6s7 2.7 7 6H3z" fill="%23fff"/></svg>');
-    }
-
-    i.check {
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5 10l4 4 6-8" stroke="%23fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    #sidenav-scrim.is-visible {
+        opacity: 1;
+        pointer-events: auto;
     }
 }
+
+@media (max-width: 640px) {
+  /* Chrome re-indexes visible cells to consecutive col slots after display:none
+     hides intermediate columns: Name→col[0], LastSeen→col[1], Delete→col[2] */
+  .device-table col:nth-child(1) { width: auto !important; }
+  .device-table col:nth-child(2) { width: 120px !important; }
+  .device-table col:nth-child(3) { width: 44px !important; }
+  .device-table col:nth-child(4),
+  .device-table col:nth-child(5),
+  .device-table col:nth-child(6),
+  .device-table col:nth-child(7),
+  .device-table col:nth-child(8) { width: 0 !important; }
+  .device-table th:nth-child(2), .device-table th:nth-child(3),
+  .device-table th:nth-child(5), .device-table th:nth-child(6),
+  .device-table th:nth-child(7),
+  .device-table td:nth-child(2), .device-table td:nth-child(3),
+  .device-table td:nth-child(5), .device-table td:nth-child(6),
+  .device-table td:nth-child(7) { display: none; }
+}
+
+} /* end @layer shell */
+
+@layer dialog {
+
+/* ── Delete confirm dialog ─────────────────────────────── */
+#deleteDialog > article {
+    padding: 0;
+    max-width: 460px;
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    box-shadow: none;
+}
+.dlg-header {
+    padding: 18px 24px 16px;
+    display: flex;
+    align-items: center;
+}
+.dlg-header h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-1);
+}
+.dlg-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.1s, background 0.1s;
+}
+.dlg-close:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
+}
+.dlg-close:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.dlg-body {
+    padding: 0 24px 20px;
+}
+.identity-block {
+    background: var(--surface-1);
+    border-radius: 3px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+.identity-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 3px 0;
+}
+.identity-row + .identity-row {
+    border-top: 1px solid var(--border-1);
+    margin-top: 3px;
+    padding-top: 6px;
+}
+.identity-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    min-width: 36px;
+    flex-shrink: 0;
+}
+.identity-value {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-1);
+    word-break: break-all;
+}
+.dlg-consequence {
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin: 0 0 16px;
+}
+.confirm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+#confirm-cb {
+    margin: 0;
+    margin-top: 1px;
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    accent-color: var(--danger);
+}
+.confirm-row label {
+    font-size: 13px;
+    color: var(--text-2);
+    cursor: pointer;
+    line-height: 1.5;
+}
+.dlg-footer {
+    padding: 16px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.dlg-btn {
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    margin: 0;
+}
+.dlg-btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.dlg-btn-cancel {
+    background: var(--surface-2);
+    color: var(--text-1);
+    border: 1px solid var(--border-2);
+}
+.dlg-btn-cancel:hover {
+    background: var(--surface-hover);
+}
+.dlg-btn-delete {
+    background: var(--danger);
+    color: #fff;
+    border: none;
+}
+.dlg-btn-delete:hover:not(:disabled) {
+    background: var(--danger-hover);
+}
+.dlg-btn-delete:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+} /* end @layer dialog (part 2: delete dialog) */
+
