@@ -86,6 +86,9 @@ func init() {
 			return res, nil
 		},
 		"tsToString": func(ts int64) string {
+			return time.Unix(ts, 0).Format(time.RFC3339)
+		},
+		"tsToDate": func(ts int64) string {
 			return time.Unix(ts, 0).Format(time.DateOnly)
 		},
 		"isExpired": func(expires any) bool {
