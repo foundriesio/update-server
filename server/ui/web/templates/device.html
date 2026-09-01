@@ -172,8 +172,13 @@
 
       <details class="collapsible-section">
         <summary>
-          <span class="collapsible-title">Hardware Details</span>
-          <span class="collapsible-toggle"></span>
+          <div class="summary-row">
+            <span class="collapsible-title">Hardware Details</span>
+            <span class="collapsible-toggle">
+              <span class="toggle-show">show</span>
+              <span class="toggle-hide">hide</span>
+            </span>
+          </div>
         </summary>
         <div class="collapsible-body">
           <pre class="code-block">{{.Device.HwInfo}}</pre>
@@ -182,8 +187,13 @@
 
       <details class="collapsible-section">
         <summary>
-          <span class="collapsible-title">Public Key</span>
-          <span class="collapsible-toggle"></span>
+          <div class="summary-row">
+            <span class="collapsible-title">Public Key</span>
+            <span class="collapsible-toggle">
+              <span class="toggle-show">show</span>
+              <span class="toggle-hide">hide</span>
+            </span>
+          </div>
         </summary>
         <div class="collapsible-body">
           <pre class="code-block">{{.Device.PubKey}}</pre>
@@ -192,8 +202,13 @@
 
       <details class="collapsible-section">
         <summary>
-          <span class="collapsible-title">SOTA Config</span>
-          <span class="collapsible-toggle"></span>
+          <div class="summary-row">
+            <span class="collapsible-title">SOTA Config</span>
+            <span class="collapsible-toggle">
+              <span class="toggle-show">show</span>
+              <span class="toggle-hide">hide</span>
+            </span>
+          </div>
         </summary>
         <div class="collapsible-body">
           <pre class="code-block">{{.Device.Aktoml}}</pre>
