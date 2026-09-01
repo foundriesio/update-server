@@ -66,15 +66,16 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 
 	e.GET("/auth/logout", h.authLogout, h.requireSession)
 	e.GET("/configs", h.configsList, h.requireSession, h.requireScope(users.ScopeDevicesR))
+
 	e.GET("/configs/device/:uuid", func(c echo.Context) error {
 		return c.Redirect(http.StatusMovedPermanently, "/devices/"+c.Param("uuid")+"/configs")
-	}, h.requireSession)
+	})
 	e.GET("/configs/device/:uuid/applied", func(c echo.Context) error {
 		return c.Redirect(http.StatusMovedPermanently, "/devices/"+c.Param("uuid")+"/applied-configs")
-	}, h.requireSession)
+	})
 	e.GET("/configs/device/:uuid/history", func(c echo.Context) error {
 		return c.Redirect(http.StatusMovedPermanently, "/devices/"+c.Param("uuid")+"/configs/history")
-	}, h.requireSession)
+	})
 	e.PATCH("/configs/global", h.configsGlobalPatch, h.requireSession,
 		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
 	e.DELETE("/configs/global", h.configsGlobalDelete, h.requireSession,
