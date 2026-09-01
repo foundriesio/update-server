@@ -1593,19 +1593,19 @@ pre.code-block {
     margin-bottom: 24px;
 }
 .collapsible-section > summary {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
+    display: block;
     list-style: none;
     cursor: pointer;
     padding: 0;
     margin-bottom: 0;
 }
-.collapsible-section > summary::-webkit-details-marker {
-    display: none;
-}
-.collapsible-section > summary::marker {
-    display: none;
+.collapsible-section > summary::-webkit-details-marker { display: none; }
+.collapsible-section > summary::marker { content: none; }
+.collapsible-section > summary::after { display: none; }
+.collapsible-section .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 .collapsible-title {
     font-size: 0.68rem;
@@ -1620,12 +1620,9 @@ pre.code-block {
     color: var(--interactive);
     pointer-events: none;
 }
-.collapsible-toggle::before {
-    content: "show";
-}
-.collapsible-section[open] > summary .collapsible-toggle::before {
-    content: "hide";
-}
+.collapsible-toggle .toggle-hide { display: none; }
+.collapsible-section[open] .toggle-show { display: none; }
+.collapsible-section[open] .toggle-hide { display: inline; }
 .collapsible-body {
     padding: 14px 0 0;
 }
