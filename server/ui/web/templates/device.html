@@ -1,215 +1,219 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+    <section class="device-overview">
 
-      <div class="grid device-details">
-        <div>
-          <dl>
-            <dt>Tag</dt>
-            <dd>{{.Device.Tag}}
-          </dl>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/devices">Devices</a>
+        <span class="breadcrumb__sep">/</span>
+        <span class="breadcrumb__current">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</span>
+      </nav>
+
+      <div class="device-identity">
+        <div class="device-identity__name-row">
+          <h1 class="device-identity__name">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
+          {{ if .Device.Status }}
+          <a href="/devices/{{.Device.Uuid}}/update/{{.Device.Status.CorrelationId}}"
+             title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}"
+             class="status-indicator">
+            <span class="status-indicator__dot{{if contains .Device.Status.Status "failed"}} is-danger{{end}}"></span>
+            {{.Device.Status.Status}}
+          </a>
+          {{ end }}
         </div>
-        <div>
-          <dl>
-            <dt>Apps</dt>
-            <dd>{{.Device.Apps}}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
-            <dt>Target</dt>
-            <dd>{{.Device.Target}}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
-            <dt>Configured update</dt>
-            <dd>
+        <div class="device-identity__uuid">{{.Device.Uuid}}</div>
+      </div>
+
+      <nav class="device-tabs" aria-label="Device views">
+        <span class="device-tab is-active" aria-current="page">Overview</span>
+        <a href="/devices/{{.Device.Uuid}}/apps-states" class="device-tab">App States</a>
+        <a href="/devices/{{.Device.Uuid}}/configs" class="device-tab">Configs</a>
+        <a href="/devices/{{.Device.Uuid}}/applied-configs" class="device-tab">Applied Configs</a>
+        <a href="/devices/{{.Device.Uuid}}/tests" class="device-tab">Tests</a>
+      </nav>
+
+      <div class="meta-section">
+        <div class="meta-grid">
+
+          <div class="meta-row">
+            <span class="meta-label">Tag</span>
+            <span class="meta-value"><span class="dd-chip dd-chip--tag">{{.Device.Tag}}</span></span>
+          </div>
+
+          <div class="meta-row">
+            <span class="meta-label">Group</span>
+            <span class="meta-value">
+              {{ if .Device.Labels.group }}<span class="dd-chip dd-chip--label">{{.Device.Labels.group}}</span>{{ else }}<span class="cell-empty">&mdash;</span>{{ end }}
+            </span>
+          </div>
+
+          <div class="meta-row">
+            <span class="meta-label">Target</span>
+            <span class="meta-value is-mono">{{.Device.Target}}</span>
+          </div>
+
+          <div class="meta-row">
+            <span class="meta-label">Configured update</span>
+            <span class="meta-value">
               {{ if .Device.UpdateName }}
-                <a href="/updates/{{.Device.Tag}}/{{.Device.UpdateName}}">{{.Device.UpdateName}}</a>
+                <a href="/updates/{{.Device.Tag}}/{{.Device.UpdateName}}" class="is-mono">{{.Device.UpdateName}}</a>
               {{ else }}
                 <em>Device needs to be added to a <a href="/updates">rollout</a></em>
               {{ end }}
-            </dd>
-          </dl>
-        </div>
-      </div>
+            </span>
+          </div>
 
-      <div class="grid device-details">
-        <div>
-          <dl>
-            <dt>First seen</dt>
-            <dd>{{tsToString .Device.CreatedAt}}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
-            <dt>Last seen</dt>
-            <dd>{{tsToString .Device.LastSeen}}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
-            <dt>Status</dt>
-            <dd>
-              {{ if .Device.Status }}
-                <a href="/devices/{{.Device.Uuid}}/update/{{.Device.Status.CorrelationId}}"
-                   title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}">
-                {{ if contains .Device.Status.Status "failed" }}
-                  <span style="color: red">{{.Device.Status.Status}}</span>
-                {{ else }}
-                  {{.Device.Status.Status}}
-                {{ end }}
-                </a>
+          <div class="meta-row meta-row--full">
+            <span class="meta-label">OSTree hash</span>
+            <span class="meta-value is-mono">{{.Device.OstreeHash}}</span>
+          </div>
+
+          <div class="meta-row meta-row--full">
+            <span class="meta-label">Apps</span>
+            <span class="meta-value">
+              {{ if .Device.Apps }}
+              <span class="tag-cloud">
+                {{ range .Device.Apps }}<span class="dd-chip dd-chip--app">{{.}}</span>{{ end }}
+              </span>
+              {{ else }}
+              <span class="cell-empty">No apps reported</span>
               {{ end }}
-            </dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
-            <dt>Labels - <a href='/devices/{{.Device.Uuid}}/labels'>manage</a></dt>
-            <dd>
-              <ul>
-              {{/* A name and a group labels (if present) are always the first ones */}}
-              {{ if .Device.Labels.name }}<li>name: {{.Device.Labels.name}}</li>{{ end }}
-              {{ if .Device.Labels.group }}<li>group: {{.Device.Labels.group}}</li>{{ end }}
-              {{ range $key, $value := .Device.Labels }}
-                {{if and (ne $key "name") (ne $key "group")}}<li>{{$key}}: {{$value}}</li>{{end}}
-              {{ end }}
-              </ul>
-            </dd>
+            </span>
+          </div>
+
+          <div class="meta-row meta-row--full">
+            <span class="meta-label">Labels</span>
+            <span class="meta-value">
+              <span class="tag-cloud">
+                {{ if .Device.Labels.name }}<span class="dd-chip dd-chip--label">name: {{.Device.Labels.name}}</span>{{ end }}
+                {{ if .Device.Labels.group }}<span class="dd-chip dd-chip--label">group: {{.Device.Labels.group}}</span>{{ end }}
+                {{ range otherLabels .Device.Labels }}<span class="dd-chip dd-chip--label">{{.Key}}: {{.Value}}</span>{{ end }}
+              </span>
+            </span>
+            <a href="/devices/{{.Device.Uuid}}/labels" class="meta-row-action">manage</a>
+          </div>
+
         </div>
       </div>
 
-      <div class="grid device-details">
-        <div>
-          <dl>
-            <dt>OSTree hash</dt>
-            <dd style="font-family: monospace">{{.Device.OstreeHash}}</dd>
-          </dl>
+      <div class="update-history">
+        <h2 class="update-history__title">Update History</h2>
+        <div class="history-list">
+          {{ range .Updates }}
+          <div class="history-entry">
+            <a href="/devices/{{$.Device.Uuid}}/update/{{.}}" class="history-entry__target">{{.}}</a>
+          </div>
+          {{ else }}
+          <div class="history-entry"><span class="history-entry__meta"><i>No updates applied</i></span></div>
+          {{ end }}
         </div>
       </div>
 
-      <div class="grid device-details">
-        <div>
-          <dl>
-            <dt></dt>
-            <dd>
-              <button onclick="location.href='/devices/{{.Device.Uuid}}/apps-states';">Apps States</button>
-              <button onclick="location.href='/configs/device/{{.Device.Uuid}}';">Configs</button>
-              <button onclick="location.href='/configs/device/{{.Device.Uuid}}/applied';">Applied Configs</button>
-              <button onclick="location.href='/devices/{{.Device.Uuid}}/tests';">Tests</button>
-            </dd>
-          </dl>
+      <div class="meta-section">
+        <h2 class="meta-section__title">Identity &amp; Network</h2>
+        <div class="meta-grid">
+
+          <div class="meta-row">
+            <span class="meta-label">First seen</span>
+            <span class="meta-value is-mono">{{tsToDate .Device.CreatedAt}}</span>
+          </div>
+
+          <div class="meta-row">
+            <span class="meta-label">Last seen</span>
+            <span class="meta-value is-mono">{{tsToDate .Device.LastSeen}}</span>
+          </div>
+
+          {{ if .IpInfo }}
+          <div class="meta-row">
+            <span class="meta-label">Hostname</span>
+            <span class="meta-value is-mono">{{.IpInfo.Hostname}}</span>
+          </div>
+
+          <div class="meta-row">
+            <span class="meta-label">IP address</span>
+            <span class="meta-value is-mono">{{.IpInfo.IP}}</span>
+          </div>
+
+          <div class="meta-row meta-row--full">
+            <span class="meta-label">MAC address</span>
+            <span class="meta-value is-mono">{{.IpInfo.Mac}}</span>
+          </div>
+          {{ else }}
+          <div class="meta-row meta-row--full">
+            <span class="meta-label">Network</span>
+            <span class="meta-value"><pre class="code-block">{{.Device.NetInfo}}</pre></span>
+          </div>
+          {{ end }}
+
         </div>
       </div>
-    </section>
 
-    <section class="content-section">
-      <div class="grid device-details">
-        <div>
-          <dl>
-            <dt>Update history</dt>
-            <dd>
-              <div class="updates-history-container">
-                <table>
-                  <tbody>
-                    {{range .Updates}}
-                    <tr>
-                      <td><a href="/devices/{{$.Device.Uuid}}/update/{{.}}">{{.}}</a></td>
-                    </tr>
-                    {{else}}
-                    <tr>
-                      <td><i>No updates applied</i></td>
-                    </tr>
-                    {{end}}
-                  </tbody>
-                </table>
-              </div>
-            </dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
-            <dt>Network</dt>
-            <dd>
-              {{if .IpInfo}}
-              <table>
-                <thead>
-                  <tr>
-                    <th>Hostname</th>
-                    <th>IP</th>
-                    <th>MAC</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>{{.IpInfo.Hostname}}</td>
-                    <td>{{.IpInfo.IP}}</td>
-                    <td>{{.IpInfo.Mac}}</td>
-                  </tr>
-                </tbody>
-              </table>
-              {{else}}
-              <pre>{{.Device.NetInfo}}</pre>
-              {{end}}
-            </dd>
-          </dl>
-          <dl>
-            <dt>Public key</dt>
-            <dd><pre>{{.Device.PubKey}}</pre></dd>
-          </dl>
-        </div>
+      <div class="meta-section">
+        <h2 class="meta-section__title">Hardware</h2>
+        <table class="flat-table">
+          <tbody>
+            <tr>
+              <td>Product</td>
+              <td>{{ .HwInfo.product }}</td>
+            </tr>
+            <tr>
+              <td>Hardware ID</td>
+              <td class="is-mono">{{ .HwInfo.id }}</td>
+            </tr>
+            <tr>
+              <td>Serial</td>
+              <td class="is-mono">{{ .HwInfo.serial }}</td>
+            </tr>
+            <tr>
+              <td>Description</td>
+              <td>{{ .HwInfo.description }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </section>
 
-    <section class="content-section">
-      <h3>Hardware info</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>ID</th>
-            <th>Serial</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{{ .HwInfo.product }}</td>
-            <td>{{ .HwInfo.id }}</td>
-            <td>{{ .HwInfo.serial }}</td>
-            <td>{{ .HwInfo.description}}</td>
-          </tr>
-        </tbody>
-      </table>
-      <details>
-        <summary role="button" class="secondary">Details</summary>
-        <pre>{{.Device.HwInfo}}</pre>
+      <details class="collapsible-section">
+        <summary>
+          <div class="summary-row">
+            <span class="collapsible-title">Hardware Details</span>
+            <span class="collapsible-toggle">
+              <span class="toggle-show">show</span>
+              <span class="toggle-hide">hide</span>
+            </span>
+          </div>
+        </summary>
+        <div class="collapsible-body">
+          <pre class="code-block">{{.Device.HwInfo}}</pre>
+        </div>
       </details>
+
+      <details class="collapsible-section">
+        <summary>
+          <div class="summary-row">
+            <span class="collapsible-title">Public Key</span>
+            <span class="collapsible-toggle">
+              <span class="toggle-show">show</span>
+              <span class="toggle-hide">hide</span>
+            </span>
+          </div>
+        </summary>
+        <div class="collapsible-body">
+          <pre class="code-block">{{.Device.PubKey}}</pre>
+        </div>
+      </details>
+
+      <details class="collapsible-section">
+        <summary>
+          <div class="summary-row">
+            <span class="collapsible-title">SOTA Config</span>
+            <span class="collapsible-toggle">
+              <span class="toggle-show">show</span>
+              <span class="toggle-hide">hide</span>
+            </span>
+          </div>
+        </summary>
+        <div class="collapsible-body">
+          <pre class="code-block">{{.Device.Aktoml}}</pre>
+        </div>
+      </details>
+
     </section>
-
-    <section class="content-section">
-      <h3>SOTA config</h3>
-      <pre>{{.Device.Aktoml}}</pre>
-    </section>
-
-    <style>
-      .updates-history-container {
-        max-height: calc(6 * 2.5em); /* Approximate height for 6 table rows */
-        overflow-y: auto;
-        border: 1px solid var(--muted-border-color, #e0e0e0);
-        border-radius: 4px;
-      }
-
-      .updates-history-container table {
-        margin: 0;
-        border: none;
-      }
-
-      .updates-history-container tbody tr:last-child td {
-        border-bottom: none;
-      }
-    </style>
-
 {{ template "footer" .}}

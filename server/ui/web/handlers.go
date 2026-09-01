@@ -66,13 +66,16 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 
 	e.GET("/auth/logout", h.authLogout, h.requireSession)
 	e.GET("/configs", h.configsList, h.requireSession, h.requireScope(users.ScopeDevicesR))
-	e.GET("/configs/device/:uuid", h.configsDeviceItem, h.requireSession, h.requireScope(users.ScopeDevicesR))
-	e.PATCH("/configs/device/:uuid", h.configsDeviceItemPatch, h.requireSession,
-		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
-	e.DELETE("/configs/device/:uuid", h.configsDeviceItemDelete, h.requireSession,
-		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
-	e.GET("/configs/device/:uuid/applied", h.configsDeviceItemApplied, h.requireSession, h.requireScope(users.ScopeDevicesR))
-	e.GET("/configs/device/:uuid/history", h.configsDeviceItemHistory, h.requireSession, h.requireScope(users.ScopeDevicesR))
+
+	e.GET("/configs/device/:uuid", func(c echo.Context) error {
+		return c.Redirect(http.StatusMovedPermanently, "/devices/"+c.Param("uuid")+"/configs")
+	})
+	e.GET("/configs/device/:uuid/applied", func(c echo.Context) error {
+		return c.Redirect(http.StatusMovedPermanently, "/devices/"+c.Param("uuid")+"/applied-configs")
+	})
+	e.GET("/configs/device/:uuid/history", func(c echo.Context) error {
+		return c.Redirect(http.StatusMovedPermanently, "/devices/"+c.Param("uuid")+"/configs/history")
+	})
 	e.PATCH("/configs/global", h.configsGlobalPatch, h.requireSession,
 		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
 	e.DELETE("/configs/global", h.configsGlobalDelete, h.requireSession,
@@ -91,6 +94,13 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	e.GET("/devices/:uuid/tests", h.devicesTests, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid/tests/:testid", h.devicesTestGet, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid/update/:update", h.devicesUpdateGet, h.requireSession, h.requireScope(users.ScopeDevicesR))
+	e.GET("/devices/:uuid/configs", h.configsDeviceItem, h.requireSession, h.requireScope(users.ScopeDevicesR))
+	e.PATCH("/devices/:uuid/configs", h.configsDeviceItemPatch, h.requireSession,
+		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
+	e.DELETE("/devices/:uuid/configs", h.configsDeviceItemDelete, h.requireSession,
+		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
+	e.GET("/devices/:uuid/applied-configs", h.configsDeviceItemApplied, h.requireSession, h.requireScope(users.ScopeDevicesR))
+	e.GET("/devices/:uuid/configs/history", h.configsDeviceItemHistory, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/settings", h.settings, h.requireSession)
 	e.GET("/updates", h.updatesList, h.requireSession, h.requireScope(users.ScopeUpdatesR))
 	e.GET("/updates/:tag/:name", h.updatesGet, h.requireSession, h.requireScope(users.ScopeUpdatesR))
