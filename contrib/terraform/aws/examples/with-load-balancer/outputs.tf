@@ -40,3 +40,8 @@ output "secret_prefix" {
   description = "Secrets Manager prefix holding the escrowed keys."
   value       = module.server.secret_prefix
 }
+
+output "cloudwatch_log_group_name" {
+  description = "CloudWatch Logs group receiving the fioserver journal, or null when disabled."
+  value       = module.server.cloudwatch_log_group_name
+}

@@ -16,6 +16,11 @@ output "public_ip" {
   value       = module.server.public_ip
 }
 
+output "ipv6_address" {
+  description = "Public IPv6 address, or null when enable_ipv6 is false. Point an AAAA record here if managing DNS yourself."
+  value       = module.server.ipv6_address
+}
+
 output "instance_id" {
   description = "Instance ID, for `aws ssm start-session --target <id>`."
   value       = module.server.instance_id
@@ -29,4 +34,9 @@ output "data_volume_id" {
 output "secret_prefix" {
   description = "Secrets Manager prefix holding the escrowed keys."
   value       = module.server.secret_prefix
+}
+
+output "cloudwatch_log_group_name" {
+  description = "CloudWatch Logs group receiving the fioserver journal, or null when disabled."
+  value       = module.server.cloudwatch_log_group_name
 }

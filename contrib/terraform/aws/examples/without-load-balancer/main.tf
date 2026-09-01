@@ -46,6 +46,7 @@ module "network" {
   allowed_ssh_cidr   = var.allowed_ssh_cidr
   enable_caddy_ports = true
   gateway_port       = var.gateway_port
+  enable_ipv6        = var.enable_ipv6
   tags               = var.tags
 }
 
@@ -66,6 +67,10 @@ module "server" {
 
   enable_caddy = true
   assign_eip   = true
+  enable_ipv6  = var.enable_ipv6
+
+  enable_cloudwatch_logs        = var.enable_cloudwatch_logs
+  cloudwatch_log_retention_days = var.cloudwatch_log_retention_days
 
   snapshot_retention_days = var.snapshot_retention_days
   tags                    = var.tags
@@ -79,6 +84,8 @@ module "dns" {
   hostname           = var.hostname
   hosted_zone_id     = var.hosted_zone_id
   instance_ip        = module.server.public_ip
+  instance_ipv6      = module.server.ipv6_address
+  enable_ipv6        = var.enable_ipv6
   create_certificate = false
 
   tags = var.tags

@@ -76,6 +76,21 @@ variable "instance_ip" {
   default     = ""
 }
 
+variable "instance_ipv6" {
+  type        = string
+  description = <<-EOT
+    Instance's public IPv6 address for a direct AAAA record, used by the
+    Caddy topology. Leave empty to skip the AAAA record.
+  EOT
+  default     = ""
+}
+
+variable "enable_ipv6" {
+  type        = bool
+  description = "Create AAAA records alongside the A records."
+  default     = true
+}
+
 variable "tags" {
   type        = map(string)
   description = "Extra tags applied to every resource."

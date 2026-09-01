@@ -25,6 +25,10 @@ data_volume_size = 100
 # ssh_key_name     = "my-key"
 # allowed_ssh_cidr = "203.0.113.0/24"
 
+# Uncomment to ship the fioserver journal to CloudWatch Logs.
+# enable_cloudwatch_logs        = true
+# cloudwatch_log_retention_days = 30
+
 tags = {
   Project = "update-server"
 }

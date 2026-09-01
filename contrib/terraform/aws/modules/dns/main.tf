@@ -89,6 +89,20 @@ resource "aws_route53_record" "ui" {
   }
 }
 
+resource "aws_route53_record" "ui_ipv6" {
+  count = local.manage_dns && local.want_certificate && var.enable_ipv6 ? 1 : 0
+
+  zone_id = var.hosted_zone_id
+  name    = var.hostname
+  type    = "AAAA"
+
+  alias {
+    name                   = var.alb_dns_name
+    zone_id                = var.alb_zone_id
+    evaluate_target_health = false
+  }
+}
+
 # The gateway needs its own name, because a single A record cannot point at two
 # different load balancers. Devices are told this name via the TLS certificate's
 # SAN, so it must match the hostname passed to pki-init.
@@ -98,6 +112,20 @@ resource "aws_route53_record" "gateway" {
   zone_id = var.hosted_zone_id
   name    = var.gateway_hostname == "" ? var.hostname : var.gateway_hostname
   type    = "A"
+
+  alias {
+    name                   = var.nlb_dns_name
+    zone_id                = var.nlb_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "gateway_ipv6" {
+  count = local.manage_dns && local.want_certificate && var.enable_ipv6 ? 1 : 0
+
+  zone_id = var.hosted_zone_id
+  name    = var.gateway_hostname == "" ? var.hostname : var.gateway_hostname
+  type    = "AAAA"
 
   alias {
     name                   = var.nlb_dns_name
@@ -117,4 +145,14 @@ resource "aws_route53_record" "direct" {
   type    = "A"
   ttl     = 300
   records = [var.instance_ip]
+}
+
+resource "aws_route53_record" "direct_ipv6" {
+  count = local.manage_dns && !local.want_certificate && var.enable_ipv6 && var.instance_ipv6 != "" ? 1 : 0
+
+  zone_id = var.hosted_zone_id
+  name    = var.hostname
+  type    = "AAAA"
+  ttl     = 300
+  records = [var.instance_ipv6]
 }

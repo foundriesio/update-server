@@ -35,6 +35,7 @@ resource "aws_lb" "ui" {
   load_balancer_type = "application"
   security_groups    = [var.alb_security_group_id]
   subnets            = var.subnet_ids
+  ip_address_type    = var.enable_ipv6 ? "dualstack" : "ipv4"
 
   idle_timeout = var.idle_timeout
 
@@ -128,6 +129,7 @@ resource "aws_lb" "gateway" {
   internal           = false
   load_balancer_type = "network"
   subnets            = var.subnet_ids
+  ip_address_type    = var.enable_ipv6 ? "dualstack" : "ipv4"
 
   enable_cross_zone_load_balancing = true
 

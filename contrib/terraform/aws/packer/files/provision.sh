@@ -98,6 +98,13 @@ dpkg -i /tmp/amazon-ssm-agent.deb
 rm -f /tmp/amazon-ssm-agent.deb
 systemctl enable amazon-ssm-agent
 
+log "installing the CloudWatch agent (disabled by default; Terraform enables it via user_data when enable_cloudwatch_logs is set)"
+curl -fsSL "https://amazoncloudwatch-agent.s3.amazonaws.com/debian/${FIOSERVER_ARCH}/latest/amazon-cloudwatch-agent.deb" \
+    -o /tmp/amazon-cloudwatch-agent.deb
+dpkg -i /tmp/amazon-cloudwatch-agent.deb
+rm -f /tmp/amazon-cloudwatch-agent.deb
+systemctl disable amazon-cloudwatch-agent || true
+
 log "installing fioserver ${FIOSERVER_VERSION} (${FIOSERVER_ARCH})"
 # Releases publish bare, uncompressed binaries -- no tarball, no version in the
 # filename -- so the version has to come from the release tag in the URL.
