@@ -29,7 +29,7 @@
     {{ if gt .CreatedAt 0 }}
       <li>
         {{/* Device UUID remains unmodified, so we don't need to show it here */}}
-        <a href="/configs/device/{{ .Auxiliary }}">Device config</a>
+        <a href="/devices/{{ .Auxiliary }}/configs">Device config</a>
         created {{ if gt (len .CreatedBy) 0 }}by <b>{{ .CreatedBy }}</b>{{ end }}
         at <b>{{ tsToString .CreatedAt }}</b>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}
       </li>
