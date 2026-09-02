@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -57,7 +58,16 @@ func ParseJsonBody(c echo.Context, bytes []byte, res any) error {
 }
 
 func middlewareLogger() echo.MiddlewareFunc {
+	var healthzHits atomic.Uint64
+
 	return middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		Skipper: func(c echo.Context) bool {
+			if c.Path() != "/healthz" {
+				return false
+			}
+			// log once every 10 hits to now swamp our logs
+			return healthzHits.Add(1)%10 != 1
+		},
 		HandleError:      true, // forwards error to the global error handler, so it can decide appropriate status code
 		LogContentLength: true,
 		LogError:         true,
