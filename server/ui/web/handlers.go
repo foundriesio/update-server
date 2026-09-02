@@ -54,6 +54,8 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 
 	e.GET("/", h.index, h.requireSession)
 
+	e.GET("/healthz", func(c echo.Context) error { return c.String(200, "ok") })
+
 	rateLimiter := authProvider.GetRateLimiterMiddleware()
 	e.GET("/auth/activate", h.authDevice, h.requireSession)
 	e.GET("/auth/confirm-activation", h.authDeviceConfirm, h.requireSession, rateLimiter)
