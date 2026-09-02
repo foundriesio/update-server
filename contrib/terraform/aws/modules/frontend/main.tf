@@ -62,12 +62,7 @@ resource "aws_lb_target_group" "ui" {
   target_type = "ip"
 
   health_check {
-    # /favicon, not /. The root path is wrapped in a session check and its
-    # status depends on the configured auth provider -- 307 under noauth, 401
-    # under local auth. /favicon returns 200 unauthenticated under every
-    # provider, so the check does not have to change with the operator's auth
-    # configuration.
-    path                = "/favicon"
+    path                = "/healthz"
     matcher             = "200"
     protocol            = "HTTP"
     interval            = 30
@@ -145,7 +140,9 @@ resource "aws_lb_target_group" "gateway" {
   # gateway answers an unauthenticated request with 403 rather than closing the
   # connection, so a completed handshake proves it is serving.
   health_check {
-    protocol            = "TCP"
+    protocol            = "HTTPS"
+    path                = "/healthz"
+    matcher             = "200"
     interval            = 30
     healthy_threshold   = 2
     unhealthy_threshold = 3

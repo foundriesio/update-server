@@ -32,6 +32,8 @@ func RegisterHandlers(e *echo.Echo, storage *storage.Storage, url string) {
 	cache := cache.NewCache[string, string]().WithMaxKeys(10000).WithTTL(time.Hour).WithLRU()
 	h := handlers{storage: storage, url: url, tokenCache: cache}
 
+	e.GET("/healthz", func(c echo.Context) error { return c.String(200, "ok") })
+
 	mtls := e.Group("/")
 	mtls.Use(
 		h.authDevice,
