@@ -67,6 +67,28 @@ To start fresh (remove all cached binaries, the venv, and the update artifact):
 make clean
 ```
 
+## aktualizr-lite tests
+
+`test_e2e_aklite_update_flow.py` drives a real `aktualizr-lite` client (instead
+of `fioup`) through the same update flow, exercising both the built-in libostree
+pull and the `fiopull` helper. These are kept out of the default `make build` /
+`make run` because they require a local
+[`aktualizr-lite`](https://github.com/foundriesio/aktualizr-lite) checkout and
+build the client (and `fiopull`) from source in a container.
+
+Point `AKLITE_REPO` at your checkout (it defaults to a sibling `aktualizr-lite`
+directory) and run:
+
+```
+make aklite-run
+```
+
+or build the image without running the tests:
+
+```
+make aklite-build
+```
+
 ## The tests
 
 | Module | What it covers |

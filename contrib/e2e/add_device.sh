@@ -45,10 +45,15 @@ extendedKeyUsage=critical, clientAuth
 basicConstraints=CA:TRUE
 EOF
 
+cat >"${DATA_DIR}/device/client.ext" <<EOF
+keyUsage=critical, digitalSignature
+extendedKeyUsage=critical, clientAuth
+EOF
+
 openssl x509 -req -days 3650 \
     -in "${DATA_DIR}/device/device.csr" \
     -CAcreateserial \
-    -extfile "${DATA_DIR}/device/ca.ext" \
+    -extfile "${DATA_DIR}/device/client.ext" \
     -CAkey "${DATA_DIR}/certs/device-ca.key" \
     -CA "${DATA_DIR}/certs/device-ca.crt" \
     -out "${DATA_DIR}/device/client.pem"

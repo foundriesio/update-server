@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -64,26 +65,58 @@ func (h handlers) authToken(next echo.HandlerFunc) echo.HandlerFunc {
 		if len(token) == 0 {
 			return EchoError(c, errors.New("missing token"), http.StatusUnauthorized, "Missing token")
 		}
+		return h.lookupTokenDevice(c, token, next)
+	}
+}
 
-		uuid, ok := h.tokenCache.Get(token)
-		if !ok {
-			return c.String(http.StatusUnauthorized, "invalid or expired token")
+// lookupTokenDevice validates a short-lived token, resolves it to a device,
+// and sets the device in the request context before calling next.
+// Used by both authToken (query-param tokens for the registry) and
+// authDeviceOrBearer (Bearer-header tokens for ostree/fiopull).
+func (h handlers) lookupTokenDevice(c echo.Context, token string, next echo.HandlerFunc) error {
+	uuid, ok := h.tokenCache.Get(token)
+	if !ok {
+		return c.String(http.StatusUnauthorized, "invalid or expired token")
+	}
+	ctx := c.Request().Context()
+	log := CtxGetLog(ctx).With("device", uuid)
+	ctx = CtxWithLog(ctx, log)
+
+	device, err := h.storage.DeviceGet(uuid)
+	if err != nil {
+		log.Error("Unable to query for device", "error", err)
+		return c.String(http.StatusBadGateway, "Unable to look up device")
+	} else if device == nil || device.Deleted {
+		return c.String(http.StatusUnauthorized, "invalid device")
+	}
+
+	ctx = CtxWithDevice(ctx, device)
+	c.SetRequest(c.Request().WithContext(ctx))
+	return next(c)
+}
+
+// authDeviceOrBearer authenticates ostree object fetch requests via either:
+//   - mTLS client certificate (libostree pull path, same as authDevice), or
+//   - "Authorization: Bearer <token>" issued by ostreeUrls (fiopull path).
+//
+// mTLS is tried first; Bearer token is the fallback when no client cert is
+// present. This lets both pull paths share a single /ostree/* route.
+func (h handlers) authDeviceOrBearer(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		req := c.Request()
+
+		if len(req.TLS.PeerCertificates) > 0 {
+			// mTLS path: delegate to the standard device auth + checkin chain.
+			return h.authDevice(h.checkinDevice(next))(c)
 		}
-		ctx := c.Request().Context()
-		log := CtxGetLog(ctx).With("device", uuid)
-		ctx = CtxWithLog(ctx, log)
 
-		device, err := h.storage.DeviceGet(uuid)
-		if err != nil {
-			log.Error("Unable to query for device", "error", err)
-			return c.String(http.StatusBadGateway, "Unable to look up device")
-		} else if device == nil || device.Deleted {
-			return c.String(http.StatusUnauthorized, "invalid device")
+		// Bearer token path for fiopull.
+		const prefix = "Bearer "
+		authHeader := req.Header.Get("Authorization")
+		if !strings.HasPrefix(authHeader, prefix) {
+			return c.String(http.StatusUnauthorized, "missing or invalid Authorization header")
 		}
-
-		ctx = CtxWithDevice(ctx, device)
-		c.SetRequest(c.Request().WithContext(ctx))
-		return next(c)
+		return h.lookupTokenDevice(c, authHeader[len(prefix):], next)
 	}
 }
 

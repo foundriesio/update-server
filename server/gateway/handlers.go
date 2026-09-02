@@ -51,7 +51,6 @@ func RegisterHandlers(e *echo.Echo, storage *storage.Storage, url string) {
 	mtls.GET("device", h.deviceGet)
 	mtls.POST("events", h.eventsUpload)
 	mtls.POST("ostree/download-urls", h.ostreeUrls)
-	mtls.GET("ostree/*", h.ostreeFileStream)
 	mtls.GET("repo/timestamp.json", h.metaTimestamp)
 	mtls.GET("repo/snapshot.json", h.metaSnapshot)
 	mtls.GET("repo/targets.json", h.metaTargets)
@@ -62,6 +61,12 @@ func RegisterHandlers(e *echo.Echo, storage *storage.Storage, url string) {
 	mtls.POST("tests", h.testCreate)
 	mtls.PUT("tests/:testid", h.testComplete)
 	mtls.PUT("tests/:testid/:path", h.testArtifact)
+
+	// ostree object fetches accept either an mTLS client certificate (libostree
+	// pull path) or a Bearer token issued by ostreeUrls (fiopull path).
+	ostree := e.Group("/ostree")
+	ostree.Use(h.authDeviceOrBearer)
+	ostree.GET("/*", h.ostreeFileStream)
 
 	registry := e.Group("registry/v2")
 	registry.Use(h.authToken)

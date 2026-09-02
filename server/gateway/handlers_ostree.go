@@ -4,6 +4,7 @@
 package gateway
 
 import (
+	"crypto/rand"
 	"errors"
 	"net/http"
 	"path/filepath"
@@ -12,13 +13,22 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type ostreeDownloadUrl struct {
+	DownloadUrl string `json:"download_url"`
+	AccessToken string `json:"access_token"`
+}
+
 // @Summary Get the Ostree download URLs
 // @Produce json
 // @Success 200
 // @Router  /ostree/download-urls [post]
 func (h handlers) ostreeUrls(c echo.Context) error {
-	// Returning no download URLs tells the client to only use this OSTree server.
-	return c.NoContent(http.StatusNoContent)
+	d := CtxGetDevice(c.Request().Context())
+	token := rand.Text()[:16]
+	h.tokenCache.Set(token, d.Uuid, 0)
+	return c.JSON(http.StatusOK, []ostreeDownloadUrl{
+		{DownloadUrl: h.url + "/ostree", AccessToken: token},
+	})
 }
 
 // @Summary Get the Ostree file contents

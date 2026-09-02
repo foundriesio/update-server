@@ -807,8 +807,25 @@ func TestOstree(t *testing.T) {
 	})
 	t.Run("Download URLs", func(t *testing.T) {
 		tcCi42.t = t
-		body := tcCi42.POST("/ostree/download-urls", 204, nil)
-		assert.Equal(t, "", string(body))
+		body := tcCi42.POST("/ostree/download-urls", 200, nil)
+		var urls []struct {
+			DownloadUrl string `json:"download_url"`
+			AccessToken string `json:"access_token"`
+		}
+		require.Nil(t, json.Unmarshal(body, &urls))
+		require.Len(t, urls, 1)
+		assert.NotEmpty(t, urls[0].DownloadUrl)
+		assert.NotEmpty(t, urls[0].AccessToken)
+
+		// The issued token must authenticate a GET /ostree/* fetch without mTLS.
+		req := httptest.NewRequest(http.MethodGet, "/ostree/config", nil)
+		req.TLS = &tls.ConnectionState{} // no client certificate
+		req.Header.Set("Authorization", "Bearer "+urls[0].AccessToken)
+		req = req.WithContext(context.CtxWithLog(req.Context(), tcCi42.log))
+		rec := httptest.NewRecorder()
+		tcCi42.e.ServeHTTP(rec, req)
+		require.Equal(t, 200, rec.Code)
+		assert.Equal(t, "CI test config", rec.Body.String())
 	})
 	t.Run("Summary signature", func(t *testing.T) {
 		tcCi42.t = t

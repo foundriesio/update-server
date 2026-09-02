@@ -1,0 +1,41 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Runtime image for the aktualizr-lite e2e client.
+#
+# The aktualizr-lite binary is built separately by the aklite repo's own
+# containerized flow and staged into .cache/ by the Makefile (see the
+# `$(CACHE)/aktualizr-lite` target); we COPY it here so the runtime libs match
+# the aklite-dev base it was linked against. Unlike Dockerfile.fioup's docker:dind
+# base, this image is ubuntu-based, so a docker daemon is installed and started
+# from the entrypoint.
+FROM foundries/aklite-dev:ubuntu-25.04
+
+# The base image already provides a libcurl-backed ostree (built --with-curl
+# --without-soup, matching real LMP devices), composectl, and curl. We only add
+# the docker daemon (dockerd) that the entrypoint starts; the base has just the
+# docker CLI. Do NOT install the ostree package here: it would replace the
+# curl-backed ostree with a libsoup one and change the pull path under test.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Staged binaries and helper scripts (populated under .cache/ by the Makefile).
+COPY .cache/aktualizr-lite        /usr/local/bin/aktualizr-lite
+COPY .cache/libaktualizr_lite.so  /usr/local/lib/libaktualizr_lite.so
+COPY .cache/libaktualizr.so       /usr/local/lib/libaktualizr.so
+COPY .cache/composectl            /usr/bin/composectl
+# fiopull: the ostree pull helper used when ostree_pull_tool = "fiopull" is set.
+# Installed at the default FioPullBin path so aktualizr-lite finds it by name.
+COPY .cache/fiopull               /usr/bin/fiopull
+COPY .cache/make_sys_rootfs.sh    /usr/local/bin/make_sys_rootfs.sh
+COPY entrypoint.aklite.sh         /usr/local/bin/entrypoint.aklite.sh
+RUN chmod +x /usr/local/bin/aktualizr-lite /usr/bin/composectl /usr/bin/fiopull \
+        /usr/local/bin/make_sys_rootfs.sh /usr/local/bin/entrypoint.aklite.sh \
+    && ldconfig
+
+# aktualizr-lite drives the docker daemon started by the entrypoint.
+ENV DOCKER_HOST=unix:///var/run/docker.sock
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.aklite.sh"]
+CMD ["sleep", "infinity"]
