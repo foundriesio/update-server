@@ -1,28 +1,119 @@
 {{/* Used by the auth package's localProvider implementation */}}
-{{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    {{ if .CsrfToken }}<meta name="csrf-token" content="{{.CsrfToken}}">{{ end }}
 
-      <form method="post" action="/auth/login">
-        {{ if .CsrfToken }}<input type="hidden" name="_csrf" value="{{.CsrfToken}}">{{ end }}
-        <fieldset>
-          <legend><strong>Username</strong></legend>
-          <input type="text" name="username" required />
-        </fieldset>
+    <title>{{.Title}} - {{.BrandName}}</title>
+    <link rel="icon" href="/favicon">
 
-        <fieldset>
-          <legend><strong>Password</strong></legend>
-          <input type="password" name="password" required />
-        </fieldset>
+    <link rel="stylesheet" href="/css/pico_min_211.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/login.css">
+    {{ template "csrf-fetch-script" . }}
+  </head>
 
-        <button type="submit">Login</button>
-      </form>
-
-      {{ if .Reason }}
-      <section>
-        <i><small>Reason: {{.Reason}}</small></i>
+  <body>
+    <div class="login-split">
+      <section class="login-brand" aria-label="{{.BrandName}}">
+        {{ if .LogoPath }}<img src="{{.LogoPath}}" alt="{{.BrandName}}" class="login-brand-logo">{{ end }}
+        <span class="login-brand-lockup">{{.BrandName}}</span>
+        <div class="login-panel-body">
+          <h1>Fleet updates,<br>under control.</h1>
+          <p class="login-tagline">The management console for over-the-air updates across your embedded and IoT device fleet.</p>
+        </div>
+        <span class="login-panel-footer">{{.Version}}</span>
       </section>
-      {{ end }}
-    </section>
 
-{{ template "footer"}}
+      <main id="login" class="login-form-panel">
+        <button id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+          <svg class="icon-light" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.3"/>
+            <g stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+              <line x1="8" y1="0.8" x2="8" y2="2.6"/>
+              <line x1="8" y1="13.4" x2="8" y2="15.2"/>
+              <line x1="0.8" y1="8" x2="2.6" y2="8"/>
+              <line x1="13.4" y1="8" x2="15.2" y2="8"/>
+              <line x1="2.7" y1="2.7" x2="4" y2="4"/>
+              <line x1="12" y1="12" x2="13.3" y2="13.3"/>
+              <line x1="2.7" y1="13.3" x2="4" y2="12"/>
+              <line x1="12" y1="4" x2="13.3" y2="2.7"/>
+            </g>
+          </svg>
+          <svg class="icon-dark" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M13.5 9.3A6 6 0 1 1 6.7 2.5a5 5 0 0 0 6.8 6.8Z" fill="currentColor"/>
+          </svg>
+        </button>
+
+        <div class="login-form-wrap">
+          <p class="login-eyebrow">Account access</p>
+          <h2 class="login-title">Sign in</h2>
+          <p class="login-sub">Use your {{.BrandName}} credentials.</p>
+
+          {{ if .Reason }}
+          <div class="login-error" role="alert">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/>
+              <line x1="8" y1="4.6" x2="8" y2="8.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              <circle cx="8" cy="11" r="0.9" fill="currentColor"/>
+            </svg>
+            <span>{{.Reason}}</span>
+          </div>
+          {{ end }}
+
+          <form method="post" action="/auth/login">
+            {{ if .CsrfToken }}<input type="hidden" name="_csrf" value="{{.CsrfToken}}">{{ end }}
+            <fieldset>
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+            </fieldset>
+            <fieldset>
+              <label for="password">Password</label>
+              <input type="password" id="password" name="password" autocomplete="current-password" required>
+            </fieldset>
+            <button type="submit">Sign in</button>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <script>
+    (function () {
+      var THEME_STORAGE_KEY = 'login-theme';
+      var themeToggle = document.getElementById('theme-toggle');
+      var html = document.documentElement;
+
+      function setTheme(theme) {
+        if (theme === 'dark') {
+          html.setAttribute('data-theme', 'dark');
+          themeToggle.setAttribute('aria-label', 'Switch to light mode');
+          themeToggle.setAttribute('title', 'Switch to light mode');
+        } else {
+          html.removeAttribute('data-theme');
+          themeToggle.setAttribute('aria-label', 'Switch to dark mode');
+          themeToggle.setAttribute('title', 'Switch to dark mode');
+        }
+      }
+
+      var savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        setTheme(savedTheme);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setTheme('dark');
+      } else {
+        setTheme('light');
+      }
+
+      themeToggle.addEventListener('click', function () {
+        var isDark = html.getAttribute('data-theme') === 'dark';
+        var next = isDark ? 'light' : 'dark';
+        setTheme(next);
+        localStorage.setItem(THEME_STORAGE_KEY, next);
+      });
+    })();
+    </script>
+  </body>
+</html>
