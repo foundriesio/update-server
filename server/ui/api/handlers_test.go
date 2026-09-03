@@ -353,7 +353,7 @@ func NewTestClientWithCA(t *testing.T, org string) *testClient {
 		Username:      "root",
 		AllowedScopes: 0,
 	}
-	RegisterHandlers(e, deviceCa, apiS, userS, &testAuthProvider{user: u})
+	RegisterHandlers(e, deviceCa, apiS, userS, fsS, &testAuthProvider{user: u})
 
 	tc := testClient{
 		t:   t,
