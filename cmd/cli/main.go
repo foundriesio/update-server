@@ -12,6 +12,7 @@ import (
 	"github.com/foundriesio/update-server/cli/subcommands/configs"
 	"github.com/foundriesio/update-server/cli/subcommands/devices"
 	"github.com/foundriesio/update-server/cli/subcommands/login"
+	"github.com/foundriesio/update-server/cli/subcommands/pki"
 	"github.com/foundriesio/update-server/cli/subcommands/updates"
 	"github.com/foundriesio/update-server/version"
 	"github.com/spf13/cobra"
@@ -66,6 +67,7 @@ func init() {
 	rootCmd.AddCommand(configs.ConfigsCmd)
 	rootCmd.AddCommand(devices.DevicesCmd)
 	rootCmd.AddCommand(updates.UpdatesCmd)
+	rootCmd.AddCommand(pki.PkiCmd)
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print the version of satcli",
