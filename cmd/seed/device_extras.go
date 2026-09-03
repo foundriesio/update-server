@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/foundriesio/update-server/storage"
@@ -130,6 +131,65 @@ func seedDeviceTests(d *gateway.Device, targetName string, i int) error {
 			if err := d.TestStoreArtifact(testId, "test.log", bytes.NewReader(artifact)); err != nil {
 				return fmt.Errorf("TestStoreArtifact(%s): %w", testId, err)
 			}
+		}
+	}
+	return nil
+}
+
+// updateHistoryStages is the full success event sequence for one simulated
+// update. A failed entry only sends the first 4 stages, the last one marked
+// unsuccessful, mirroring how a real failed install would look.
+var updateHistoryStages = []string{
+	"EcuDownloadStarted",
+	"EcuDownloadCompleted",
+	"EcuInstallationStarted",
+	"EcuInstallationApplied",
+	"EcuInstallationCompleted",
+}
+
+// seedDeviceUpdateHistory randomly gives about a third of devices a long
+// (10-15 entry) update history, so the device's "Update History" page isn't
+// always sparse, without making every seeded device look identical. Roughly
+// one in five entries is seeded as a failed update for visual variety.
+func seedDeviceUpdateHistory(d *gateway.Device, i int) error {
+	if rand.Intn(3) != 0 {
+		return nil
+	}
+
+	count := 10 + rand.Intn(6) // 10-15 entries
+	for j := 0; j < count; j++ {
+		failed := rand.Intn(5) == 0
+		stages := updateHistoryStages
+		if failed {
+			stages = updateHistoryStages[:4]
+		}
+
+		version := fmt.Sprintf("%d", 100+i*20+j)
+		targetName := fmt.Sprintf("intel-corei7-64-lmp-%s", version)
+		corrId := fmt.Sprintf("seed-hist-%d-%02d", i, j)
+		base := time.Now().UTC().AddDate(0, 0, -j)
+
+		events := make([]storage.DeviceUpdateEvent, 0, len(stages))
+		for k, stage := range stages {
+			success := true
+			if failed && k == len(stages)-1 {
+				success = false
+			}
+			events = append(events, storage.DeviceUpdateEvent{
+				Id:         fmt.Sprintf("%s-%d", corrId, k),
+				DeviceTime: base.Add(time.Duration(k) * time.Second).Format(time.RFC3339),
+				Event: storage.DeviceEvent{
+					CorrelationId: corrId,
+					Ecu:           "seed-ecu",
+					Success:       &success,
+					TargetName:    targetName,
+					Version:       version,
+				},
+				EventType: storage.DeviceEventType{Id: stage, Version: 1},
+			})
+		}
+		if err := d.ProcessEvents(events); err != nil {
+			return fmt.Errorf("ProcessEvents(%s, %s): %w", d.Uuid, corrId, err)
 		}
 	}
 	return nil
