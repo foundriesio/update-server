@@ -1,127 +1,144 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
-      {{ template "configs-item" . }}
-      {{ if .CanEdit }}
-      <button name="AddFile">Add</button>
-      <script type="module">
-        window.EditConfigsFileConfig.apiUrl = '/configs/global';
-      </script>
-      {{ end }}
-      <button onclick="location.href='/configs/global/history'">History</button>
-    </section>
-    {{ $groupsPerPage := 20 }}
-    <section class="content-section">
-      <h2>Groups</h2>
-      <table class="striped">
-        <thead>
-          <tr>
-            <th class="sortable">
-              <a class="groups-header" href="#" role="button"
-                 title="Sorted ascending, click for descending">UUID <span class="sort-active">▲</span></a>
-              <a class="groups-header hidden" href="#" role="button"
-                 title="Sorted descending, click for ascending">UUID <span class="sort-active">▼</span></a>
-            </th>
-          </tr>
-        </thead>
-        <tbody id="groups-table">
-          {{ range $i, $_ := .Groups }}
-          <tr{{ if ge $i $groupsPerPage }} class="hidden"{{ end }}>
-            <td><a href="/configs/group/{{ . }}">{{ . }}</a></td>
-          </tr>
-          {{ end }}
-        </tbody>
-      </table>
-      {{ if gt (len .Groups) $groupsPerPage }}
-      <nav>
-          <span>
-          <a id="groups-page-first" class="groups-nav hidden" href="#" role="button">&laquo; First</a>
-          <a id="groups-page-prev" class="groups-nav hidden" href="#" role="button">&larr; Previous</a>
-        </span>
-        <span>&nbsp;Showing page <span id="groups-page">1</span> of <span id="groups-page-total"></span>.&nbsp;</span>
-        <span>
-          <a id="groups-page-next" class="groups-nav" href="#" role="button">Next &rarr;</a>
-          <a id="groups-page-last" class="groups-nav" href="#" role="button">Last &raquo;</a>
-        </span>
-      </nav>
-      {{ end }}
-      <script type="module">
-        const $ = document.querySelector.bind(document),
-              $$ = document.querySelectorAll.bind(document);
+<div class="configs-page">
 
-        /* Groups Sorting */
-        function groupsFlipSort() {
-          // Flip sort header.
-          $$('.groups-header').forEach(el => el.classList.toggle('hidden'));
-          // Move each row to the bottom, starting from the original top
-          const tbl = $('#groups-table');
-          Array.from(tbl.rows).reverse().forEach(row => tbl.appendChild(row));
-          if (groupsTotalPages > 1) { updatePageTable() }
-        }
+  <h1 class="page-title">Configurations</h1>
+  <p class="page-subtitle">1 global config · {{ len .Groups }} {{ if eq (len .Groups) 1 }}group{{ else }}groups{{ end }}</p>
 
-        $$('.groups-header').forEach(el => {
-          el.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            groupsFlipSort();
-          });
-        });
+  {{ with .Configs }}
+  <div class="entity-header">
+    <h2 class="entity-name">Global</h2>
+    {{ if .Reason }}<span class="chip-reason">{{.Reason}}</span>{{ end }}
+    <a href="/configs/global/history" class="header-action-link">History →</a>
+  </div>
+  <div class="meta-grid">
+    <div class="meta-row">
+      <span class="meta-label">Created at</span>
+      <span class="meta-value is-mono">{{tsToString .CreatedAt}}</span>
+    </div>
+    <div class="meta-row">
+      <span class="meta-label">Created by</span>
+      <span class="meta-value is-mono">{{.CreatedBy}}</span>
+    </div>
+  </div>
+  <div class="configs-files-wrapper">
+    <p class="section-label">Files</p>
+    {{ template "configs-item-files" $ }}
+  </div>
+  {{ end }}
 
-        /* Groups Paging */
-        const groupsPerPage = {{ $groupsPerPage }},
-              groupsTotal = {{ len .Groups }},
-              groupsTotalPages = Math.ceil(groupsTotal / groupsPerPage);
+  {{ if .CanEdit }}
+  <div class="action-row">
+    <button class="btn-ghost" name="AddFile">Add</button>
+  </div>
+  <script type="module">
+    window.EditConfigsFileConfig.apiUrl = '/configs/global';
+  </script>
+  {{ else }}
+  <div style="margin-bottom: 40px;"></div>
+  {{ end }}
 
-        let groupsPage = 1;
+  {{ $groupsPerPage := 20 }}
+  <div class="groups-section">
+  <div class="entity-header">
+    <h2 class="entity-name">Groups</h2>
+  </div>
+    <table class="configs-group-table">
+      <thead>
+        <tr>
+          <th>
+            <button class="sort-btn groups-header" aria-label="Sorted ascending, click for descending">
+              UUID <span class="sort-indicator">▲</span>
+            </button>
+            <button class="sort-btn groups-header hidden" aria-label="Sorted descending, click for ascending">
+              UUID <span class="sort-indicator">▼</span>
+            </button>
+          </th>
+        </tr>
+      </thead>
+      <tbody id="groups-table">
+        {{ range $i, $_ := .Groups }}
+        <tr{{ if ge $i $groupsPerPage }} class="hidden"{{ end }}>
+          <td><a href="/configs/group/{{ . }}">{{ . }}</a></td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ if gt (len .Groups) $groupsPerPage }}
+    <div class="pagination">
+      <span class="pagination-summary">Showing page <span id="groups-page">1</span> of <span id="groups-page-total"></span></span>
+      <div class="pagination-controls">
+        <a id="groups-page-first" class="page-link hidden" href="#" role="button" aria-label="First page">&laquo;</a>
+        <a id="groups-page-prev" class="page-link hidden" href="#" role="button" aria-label="Previous page">&lsaquo;</a>
+        <a id="groups-page-next" class="page-link" href="#" role="button" aria-label="Next page">&rsaquo;</a>
+        <a id="groups-page-last" class="page-link" href="#" role="button" aria-label="Last page">&raquo;</a>
+      </div>
+    </div>
+    {{ end }}
+  </div>
 
-        function updatePageNum(el) {
-          switch (el.id) {
-          case 'groups-page-first':
-            groupsPage = 1;
-            break;
-          case 'groups-page-prev':
-            groupsPage -= 1;
-            break;
-          case 'groups-page-next':
-            groupsPage += 1;
-            break;
-          case 'groups-page-last':
-            groupsPage = groupsTotalPages;
-            break;
-          default:
-            console.log('unknown page nav id', el.id);
-            break;
-          }
-        }
+</div>
 
-        function updatePageNav() {
-          $('#groups-page').textContent = groupsPage;
-          $('#groups-page-first').classList.toggle('hidden', groupsPage === 1);
-          $('#groups-page-prev').classList.toggle('hidden', groupsPage === 1);
-          $('#groups-page-next').classList.toggle('hidden', groupsPage === groupsTotalPages);
-          $('#groups-page-last').classList.toggle('hidden', groupsPage === groupsTotalPages);
-        }
+<script>
+(function () {
+  var $ = document.querySelector.bind(document),
+      $$ = document.querySelectorAll.bind(document);
 
-        function updatePageTable() {
-          const end = groupsPage * groupsPerPage,
-                start = end - groupsPerPage,
-                tbl = $('#groups-table');
-          Array.from(tbl.rows).forEach((row, index) => {
-            row.classList.toggle('hidden', index < start || index >= end);
-          });
-        }
+  /* Groups Sorting */
+  $$('.groups-header').forEach(function (el) {
+    el.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      $$('.groups-header').forEach(function (b) { b.classList.toggle('hidden'); });
+      var tbl = $('#groups-table');
+      Array.from(tbl.rows).reverse().forEach(function (row) { tbl.appendChild(row); });
+      if (groupsTotalPages > 1) { updatePageTable(); }
+    });
+  });
 
-        if (groupsTotalPages > 1) {
-          $('#groups-page-total').textContent = groupsTotalPages;
+  /* Groups Paging */
+  var groupsPerPage = {{ $groupsPerPage }},
+      groupsTotal = {{ len .Groups }},
+      groupsTotalPages = Math.ceil(groupsTotal / groupsPerPage);
 
-          $$('.groups-nav').forEach(el => {
-            el.addEventListener('click', (ev) => {
-              ev.preventDefault();
-              updatePageNum(el);
-              updatePageNav();
-              updatePageTable();
-            });
-          });
-        }
-      </script>
-    </section>
+  var groupsPage = 1;
+
+  function updatePageNum(el) {
+    switch (el.id) {
+    case 'groups-page-first': groupsPage = 1; break;
+    case 'groups-page-prev':  groupsPage -= 1; break;
+    case 'groups-page-next':  groupsPage += 1; break;
+    case 'groups-page-last':  groupsPage = groupsTotalPages; break;
+    }
+  }
+
+  function updatePageNav() {
+    $('#groups-page').textContent = groupsPage;
+    $('#groups-page-first').classList.toggle('hidden', groupsPage === 1);
+    $('#groups-page-prev').classList.toggle('hidden', groupsPage === 1);
+    $('#groups-page-next').classList.toggle('hidden', groupsPage === groupsTotalPages);
+    $('#groups-page-last').classList.toggle('hidden', groupsPage === groupsTotalPages);
+  }
+
+  function updatePageTable() {
+    var end = groupsPage * groupsPerPage,
+        start = end - groupsPerPage,
+        tbl = $('#groups-table');
+    Array.from(tbl.rows).forEach(function (row, index) {
+      row.classList.toggle('hidden', index < start || index >= end);
+    });
+  }
+
+  if (groupsTotalPages > 1) {
+    $('#groups-page-total').textContent = groupsTotalPages;
+    $$('.pagination-controls .page-link').forEach(function (el) {
+      el.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        updatePageNum(el);
+        updatePageNav();
+        updatePageTable();
+      });
+    });
+  }
+})();
+</script>
+
 {{ template "footer" .}}
