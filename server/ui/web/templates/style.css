@@ -5,7 +5,7 @@
    standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
 @import url('/css/pico_min_211.css') layer(pico);
 
-@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail;
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list;
 
 @layer tokens {
 
@@ -1628,4 +1628,198 @@ pre.code-block {
 }
 
 } /* end @layer device-detail */
+
+/* ── Configs list page ──────────────────────────────────────────────────── */
+
+@layer configs-list {
+
+.configs-page {
+    max-width: 900px;
+}
+
+.page-title {
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    font-size: 0.82rem;
+    color: var(--text-3);
+    margin-bottom: 32px;
+}
+
+.entity-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.entity-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-1);
+    margin: 0;
+}
+
+.chip-reason {
+    background: var(--chip-group-bg);
+    color: var(--interactive);
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-family: var(--mono);
+}
+
+.header-action-link {
+    margin-left: auto;
+    font-size: 0.82rem;
+    color: var(--interactive);
+    text-decoration: none;
+}
+.header-action-link:hover {
+    text-decoration: underline;
+}
+
+.configs-divider {
+    border: none;
+    border-top: 1px solid var(--border-2);
+    margin: 0 0 12px;
+}
+
+/* Files section — scoped override for configs-item-files */
+.configs-files-wrapper {
+    margin-top: 20px;
+}
+.configs-files-wrapper h4 {
+    display: none; /* label provided by .section-label above */
+}
+.configs-files-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+.configs-files-wrapper table td {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-1);
+    background: transparent;
+    color: var(--text-1);
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    vertical-align: middle;
+}
+.configs-files-wrapper table td:last-child {
+    text-align: right;
+    white-space: nowrap;
+    width: 1%;
+}
+.configs-files-wrapper table td i.icontip {
+    margin-left: 8px;
+    cursor: pointer;
+}
+.configs-files-wrapper .icontip.trash {
+    color: var(--text-3);
+    padding: 4px 6px;
+    border-radius: 2px;
+    transition: color 0.1s, background 0.1s;
+}
+.configs-files-wrapper .icontip.trash:hover {
+    color: var(--danger);
+    background: var(--danger-tint);
+}
+
+.section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin: 0 0 8px;
+}
+
+.action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    margin-bottom: 40px;
+}
+
+.btn-ghost {
+    border: 1px solid var(--border-2);
+    background: transparent;
+    padding: 5px 14px;
+    font-size: 0.82rem;
+    color: var(--text-2);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s;
+    margin: 0;
+}
+.btn-ghost:hover {
+    border-color: var(--interactive);
+    color: var(--interactive);
+}
+.btn-ghost:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.groups-section {
+    margin-top: 8px;
+}
+
+.configs-group-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.configs-group-table thead th {
+    border-bottom: 1px solid var(--border-2);
+    text-align: left;
+    padding: 0;
+    background: transparent;
+}
+.configs-group-table .sort-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-2);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 8px 0;
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    margin: 0;
+}
+.configs-group-table .sort-btn:hover {
+    color: var(--text-1);
+}
+.sort-indicator {
+    color: var(--interactive);
+}
+.configs-group-table tbody tr {
+    border-bottom: 1px solid var(--border-1);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.configs-group-table tbody tr:hover {
+    background: var(--surface-hover);
+}
+.configs-group-table tbody td {
+    padding: 9px 0;
+    background: transparent;
+    color: var(--text-1);
+}
+.configs-group-table tbody td a {
+    color: var(--interactive);
+    text-decoration: none;
+}
+.configs-group-table tbody td a:hover {
+    text-decoration: underline;
+}
+
+} /* end @layer configs-list */
 
