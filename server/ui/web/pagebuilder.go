@@ -60,6 +60,7 @@ func (b PageBuilder) genNavItems(selected string) []navItem {
 		{Title: "Configs", Href: "/configs", Selected: selected == "configs"},
 		{Title: "Updates", Href: "/updates", Selected: selected == "updates"},
 		{Title: "Users", Href: "/users", Selected: selected == "users"},
+		{Title: "PKI", Href: "/pki", Selected: selected == "pki"},
 	}
 	return navItems
 }

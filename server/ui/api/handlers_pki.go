@@ -31,7 +31,7 @@ func (h handlers) pkiCert(c echo.Context) error {
 		return EchoError(c, err, http.StatusBadRequest, "Failed to parse query options")
 	}
 	if len(opts.Names) == 0 {
-		msg := "No certificate names specified"
+		msg := "no certificate names specified"
 		return EchoError(c, errors.New(msg), http.StatusBadRequest, msg)
 	}
 
@@ -40,7 +40,7 @@ func (h handlers) pkiCert(c echo.Context) error {
 
 	for _, name := range opts.Names {
 		if !slices.Contains(allowed, name) {
-			msg := "Invalid certificate requested: " + name
+			msg := "invalid certificate requested: " + name
 			return EchoError(c, errors.New(msg), http.StatusBadRequest, msg)
 		}
 		buf, err := h.fs.Certs.ReadFile(name)
