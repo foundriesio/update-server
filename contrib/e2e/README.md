@@ -75,6 +75,7 @@ make clean
 | `test_fiocli.py` | `fiocli devices list/show`; pushing a config and confirming `fioup` applies it on the device. |
 | `test_remote_actions.py` | `fioup run-and-report`; verifying the result via CLI and the web UI, plus artifact download. |
 | `test_updates.py` | Uploading an OTA update artifact and finding it in `updates list`. |
+| `test_pki.py` | `fiocli pki show` and the `/pki` web page report the same root CA, device CA, and TLS certs. |
 | `test_webui.py` | Web UI smoke tests and device-table rendering. |
 | `test_webui_settings.py` | Creating an API token via the settings dialog and checking the audit log. |
 | `test_oauth2_login.py` | OAuth2 device-flow login against a dedicated local-auth server: authorize, deny, and scope-mismatch paths (fiocli login and mimic fio-device-register). |
