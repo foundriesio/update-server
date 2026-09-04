@@ -42,14 +42,14 @@ go build -o bin/fioserver ./cmd/server
 echo "==> Preparing data directory: $DATADIR"
 mkdir -p "$DATADIR/certs"
 
-if [ ! -f "$DATADIR/certs/tls.pem" ]; then
+if [ ! -f "$DATADIR/certs/tls.crt" ]; then
     echo "==> Generating self-signed TLS certificate (dev only)..."
     openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
         -keyout "$DATADIR/certs/tls.key" \
-        -out "$DATADIR/certs/tls.pem" \
+        -out "$DATADIR/certs/tls.crt" \
         -days 3650 \
         -subj "/CN=localhost"
-    cp "$DATADIR/certs/tls.pem" "$DATADIR/certs/cas.pem"
+    cp "$DATADIR/certs/tls.crt" "$DATADIR/certs/cas.pem"
 fi
 
 if [ ! -d "$DATADIR/tuf" ]; then

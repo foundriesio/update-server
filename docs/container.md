@@ -82,7 +82,7 @@ CSR flow. Run through the container the same way:
 
 Sign `datadir/certs/tls.csr` as described in [Sign the
 Request](./migration.md#sign-the-request), saving the result as
-`datadir/certs/tls.pem`. Next grant your Factory devices access:
+`datadir/certs/tls.crt`. Next grant your Factory devices access:
 
 ```
   fioctl keys ca show --just-device-cas > datadir/certs/cas.pem
@@ -90,7 +90,7 @@ Request](./migration.md#sign-the-request), saving the result as
 
 > [!NOTE]
 > With a rootful Docker installation the files the container writes are owned by
-> root, so saving `tls.pem` and `cas.pem` into `datadir/certs` may require
+> root, so saving `tls.crt` and `cas.pem` into `datadir/certs` may require
 > `sudo`.
 
 ## Run the Server
