@@ -99,7 +99,7 @@ func main() {
 	if err != nil {
 		fatal("create server cert:", err)
 	}
-	writePEM(filepath.Join(certsDir, "tls.pem"), "CERTIFICATE", srvDER)
+	writePEM(filepath.Join(certsDir, "tls.crt"), "CERTIFICATE", srvDER)
 	writeKeyPEM(filepath.Join(certsDir, "tls.key"), srvKey)
 
 	// --- Device leaf certs (concurrent) ---

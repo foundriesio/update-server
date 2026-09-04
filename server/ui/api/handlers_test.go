@@ -318,7 +318,7 @@ func NewTestClientWithCA(t *testing.T, org string) *testClient {
 		require.Nil(t, fsS.Certs.WriteFile(storage.CertsDeviceCaPemFile, caCertPem))
 		require.Nil(t, fsS.Certs.WriteFile(storage.CertsRootPemFile, caCertPem)) // doesn't matter for tests, just needs to exist
 
-		// --- Create a tls.pem cert signed by the CA ---
+		// --- Create a tls.crt cert signed by the CA ---
 		tlsTemplate := x509.Certificate{
 			SerialNumber: big.NewInt(2),
 			Subject: pkix.Name{
@@ -353,7 +353,7 @@ func NewTestClientWithCA(t *testing.T, org string) *testClient {
 		Username:      "root",
 		AllowedScopes: 0,
 	}
-	RegisterHandlers(e, deviceCa, apiS, userS, &testAuthProvider{user: u})
+	RegisterHandlers(e, deviceCa, apiS, userS, fsS, &testAuthProvider{user: u})
 
 	tc := testClient{
 		t:   t,

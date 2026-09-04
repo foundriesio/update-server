@@ -18,15 +18,17 @@ type handlers struct {
 	ca      *DeviceCa
 	storage *storage.Storage
 	users   *users.Storage
+	fs      *storage.FsHandle
 }
 
 var EchoError = server.EchoError
 
-func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, userStorage *users.Storage, a auth.Provider) {
+func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, userStorage *users.Storage, fs *storage.FsHandle, a auth.Provider) {
 	h := handlers{
 		ca:      ca,
 		storage: storage,
 		users:   userStorage,
+		fs:      fs,
 	}
 
 	// OAuth2 endpoints (no authentication required)
@@ -93,4 +95,7 @@ func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, user
 	// version; "<n>.root.json" returns a specific version.
 	g.GET("/tuf/root.json", h.tufRootLatest, requireScope(users.ScopeUpdatesR))
 	g.GET("/tuf/:version", h.tufRootVersion, requireScope(users.ScopeUpdatesR))
+
+	g.GET("/pki/cert", h.pkiCert)
+	g.GET("/pki/cas.pem", h.pkiCasPem)
 }

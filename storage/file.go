@@ -35,7 +35,7 @@ const (
 	CertsCasPemFile = "cas.pem"
 	CertsTlsCsrFile = "tls.csr"
 	CertsTlsKeyFile = "tls.key"
-	CertsTlsPemFile = "tls.pem"
+	CertsTlsPemFile = "tls.crt"
 
 	CertsRootKeyFile     = "root.key"
 	CertsRootPemFile     = "root.crt"
