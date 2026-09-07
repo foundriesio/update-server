@@ -139,7 +139,6 @@ func (h handlers) configsDeviceItem(c echo.Context) error {
 		CanEdit: h.configsEditable(c),
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
-
 }
 
 func (h handlers) configsDeviceItemApplied(c echo.Context) error {
@@ -156,7 +155,7 @@ func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 		baseCtx: h.baseCtx(c, fmt.Sprintf("Device \"%s\" Applied Config", uuid), "devices"),
 		Configs: applied,
 	}
-	return h.templates.ExecuteTemplate(c.Response(), "applied_configs_item.html", ctx) // defined inside configs_item.html
+	return h.templates.ExecuteTemplate(c.Response(), "applied_configs_item.html", ctx)
 }
 
 func (h handlers) configsDeviceItemHistory(c echo.Context) error {
