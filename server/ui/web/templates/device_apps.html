@@ -239,6 +239,26 @@
       btnAddSelectedApps.addEventListener('click', () => copyToAppSelector(false));
       btnRemoveSelectedApps.addEventListener('click', () => removeFromAppSelector(false));
       btnRemoveAllApps.addEventListener('click', () => removeFromAppSelector(true));
+
+      tagSelector.addEventListener("focus", () => {
+        {{/* Input with datalist events are badly supported: often there is no event fired when a user selects from a dropdown.
+             This handler watches for a user input after tag selector gets focus.
+             If a user pauses on typing/selecting for a second - fire a change event.
+             Stop watching on blur; which would normally fire a change event as well. */}}
+        let latest = tagSelector.value, ticks = 0;
+        let watcher = setInterval(() => {
+          if (tagSelector.value !== latest) {
+            latest = tagSelector.value
+            ticks = 1
+          } else if (ticks > 10) {
+            ticks = 0;
+            tagSelector.dispatchEvent(new Event("change"));
+          } else if (ticks > 0) {
+            ticks += 1;
+          }
+        }, 100);
+        tagSelector.addEventListener("blur", () => clearInterval(watcher), { once: true });
+      });
       {{ end }}
 
       const btnReset = document.getElementById('btnReset');
@@ -265,7 +285,7 @@
       const btnSave = document.getElementById('btnSave');
 
       const buildSotaTomlRequest = (tag, apps) => {
-        const sotaOverride = 'z-50-fioctl.toml';
+        const sotaOverride = '{{ .ConfigFileName }}';
         const sotaOverrideOnChanged = '/usr/share/fioconfig/handlers/aktualizr-toml-update';
         const reason = 'Override aktualizr-lite update configuration';
 

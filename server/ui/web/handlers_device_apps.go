@@ -64,7 +64,7 @@ func (h handlers) configsDeviceItemApps(c echo.Context) error {
 		ReportedTag:        device.Tag,
 		SelectedTag:        sotaTag,
 		SelectedApps:       sotaApps,
-		SupportedTags:      slices.Collect(maps.Keys(tagsToAppsMap)),
+		SupportedTags:      slices.Sorted(maps.Keys(tagsToAppsMap)),
 		SupportedAppsByTag: tagsToAppsMap,
 		ConfigFileName:     api.ConfigSotaOverride,
 		CanEdit:            h.configsEditable(c),
@@ -145,6 +145,7 @@ func getTagAndAppsFromConfigs(configs api.ConfigFileSet) (tag string, apps []str
 				apps = append(apps, app)
 			}
 		}
+		slices.Sort(apps)
 	}
 	return
 }
