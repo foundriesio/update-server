@@ -81,6 +81,7 @@ func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, user
 	upd.GET("/:tag/:update/summary", h.updateSummary, requireScope(users.ScopeUpdatesR))
 	upd.GET("/:tag/:update/query", h.updateQuery, requireScope(users.ScopeUpdatesR))
 	upd.GET("/:tag/:update/tuf", h.updateGetTuf, requireScope(users.ScopeUpdatesR))
+	upd.GET("/:tag/:update/tuf/:file", h.updateGetTufFile, requireScope(users.ScopeUpdatesR))
 	upd.GET("/:tag/:update/rollouts", h.rolloutList, requireScope(users.ScopeUpdatesR))
 	upd.GET("/:tag/:update/rollouts/:rollout", h.rolloutGet, requireScope(users.ScopeUpdatesR))
 	upd.PUT("/:tag/:update/rollouts/:rollout", h.rolloutPut, requireScope(users.ScopeUpdatesRU))

@@ -5,8 +5,10 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -15,7 +17,10 @@ import (
 	storage "github.com/foundriesio/update-server/storage/api"
 )
 
-type UpdateTufResp map[string]map[string]any
+type (
+	UpdateTufItemResp = map[string]any
+	UpdateTufResp     = map[string]UpdateTufItemResp
+)
 
 // @Summary Create an update from a tar or tar+gz stream
 // @Description Requires scope: updates:read-update
@@ -90,6 +95,52 @@ func (h handlers) updateDelete(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// @Summary Returns the TUF metadata package for the update
+// @Description Requires scope: updates:read or updates:read-update
+// @Tags    Updates
+// @Produce json
+// @Success 200 {object} UpdateTufResp
+// @Param   tag path string true "Update tag"
+// @Param   update path string true "Update name"
+// @Router  /updates/{tag}/{update}/tuf [get]
+func (h handlers) updateGetTuf(c echo.Context) error {
+	tag := c.Param("tag")
+	update := c.Param("update")
+
+	metas, err := h.storage.GetUpdateTufMetadata(tag, update)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "failed to get update TUF metadata")
+	}
+
+	return c.JSON(http.StatusOK, metas)
+}
+
+// @Summary Returns the TUF metadata file for the update
+// @Description Requires scope: updates:read or updates:read-update
+// @Tags    Updates
+// @Produce json
+// @Success 200 {object} UpdateTufItemResp
+// @Param   tag path string true "Update tag"
+// @Param   update path string true "Update name"
+// @Param   file path string true "File name"
+// @Router  /updates/{tag}/{update}/tuf/{file} [get]
+func (h handlers) updateGetTufFile(c echo.Context) error {
+	tag := c.Param("tag")
+	update := c.Param("update")
+	file := c.Param("file")
+	if !validTufFile(file) {
+		err := fmt.Errorf("unknown TUF metadata file %s", file)
+		return EchoError(c, err, http.StatusNotFound, err.Error())
+	}
+	meta, err := h.storage.GetUpdateTufMetadataFile(tag, update, file)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "failed to get update TUF metadata")
+	}
+	return c.JSON(http.StatusOK, meta)
+}
+
+var validTufFile = regexp.MustCompile(`^(?:targets|snapshot|timestamp|(?:\d+\.)?root)\.json$`).MatchString
+
 // parseAppsParam parses repeated "apps" query values of the form
 // "name=sha256" (comma separated) into a map of app name to sha256.
 func parseAppsParam(values []string) map[string]string {
@@ -112,24 +163,4 @@ func parseAppsParam(values []string) map[string]string {
 		return nil
 	}
 	return apps
-}
-
-// @Summary Returns the TUF metadata for the update
-// @Description Requires scope: updates:read or updates:read-update
-// @Tags    Updates
-// @Produce json
-// @Success 200 {object} UpdateTufResp
-// @Param   tag path string true "Update tag"
-// @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/tuf [get]
-func (h handlers) updateGetTuf(c echo.Context) error {
-	tag := c.Param("tag")
-	update := c.Param("update")
-
-	metas, err := h.storage.GetUpdateTufMetadata(tag, update)
-	if err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "failed to get update TUF metadata")
-	}
-
-	return c.JSON(http.StatusOK, metas)
 }
