@@ -11,7 +11,7 @@
         <div class="device-identity__name-row">
           <h1 class="device-identity__name">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
           {{ if .Device.Status }}
-          <a href="/devices/{{.Device.Uuid}}/update/{{.Device.Status.CorrelationId}}"
+          <a href="/devices/{{.Device.Uuid}}/updates/{{.Device.Status.CorrelationId}}"
              title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}"
              class="status-indicator">
             <span class="status-indicator__dot{{if contains .Device.Status.Status "failed"}} is-danger{{end}}"></span>
@@ -99,7 +99,7 @@
         <div class="history-list">
           {{ range .RecentUpdates }}
           <div class="history-entry">
-            <a href="/devices/{{$.Device.Uuid}}/update/{{.}}" class="history-entry__target">{{.}}</a>
+            <a href="/devices/{{$.Device.Uuid}}/updates/{{.}}" class="history-entry__target">{{.}}</a>
           </div>
           {{ else }}
           <div class="history-entry"><span class="history-entry__meta"><i>No updates applied</i></span></div>
