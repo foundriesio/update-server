@@ -132,25 +132,67 @@ func (h handlers) devicesGet(c echo.Context) error {
 		}
 	}
 
+	updates, err := fetchDeviceUpdates(c.Request().Context(), c.Param("uuid"))
+	if err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
+	const overviewUpdatesLimit = 5
+	recentUpdates := updates
+	if len(recentUpdates) > overviewUpdatesLimit {
+		recentUpdates = recentUpdates[:overviewUpdatesLimit]
+	}
+
+	ctx := struct {
+		baseCtx
+		Device        api.Device
+		IpInfo        *ipInfo
+		HwInfo        map[string]any
+		RecentUpdates []string
+		TotalUpdates  int
+	}{
+		baseCtx:       h.baseCtx(c, "Device - "+device.Uuid, "devices"),
+		Device:        device,
+		IpInfo:        infoPtr,
+		HwInfo:        hw,
+		RecentUpdates: recentUpdates,
+		TotalUpdates:  len(updates),
+	}
+	return h.templates.ExecuteTemplate(c.Response(), "device.html", ctx)
+}
+
+// fetchDeviceUpdates fetches the reverse-chronological list of update
+// correlation IDs for a device. Shared by devicesGet (capped preview) and
+// devicesUpdatesGet (full history page).
+func fetchDeviceUpdates(ctx context.Context, uuid string) ([]string, error) {
 	var updates []string
-	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/updates", &updates); err != nil {
+	if err := getJson(ctx, "/v1/devices/"+uuid+"/updates", &updates); err != nil {
+		return nil, err
+	}
+	return updates, nil
+}
+
+func (h handlers) devicesUpdatesGet(c echo.Context) error {
+	var device api.Device
+	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid"), &device); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
+	updates, err := fetchDeviceUpdates(c.Request().Context(), c.Param("uuid"))
+	if err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
 	ctx := struct {
 		baseCtx
 		Device  api.Device
-		IpInfo  *ipInfo
-		HwInfo  map[string]any
 		Updates []string
 	}{
 		baseCtx: h.baseCtx(c, "Device - "+device.Uuid, "devices"),
 		Device:  device,
-		IpInfo:  infoPtr,
-		HwInfo:  hw,
 		Updates: updates,
 	}
-	return h.templates.ExecuteTemplate(c.Response(), "device.html", ctx)
+	return h.templates.ExecuteTemplate(c.Response(), "device_updates.html", ctx)
 }
 
 func (h handlers) devicesUpdateGet(c echo.Context) error {
