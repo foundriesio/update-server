@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/foundriesio/update-server/context"
 	"github.com/foundriesio/update-server/server/ui/api"
@@ -195,6 +196,64 @@ func (h handlers) devicesUpdatesGet(c echo.Context) error {
 	return h.templates.ExecuteTemplate(c.Response(), "device_updates.html", ctx)
 }
 
+// updateStep pairs a raw device update event with view-only fields the
+// template needs but shouldn't compute itself: elapsed time since the
+// previous step, and whether this specific step failed.
+type updateStep struct {
+	storage.DeviceUpdateEvent
+	Failed  bool
+	Elapsed string
+	Time    string
+}
+
+// updateStepTimeFormat is the clock-only display format for a step's
+// timestamp in the lifecycle stepper, e.g. "09:00:28".
+const updateStepTimeFormat = "15:04:05"
+
+// buildUpdateSteps enriches events (chronological, per the device-gateway
+// API) with per-step elapsed time and failure state, and reports the
+// update's overall pass/fail and total duration.
+//
+// failed is an all-or-nothing rollup: it is true if ANY event in the
+// history reports Success == false, even if later steps succeeded. The
+// UI has no notion of partial success, so one failed step marks the
+// whole update as failed. Success == nil (no verdict reported for that
+// event) never counts as a failure, at either the step or rollup level.
+func buildUpdateSteps(events []storage.DeviceUpdateEvent) (steps []updateStep, duration string, failed bool) {
+	steps = make([]updateStep, len(events))
+	start := parseDeviceTime(events[0].DeviceTime)
+	prev := start
+	for i, ev := range events {
+		t := parseDeviceTime(ev.DeviceTime)
+		stepFailed := ev.Event.Success != nil && !*ev.Event.Success
+		steps[i] = updateStep{
+			DeviceUpdateEvent: ev,
+			Failed:            stepFailed,
+			Elapsed:           "+" + formatDuration(t.Sub(prev)),
+			Time:              t.Format(updateStepTimeFormat),
+		}
+		failed = failed || stepFailed
+		prev = t
+	}
+	end := parseDeviceTime(events[len(events)-1].DeviceTime)
+	return steps, formatDuration(end.Sub(start)), failed
+}
+
+func parseDeviceTime(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+func formatDuration(d time.Duration) string {
+	if d < 0 {
+		d = 0
+	}
+	return d.Round(time.Second).String()
+}
+
 func (h handlers) devicesUpdateGet(c echo.Context) error {
 	var events []storage.DeviceUpdateEvent
 	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/updates/"+c.Param("update"), &events); err != nil {
@@ -206,20 +265,30 @@ func (h handlers) devicesUpdateGet(c echo.Context) error {
 		return h.handleUnexpected(c, err)
 	}
 
+	steps, duration, failed := buildUpdateSteps(events)
+
 	ctx := struct {
 		baseCtx
-		Raw       string
-		StartTime string
-		EndTime   string
-		Target    string
-		Events    []storage.DeviceUpdateEvent
+		Raw           string
+		StartTime     string
+		EndTime       string
+		Duration      string
+		Target        string
+		DeviceUuid    string
+		CorrelationId string
+		Failed        bool
+		Steps         []updateStep
 	}{
-		baseCtx:   h.baseCtx(c, "Device - "+c.Param("uuid"), "update: "+c.Param("update")),
-		Raw:       string(raw),
-		Events:    events,
-		Target:    events[0].Event.TargetName,
-		StartTime: events[0].DeviceTime,
-		EndTime:   events[len(events)-1].DeviceTime,
+		baseCtx:       h.baseCtx(c, "Update "+c.Param("update"), "devices"),
+		Raw:           string(raw),
+		Steps:         steps,
+		Target:        events[0].Event.TargetName,
+		StartTime:     events[0].DeviceTime,
+		EndTime:       events[len(events)-1].DeviceTime,
+		Duration:      duration,
+		DeviceUuid:    c.Param("uuid"),
+		CorrelationId: c.Param("update"),
+		Failed:        failed,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "device_update.html", ctx)
 }
