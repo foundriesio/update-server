@@ -97,7 +97,7 @@
       <div class="update-history">
         <h2 class="update-history__title">Update History</h2>
         <div class="history-list">
-          {{ range .Updates }}
+          {{ range .RecentUpdates }}
           <div class="history-entry">
             <a href="/devices/{{$.Device.Uuid}}/update/{{.}}" class="history-entry__target">{{.}}</a>
           </div>
@@ -105,6 +105,9 @@
           <div class="history-entry"><span class="history-entry__meta"><i>No updates applied</i></span></div>
           {{ end }}
         </div>
+        {{ if gt .TotalUpdates 5 }}
+        <a href="/devices/{{.Device.Uuid}}/updates" class="update-history__view-all">View all updates ({{.TotalUpdates}}) &rarr;</a>
+        {{ end }}
       </div>
 
       <div class="meta-section">
