@@ -11,7 +11,7 @@
       <div class="history-list">
         {{ range .Updates }}
         <div class="history-entry">
-          <a href="/devices/{{$.Device.Uuid}}/update/{{.}}" class="history-entry__target">{{.}}</a>
+          <a href="/devices/{{$.Device.Uuid}}/updates/{{.}}" class="history-entry__target">{{.}}</a>
         </div>
         {{ else }}
         <div class="history-entry"><span class="history-entry__meta"><i>No updates applied</i></span></div>
