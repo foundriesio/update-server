@@ -1334,6 +1334,10 @@ summary.user-badge::after {
 .breadcrumb__current {
     color: var(--text-2);
 }
+.breadcrumb-uuid {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+}
 
 .device-identity {
     margin-bottom: 28px;
@@ -1364,6 +1368,9 @@ summary.user-badge::after {
 }
 .status-indicator:hover {
     text-decoration: underline;
+}
+.status-indicator.is-static:hover {
+    text-decoration: none;
 }
 .status-indicator__dot {
     width: 7px;
@@ -1639,6 +1646,110 @@ pre.code-block {
 .collapsible-section[open] .toggle-hide { display: inline; }
 .collapsible-body {
     padding: 14px 0 0;
+}
+
+.update-identity {
+    margin-bottom: 28px;
+}
+.update-identity__name-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+.update-identity__name {
+    margin: 0;
+    font-family: var(--mono);
+}
+.update-identity__device {
+    font-size: 0.8rem;
+    color: var(--text-2);
+}
+
+.stepper-section {
+    margin-bottom: 28px;
+}
+.stepper {
+    position: relative;
+}
+.step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    column-gap: 16px;
+    padding-bottom: 20px;
+}
+.step:last-child {
+    padding-bottom: 0;
+}
+.step__rail {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+.step__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success);
+    margin-top: 3px;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px var(--surface-2);
+    z-index: 1;
+}
+.step__dot.is-fail {
+    background: var(--danger);
+}
+.step__line {
+    position: absolute;
+    top: 13px;
+    bottom: -20px;
+    left: 50%;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--border-1);
+}
+.step__body {
+    min-width: 0;
+}
+.step__head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+.step__name {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-1);
+}
+.step__fail-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--danger);
+}
+.step__time-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 0.75rem;
+    color: var(--text-3);
+}
+.step__time {
+    font-family: var(--mono);
+}
+.step__elapsed {
+    font-family: var(--mono);
+    color: var(--text-3);
+}
+.step__details {
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--text-3);
+}
+.step__details.is-empty {
+    font-style: italic;
 }
 
 } /* end @layer device-detail */
