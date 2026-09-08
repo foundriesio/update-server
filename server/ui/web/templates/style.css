@@ -1534,10 +1534,7 @@ summary.user-badge::after {
     letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--text-3);
-    margin-bottom: 10px;
-}
-.history-list {
-    border-top: 1px solid var(--border-1);
+    margin-bottom: 12px;
 }
 .history-entry {
     display: flex;
@@ -1553,6 +1550,23 @@ summary.user-badge::after {
 .history-entry__meta {
     font-size: 0.78rem;
     color: var(--text-3);
+}
+.update-history__view-all {
+    display: inline-block;
+    margin-top: 14px;
+    font-size: 0.75rem;
+}
+
+.device-updates {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    max-width: 860px;
+}
+@media (max-width: 860px) {
+    .device-updates {
+        max-width: none;
+    }
 }
 
 .flat-table {
