@@ -96,7 +96,7 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	e.GET("/devices/:uuid/tests", h.devicesTests, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid/tests/:testid", h.devicesTestGet, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid/updates", h.devicesUpdatesGet, h.requireSession, h.requireScope(users.ScopeDevicesR))
-	e.GET("/devices/:uuid/update/:update", h.devicesUpdateGet, h.requireSession, h.requireScope(users.ScopeDevicesR))
+	e.GET("/devices/:uuid/updates/:update", h.devicesUpdateGet, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid/configs", h.configsDeviceItem, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.PATCH("/devices/:uuid/configs", h.configsDeviceItemPatch, h.requireSession,
 		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
