@@ -8,12 +8,13 @@
    (branding.json) instead of being frozen to the default lavender. The
    neutral greys and danger accents have no Branding field and stay literal.
 
-   style.css declares --brand-primary / --surface-* / --text-1 for LIGHT and for
-   OS-auto dark (@media prefers-color-scheme). The login pages add a *manual*
-   theme toggle, which style.css deliberately does not implement
-   ("Toggle-ready: duplicate under [data-theme=dark]"). So login.css owns a
-   self-contained palette keyed off [data-theme="dark"] — the exact mechanism
-   the mockups use — rather than depending on style.css load order. */
+   style.css and login.css both key dark mode off the same explicit
+   [data-theme="dark"] attribute (set by a head-script, toggled by a
+   #theme-toggle button) — no OS prefers-color-scheme fallback in either
+   file. login.css still declares its own self-contained palette rather
+   than relying on style.css's token values/load order, since the two
+   files are maintained independently and login.css shouldn't take on a
+   cross-file dependency for something this small. */
 :root {
     --brand-primary: {{ .Primary }};
     --brand-accent:  {{ .Accent }};
