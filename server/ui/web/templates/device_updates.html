@@ -1,0 +1,21 @@
+{{ template "header" .}}
+    <section class="content-section device-updates">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/devices">Devices</a>
+        <span class="breadcrumb__sep">/</span>
+        <a href="/devices/{{.Device.Uuid}}">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</a>
+        <span class="breadcrumb__sep">/</span>
+        <span class="breadcrumb__current">Update History</span>
+      </nav>
+      <h2>Update History</h2>
+      <div class="history-list">
+        {{ range .Updates }}
+        <div class="history-entry">
+          <a href="/devices/{{$.Device.Uuid}}/updates/{{.}}" class="history-entry__target">{{.}}</a>
+        </div>
+        {{ else }}
+        <div class="history-entry"><span class="history-entry__meta"><i>No updates applied</i></span></div>
+        {{ end }}
+      </div>
+    </section>
+{{ template "footer" .}}

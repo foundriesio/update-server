@@ -141,6 +141,9 @@ func seedDevices(datadir string, numDevices int) error {
 			if err := seedDeviceTests(d, targetName, i); err != nil {
 				return fmt.Errorf("seed tests(%s): %w", uuid, err)
 			}
+			if err := seedDeviceUpdateHistory(d, i); err != nil {
+				return fmt.Errorf("seed update history(%s): %w", uuid, err)
+			}
 		}
 	}
 
