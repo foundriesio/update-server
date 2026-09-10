@@ -28,17 +28,6 @@ variable "fioserver_version" {
   EOT
 }
 
-variable "architecture" {
-  type        = string
-  description = "Target architecture: amd64 or arm64."
-  default     = "amd64"
-
-  validation {
-    condition     = contains(["amd64", "arm64"], var.architecture)
-    error_message = "The architecture must be amd64 or arm64."
-  }
-}
-
 variable "instance_type" {
   type        = string
   description = "Instance type used for the build itself (not the deployment)."
@@ -58,9 +47,8 @@ variable "ami_users" {
 }
 
 locals {
-  # Debian 13 (trixie) is published for both architectures by this account.
   debian_owner  = "136693071363"
-  build_type    = var.instance_type != "" ? var.instance_type : (var.architecture == "arm64" ? "t4g.small" : "t3.small")
+  build_type    = var.instance_type != "" ? var.instance_type : "t3.small"
   ssh_user      = "admin"
   ami_timestamp = formatdate("YYYYMMDD-hhmmss", timestamp())
 }
@@ -72,7 +60,7 @@ source "amazon-ebs" "fioserver" {
 
   source_ami_filter {
     filters = {
-      name                = "debian-13-${var.architecture}-*"
+      name                = "debian-13-amd64-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -80,8 +68,8 @@ source "amazon-ebs" "fioserver" {
     most_recent = true
   }
 
-  ami_name        = "${var.ami_name_prefix}-${var.fioserver_version}-${var.architecture}-${local.ami_timestamp}"
-  ami_description = "Foundries update server ${var.fioserver_version} (${var.architecture}), read-only root"
+  ami_name        = "${var.ami_name_prefix}-${var.fioserver_version}-${local.ami_timestamp}"
+  ami_description = "Foundries update server ${var.fioserver_version}, read-only root"
   ami_users       = var.ami_users
 
   # The root volume only holds the OS; all state lives on the separate data
@@ -97,9 +85,8 @@ source "amazon-ebs" "fioserver" {
   imds_support = "v2.0"
 
   tags = {
-    Name              = "${var.ami_name_prefix}-${var.fioserver_version}-${var.architecture}"
+    Name              = "${var.ami_name_prefix}-${var.fioserver_version}"
     fioserver_version = var.fioserver_version
-    architecture      = var.architecture
     source_ami        = "{{ .SourceAMI }}"
     source_ami_name   = "{{ .SourceAMIName }}"
     built_by          = "packer"
@@ -116,7 +103,7 @@ build {
   }
 
   provisioner "shell" {
-    execute_command = "chmod +x {{ .Path }}; sudo {{ .Path }} ${var.fioserver_version} ${var.architecture}"
+    execute_command = "chmod +x {{ .Path }}; sudo {{ .Path }} ${var.fioserver_version}"
     script          = "${path.root}/files/provision.sh"
   }
 

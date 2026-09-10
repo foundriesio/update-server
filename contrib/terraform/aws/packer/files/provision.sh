@@ -13,7 +13,6 @@
 set -euo pipefail
 
 FIOSERVER_VERSION="$1"
-FIOSERVER_ARCH="$2"
 
 log() { echo "== $*"; }
 
@@ -74,12 +73,7 @@ systemctl disable caddy || true
 log "installing the AWS CLI v2"
 # Debian packages awscli v1; the bootstrap needs v2 semantics for Secrets
 # Manager, and hand-rolling SigV4 with curl would be far more fragile.
-case "$FIOSERVER_ARCH" in
-    amd64) awscli_arch=x86_64 ;;
-    arm64) awscli_arch=aarch64 ;;
-    *) echo "unsupported arch $FIOSERVER_ARCH" >&2; exit 1 ;;
-esac
-curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${awscli_arch}.zip" -o /tmp/awscli.zip
+curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip
 unzip -q /tmp/awscli.zip -d /tmp
 /tmp/aws/install
 rm -rf /tmp/awscli.zip /tmp/aws
@@ -87,21 +81,16 @@ rm -rf /tmp/awscli.zip /tmp/aws
 log "installing the SSM Agent"
 # The official Debian AMIs Packer builds on top of do not ship this agent, so
 # without it SSM Session Manager has nothing on the instance to connect to.
-case "$FIOSERVER_ARCH" in
-    amd64) ssm_arch=debian_amd64 ;;
-    arm64) ssm_arch=debian_arm64 ;;
-    *) echo "unsupported arch $FIOSERVER_ARCH" >&2; exit 1 ;;
-esac
-curl -fsSL "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/${ssm_arch}/amazon-ssm-agent.deb" \
+curl -fsSL "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb" \
     -o /tmp/amazon-ssm-agent.deb
 dpkg -i /tmp/amazon-ssm-agent.deb
 rm -f /tmp/amazon-ssm-agent.deb
 systemctl enable amazon-ssm-agent
 
-log "installing fioserver ${FIOSERVER_VERSION} (${FIOSERVER_ARCH})"
+log "installing fioserver ${FIOSERVER_VERSION}"
 # Releases publish bare, uncompressed binaries -- no tarball, no version in the
 # filename -- so the version has to come from the release tag in the URL.
-url="https://github.com/foundriesio/update-server/releases/download/${FIOSERVER_VERSION}/fioserver-linux-${FIOSERVER_ARCH}"
+url="https://github.com/foundriesio/update-server/releases/download/${FIOSERVER_VERSION}/fioserver-linux-amd64"
 curl -fsSL "$url" -o /usr/local/bin/fioserver
 chmod 0755 /usr/local/bin/fioserver
 /usr/local/bin/fioserver --datadir=/tmp version || true
@@ -109,7 +98,6 @@ chmod 0755 /usr/local/bin/fioserver
 install -d -m 0755 /etc/fioserver
 {
     echo "fioserver_version=${FIOSERVER_VERSION}"
-    echo "fioserver_arch=${FIOSERVER_ARCH}"
     echo "fioserver_url=${url}"
     echo "fioserver_sha256=$(sha256sum /usr/local/bin/fioserver | cut -d' ' -f1)"
     echo "built_at=$(date -u +%FT%TZ)"

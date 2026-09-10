@@ -48,8 +48,8 @@ device-facing URL from it — each enrolled device stores those URLs in its
   create VPC, EC2, ELB, IAM, Secrets Manager, DLM and (optionally) Route53
   resources.
 - A local `fioserver` binary matching the version in the AMI, for
-  `scripts/init-secrets.sh` (release binaries are linux-amd64/linux-arm64 only;
-  build from source for other platforms).
+  `scripts/init-secrets.sh` (release binaries are linux-amd64/linux-arm64 only; build from
+  source for other platforms).
 
 ## 1. Build the AMI
 
@@ -60,10 +60,9 @@ packer build -var fioserver_version=v0.9.2 .
 ```
 
 The version is required and deliberately has no default, so an AMI is always
-reproducible. Releases publish bare, uncompressed binaries
-(`fioserver-linux-amd64`, `fioserver-linux-arm64`), and the build records the
-version and SHA256 in `/etc/fioserver/build-info`. For Graviton, add
-`-var architecture=arm64` and choose a `t4g`-class `instance_type` when deploying.
+reproducible. Releases publish a bare, uncompressed binary
+(`fioserver-linux-amd64`), and the build records the version and SHA256 in
+`/etc/fioserver/build-info`.
 
 The resulting AMI ID is printed at the end and written to `packer/manifest.json`.
 
