@@ -56,6 +56,14 @@ module "server" {
   data_volume_size = var.data_volume_size
   ssh_key_name     = var.ssh_key_name
 
+  # The instance has no other path to the internet (no NAT gateway): needed
+  # for SSM Session Manager, Secrets Manager, and the Google/GitHub OAuth2
+  # token exchanges. The gateway's mTLS listener is already open to
+  # 0.0.0.0/0 via the NLB (which does not SNAT), and the UI stays reachable
+  # only from the ALB's security group either way, so this doesn't expose a
+  # new port -- it makes the instance itself scannable at its own address.
+  assign_eip = true
+
   snapshot_retention_days = var.snapshot_retention_days
   tags                    = var.tags
 }

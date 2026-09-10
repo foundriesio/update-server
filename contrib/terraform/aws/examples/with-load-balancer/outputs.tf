@@ -31,6 +31,11 @@ output "instance_id" {
   value       = module.server.instance_id
 }
 
+output "public_ip" {
+  description = "Instance's Elastic IP, its only path to the internet."
+  value       = module.server.public_ip
+}
+
 output "data_volume_id" {
   description = "Persistent data volume ID."
   value       = module.server.data_volume_id
