@@ -42,15 +42,15 @@ enabled (see [How to build an Update](./build-an-update.md)). Alternatively,
 enroll with fio-device-register, run this on the device:
 
 ```
-  DEVICE_API=http://<HOSTNAME>:8080/v1/devices \
-  OAUTH_BASE=http://<HOSTNAME>:8080/oauth2 \
   fio-device-register \
+    --device-api=http://<HOSTNAME>:8080/v1/devices \
+    --oauth-api=http://<HOSTNAME>:8080/oauth2 \
     --factory <FACTORY> \
     --name <device-name> \
-    --tags <tag>
+    --tag <tag>
 ```
 
-`--factory` must match the Factory name given to `pki-init`.
+`--factory` must match the Factory name given to `devserver-init` which defaults to `acme`.
 
 To enroll a device without fio-device-register, see
 [Device Registration](./advanced.md#device-registration).

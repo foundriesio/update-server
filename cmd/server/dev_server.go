@@ -59,6 +59,8 @@ func (c DevServerInitCmd) Run(args CommonArgs) error {
 	} else {
 		fmt.Println("If DNS resolution fails, edit /etc/hosts on your devices.")
 	}
+	fmt.Println("Device registration command will be:")
+	fmt.Printf(" fio-device-register --device-api=http://%s:8080/v1/devices --oauth-api=http://%s:8080/oauth2 --factory=%s\n", dnsName, dnsName, c.Factory)
 	fmt.Println()
 
 	if err := (AuthInitCmd{Local: true}).Run(args); err != nil {
