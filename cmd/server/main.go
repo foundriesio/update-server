@@ -18,14 +18,15 @@ type VersionCmd struct{}
 type CommonArgs struct {
 	DataDir string `arg:"required" help:"Directory to store data"`
 
-	AuthInit *AuthInitCmd `arg:"subcommand:auth-init" help:"Initialize authentication configuration for this server"`
-	Csr      *CsrCmd      `arg:"subcommand:create-csr" help:"Create a TLS certificate signing request for this server"`
-	SignCsr  *CsrSignCmd  `arg:"subcommand:sign-csr" help:"Create the TLS certificate from the signing request"`
-	PkiInit  *PkiInitCmd  `arg:"subcommand:pki-init" help:"Bootstrap a complete PKI (root CA, TLS cert, and device CA) from scratch"`
-	Serve    *ServeCmd    `arg:"subcommand:serve" help:"Run the REST API and device-gateway services"`
-	TufInit  *TufInitCmd  `arg:"subcommand:tuf-init" help:"Initialize TUF keys and root metadata for this server"`
-	UserAdd  *UserAddCmd  `arg:"subcommand:user-add" help:"Add a new user if local authentication is enabled"`
-	Version  *VersionCmd  `arg:"subcommand:version" help:"Print the version of the program"`
+	AuthInit      *AuthInitCmd      `arg:"subcommand:auth-init" help:"Initialize authentication configuration for this server"`
+	Csr           *CsrCmd           `arg:"subcommand:create-csr" help:"Create a TLS certificate signing request for this server"`
+	DevServerInit *DevServerInitCmd `arg:"subcommand:devserver-init" help:"Bootstrap a complete dev server from scratch"`
+	SignCsr       *CsrSignCmd       `arg:"subcommand:sign-csr" help:"Create the TLS certificate from the signing request"`
+	PkiInit       *PkiInitCmd       `arg:"subcommand:pki-init" help:"Bootstrap a complete PKI (root CA, TLS cert, and device CA) from scratch"`
+	Serve         *ServeCmd         `arg:"subcommand:serve" help:"Run the REST API and device-gateway services"`
+	TufInit       *TufInitCmd       `arg:"subcommand:tuf-init" help:"Initialize TUF keys and root metadata for this server"`
+	UserAdd       *UserAddCmd       `arg:"subcommand:user-add" help:"Add a new user if local authentication is enabled"`
+	Version       *VersionCmd       `arg:"subcommand:version" help:"Print the version of the program"`
 
 	ctx context.Context
 }
@@ -46,6 +47,8 @@ func main() {
 	switch {
 	case args.Csr != nil:
 		err = args.Csr.Run(args)
+	case args.DevServerInit != nil:
+		err = args.DevServerInit.Run(args)
 	case args.SignCsr != nil:
 		err = args.SignCsr.Run(args)
 	case args.PkiInit != nil:
