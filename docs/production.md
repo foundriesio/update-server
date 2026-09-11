@@ -66,6 +66,19 @@ services:
 The server stores all of its data under the `--datadir`. This can be
 backed up as needed.
 
+> [!IMPORTANT]
+> The following files can never be lost:
+>  * `<datadir>/auth/hmac.secret`
+>  * `<datadir>/tuf/keys/root.key`
+>  * `<datadir>/certs/root.key`
+>  * `<datadir>/certs/root.crt`
+>
+> Store copies of both somewhere safe. If any file is lost it CANNOT be
+> recovered, and you will permanently lose the ability to manage your devices.
+
+The provided Terraform scripts keep these in AWS/GCP Secret Manager.
+
+
 ### HA Failover
 
 The server has a single SQLite database file, `<datadir>/db.sqlite`.
