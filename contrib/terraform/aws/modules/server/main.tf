@@ -20,6 +20,9 @@ locals {
 
   secret_prefix = "${var.name_prefix}/${var.hostname}"
 
+  # Reuses the secret_prefix naming convention rather than inventing a new one.
+  log_group_name = "/${local.secret_prefix}"
+
   # Written by scripts/init-secrets.sh, never by Terraform or the instance.
   # Declared here so the IAM policy can name them explicitly rather than
   # using a wildcard.
@@ -130,6 +133,39 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# ------------------------------------------------------------- CloudWatch ----
+# Terraform owns the log group (retention, tags, destroy) rather than letting
+# the CloudWatch agent auto-create it.
+resource "aws_cloudwatch_log_group" "fioserver" {
+  count = var.enable_cloudwatch_logs ? 1 : 0
+
+  name              = local.log_group_name
+  retention_in_days = var.cloudwatch_log_retention_days
+  tags              = local.tags
+}
+
+data "aws_iam_policy_document" "cloudwatch_logs" {
+  count = var.enable_cloudwatch_logs ? 1 : 0
+
+  statement {
+    sid = "FioserverLogs"
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams",
+    ]
+    resources = ["${aws_cloudwatch_log_group.fioserver[0].arn}:*"]
+  }
+}
+
+resource "aws_iam_role_policy" "cloudwatch_logs" {
+  count = var.enable_cloudwatch_logs ? 1 : 0
+
+  name_prefix = "${var.name_prefix}-cwlogs-"
+  role        = aws_iam_role.server.id
+  policy      = data.aws_iam_policy_document.cloudwatch_logs[0].json
+}
+
 resource "aws_iam_instance_profile" "server" {
   name_prefix = "${var.name_prefix}-server-"
   role        = aws_iam_role.server.name
@@ -144,6 +180,7 @@ resource "aws_instance" "server" {
   vpc_security_group_ids = [var.security_group_id]
   iam_instance_profile   = aws_iam_instance_profile.server.name
   key_name               = var.ssh_key_name == "" ? null : var.ssh_key_name
+  ipv6_address_count     = var.enable_ipv6 ? 1 : 0
 
   # Configuration only -- never secrets. The instance fetches those from Secrets
   # Manager using its instance profile, so nothing sensitive lands in user_data
@@ -159,6 +196,26 @@ resource "aws_instance" "server" {
           FIOSERVER_UI_ADDR=${local.ui_addr}
           FIOSERVER_GATEWAY_ADDR=0.0.0.0:${var.gateway_port}
           AWS_REGION=${data.aws_region.current.name}
+%{if var.enable_cloudwatch_logs~}
+      - path: /etc/fioserver/cloudwatch-agent.json
+        permissions: '0644'
+        content: |
+          {
+            "logs": {
+              "logs_collected": {
+                "journald": {
+                  "collect_list": [
+                    {
+                      "log_group_name": "${local.log_group_name}",
+                      "log_stream_name": "fioserver",
+                      "units": ["fioserver"]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+%{endif~}
     runcmd:
       - [systemctl, enable, --now, fioserver-volume-init.service]
       - [systemctl, enable, --now, data.mount]
@@ -166,6 +223,9 @@ resource "aws_instance" "server" {
       - [systemctl, enable, --now, fioserver.service]
 %{if var.enable_caddy~}
       - [systemctl, enable, --now, caddy.service]
+%{endif~}
+%{if var.enable_cloudwatch_logs~}
+      - [/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl, -a, fetch-config, -m, ec2, -s, -c, "file:/etc/fioserver/cloudwatch-agent.json"]
 %{endif~}
   EOT
 

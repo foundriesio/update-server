@@ -99,6 +99,28 @@ variable "snapshot_start_time" {
   default     = "05:17"
 }
 
+variable "enable_cloudwatch_logs" {
+  type        = bool
+  description = <<-EOT
+    Ship the fioserver.service journal to CloudWatch Logs via the CloudWatch
+    agent (installed but disabled by default in the AMI). Off by default
+    since it adds CloudWatch Logs ingestion/storage cost.
+  EOT
+  default     = false
+}
+
+variable "cloudwatch_log_retention_days" {
+  type        = number
+  description = "Retention for the CloudWatch log group, when enable_cloudwatch_logs is set."
+  default     = 30
+}
+
+variable "enable_ipv6" {
+  type        = bool
+  description = "Assign the instance a public IPv6 address in addition to IPv4."
+  default     = true
+}
+
 variable "tags" {
   type        = map(string)
   description = "Extra tags applied to every resource."

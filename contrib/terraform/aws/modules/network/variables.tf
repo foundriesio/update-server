@@ -53,6 +53,16 @@ variable "gateway_port" {
   default     = 8443
 }
 
+variable "enable_ipv6" {
+  type        = bool
+  description = <<-EOT
+    Assign the VPC an Amazon-provided IPv6 CIDR, give each public subnet a
+    /64, route ::/0 through the internet gateway, and open the equivalent
+    ::/0 security-group rules alongside the existing 0.0.0.0/0 ones.
+  EOT
+  default     = true
+}
+
 variable "tags" {
   type        = map(string)
   description = "Extra tags applied to every resource."
