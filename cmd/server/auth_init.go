@@ -24,7 +24,7 @@ func (c AuthInitCmd) Run(args CommonArgs) error {
 		cfg := storage.AuthConfig{
 			Type:                 "local",
 			NewUserDefaultScopes: users.ScopesAvailable(),
-			Config: json.RawMessage(`{"MinPasswordLength":0,"PasswordHistory":0,"PasswordAgeDays":0,` +
+			Config: json.RawMessage(`{"DevelopmentCookies": true, "MinPasswordLength":0,"PasswordHistory":0,"PasswordAgeDays":0,` +
 				`"PasswordComplexityRules":{"RequireUppercase":false,"RequireLowercase":false,` +
 				`"RequireDigit":false,"RequireSpecialChar":""}}`),
 		}

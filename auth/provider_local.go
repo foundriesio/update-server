@@ -40,6 +40,7 @@ type authConfigLocal struct {
 	AttemptsBlockDurationSec int
 	BadAuthLimit             int
 	BadAuthBlockDurationSec  int
+	DevelopmentCookies       bool // Use Secure=false, SameSite=Lax for local development purposes
 }
 
 type localProvider struct {
@@ -170,16 +171,21 @@ func (p *localProvider) handleLogin(c echo.Context) error {
 	if err != nil {
 		return server.EchoError(c, err, http.StatusInternalServerError, "Could not create user session")
 	}
+
+	samesite := http.SameSiteStrictMode
+	if p.authConfig.DevelopmentCookies {
+		samesite = http.SameSiteLaxMode
+	}
 	c.SetCookie(&http.Cookie{
 		Name:     AuthCookieName,
 		Value:    sessionId,
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		Secure:   !p.authConfig.DevelopmentCookies,
+		SameSite: samesite,
 	})
-	SetCsrfCookie(c, expires)
+	SetCsrfCookie(c, expires, !p.authConfig.DevelopmentCookies)
 
 	return c.Redirect(http.StatusSeeOther, "/")
 }
@@ -192,7 +198,7 @@ func (p localProvider) renderLoginPage(c echo.Context, reason string) error {
 		})
 	}
 
-	csrfToken := SetCsrfCookie(c, time.Now().Add(10*time.Minute))
+	csrfToken := SetCsrfCookie(c, time.Now().Add(10*time.Minute), !p.authConfig.DevelopmentCookies)
 
 	context := struct {
 		pagectx.Base
