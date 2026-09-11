@@ -139,7 +139,7 @@ func (p oauth2BaseProvider) handleOauthCallback(c echo.Context) error {
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	})
-	SetCsrfCookie(c, expires)
+	SetCsrfCookie(c, expires, true)
 
 	// Return an HTML page that performs a same-site navigation instead of
 	// a direct redirect. Browsers won't send SameSiteStrict cookies on a
