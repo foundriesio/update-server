@@ -47,7 +47,7 @@ func (p noauthProvider) GetUser(c echo.Context) (*users.User, error) {
 	}
 	cookie, err := c.Cookie(CsrfCookieName)
 	if err != nil || cookie.Value == "" {
-		SetCsrfCookie(c, time.Now().Add(24*time.Hour))
+		SetCsrfCookie(c, time.Now().Add(24*time.Hour), false)
 	}
 	return user, nil
 }

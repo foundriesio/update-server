@@ -17,16 +17,20 @@ const CsrfCookieName = "fioserver-csrf"
 const CsrfHeaderName = "X-CSRF-Token"
 
 // SetCsrfCookie sets a CSRF cookie on the response. It should be called when a new session is created.
-func SetCsrfCookie(c echo.Context, expires time.Time) string {
+func SetCsrfCookie(c echo.Context, expires time.Time, secure bool) string {
 	token := rand.Text()
+	samesite := http.SameSiteStrictMode
+	if !secure {
+		samesite = http.SameSiteLaxMode
+	}
 	c.SetCookie(&http.Cookie{
 		Name:     CsrfCookieName,
 		Value:    token,
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		Secure:   secure,
+		SameSite: samesite,
 	})
 	return token
 }
