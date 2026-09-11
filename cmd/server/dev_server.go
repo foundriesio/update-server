@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 
 	"golang.org/x/term"
@@ -49,9 +50,15 @@ func (c DevServerInitCmd) Run(args CommonArgs) error {
 		displayDnsName = "\033[1m" + dnsName + "\033[0m"
 		displayPassword = "\033[1m" + c.AdminPassword + "\033[0m"
 	}
-	fmt.Println("# PKI initialized with device-gateway TLS DNS name:", displayDnsName)
+	fmt.Println("# PKI initialized")
+	fmt.Println("device-gateway TLS DNS name:", displayDnsName)
 	fmt.Println("Devices must connect to this server with this name.")
-	fmt.Println("Edit /etc/hosts on the device if necessary.")
+	if ip, err := outboundIP(); err == nil {
+		fmt.Println("If DNS resolution fails, edit /etc/hosts on devices with:")
+		fmt.Printf("| %s\t%s\n", ip, dnsName)
+	} else {
+		fmt.Println("If DNS resolution fails, edit /etc/hosts on your devices.")
+	}
 	fmt.Println()
 
 	if err := (AuthInitCmd{Local: true}).Run(args); err != nil {
@@ -73,4 +80,16 @@ func (c DevServerInitCmd) Run(args CommonArgs) error {
 	fmt.Println("# `admin` user created with password:", displayPassword)
 
 	return nil
+}
+
+// outboundIP returns the local address this host would use to reach the
+// network, by opening a UDP "connection" (no packets are sent) to a
+// well-known external address and reading back the chosen source IP.
+func outboundIP() (net.IP, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close() //nolint:errcheck
+	return conn.LocalAddr().(*net.UDPAddr).IP, nil
 }
