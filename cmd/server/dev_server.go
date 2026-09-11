@@ -78,6 +78,11 @@ func (c DevServerInitCmd) Run(args CommonArgs) error {
 		return fmt.Errorf("failed to create admin user: %w", err)
 	}
 	fmt.Println("# `admin` user created with password:", displayPassword)
+	fmt.Println()
+
+	fmt.Println("# Dev server initialization complete")
+	fmt.Println("Run the server with:")
+	fmt.Println(" ", os.Args[0], "--datadir", args.DataDir, "serve")
 
 	return nil
 }
