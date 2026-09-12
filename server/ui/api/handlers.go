@@ -93,4 +93,6 @@ func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, user
 	// version; "<n>.root.json" returns a specific version.
 	g.GET("/tuf/root.json", h.tufRootLatest, requireScope(users.ScopeUpdatesR))
 	g.GET("/tuf/:version", h.tufRootVersion, requireScope(users.ScopeUpdatesR))
+
+	g.GET("/pki/cert", h.pkiCert)
 }

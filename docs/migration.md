@@ -44,7 +44,7 @@ safe to share as needed. From the Factory PKI directory run:
 ```
 
 This command will print the contents of the certificate. Go back to the update
-server system and create the file `datadir/certs/tls.pem` with this content.
+server system and create the file `datadir/certs/tls.crt` with this content.
 
 **Locally with `sign-csr`.** If the Factory root key and certificate are
 available as files on this machine, the server can sign its own CSR:
@@ -53,7 +53,7 @@ available as files on this machine, the server can sign its own CSR:
   ./fioserver --datadir=./datadir sign-csr --cakey <root.key> --cacert <root.crt>
 ```
 
-This writes `datadir/certs/tls.pem` directly.
+This writes `datadir/certs/tls.crt` directly.
 
 ### Grant Access to Devices
 

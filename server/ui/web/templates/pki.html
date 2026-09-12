@@ -1,0 +1,39 @@
+{{ template "header" .}}
+    {{range .Sections}}
+    <section class="content-section">
+      <h3>{{.Title}}</h3>
+        {{if .Certs}}
+        {{range .Certs}}
+        <dl class="certificate-info">
+          <dt>Serial:</dt> <dd>{{.Serial}}</dd>
+          <dt>Issuer:</dt> <dd>{{.Issuer}}</dd>
+          <dt>Subject:</dt> <dd>{{.Subject}}</dd>
+          <dt>Expires:</dt> <dd>{{if isExpired .Expires}}<del>{{.Expires}}</del>{{else}}{{.Expires}}{{end}}</dd>
+        </dl>
+        {{end}}
+        <details>
+          <summary role="button" class="secondary">Details</summary>
+          <pre>{{.Raw}}</pre>
+        </details>
+        {{else}}
+        <p><em>Not configured</em></p>
+        {{end}}
+    </section>
+    {{end}}
+
+<style>
+.certificate-info {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+}
+
+.certificate-info dt {
+  font-weight: 600;
+}
+
+.certificate-info dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+</style>
+{{ template "footer"}}

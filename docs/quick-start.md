@@ -23,7 +23,7 @@ everything needed in one step:
 This generates, under `datadir/certs`:
 
 * a self-signed root CA (`root.key`/`root.crt`) with `OU=<FACTORY>`,
-* the server TLS keypair signed by the root CA (`tls.key`/`tls.pem`),
+* the server TLS keypair signed by the root CA (`tls.key`/`tls.crt`),
 * an intermediate device-signing CA (`device-ca.key`/`device-ca.crt`), and
 * `cas.pem`, containing the device CA so devices can authenticate.
 
