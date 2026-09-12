@@ -388,13 +388,9 @@ func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[st
 
 	meta := make(map[string]map[string]any)
 	for _, x := range []string{storage.TufTargetsFile, storage.TufSnapshotFile, storage.TufTimestampFile, latestRoot} {
-		metaStr, err := handle.Tuf.ReadFile(tag, updateName, x)
+		metaDict, err := s.GetUpdateTufMetadataFile(tag, updateName, x)
 		if err != nil {
 			return nil, err
-		}
-		var metaDict map[string]any
-		if err := json.Unmarshal([]byte(metaStr), &metaDict); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %s: %w", x, err)
 		}
 		if x == latestRoot {
 			x = storage.TufRootFile
@@ -403,6 +399,15 @@ func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[st
 	}
 
 	return meta, nil
+}
+
+func (s Storage) GetUpdateTufMetadataFile(tag, updateName, file string) (meta map[string]any, err error) {
+	var metaStr string
+	if metaStr, err = s.fs.Updates.Tuf.ReadFile(tag, updateName, file); err != nil {
+	} else if err = json.Unmarshal([]byte(metaStr), &meta); err != nil {
+		err = fmt.Errorf("failed to unmarshal %s: %w", file, err)
+	}
+	return
 }
 
 func (s Storage) ListRollouts(tag, updateName string) ([]string, error) {

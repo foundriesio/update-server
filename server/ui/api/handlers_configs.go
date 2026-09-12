@@ -21,7 +21,10 @@ type (
 	AppliedConfigs = storage.AppliedConfigs
 )
 
-const ConfigHistoryLimit = storage.ConfigHistoryLimit
+const (
+	ConfigHistoryLimit = storage.ConfigHistoryLimit
+	ConfigSotaOverride = storage.ConfigSotaOverride
+)
 
 // @Summary Read latest factory configs
 // @Description Requires scopes: devices:read

@@ -212,6 +212,26 @@ i.ocr-fork::before {
   line-height: 1rem;
 }
 
+i.chevron-right-uno::before {
+  content: "\003E";
+  font-style: normal;
+}
+
+i.chevron-left-uno::before {
+  content: "\003C";
+  font-style: normal;
+}
+
+i.chevron-right-duo::before {
+  content: "\00BB";
+  font-style: normal;
+}
+
+i.chevron-left-duo::before {
+  content: "\00AB";
+  font-style: normal;
+}
+
 .icontip {
   position: relative;
   display: inline-block;
