@@ -100,6 +100,35 @@ task unless a later instruction in this file or from the user overrides them.
 - If you could not verify something the user will assume is verified, say so
   explicitly in the response — not in a comment in the code.
 
+## 8. Code Comments
+
+Comments explain **intent — the "why"** behind the code. They never narrate
+what the code does; that is recoverable by reading the code.
+
+- **Minimal.** Use the fewest words that convey the intent. Prefer a single
+  line. Delete comments that only echo the code.
+- **Capture only non-obvious context** — load-bearing intent, invariants,
+  and constraints a reader could not reconstruct from the code itself.
+- Stay technically accurate; invent no behavior.
+
+## 9. Commit Messages
+
+Commit messages follow the same spirit as code comments: describe the
+**intent** of the change — why it was made. Keep the body minimal and free
+of contrastive phrasing. Use a concise, imperative subject line.
+**Hard-wrap the body at ~72 columns, composed via `git commit -F <file>`**
+— a single-line `git commit -m` body is left unwrapped and shell-parses
+backticks / `$` / `!` (a source of mangled history); reserve `-m` for the
+subject.
+
+## 10. Trailers
+
+Every commit — and every annotated tag — carries the trailers the
+repository's history uses: a `Signed-off-by: <Name> <email>` (DCO) trailer
+first, then any `Co-Authored-By: <Name> <email>` trailers. Check recent
+history with `git log` before committing and mirror the names, emails, and
+order it uses.
+
 ## Style
 
 Follow [STYLE.md](STYLE.md) for the Markdown docs, code comments, commit
