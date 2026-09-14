@@ -14,6 +14,7 @@ import (
 
 	"github.com/foundriesio/update-server/cli/api"
 	"github.com/foundriesio/update-server/cli/subcommands"
+	"github.com/foundriesio/update-server/storage"
 )
 
 var createCmd = &cobra.Command{
@@ -79,6 +80,20 @@ func createOptions(cmd *cobra.Command) (api.CreateUpdateOptions, error) {
 	return opts, nil
 }
 
+// allowedUpdateDirs restricts an upload to the "apps" and "ostree_repo" top-level
+// subdirectories, matching what the server stores an update under
+// (storage.UpdatesAppsDir / storage.UpdatesOstreeDir); everything else is dropped.
+func allowedUpdateDirs(entry subcommands.ArchiveEntry) error {
+	top, _, _ := strings.Cut(entry.Path, string(filepath.Separator))
+	if top == storage.UpdatesAppsDir || top == storage.UpdatesOstreeDir || top == storage.UpdatesTufDir {
+		return nil
+	}
+	if entry.Info.Mode().IsDir() {
+		return filepath.SkipDir
+	}
+	return subcommands.SkipEntry
+}
+
 func createUpdate(updates api.UpdatesApi, tag, updateName, path string, opts api.CreateUpdateOptions) error {
 	if stat, err := os.Stat(path); err != nil {
 		return fmt.Errorf("failed to stat directory '%s': %w", path, err)
@@ -92,7 +107,7 @@ func createUpdate(updates api.UpdatesApi, tag, updateName, path string, opts api
 		}
 	}
 
-	progress, sourcer := subcommands.TarProgress(subcommands.ArchiveSourcer(path))
+	progress, sourcer := subcommands.TarProgress(subcommands.ArchiveSourcer(path, allowedUpdateDirs))
 	reader := subcommands.GzipStream(progress.StreamWriter(subcommands.TarStream(sourcer)))
 	defer reader.Close() //nolint:errcheck
 
