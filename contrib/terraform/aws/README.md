@@ -74,8 +74,12 @@ device-facing URL from it — each enrolled device stores those URLs in its
 ```bash
 cd packer
 packer init .
-packer build -var fioserver_version=v0.9.2 .
+packer build -var fioserver_version=v0.9.4 .
 ```
+
+> [!NOTE]
+> Packer defaults to the `us-east-1` region. If you are deploying to another
+> region, include `-var region=<region>` to publish the AMI correctly.
 
 The version is required and deliberately has no default, so an AMI is always
 reproducible. Releases publish a bare, uncompressed binary
@@ -98,7 +102,10 @@ cd scripts
     --factory my-factory --auth-config-json /path/to/auth-config.json
 ```
 
-The values passed here must match the corresponding Terraform variables
+> [!NOTE]
+> This script requires the `secretsmanager:CreateSecret` IAM role.
+
+The values passed here for `region` and `name-prefix` must match the corresponding Terraform variables
 exactly — they compute the same Secrets Manager names and PKI/TUF identity
 Terraform expects the instance to restore. In the load-balancer topology the
 UI and the gateway need **separate hostnames**, because one DNS record
@@ -121,6 +128,7 @@ sudo journalctl -u fioserver-bootstrap -f
 ```
 
 ```bash
+# If using the local user authentication provider
 aws ssm start-session --target "$(terraform output -raw instance_id)"
 sudo fioserver --datadir /data user-add --username admin --password <password>
 ```
@@ -139,8 +147,8 @@ aws secretsmanager put-secret-value \
 
 ```bash
 HOST=$(terraform output -raw ui_url)
-curl -sI "$HOST/favicon"            # 200
-curl -sI "http://${HOST#https://}"  # 301 to HTTPS
+curl -s "$HOST/favicon"            # 200
+curl -s "http://${HOST#https://}"  # 301 to HTTPS
 ```
 
 With `enable_ipv6` on (the default), confirm the AAAA record resolves and is
@@ -223,6 +231,10 @@ Check which path a boot took:
 ```bash
 cat /data/.bootstrap-state   # "A" reboot, "B" restored from escrow
 ```
+
+### Updating the AMI for the server
+The server deployment logic has a lifecycle rule to ignore AMI changes.
+To update the AMI, you must run terraform with: `-replace=module.server.aws_instance.server`
 
 ## Backups
 
