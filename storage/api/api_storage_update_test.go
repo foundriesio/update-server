@@ -90,7 +90,7 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 
 	// Create and check in devices on the "main" tag.
 	for _, uuid := range []string{"uuid-1", "uuid-2", "uuid-3", "uuid-4"} {
-		d, err := dg.DeviceCreate(uuid, "pubkey-"+uuid)
+		d, err := dg.DeviceCreate(uuid, "cert-"+uuid)
 		require.NoError(t, err)
 		require.NoError(t, d.CheckIn("target", "main", "hash", ""))
 	}
@@ -157,7 +157,7 @@ func TestDeleteUpdate(t *testing.T) {
 	require.ErrorIs(t, err, os.ErrNotExist)
 
 	// An update with an assigned device cannot be deleted.
-	d, err := dg.DeviceCreate("uuid-1", "pubkey-1")
+	d, err := dg.DeviceCreate("uuid-1", "cert-1")
 	require.NoError(t, err)
 	require.NoError(t, d.CheckIn("target", "main", "hash", ""))
 	assigned, err := s.SetUpdateName("main", "v1.0", []string{"uuid-1"}, nil)

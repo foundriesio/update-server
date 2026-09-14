@@ -26,10 +26,7 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 		log := CtxGetLog(ctx).With("device", uuid)
 		ctx = CtxWithLog(ctx, log)
 
-		pub, err := pubkey(cert)
-		if err != nil {
-			return c.String(http.StatusForbidden, fmt.Sprintf("unable to extract device's public key: %s", err))
-		}
+		certPem := certPEM(cert)
 
 		device, err := h.storage.DeviceGet(uuid)
 
@@ -37,7 +34,7 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 			log.Error("Unable to query for device", "error", err)
 			return c.String(http.StatusBadGateway, err.Error())
 		} else if device == nil {
-			device, err = h.storage.DeviceCreate(cert.Subject.CommonName, pub)
+			device, err = h.storage.DeviceCreate(cert.Subject.CommonName, certPem)
 			if err != nil {
 				log.Error("Unable to create device", "error", err)
 				return c.String(http.StatusBadGateway, "Unable to create device")
@@ -45,8 +42,8 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 			log.Info("Created device")
 		} else if device.Deleted {
 			return c.String(http.StatusForbidden, fmt.Sprintf("Device(%s) is on the denied list", uuid))
-		} else if pub != device.PubKey {
-			/*if err := device.RotatePubKey(pub); err != nil {
+		} else if certPem != device.Cert {
+			/*if err := device.RotateCert(certPem); err != nil {
 				return c.String(http.StatusForbidden, err.Error())
 			}*/
 			return c.String(http.StatusBadGateway, "Key rotation is not supported")
@@ -139,16 +136,12 @@ func (h handlers) checkinDevice(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func pubkey(cert *x509.Certificate) (string, error) {
-	derBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
-	if err != nil {
-		return "", err
-	}
+func certPEM(cert *x509.Certificate) string {
 	block := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: derBytes,
+		Type:  "CERTIFICATE",
+		Bytes: cert.Raw,
 	}
-	return string(pem.EncodeToMemory(block)), nil
+	return string(pem.EncodeToMemory(block))
 }
 
 func getHeader(req *http.Request, header, defVal string) string {

@@ -79,7 +79,7 @@ func createTables(db *sql.DB) error {
 	sqlStmt := `
 		CREATE TABLE devices (
 			uuid VARCHAR(48) NOT NULL PRIMARY KEY,
-			pubkey TEXT,
+			cert TEXT,
 			deleted BOOL DEFAULT 0,
 			created_at INT DEFAULT 0,
 			last_seen INT DEFAULT 0,

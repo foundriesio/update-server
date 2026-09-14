@@ -31,7 +31,7 @@ import (
 // real ostree object for it, and commits a rollout so GetTufMeta/
 // GetOstreeFilePath resolve immediately — no server restart or async wait
 // required, since this all runs before "fioserver serve" ever starts.
-func seedUpdate(datadir, tag, updateName string, uuids []string, pubkeys map[string]string) error {
+func seedUpdate(datadir, tag, updateName string, uuids []string, certs map[string]string) error {
 	fs, err := storage.NewFs(datadir)
 	if err != nil {
 		return fmt.Errorf("open filesystem: %w", err)
@@ -53,8 +53,8 @@ func seedUpdate(datadir, tag, updateName string, uuids []string, pubkeys map[str
 	// Real mTLS registration (authDevice's DeviceCreate) happens lazily on
 	// first contact. This fixture needs the rows to exist *now* so the
 	// rollout below has something to match — so it registers them the same
-	// way, with each device's real extracted pubkey (not a placeholder;
-	// using a fake key here would make the actual Locust mTLS handshake
+	// way, with each device's real extracted certificate (not a placeholder;
+	// using a fake cert here would make the actual Locust mTLS handshake
 	// hit "Key rotation is not supported" on first contact).
 	for _, uuid := range uuids {
 		device, err := gw.DeviceGet(uuid)
@@ -62,7 +62,7 @@ func seedUpdate(datadir, tag, updateName string, uuids []string, pubkeys map[str
 			return fmt.Errorf("DeviceGet(%s): %w", uuid, err)
 		}
 		if device == nil {
-			if device, err = gw.DeviceCreate(uuid, pubkeys[uuid]); err != nil {
+			if device, err = gw.DeviceCreate(uuid, certs[uuid]); err != nil {
 				return fmt.Errorf("DeviceCreate(%s): %w", uuid, err)
 			}
 		}

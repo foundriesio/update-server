@@ -87,10 +87,10 @@ func (a DeviceConfigsApi) GetApplied() (res AppliedConfigs, err error) {
 	return
 }
 
-func (a DeviceConfigsApi) GetPubkey() (res string, err error) {
+func (a DeviceConfigsApi) GetCert() (res string, err error) {
 	var d *Device
 	if d, err = a.api.Devices().Get(a.uuid); err == nil {
-		res = d.PubKey
+		res = d.Cert
 	}
 	return
 }

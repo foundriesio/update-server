@@ -80,7 +80,7 @@ type Device struct {
 	GroupName  string `json:"group_name"`
 	LastSeen   int64  `json:"last_seen"`
 	OstreeHash string `json:"ostree_hash"`
-	PubKey     string `json:"pubkey"`
+	Cert       string `json:"cert"`
 	TargetName string `json:"target_name"`
 	Tag        string `json:"tag"`
 	UpdateName string `json:"update_name"`
@@ -247,9 +247,9 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 	return &handle, nil
 }
 
-func (s Storage) DeviceCreate(uuid, pubkey string) (*Device, error) {
+func (s Storage) DeviceCreate(uuid, cert string) (*Device, error) {
 	now := time.Now().Unix()
-	if err := s.stmtDeviceCreate.run(uuid, pubkey, now, now); err != nil {
+	if err := s.stmtDeviceCreate.run(uuid, cert, now, now); err != nil {
 		return nil, err
 	}
 
@@ -258,7 +258,7 @@ func (s Storage) DeviceCreate(uuid, pubkey string) (*Device, error) {
 		Uuid:     uuid,
 		Deleted:  false,
 		LastSeen: now,
-		PubKey:   pubkey,
+		Cert:     cert,
 	}
 	return &d, nil
 }
@@ -294,14 +294,14 @@ type stmtDeviceCreate storage.DbStmt
 
 func (s *stmtDeviceCreate) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("DeviceCreate", `
-		INSERT INTO devices(uuid, pubkey, created_at, last_seen, deleted)
+		INSERT INTO devices(uuid, cert, created_at, last_seen, deleted)
 		VALUES (?, ?, ?, ?, false)`,
 	)
 	return
 }
 
-func (s *stmtDeviceCreate) run(uuid, pubkey string, createdAt, lastSeen int64) error {
-	_, err := s.Stmt.Exec(uuid, pubkey, createdAt, lastSeen)
+func (s *stmtDeviceCreate) run(uuid, cert string, createdAt, lastSeen int64) error {
+	_, err := s.Stmt.Exec(uuid, cert, createdAt, lastSeen)
 	return err
 }
 
@@ -310,7 +310,7 @@ type stmtDeviceGet storage.DbStmt
 func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("DeviceGet", `
 		SELECT
-			deleted, pubkey, group_name, update_name, last_seen, tag, target_name,
+			deleted, cert, group_name, update_name, last_seen, tag, target_name,
 			ostree_hash, apps, group_name_modified_at
 		FROM devices
 		WHERE uuid = ?`,
@@ -320,6 +320,6 @@ func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 
 func (s *stmtDeviceGet) run(uuid string, d *Device) error {
 	return s.Stmt.QueryRow(uuid).Scan(
-		&d.Deleted, &d.PubKey, &d.GroupName, &d.UpdateName, &d.LastSeen, &d.Tag, &d.TargetName,
+		&d.Deleted, &d.Cert, &d.GroupName, &d.UpdateName, &d.LastSeen, &d.Tag, &d.TargetName,
 		&d.OstreeHash, &d.Apps, &d.groupNameModifiedAt)
 }

@@ -92,12 +92,12 @@ func TestStorage(t *testing.T) {
 	require.Nil(t, d)
 
 	uuid := "1234-567-890"
-	d, err = s.DeviceCreate(uuid, "pubkey")
+	d, err = s.DeviceCreate(uuid, "cert")
 	require.Nil(t, err)
 
 	d2, err := s.DeviceGet(uuid)
 	require.Nil(t, err)
-	require.Equal(t, d.PubKey, d2.PubKey)
+	require.Equal(t, d.Cert, d2.Cert)
 
 	time.Sleep(time.Second)
 	require.Nil(t, d2.CheckIn("target", "tag", "hash", ""))
@@ -160,7 +160,7 @@ func Test_ProcessEvents(t *testing.T) {
 
 	// Create fake device
 	id := rand.Text()
-	d, err := s.DeviceCreate(id, "pubkey")
+	d, err := s.DeviceCreate(id, "cert")
 	require.Nil(t, err)
 	d.UpdateName = "update"
 	d.Tag = "tag"
@@ -248,7 +248,7 @@ func Benchmark_ProcessEvents(b *testing.B) {
 	var devices []*Device
 	for i := 0; i < 10; i++ {
 		id := rand.Text()
-		d, err := s.DeviceCreate(id, "pubkey")
+		d, err := s.DeviceCreate(id, "cert")
 		require.Nil(b, err)
 		devices = append(devices, d)
 	}
@@ -283,7 +283,7 @@ func Benchmark_CheckIn(b *testing.B) {
 	var devices []*Device
 	for range 100 {
 		id := rand.Text()
-		d, err := s.DeviceCreate(id, "pubkey"+id)
+		d, err := s.DeviceCreate(id, "cert"+id)
 		require.Nil(b, err)
 		devices = append(devices, d)
 	}
@@ -312,7 +312,7 @@ func Test_Fiotest(t *testing.T) {
 
 	// Create fake device
 	id := uuid.New().String()
-	d, err := s.DeviceCreate(id, "pubkey")
+	d, err := s.DeviceCreate(id, "cert")
 	require.Nil(t, err)
 
 	require.Nil(t, d.TestCreate("intel-corei7-64-lmp-23", "test1", "test1-id"))

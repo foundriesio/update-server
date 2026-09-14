@@ -132,20 +132,20 @@ func main() {
 
 	if *seedUpdateFlag {
 		uuids := make([]string, len(results))
-		pubkeys := make(map[string]string, len(results))
+		certs := make(map[string]string, len(results))
 		for i, r := range results {
 			uuids[i] = r.uuid
-			pubkeys[r.uuid] = r.pubkeyPEM
+			certs[r.uuid] = r.certPEM
 		}
-		if err := seedUpdate(*datadir, *updateTag, *updateName, uuids, pubkeys); err != nil {
+		if err := seedUpdate(*datadir, *updateTag, *updateName, uuids, certs); err != nil {
 			fatal("seed update:", err)
 		}
 	}
 }
 
 type deviceResult struct {
-	uuid      string
-	pubkeyPEM string
+	uuid    string
+	certPEM string
 }
 
 func genDevice(n int, devicesDir string, caCert *x509.Certificate, caKey *ecdsa.PrivateKey, factory string, now time.Time) deviceResult {
@@ -189,13 +189,9 @@ func genDevice(n int, devicesDir string, caCert *x509.Certificate, caKey *ecdsa.
 		fatal("encode device key:", err)
 	}
 
-	pubkeyDER, err := x509.MarshalPKIXPublicKey(&devKey.PublicKey)
-	if err != nil {
-		fatal(fmt.Sprintf("device-%d marshal pubkey:", n), err)
-	}
-	pubkeyPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubkeyDER})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: devDER})
 
-	return deviceResult{uuid: id, pubkeyPEM: string(pubkeyPEM)}
+	return deviceResult{uuid: id, certPEM: string(certPEM)}
 }
 
 func writePEM(path, blockType string, der []byte) {
