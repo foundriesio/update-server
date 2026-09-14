@@ -83,24 +83,24 @@ func createTables(db *sql.DB) error {
 			deleted BOOL DEFAULT 0,
 			created_at INT DEFAULT 0,
 			last_seen INT DEFAULT 0,
-			tag VARCHAR(80) DEFAULT "",
+			tag VARCHAR(80) DEFAULT '',
 			labels JSONB(2048) DEFAULT "{}",
-			update_name VARCHAR(80) DEFAULT "",
-			target_name VARCHAR(80) DEFAULT "",
-			ostree_hash VARCHAR(80) DEFAULT "",
-			apps VARCHAR(2048) DEFAULT "",
+			update_name VARCHAR(80) DEFAULT '',
+			target_name VARCHAR(80) DEFAULT '',
+			ostree_hash VARCHAR(80) DEFAULT '',
+			apps VARCHAR(2048) DEFAULT '',
 
 			group_name_modified_at INT DEFAULT 0,
 
 			name VARCHAR(80) GENERATED ALWAYS AS (
-				COALESCE(labels ->> '$.name', "")
+				COALESCE(labels ->> '$.name', '')
 			) VIRTUAL,
 			group_name VARCHAR(80) GENERATED ALWAYS AS (
-				COALESCE(labels ->> '$.group', "")
+				COALESCE(labels ->> '$.group', '')
 			) VIRTUAL
 		) WITHOUT ROWID;
 
-		CREATE UNIQUE INDEX idx_device_name_unique ON devices(name) WHERE name != "";
+		CREATE UNIQUE INDEX idx_device_name_unique ON devices(name) WHERE name != '';
 		CREATE INDEX idx_device_name ON devices(name);
 		CREATE INDEX idx_device_group ON devices(group_name);
 
@@ -132,7 +132,7 @@ func createTables(db *sql.DB) error {
 			email          TEXT,
 			created_at     INT DEFAULT 0,
 			deleted        BOOL DEFAULT 0,
-			allowed_scopes TEXT DEFAULT "",
+			allowed_scopes TEXT DEFAULT '',
 
 			auth_provider_data JSONB NOT NULL DEFAULT '{}'
 		);
@@ -163,7 +163,7 @@ func createTables(db *sql.DB) error {
 			tag         VARCHAR(80) NOT NULL,
 			name        VARCHAR(80) NOT NULL,
 			uploaded_at INT NOT NULL DEFAULT 0,
-			uploaded_by TEXT NOT NULL DEFAULT "",
+			uploaded_by TEXT NOT NULL DEFAULT '',
 			PRIMARY KEY (tag, name)
 		) WITHOUT ROWID;
 
