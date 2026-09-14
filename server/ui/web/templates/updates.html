@@ -88,6 +88,10 @@
       const parts = [];
       const fileEntries = [];
 
+      // Only "apps" and "ostree_repo" are meaningful to the updates API;
+      // drop everything else (e.g. "tuf", which the server regenerates).
+      const allowedTopDirs = new Set(['apps', 'ostree_repo', 'tuf']);
+
       // Collect files and directories
       const dirs = new Set();
       for (const file of files) {
@@ -95,6 +99,7 @@
           ? file.webkitRelativePath.split('/').slice(1).join('/')
           : file.name;
         if (!name) continue;
+        if (!allowedTopDirs.has(name.split('/')[0])) continue;
 
         fileEntries.push({ name: name, file: file });
 
