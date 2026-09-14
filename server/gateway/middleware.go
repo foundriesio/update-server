@@ -43,10 +43,11 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 		} else if device.Deleted {
 			return c.String(http.StatusForbidden, fmt.Sprintf("Device(%s) is on the denied list", uuid))
 		} else if certPem != device.Cert {
-			/*if err := device.RotateCert(certPem); err != nil {
-				return c.String(http.StatusForbidden, err.Error())
-			}*/
-			return c.String(http.StatusBadGateway, "Key rotation is not supported")
+			if err := device.RotateCert(certPem); err != nil {
+				log.Error("Unable to rotate device certificate", "error", err)
+				return c.String(http.StatusBadGateway, "Unable to rotate device certificate")
+			}
+			log.Info("Rotated device certificate")
 		}
 
 		ctx = CtxWithDevice(ctx, device)

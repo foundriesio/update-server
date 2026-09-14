@@ -155,6 +155,39 @@ func TestApiDevice(t *testing.T) {
 	assert.Less(t, lastSeen, device.LastSeen)
 }
 
+func TestCertRotation(t *testing.T) {
+	tc := NewTestClient(t)
+	tc.cert.Raw = []byte("cert-v1")
+	_ = tc.GET("/device", 200)
+
+	d, err := tc.gw.DeviceGet(tc.uuid)
+	require.Nil(t, err)
+	assert.Equal(t, certPEM(tc.cert), d.Cert)
+
+	// Device re-authenticates with a rotated certificate for the same uuid.
+	tc.cert.Raw = []byte("cert-v2")
+	deviceBytes := tc.GET("/device", 200)
+	var device storage.Device
+	require.Nil(t, json.Unmarshal(deviceBytes, &device))
+	assert.Equal(t, tc.uuid, device.Uuid)
+
+	d, err = tc.gw.DeviceGet(tc.uuid)
+	require.Nil(t, err)
+	assert.Equal(t, certPEM(tc.cert), d.Cert)
+
+	// Rotation records a CertRotationCompleted event.
+	eventsFiles, err := tc.fs.Devices.ListFiles(tc.uuid, storage.EventsPrefix, true)
+	require.Nil(t, err)
+	require.Equal(t, 1, len(eventsFiles))
+	eventsSaved, err := tc.fs.Devices.ReadFile(tc.uuid, eventsFiles[0])
+	require.Nil(t, err)
+	var evt storage.DeviceUpdateEvent
+	require.Nil(t, json.Unmarshal([]byte(strings.TrimSpace(eventsSaved)), &evt))
+	assert.Equal(t, "CertRotationCompleted", evt.EventType.Id)
+	require.NotNil(t, evt.Event.Success)
+	assert.True(t, *evt.Event.Success)
+}
+
 func TestApiProxy(t *testing.T) {
 	tc := NewTestClient(t)
 	resBytes := tc.POST("/app-proxy-url", 201, nil)

@@ -63,9 +63,10 @@ type Storage struct {
 	db *DbHandle
 	fs *FsHandle
 
-	stmtDeviceCheckIn stmtDeviceCheckIn
-	stmtDeviceCreate  stmtDeviceCreate
-	stmtDeviceGet     stmtDeviceGet
+	stmtDeviceCheckIn    stmtDeviceCheckIn
+	stmtDeviceCreate     stmtDeviceCreate
+	stmtDeviceGet        stmtDeviceGet
+	stmtDeviceRotateCert stmtDeviceRotateCert
 
 	maxEvents int
 	maxStates int
@@ -101,6 +102,31 @@ func (d *Device) CheckIn(targetName, tag, ostreeHash string, apps string) error 
 	d.Tag = tag
 	d.TargetName = targetName
 	return d.storage.stmtDeviceCheckIn.run(d.Uuid, targetName, tag, ostreeHash, apps, now)
+}
+
+func (d *Device) RotateCert(cert string) error {
+	err1 := d.storage.stmtDeviceRotateCert.run(d.Uuid, cert)
+
+	success := err1 == nil
+	corrId := fmt.Sprintf("certs-%d", time.Now().Unix())
+	event := storage.DeviceUpdateEvent{
+		Id:         corrId,
+		DeviceTime: time.Now().UTC().Format(time.RFC3339),
+		Event: storage.DeviceEvent{
+			CorrelationId: corrId,
+			TargetName:    d.TargetName,
+			Success:       &success,
+		},
+		EventType: storage.DeviceEventType{Id: "CertRotationCompleted", Version: 1},
+	}
+	if err := d.ProcessEvents([]storage.DeviceUpdateEvent{event}); err != nil {
+		slog.Error("Failed to record cert rotation event", "uuid", d.Uuid, "error", err)
+	}
+
+	if err1 != nil {
+		d.Cert = cert
+	}
+	return err1
 }
 
 func (d *Device) PutFile(name string, content string) error {
@@ -240,6 +266,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceCheckIn,
 		&handle.stmtDeviceCreate,
 		&handle.stmtDeviceGet,
+		&handle.stmtDeviceRotateCert,
 	); err != nil {
 		return nil, err
 	}
@@ -322,4 +349,20 @@ func (s *stmtDeviceGet) run(uuid string, d *Device) error {
 	return s.Stmt.QueryRow(uuid).Scan(
 		&d.Deleted, &d.Cert, &d.GroupName, &d.UpdateName, &d.LastSeen, &d.Tag, &d.TargetName,
 		&d.OstreeHash, &d.Apps, &d.groupNameModifiedAt)
+}
+
+type stmtDeviceRotateCert storage.DbStmt
+
+func (s *stmtDeviceRotateCert) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("DeviceRotateCert", `
+		UPDATE devices
+		SET cert=?
+		WHERE uuid = ?`,
+	)
+	return
+}
+
+func (s *stmtDeviceRotateCert) run(uuid, cert string) error {
+	_, err := s.Stmt.Exec(cert, uuid)
+	return err
 }
