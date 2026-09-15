@@ -18,7 +18,25 @@ Two topologies are provided:
 | DNS Names | two (UI and gateway for the 2 LBs) | one |
 | Extra cost | yes | no |
 
-Both share the same modules and the same AMI.
+Both share the same modules and the same AMI. Both are dual-stack by default:
+the VPC gets an Amazon-provided IPv6 CIDR, subnets get a `/64` each, and every
+security-group rule that allows `0.0.0.0/0` gets an `::/0` sibling. Set
+`enable_ipv6 = false` to opt out and stay IPv4-only.
+
+In the load-balancer topology, the ALB and NLB run in `dualstack` mode and
+Route53 gets an `AAAA` alias record next to each `A` record; the instance
+itself stays IPv4-only, since the load balancers already terminate IPv6
+client connections and forward to its private IPv4 address — giving the
+instance its own public IPv6 would let the device gateway be reached
+directly, bypassing the NLB.
+
+In the Caddy topology the instance is the only public endpoint, so it gets a
+public IPv6 address of its own (`ipv6_address_count = 1`) alongside its
+Elastic IP. That address is *not* an EIP — Elastic IPs are IPv4-only — but it
+stays stable across reboots because it's tied to the instance's network
+interface rather than reassigned like an auto-assigned IPv4 would be.
+Terraform creates the matching `AAAA` record automatically when
+`hosted_zone_id` is set.
 
 ## Why it is shaped this way
 
@@ -56,8 +74,12 @@ device-facing URL from it — each enrolled device stores those URLs in its
 ```bash
 cd packer
 packer init .
-packer build -var fioserver_version=v0.9.2 .
+packer build -var fioserver_version=v0.9.4 .
 ```
+
+> [!NOTE]
+> Packer defaults to the `us-east-1` region. If you are deploying to another
+> region, include `-var region=<region>` to publish the AMI correctly.
 
 The version is required and deliberately has no default, so an AMI is always
 reproducible. Releases publish a bare, uncompressed binary
@@ -80,7 +102,10 @@ cd scripts
     --factory my-factory --auth-config-json /path/to/auth-config.json
 ```
 
-The values passed here must match the corresponding Terraform variables
+> [!NOTE]
+> This script requires the `secretsmanager:CreateSecret` IAM role.
+
+The values passed here for `region` and `name-prefix` must match the corresponding Terraform variables
 exactly — they compute the same Secrets Manager names and PKI/TUF identity
 Terraform expects the instance to restore. In the load-balancer topology the
 UI and the gateway need **separate hostnames**, because one DNS record
@@ -103,6 +128,7 @@ sudo journalctl -u fioserver-bootstrap -f
 ```
 
 ```bash
+# If using the local user authentication provider
 aws ssm start-session --target "$(terraform output -raw instance_id)"
 sudo fioserver --datadir /data user-add --username admin --password <password>
 ```
@@ -121,14 +147,35 @@ aws secretsmanager put-secret-value \
 
 ```bash
 HOST=$(terraform output -raw ui_url)
-curl -sI "$HOST/favicon"            # 200
-curl -sI "http://${HOST#https://}"  # 301 to HTTPS
+curl -s "$HOST/favicon"            # 200
+curl -s "http://${HOST#https://}"  # 301 to HTTPS
+```
+
+With `enable_ipv6` on (the default), confirm the AAAA record resolves and is
+reachable:
+
+```bash
+dig +short AAAA "${HOST#https://}"
+curl -6sI "$HOST/favicon"            # 200
 ```
 
 Then log in through a browser and open a device or update page. That exercises
 the UI's own REST calls, which is the real test that `X-Forwarded-Proto` and the
 self-call are both working. If those pages error, check `journalctl -u fioserver`
 for attempts to reach `http://`.
+
+By default that journal is only reachable through SSM on the instance itself.
+Set `enable_cloudwatch_logs = true` to also ship it to CloudWatch Logs, at the
+group named `/<name_prefix>/<hostname>` (retained for
+`cloudwatch_log_retention_days`, 30 by default):
+
+```bash
+aws logs tail "$(terraform output -raw cloudwatch_log_group_name)" --follow
+```
+
+The CloudWatch agent is always installed in the AMI but disabled at boot; this
+variable only decides whether Terraform configures and starts it. It adds
+CloudWatch Logs ingestion/storage cost on top of the resources below.
 
 To verify device mTLS, generate a device certificate against the deployed PKI and
 use it (on the instance, where `/data` is the datadir).
@@ -184,6 +231,10 @@ Check which path a boot took:
 ```bash
 cat /data/.bootstrap-state   # "A" reboot, "B" restored from escrow
 ```
+
+### Updating the AMI for the server
+The server deployment logic has a lifecycle rule to ignore AMI changes.
+To update the AMI, you must run terraform with: `-replace=module.server.aws_instance.server`
 
 ## Backups
 

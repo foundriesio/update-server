@@ -95,6 +95,31 @@ curl -fsSL "$url" -o /usr/local/bin/fioserver
 chmod 0755 /usr/local/bin/fioserver
 /usr/local/bin/fioserver --datadir=/tmp version || true
 
+log "installing the CloudWatch agent (disabled by default; Terraform enables it via user_data when enable_cloudwatch_logs is set)"
+curl -fsSL "https://amazoncloudwatch-agent.s3.amazonaws.com/debian/amd64/latest/amazon-cloudwatch-agent.deb" \
+    -o /tmp/amazon-cloudwatch-agent.deb
+dpkg -i /tmp/amazon-cloudwatch-agent.deb
+rm -f /tmp/amazon-cloudwatch-agent.deb
+systemctl disable amazon-cloudwatch-agent || true
+
+log "installing CloudWatch agent activation unit"
+cat > /etc/systemd/system/amazon-cloudwatch-agent-config.service <<'EOF'
+[Unit]
+Description=Configure and start CloudWatch Agent when config is present
+ConditionPathExists=/etc/fioserver/cloudwatch-agent.json
+After=network-online.target amazon-cloudwatch-agent.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/etc/fioserver/cloudwatch-agent.json
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable amazon-cloudwatch-agent-config.service
+
 install -d -m 0755 /etc/fioserver
 {
     echo "fioserver_version=${FIOSERVER_VERSION}"

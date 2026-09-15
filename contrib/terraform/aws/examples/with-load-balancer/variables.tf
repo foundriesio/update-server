@@ -44,6 +44,12 @@ variable "gateway_port" {
   default     = 8443
 }
 
+variable "enable_ipv6" {
+  type        = bool
+  description = "Deploy dual-stack: VPC/subnets get an IPv6 CIDR, the ALB/NLB run dual-stack, and AAAA records are created alongside the A records."
+  default     = true
+}
+
 variable "ami_id" {
   type        = string
   description = "AMI built by contrib/terraform/aws/packer."
@@ -87,6 +93,18 @@ variable "snapshot_retention_days" {
   type        = number
   description = "Days to retain daily data-volume snapshots."
   default     = 60
+}
+
+variable "enable_cloudwatch_logs" {
+  type        = bool
+  description = "Ship the fioserver.service journal to CloudWatch Logs via the CloudWatch agent."
+  default     = false
+}
+
+variable "cloudwatch_log_retention_days" {
+  type        = number
+  description = "Retention for the CloudWatch log group, when enable_cloudwatch_logs is set."
+  default     = 30
 }
 
 variable "access_logs" {
