@@ -44,6 +44,11 @@ variable "instance_ip" {
   description = "Internal IP of the update server instance, for the network endpoints."
 }
 
+variable "instance_self_link" {
+  type        = string
+  description = "Self-link of the update server instance, for the gateway's instance group."
+}
+
 variable "network_self_link" {
   type        = string
   description = "Self-link of the VPC network, for the network endpoint groups."
@@ -73,5 +78,24 @@ variable "timeout_sec" {
 variable "enable_access_logging" {
   type        = bool
   description = "Log every UI request to Cloud Logging via the backend service's log_config."
+  default     = false
+}
+
+variable "enable_ipv6" {
+  type        = bool
+  description = <<-EOT
+    Add a second reserved address/forwarding-rule pair for each load
+    balancer so both the UI and the gateway are reachable over IPv6.
+
+    The UI's global HTTPS LB (GFE) always reconnects to its backend over
+    IPv4 regardless of the client's IP family, so its backend
+    service/NEG/health-check are reused unchanged.
+
+    The gateway's regional passthrough LB has no such proxying layer, so its
+    backend must itself support an IPv6 endpoint -- which is why the gateway
+    uses an unmanaged instance group rather than a NEG (see
+    google_compute_instance_group.gateway in main.tf): NEGs have no IPv6
+    endpoint type on this LB, but instance groups do.
+  EOT
   default     = false
 }

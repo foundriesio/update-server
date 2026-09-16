@@ -29,8 +29,10 @@ terraform {
 # Same as the AWS module reusing one target_ip across the ALB and NLB target
 # groups, except GCP won't let a single VM belong to two load-balanced
 # instance groups at all ("instance may belong to at most one load-balanced
-# instance group"). Zonal NEGs don't have that restriction, so each backend
-# service gets its own NEG pointed at the same instance instead.
+# instance group"). The UI backend below uses a zonal NEG, which isn't
+# subject to that restriction. The gateway backend (further down) uses an
+# unmanaged instance group instead of a NEG -- see the comment there -- so it
+# is the one and only load-balanced instance group this VM belongs to.
 resource "google_compute_network_endpoint_group" "ui" {
   name                  = "${var.name_prefix}-ui"
   zone                  = var.zone
@@ -48,21 +50,22 @@ resource "google_compute_network_endpoint" "ui" {
   port                   = 8080
 }
 
-# GCE_VM_IP, not GCE_VM_IP_PORT: the passthrough Network LB forwards
-# gateway_port untouched, so the endpoint has no port of its own to carry.
-resource "google_compute_network_endpoint_group" "gateway" {
-  name                  = "${var.name_prefix}-gateway"
-  zone                  = var.zone
-  network               = var.network_self_link
-  subnetwork            = var.subnetwork_self_link
-  network_endpoint_type = "GCE_VM_IP"
-}
+# An unmanaged instance group, not a NEG: GCP's regional external passthrough
+# NLB only supports IPv6 backends via instance groups (managed or unmanaged),
+# not NEGs -- there is no GCE_VM_IP_PORT/GCE_VM_IP variant with an IPv6
+# endpoint field. port_name below wires the named_port to the backend
+# service, which is required once the backend is an instance group.
+resource "google_compute_instance_group" "gateway" {
+  name    = "${var.name_prefix}-gateway"
+  zone    = var.zone
+  network = var.network_self_link
 
-resource "google_compute_network_endpoint" "gateway" {
-  network_endpoint_group = google_compute_network_endpoint_group.gateway.name
-  zone                   = var.zone
-  instance               = var.instance_name
-  ip_address             = var.instance_ip
+  instances = [var.instance_self_link]
+
+  named_port {
+    name = "gateway"
+    port = var.gateway_port
+  }
 }
 
 # --------------------------------------------------------------------- UI ----
@@ -171,7 +174,45 @@ resource "google_compute_global_forwarding_rule" "ui_http" {
   load_balancing_scheme = "EXTERNAL"
 }
 
+# A second global address/forwarding-rule pair, not a change to the address
+# above: a google_compute_global_address is single-stack, so IPv4 and IPv6
+# each need their own reservation. Both rules target the same proxies as
+# their IPv4 counterparts -- the backend service, NEG, and health check are
+# unchanged, since GFE reconnects to the backend over IPv4 regardless of
+# which family the client used.
+resource "google_compute_global_address" "ui_ipv6" {
+  count = var.enable_ipv6 ? 1 : 0
+
+  name       = "${var.name_prefix}-ui-ipv6"
+  ip_version = "IPV6"
+}
+
+resource "google_compute_global_forwarding_rule" "ui_https_ipv6" {
+  count = var.enable_ipv6 ? 1 : 0
+
+  name                  = "${var.name_prefix}-ui-https-ipv6"
+  target                = google_compute_target_https_proxy.ui.id
+  ip_address            = google_compute_global_address.ui_ipv6[0].address
+  port_range            = "443"
+  load_balancing_scheme = "EXTERNAL"
+}
+
+resource "google_compute_global_forwarding_rule" "ui_http_ipv6" {
+  count = var.enable_ipv6 ? 1 : 0
+
+  name                  = "${var.name_prefix}-ui-http-ipv6"
+  target                = google_compute_target_http_proxy.ui_redirect.id
+  ip_address            = google_compute_global_address.ui_ipv6[0].address
+  port_range            = "80"
+  load_balancing_scheme = "EXTERNAL"
+}
+
 # ---------------------------------------------------------------- gateway ----
+# IPv6 is opt-in via enable_ipv6, mirroring the UI: a second reserved address
+# and forwarding rule below, sharing this same backend service, health check,
+# and instance group. This only works because the gateway backend is an
+# instance group rather than a NEG (see google_compute_instance_group.gateway
+# above) -- NEGs have no IPv6 endpoint type, but instance groups do.
 resource "google_compute_address" "gateway" {
   name   = "${var.name_prefix}-gateway"
   region = var.region
@@ -201,8 +242,12 @@ resource "google_compute_region_backend_service" "gateway" {
   load_balancing_scheme = "EXTERNAL"
   health_checks         = [google_compute_region_health_check.gateway.id]
 
+  # Required once the backend is an instance group rather than a NEG; must
+  # match the named_port on google_compute_instance_group.gateway.
+  port_name = "gateway"
+
   backend {
-    group          = google_compute_network_endpoint_group.gateway.id
+    group          = google_compute_instance_group.gateway.id
     balancing_mode = "CONNECTION"
   }
 }
@@ -213,6 +258,37 @@ resource "google_compute_forwarding_rule" "gateway" {
   ip_protocol           = "TCP"
   load_balancing_scheme = "EXTERNAL"
   ip_address            = google_compute_address.gateway.address
+  port_range            = tostring(var.gateway_port)
+  backend_service       = google_compute_region_backend_service.gateway.id
+}
+
+# A second reserved address/forwarding-rule pair, not a change to the IPv4
+# rule above: like the UI's global address, a regional address is
+# single-stack. ipv6_endpoint_type = "NETLB" reserves the address for a
+# Network Load Balancer forwarding rule rather than a VM NIC. subnetwork is
+# required here (unlike the IPv4 rule) because the /96 IPv6 range is carved
+# from the dual-stack subnet's external IPv6 range -- see modules/network.
+resource "google_compute_address" "gateway_ipv6" {
+  count = var.enable_ipv6 ? 1 : 0
+
+  name               = "${var.name_prefix}-gateway-ipv6"
+  region             = var.region
+  address_type       = "EXTERNAL"
+  ip_version         = "IPV6"
+  ipv6_endpoint_type = "NETLB"
+  subnetwork         = var.subnetwork_self_link
+}
+
+resource "google_compute_forwarding_rule" "gateway_ipv6" {
+  count = var.enable_ipv6 ? 1 : 0
+
+  name                  = "${var.name_prefix}-gateway-ipv6"
+  region                = var.region
+  ip_protocol           = "TCP"
+  ip_version            = "IPV6"
+  ip_address            = google_compute_address.gateway_ipv6[0].self_link
+  subnetwork            = var.subnetwork_self_link
+  load_balancing_scheme = "EXTERNAL"
   port_range            = tostring(var.gateway_port)
   backend_service       = google_compute_region_backend_service.gateway.id
 }

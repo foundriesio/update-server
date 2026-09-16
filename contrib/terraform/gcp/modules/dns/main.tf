@@ -30,6 +30,14 @@ locals {
     (var.hostname)                                                     = var.ui_ip
     (var.gateway_hostname == "" ? var.hostname : var.gateway_hostname) = var.gateway_ip == "" ? var.ui_ip : var.gateway_ip
   }
+
+  # AAAA records are opt-in via enable_ipv6. Keys must be statically known at
+  # plan time (Terraform restriction on for_each), so we key on the hostnames
+  # and leave the IPv6 addresses as values, which may be known only after apply.
+  records_v6 = var.enable_ipv6 ? {
+    (var.hostname)                                                     = var.ui_ipv6
+    (var.gateway_hostname == "" ? var.hostname : var.gateway_hostname) = var.gateway_ipv6
+  } : {}
 }
 
 data "google_dns_managed_zone" "zone" {
@@ -43,6 +51,16 @@ resource "google_dns_record_set" "records" {
 
   name         = "${each.key}."
   type         = "A"
+  ttl          = 300
+  managed_zone = data.google_dns_managed_zone.zone[0].name
+  rrdatas      = [each.value]
+}
+
+resource "google_dns_record_set" "records_v6" {
+  for_each = local.manage_dns ? local.records_v6 : {}
+
+  name         = "${each.key}."
+  type         = "AAAA"
   ttl          = 300
   managed_zone = data.google_dns_managed_zone.zone[0].name
   rrdatas      = [each.value]

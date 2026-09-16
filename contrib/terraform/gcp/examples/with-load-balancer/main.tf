@@ -32,6 +32,7 @@ module "network" {
   allowed_ssh_cidr  = var.allowed_ssh_cidr
   enable_lb_ingress = true
   gateway_port      = var.gateway_port
+  enable_ipv6       = var.enable_ipv6
 }
 
 module "server" {
@@ -49,6 +50,7 @@ module "server" {
   machine_type         = var.machine_type
   data_volume_size     = var.data_volume_size
   ssh_public_key       = var.ssh_public_key
+  enable_ipv6          = var.enable_ipv6
 
   # The load balancers have stable addresses; the instance doesn't need one.
   assign_static_ip = false
@@ -67,10 +69,12 @@ module "frontend" {
   zone                  = var.zone
   instance_name         = module.server.instance_name
   instance_ip           = module.server.internal_ip
+  instance_self_link    = module.server.instance_self_link
   network_self_link     = module.network.network_self_link
   subnetwork_self_link  = module.network.subnetwork_self_link
   gateway_port          = var.gateway_port
   enable_access_logging = var.enable_access_logging
+  enable_ipv6           = var.enable_ipv6
 }
 
 module "dns" {
@@ -79,6 +83,9 @@ module "dns" {
   hostname          = var.hostname
   gateway_hostname  = var.gateway_hostname
   managed_zone_name = var.managed_zone_name
+  enable_ipv6       = var.enable_ipv6
   ui_ip             = module.frontend.ui_ip
   gateway_ip        = module.frontend.gateway_ip
+  ui_ipv6           = module.frontend.ui_ipv6
+  gateway_ipv6      = module.frontend.gateway_ipv6
 }

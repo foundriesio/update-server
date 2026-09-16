@@ -114,3 +114,17 @@ variable "labels" {
   description = "Extra labels applied to every resource."
   default     = {}
 }
+
+variable "enable_ipv6" {
+  type        = bool
+  description = <<-EOT
+    Give the instance a dual-stack NIC (internal IPv6 only -- no external
+    IPv6 address on the instance itself; that's carried by modules/frontend's
+    gateway forwarding rule), and bind the device gateway to it
+    (FIOSERVER_GATEWAY_ADDR becomes "[::]:gateway_port" instead of
+    "0.0.0.0:gateway_port"). The UI's bind address is unaffected: the global
+    HTTPS LB always reconnects to the backend over IPv4 regardless of the
+    client's IP family.
+  EOT
+  default     = false
+}

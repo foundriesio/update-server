@@ -31,6 +31,9 @@ resource "google_compute_subnetwork" "public" {
   network       = google_compute_network.main.id
   region        = var.region
   ip_cidr_range = var.subnet_cidr
+
+  stack_type       = var.enable_ipv6 ? "IPV4_IPV6" : "IPV4_ONLY"
+  ipv6_access_type = var.enable_ipv6 ? "EXTERNAL" : null
 }
 
 # No egress rules: GCP VPC firewalls default-allow all egress unless a deny
@@ -78,6 +81,22 @@ resource "google_compute_firewall" "gateway" {
 
   direction     = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
+  target_tags   = [local.server_tag]
+
+  allow {
+    protocol = "tcp"
+    ports    = [tostring(var.gateway_port)]
+  }
+}
+
+resource "google_compute_firewall" "gateway_ipv6" {
+  count = var.enable_ipv6 ? 1 : 0
+
+  name    = "${var.name_prefix}-gateway-ipv6"
+  network = google_compute_network.main.id
+
+  direction     = "INGRESS"
+  source_ranges = ["::/0"]
   target_tags   = [local.server_tag]
 
   allow {

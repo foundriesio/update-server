@@ -44,3 +44,25 @@ variable "gateway_ip" {
   EOT
   default     = ""
 }
+
+variable "enable_ipv6" {
+  type        = bool
+  description = "When true, create AAAA records using ui_ipv6 and gateway_ipv6."
+  default     = false
+}
+
+variable "ui_ipv6" {
+  type        = string
+  description = "Address for the UI's AAAA record, or \"\" to omit it (the default -- enable_ipv6 is off upstream)."
+  default     = ""
+}
+
+variable "gateway_ipv6" {
+  type        = string
+  description = <<-EOT
+    Address for the gateway's AAAA record, or "" to omit it. In the
+    load-balancer topology this is the regional passthrough LB's reserved
+    IPv6 address (see modules/frontend).
+  EOT
+  default     = ""
+}
