@@ -23,12 +23,14 @@ func (h handlers) settings(c echo.Context) error {
 		ScopesList   []string
 		LocalAuth    bool
 		DeviceApiUrl string
+		Oauth2ApiUrl string
 	}{
 		baseCtx:      h.baseCtx(c, "Settings", "settings"),
 		Tokens:       tokens,
 		ScopesList:   session.User.AllowedScopes.ToSlice(),
 		LocalAuth:    h.provider.Name() == "local",
 		DeviceApiUrl: c.Scheme() + "://" + c.Request().Host + "/v1/devices",
+		Oauth2ApiUrl: c.Scheme() + "://" + c.Request().Host + "/oauth2",
 	}
 	return c.Render(http.StatusOK, "settings.html", ctx)
 }
