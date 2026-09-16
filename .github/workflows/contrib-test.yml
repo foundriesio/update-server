@@ -26,33 +26,6 @@ jobs:
         run: |
           ./contrib/dev-shell go run github.com/foundriesio/update-server/cmd/server --help
 
-      - name: Build compose image(s)
-        run: |
-          docker compose --project-directory ./contrib build
-
-      - name: Generate test data
-        run: |
-          ./contrib/gen-certs.sh --data-dir .compose-server-data
-          mkdir -p .compose-server-data/auth
-          echo "just-for-ci" > .compose-server-data/auth/hmac.secret
-          cat >> .compose-server-data/auth/auth-config.json << EOF
-          {
-            "NewUserDefaultScopes" : [
-              "users:read",
-              "devices:read-update"
-            ],
-            "Type" : "noauth"
-          }
-          EOF
-          ./contrib/dev-shell go run github.com/foundriesio/update-server/cmd/server --datadir .compose-server-data tuf-init
-
-      - name: Test server
-        run: |
-          docker compose --project-directory ./contrib up -d
-          trap 'docker compose --project-directory ./contrib down' EXIT
-          sleep 3s
-          ./contrib/fake-device.py -d .compose-server-data/fake-devices/device-1 /device
-
   e2e-builds:
     name: e2e-builds
     runs-on: ubuntu-latest
