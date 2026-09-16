@@ -53,7 +53,7 @@ its real case: `` ## `auth-config-*.json` ``, `` ## `run-local.sh` ``.
 ### Inline Code
 
 Backtick commands, flags, file paths, and literal values in prose:
-`pki-init`, `--factory`, `datadir/certs/tls.pem`. Do not leave a flag or
+`pki-init`, `--factory`, `datadir/certs/tls.crt`. Do not leave a flag or
 path bare because it appears mid-sentence.
 
 ### Em-Dashes

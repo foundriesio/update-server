@@ -93,5 +93,5 @@ cp "${DATA_DIR}/certs/factory_ca.pem" "${DATA_DIR}/device/root.crt"
 rm "${DATA_DIR}/device/device.cnf" "${DATA_DIR}/device/device.csr" "${DATA_DIR}/device/ca.ext"
 
 echo "## PKI generation complete"
-echo "  Server TLS:   ${DATA_DIR}/certs/tls.pem"
+echo "  Server TLS:   ${DATA_DIR}/certs/tls.crt"
 echo "  Device certs: ${DATA_DIR}/device/{root.crt,client.pem,pkey.pem}"
