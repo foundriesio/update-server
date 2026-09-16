@@ -1,0 +1,374 @@
+{{ template "header" .}}
+    <section class="content-section device-apps">
+      <h2>{{.Title}}</h2>
+      <fieldset{{ if not .OverrideTag }} disabled{{ end }}>
+        <legend>
+          <label>
+            <input type="checkbox" id="overrideTag" role="switch"{{ if .OverrideTag }} checked{{ end}}>
+            Configure Tag
+          </label>
+        </legend>
+        <label>Device Tag
+          <input type="text" id="tagSelector" list="tagSuggestions" placeholder="Type or select a tag..." value="{{ .SelectedTag }}">
+          <datalist id="tagSuggestions">
+            {{range .SupportedTags}}
+            <option value="{{ . }}" data-id="{{ . }}"></option>
+            {{end}}
+          </datalist>
+        </label>
+      </fieldset>
+
+      <fieldset{{ if not .OverrideApps}} disabled{{ end }}>
+        <legend>
+          <label>
+    {{ if .UpdateName }}
+            <input type="checkbox" id="overrideApps" role="switch"{{ if .OverrideApps }} checked{{ end}}>
+    {{ end }}
+            Configure Apps
+          </label>
+        </legend>
+    {{ if not .UpdateName }}
+        <div><em>Device needs to be added to a <a href="/updates">rollout</a> to configure apps.</em></div>
+    {{ else }}
+        <div class="transfer-grid">
+          <label>
+            Supported Apps
+            <select id="supportedApps" multiple></select>
+          </label>
+          <div class="controls-vertical">
+            <button id="btnAddAllApps" title="Add all supported apps"><i class="chevron-right-duo"></i></button>
+            <button id="btnAddSelectedApps" title="Add selected apps"><i class="chevron-right-uno"></i></button>
+            <button id="btnRemoveSelectedApps" title="Remove selected apps"><i class="chevron-left-uno"></i></button>
+            <button id="btnRemoveAllApps" title="Remove all apps"><i class="chevron-left-duo"></i></button>
+          </div>
+          <label>
+            Configured Apps
+            <select id="appSelector" multiple>
+              {{range .SelectedApps}}
+              <option value="{{ . }}">{{ . }}</option>
+              {{end}}
+            </select>
+          </label>
+        </div>
+        <div><em>Showing apps for the update "{{ .UpdateName }}" tag "{{ .ReportedTag }}", which is rolled out to this device.</em></div>
+    {{ end }}
+      </fieldset>
+
+      <fieldset>
+        <button id="btnReset">Reset</button>
+    {{ if .CanEdit }}
+        <button id="btnSave">Save</button>
+    {{ else }}
+        <div><em>You are not allowed to modify the device config. Please, contact your administrator.</em></div>
+    {{ end }}
+      </fieldset>
+    </section>
+
+    <style>
+      .device-apps {
+        --transfer-grid-column-width: minmax(min(25rem, 45vw), 1fr);
+
+        & legend {
+          font-weight: 700;
+        }
+
+        & legend label {
+          font: inherit;
+        }
+
+        .transfer-grid {
+          display: grid;
+          grid-template-columns: var(--transfer-grid-column-width) auto var(--transfer-grid-column-width);
+          align-items: center;
+          width: fit-content;
+          margin: 0;
+        }
+        .transfer-grid label {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .transfer-grid select[multiple] {
+          width: 100%;
+          min-height: 250px;
+          max-height: 60vh;
+          overflow-y: auto;
+          margin-bottom: 0;
+        }
+        .transfer-grid select option.copied-item {
+          font-style: italic;
+          opacity: 0.6;
+        }
+        .transfer-grid select option.unsupported-item {
+          font-style: italic;
+          color: red;
+          opacity: 0.6;
+        }
+        .controls-vertical {
+          display: flex;
+          flex-direction: column;
+          margin: 0 10px;
+        }
+        .controls-vertical button {
+          white-space: nowrap;
+          margin: 3px 0;
+          padding: 5px;
+        }
+      }
+    </style>
+
+    <script type="module">
+      // Golang template populates this structure inside the local module scope
+      const appsByTag = {
+        {{ range $tag, $apps := .SupportedAppsByTag }}
+        '{{ $tag }}': [{{ range $apps }}'{{ . }}', {{ end }}],
+        {{ end}}
+      };
+
+      const tagSelector = document.getElementById('tagSelector');
+      const overrideTag = document.getElementById('overrideTag');
+
+      const initialTagSnapshot = tagSelector.value;
+
+      const syncOverrideToggle = (e) => {
+        e.target.closest('fieldset').disabled = !e.target.checked;
+      };
+
+      overrideTag.addEventListener('change', syncOverrideToggle);
+
+      {{/* App selection is only available when some update was rolled out to this device */}}
+      {{ if .UpdateName }}
+      const overrideApps = document.getElementById('overrideApps');
+      const supportedApps = document.getElementById('supportedApps');
+      const appSelector = document.getElementById('appSelector');
+
+      const btnAddAllApps = document.getElementById('btnAddAllApps');
+      const btnAddSelectedApps = document.getElementById('btnAddSelectedApps');
+      const btnRemoveSelectedApps = document.getElementById('btnRemoveSelectedApps');
+      const btnRemoveAllApps = document.getElementById('btnRemoveAllApps');
+
+      const getSelectedApps = () => Array.from(appSelector.options).map(opt => opt.value);
+      const initialAppsSnapshot = getSelectedApps();
+
+      const syncSupportedAppsVisualState = () => {
+        const selected = getSelectedApps();
+        Array.from(supportedApps.options).forEach(option => {
+          if (selected.includes(option.value)) {
+            option.classList.add('copied-item');
+          } else {
+            option.classList.remove('copied-item');
+          }
+        });
+      };
+
+      const syncAppSelectorVisualState = () => {
+        const selectedTag = overrideTag.checked ? tagSelector.value : '{{ .ReportedTag }}';
+        const supported = appsByTag[selectedTag] || [];
+        Array.from(appSelector.options).forEach(option => {
+          if (supported.includes(option.value)) {
+            option.classList.remove('unsupported-item');
+          } else {
+            option.classList.add('unsupported-item');
+          }
+        });
+      };
+
+      const filterSupportedAppsByTag = () => {
+        const selectedTag = overrideTag.checked ? tagSelector.value : '{{ .ReportedTag }}';
+        supportedApps.innerHTML = '';
+
+        if (!selectedTag || !appsByTag[selectedTag]) {
+          syncAppSelectorVisualState();
+          return;
+        }
+
+        appsByTag[selectedTag].forEach(app => {
+          const option = document.createElement('option');
+          option.value = app;
+          option.textContent = app;
+          supportedApps.appendChild(option);
+        });
+
+        sortListOptions(supportedApps);
+        syncSupportedAppsVisualState();
+        syncAppSelectorVisualState();
+      };
+
+      const copyToAppSelector = (copyAll = false) => {
+        const selected = getSelectedApps();
+        let changesMade = false;
+
+        Array.from(supportedApps.options).forEach(option => {
+          if ((copyAll || option.selected) && !selected.includes(option.value)) {
+            const clone = document.createElement('option');
+            clone.value = option.value;
+            clone.textContent = option.text;
+            appSelector.appendChild(clone);
+            changesMade = true;
+          }
+          option.selected = false;
+        });
+
+        if (changesMade) {
+          sortListOptions(appSelector);
+          syncSupportedAppsVisualState();
+        }
+      };
+
+      const removeFromAppSelector = (removeAll = false) => {
+        if (removeAll) {
+          appSelector.innerHTML = '';
+        } else {
+          Array.from(appSelector.options).forEach(option => {
+            if (option.selected) option.remove();
+          });
+        }
+        syncSupportedAppsVisualState();
+      };
+
+      const sortListOptions = (list) => {
+        const options = Array.from(list.options);
+        options.sort((a, b) => a.value.localeCompare(b.value));
+        list.innerHTML = '';
+        options.forEach(option => list.add(option));
+      };
+
+      overrideApps.addEventListener('change', syncOverrideToggle);
+      overrideTag.addEventListener('change', filterSupportedAppsByTag);
+      tagSelector.addEventListener('change', filterSupportedAppsByTag);
+      btnAddAllApps.addEventListener('click', () => copyToAppSelector(true));
+      btnAddSelectedApps.addEventListener('click', () => copyToAppSelector(false));
+      btnRemoveSelectedApps.addEventListener('click', () => removeFromAppSelector(false));
+      btnRemoveAllApps.addEventListener('click', () => removeFromAppSelector(true));
+
+      tagSelector.addEventListener("focus", () => {
+        {{/* Input with datalist events are badly supported: often there is no event fired when a user selects from a dropdown.
+             This handler watches for a user input after tag selector gets focus.
+             If a user pauses on typing/selecting for a second - fire a change event.
+             Stop watching on blur; which would normally fire a change event as well. */}}
+        let latest = tagSelector.value, ticks = 0;
+        let watcher = setInterval(() => {
+          if (tagSelector.value !== latest) {
+            latest = tagSelector.value
+            ticks = 1
+          } else if (ticks > 10) {
+            ticks = 0;
+            tagSelector.dispatchEvent(new Event("change"));
+          } else if (ticks > 0) {
+            ticks += 1;
+          }
+        }, 100);
+        tagSelector.addEventListener("blur", () => clearInterval(watcher), { once: true });
+      });
+      {{ end }}
+
+      const btnReset = document.getElementById('btnReset');
+
+      const resetToInitialAppsState = () => {
+        tagSelector.value = initialTagSnapshot;
+
+      {{ if .UpdateName }}
+        appSelector.innerHTML = '';
+        initialAppsSnapshot.forEach(app => {
+          const option = document.createElement('option');
+          option.value = app;
+          option.textContent = app;
+          appSelector.appendChild(option);
+        });
+        sortListOptions(appSelector);
+        filterSupportedAppsByTag();
+      {{ end }}
+      };
+
+      btnReset.addEventListener('click', resetToInitialAppsState);
+
+      {{ if .CanEdit }}
+      const btnSave = document.getElementById('btnSave');
+
+      const buildSotaTomlRequest = (tag, apps) => {
+        const sotaOverride = '{{ .ConfigFileName }}';
+        const sotaOverrideOnChanged = '/usr/share/fioconfig/handlers/aktualizr-toml-update';
+        const reason = 'Override aktualizr-lite update configuration';
+
+        if (tag === null && apps === null) {
+          return {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              'Reason': reason,
+              'FileName': sotaOverride,
+            }),
+          };
+        }
+
+        var sotaToml = '[pacman]';
+        if (tag !== null) {
+          sotaToml += `\n  tags = '${tag}'`;
+        }
+        if (apps !== null) {
+          const appsStr = apps.join(',');
+          sotaToml += `\n  compose_apps = '${appsStr}'`;
+        }
+        return {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'Reason': reason,
+            'FileName': sotaOverride,
+            'OnChanged': sotaOverrideOnChanged,
+            'Value': sotaToml,
+          }),
+        };
+      };
+
+      const handleAppsConfigurationSave = () => {
+        const selectedTag = overrideTag.checked ? tagSelector.value : null;
+
+        {{ if .UpdateName }}
+        const selectedApps = overrideApps.checked ? getSelectedApps() : null;
+
+        if (selectedApps !== null) {
+          const validIdsForTag = selectedTag && appsByTag[selectedTag] 
+            ? appsByTag[selectedTag]
+            : [];
+          const outOfBoundsApps = selectedApps.filter(app => !validIdsForTag.includes(app));
+          if (outOfBoundsApps.length > 0) {
+            const appNames = outOfBoundsApps.map(opt => `• ${opt}`).join('\n');
+            const userConfirmed = confirm(
+              `Warning: The following selected apps do not match your current tag filter:\n\n${appNames}\n\nDo you want to proceed and save anyway?`
+            );
+            if (!userConfirmed) return;
+          }
+        }
+        {{ else }}
+        const selectedApps = null;
+        {{ end }}
+
+        fetch(
+          location.pathname.replace(/\/apps\/?$/, ''),
+          buildSotaTomlRequest(selectedTag, selectedApps)
+        )
+        .then(async response => {
+          if (response.ok) {
+            location.reload(); // refresh the page to get updated data.
+          } else {
+            const errorText = await response.text();
+            alert('Error saving config file: ' + errorText);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error saving config file: ' + error.message);
+        });
+      };
+
+      btnSave.addEventListener('click', handleAppsConfigurationSave);
+      {{ end }}
+
+      resetToInitialAppsState();
+    </script>
+{{ template "footer"}}

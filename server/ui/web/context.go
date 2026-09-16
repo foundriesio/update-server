@@ -10,6 +10,8 @@ import (
 
 type ctxKey int
 
+var CtxGetLog = context.CtxGetLog
+
 const ctxKeySession ctxKey = iota
 
 func CtxGetSession(ctx context.Context) *auth.Session {
