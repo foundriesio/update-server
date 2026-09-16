@@ -45,3 +45,14 @@ variable "gateway_port" {
   description = "Port the device gateway's mTLS listener is reachable on."
   default     = 8443
 }
+
+variable "enable_ipv6" {
+  type        = bool
+  description = <<-EOT
+    Make the subnet dual-stack and allow IPv6 clients to reach the device
+    gateway. In the load-balancer topology this also carves out the
+    external IPv6 range modules/frontend's gateway forwarding rule reserves
+    an address from.
+  EOT
+  default     = false
+}

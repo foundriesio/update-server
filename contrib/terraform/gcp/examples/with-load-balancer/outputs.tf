@@ -21,6 +21,16 @@ output "gateway_ip" {
   value       = module.frontend.gateway_ip
 }
 
+output "ui_ipv6" {
+  description = "Global LB IPv6. \"\" when enable_ipv6 is false."
+  value       = module.frontend.ui_ipv6
+}
+
+output "gateway_ipv6" {
+  description = "Regional LB IPv6. \"\" when enable_ipv6 is false."
+  value       = module.frontend.gateway_ipv6
+}
+
 output "instance_id" {
   description = "Instance ID."
   value       = module.server.instance_id

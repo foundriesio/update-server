@@ -6,9 +6,19 @@ output "ui_ip" {
   value       = google_compute_global_address.ui.address
 }
 
+output "ui_ipv6" {
+  description = "Reserved global IPv6 for the UI load balancer, for the UI's AAAA record. \"\" when enable_ipv6 is false."
+  value       = var.enable_ipv6 ? google_compute_global_address.ui_ipv6[0].address : ""
+}
+
 output "gateway_ip" {
   description = "Reserved regional IP for the gateway load balancer, for the gateway's A record."
   value       = google_compute_address.gateway.address
+}
+
+output "gateway_ipv6" {
+  description = "Reserved regional IPv6 for the gateway load balancer, for the gateway's AAAA record. \"\" when enable_ipv6 is false."
+  value       = var.enable_ipv6 ? google_compute_address.gateway_ipv6[0].address : ""
 }
 
 output "certificate_id" {

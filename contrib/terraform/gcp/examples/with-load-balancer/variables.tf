@@ -129,3 +129,13 @@ variable "labels" {
   description = "Extra labels applied to every resource."
   default     = {}
 }
+
+variable "enable_ipv6" {
+  type        = bool
+  description = <<-EOT
+    Make the VM and both DNS names dual-stack. Both the UI's global HTTPS LB
+    and the gateway's regional passthrough LB get a second reserved
+    address/forwarding rule for IPv6. See contrib/terraform/gcp/README.md.
+  EOT
+  default     = false
+}

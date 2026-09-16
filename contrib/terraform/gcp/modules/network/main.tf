@@ -31,6 +31,9 @@ resource "google_compute_subnetwork" "public" {
   network       = google_compute_network.main.id
   region        = var.region
   ip_cidr_range = var.subnet_cidr
+
+  stack_type       = var.enable_ipv6 ? "IPV4_IPV6" : "IPV4_ONLY"
+  ipv6_access_type = var.enable_ipv6 ? "EXTERNAL" : null
 }
 
 # No egress rules: GCP VPC firewalls default-allow all egress unless a deny
@@ -71,13 +74,16 @@ resource "google_compute_firewall" "ssh_cidr" {
 
 # The device gateway is always exposed directly. A passthrough Network LB with
 # instance-group backends preserves the client's own source address -- there
-# is no load-balancer CIDR to narrow this to, same as the AWS NLB path.
+# is no load-balancer CIDR to narrow this to, same as the AWS NLB path. This
+# holds for IPv6 too once enable_ipv6 adds the gateway's IPv6 forwarding rule
+# (see modules/frontend): that LB is passthrough as well, so it needs the
+# same "::/0" allowance rather than a narrower GFE-style range.
 resource "google_compute_firewall" "gateway" {
   name    = "${var.name_prefix}-gateway"
   network = google_compute_network.main.id
 
   direction     = "INGRESS"
-  source_ranges = ["0.0.0.0/0"]
+  source_ranges = var.enable_ipv6 ? ["0.0.0.0/0", "::/0"] : ["0.0.0.0/0"]
   target_tags   = [local.server_tag]
 
   allow {

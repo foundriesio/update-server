@@ -42,6 +42,18 @@ becomes the first DNS SAN of the gateway certificate, and the server derives
 every device-facing URL from it — each enrolled device stores those URLs in
 its `sota.toml`. Changing the name later orphans existing devices.
 
+**IPv6 is opt-in and symmetric between the two load balancers.** Setting
+`enable_ipv6 = true` (default `false`) makes the VM dual-stack and adds a
+second reserved address/forwarding rule to each load balancer. The UI's
+HTTPS LB is an L7 proxy (GFE) that always reconnects to the backend over
+IPv4 regardless of the client's IP family, so nothing else about the UI path
+changes. The gateway's regional passthrough LB has no such proxying layer,
+so its backend must itself carry an IPv6 endpoint — which is why the
+gateway uses an unmanaged instance group rather than a NEG: GCP's NEG types
+have no IPv6 endpoint field on this LB, but instance groups do. IPv6 device
+traffic therefore reaches the same passthrough LB as IPv4 traffic, not the
+VM directly.
+
 ## Prerequisites
 
 - Terraform >= 1.5, Packer >= 1.9 with the `googlecompute` plugin, the

@@ -31,6 +31,11 @@ data_volume_size = 100
 # Uncomment to log every UI request to Cloud Logging.
 # enable_access_logging = true
 
+# Uncomment for a dual-stack VM and IPv6 on both the UI and the device
+# gateway. The gateway's IPv6 path bypasses the regional LB and opens
+# gateway_port directly on the VM to "::/0" -- see the README.
+# enable_ipv6 = true
+
 # Access. Prefer IAP (`gcloud compute ssh <instance> --tunnel-through-iap`)
 # over opening port 22; leaving both empty is fine and is the default.
 # ssh_public_key   = "ssh-ed25519 AAAA... me@example.com"

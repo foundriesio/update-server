@@ -43,7 +43,7 @@ locals {
           FIOSERVER_HOSTNAME=${var.hostname}
           FIOSERVER_SECRET_PREFIX=${local.secret_prefix}
           FIOSERVER_UI_ADDR=${local.ui_addr}
-          FIOSERVER_GATEWAY_ADDR=0.0.0.0:${var.gateway_port}
+          FIOSERVER_GATEWAY_ADDR=${var.enable_ipv6 ? "[::]" : "0.0.0.0"}:${var.gateway_port}
 %{if var.enable_cloud_logging~}
       - path: /etc/google-cloud-ops-agent/config.yaml
         permissions: '0644'
@@ -202,6 +202,7 @@ resource "google_compute_instance" "server" {
 
   network_interface {
     subnetwork = var.subnetwork_self_link
+    stack_type = var.enable_ipv6 ? "IPV4_IPV6" : "IPV4_ONLY"
 
     # Always gets an external IP, static or ephemeral. Unlike the AWS
     # load-balancer topology (whose instance gets neither a public IP nor a
