@@ -841,7 +841,9 @@ type stmtDeviceDelete storage.DbStmt
 
 func (s *stmtDeviceDelete) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiDeviceDelete", `
-		UPDATE devices SET deleted=1 WHERE uuid=?`)
+		UPDATE devices
+		SET deleted=1, labels='{}'
+		WHERE uuid=?`)
 	return
 }
 

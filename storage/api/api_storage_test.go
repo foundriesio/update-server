@@ -101,6 +101,12 @@ func TestDeviceDelete(t *testing.T) {
 	// Create a device
 	_, err = dg.DeviceCreate("uuid-del", "cert-del")
 	require.Nil(t, err)
+	name := "device-name"
+	group := "device-group"
+	require.NoError(t, s.PatchDeviceLabels(map[string]*string{
+		"name":  &name,
+		"group": &group,
+	}, []string{"uuid-del"}))
 
 	// Verify it exists
 	d, err := s.DeviceGet("uuid-del")
@@ -109,6 +115,14 @@ func TestDeviceDelete(t *testing.T) {
 
 	// Delete it
 	require.Nil(t, d.Delete())
+
+	stmt, err := db.Prepare("testDeviceLabelsAfterDelete", `
+		SELECT json(labels) FROM devices WHERE uuid=?`)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, stmt.Close()) })
+	var labelsJSON []byte
+	require.NoError(t, stmt.QueryRow("uuid-del").Scan(&labelsJSON))
+	assert.Equal(t, "{}", string(labelsJSON))
 
 	// Verify it no longer shows up in Get or List
 	d, err = s.DeviceGet("uuid-del")
