@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/foundriesio/update-server/storage"
 	"github.com/labstack/echo/v4"
 )
 
@@ -43,7 +44,12 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 		} else if device.Deleted {
 			return c.String(http.StatusForbidden, fmt.Sprintf("Device(%s) is on the denied list", uuid))
 		} else if certPem != device.Cert {
-			if err := device.RotateCert(certPem); err != nil {
+			current, err := storage.PemBytesToObject([]byte(device.Cert), x509.ParseCertificate)
+			if err != nil {
+				log.Error("Unable to parse stored device certificate", "error", err)
+				return c.String(http.StatusBadGateway, "Unable to rotate device certificate")
+			}
+			if err := device.RotateCert(current, cert); err != nil {
 				log.Error("Unable to rotate device certificate", "error", err)
 				return c.String(http.StatusBadGateway, "Unable to rotate device certificate")
 			}

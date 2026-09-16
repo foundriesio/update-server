@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -15,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -122,15 +124,7 @@ func NewTestClient(t *testing.T) *testClient {
 	e := server.NewEchoServer()
 	RegisterHandlers(e, gwS, "https://does-not-matter")
 
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.Nil(t, err)
-
 	uuid := rand.Text() // Base32 encoded 128-bit (16-byte, 26 chars) random string
-	subj := pkix.Name{CommonName: uuid}
-	cert := x509.Certificate{
-		Subject:   subj,
-		PublicKey: priv.Public(),
-	}
 	tc := testClient{
 		t:   t,
 		gw:  gwS,
@@ -140,9 +134,26 @@ func NewTestClient(t *testing.T) *testClient {
 		log: log,
 
 		uuid: uuid,
-		cert: &cert,
+		cert: newTestCert(t, uuid, time.Now().Add(time.Hour)),
 	}
 	return &tc
+}
+
+func newTestCert(t *testing.T, uuid string, notAfter time.Time) *x509.Certificate {
+	t.Helper()
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.Nil(t, err)
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(notAfter.UnixNano()),
+		Subject:      pkix.Name{CommonName: uuid},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     notAfter,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, &template, &template, priv.Public(), priv)
+	require.Nil(t, err)
+	cert, err := x509.ParseCertificate(der)
+	require.Nil(t, err)
+	return cert
 }
 
 func TestApiDevice(t *testing.T) {
@@ -157,7 +168,7 @@ func TestApiDevice(t *testing.T) {
 
 func TestCertRotation(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.cert.Raw = []byte("cert-v1")
+	oldCert := tc.cert
 	_ = tc.GET("/device", 200)
 
 	d, err := tc.gw.DeviceGet(tc.uuid)
@@ -165,7 +176,7 @@ func TestCertRotation(t *testing.T) {
 	assert.Equal(t, certPEM(tc.cert), d.Cert)
 
 	// Device re-authenticates with a rotated certificate for the same uuid.
-	tc.cert.Raw = []byte("cert-v2")
+	tc.cert = newTestCert(t, tc.uuid, time.Now().Add(2*time.Hour))
 	deviceBytes := tc.GET("/device", 200)
 	var device storage.Device
 	require.Nil(t, json.Unmarshal(deviceBytes, &device))
@@ -186,6 +197,51 @@ func TestCertRotation(t *testing.T) {
 	assert.Equal(t, "CertRotationCompleted", evt.EventType.Id)
 	require.NotNil(t, evt.Event.Success)
 	assert.True(t, *evt.Event.Success)
+
+	stmt, err := tc.db.Prepare(
+		"TestOldCert", "SELECT expires, sha1 FROM old_certs",
+	)
+	require.Nil(t, err)
+	var expires int64
+	var fingerprint []byte
+	require.Nil(t, stmt.QueryRow().Scan(&expires, &fingerprint))
+	assert.Equal(t, oldCert.NotAfter.Unix(), expires)
+	expectedFingerprint := sha1.Sum(oldCert.Raw)
+	assert.Equal(t, expectedFingerprint[:], fingerprint)
+
+	// A certificate cannot be rotated back into use while its old entry is live.
+	tc.cert = oldCert
+	_ = tc.GET("/device", 502)
+	d, err = tc.gw.DeviceGet(tc.uuid)
+	require.Nil(t, err)
+	assert.NotEqual(t, certPEM(tc.cert), d.Cert)
+}
+
+func TestExpiredCertRotation(t *testing.T) {
+	tc := NewTestClient(t)
+	tc.cert = newTestCert(t, tc.uuid, time.Now().Add(-time.Hour))
+	_ = tc.GET("/device", 200)
+
+	before := time.Now().Unix()
+	tc.cert = newTestCert(t, tc.uuid, time.Now().Add(time.Hour))
+	_ = tc.GET("/device", 200)
+	after := time.Now().Unix()
+
+	stmt, err := tc.db.Prepare("TestOldCertExpiry", "SELECT expires FROM old_certs")
+	require.Nil(t, err)
+	var expires int64
+	require.Nil(t, stmt.QueryRow().Scan(&expires))
+	assert.GreaterOrEqual(t, expires, before)
+	assert.LessOrEqual(t, expires, after)
+
+	// Rotation leaves expired entries for the certificate GC daemon.
+	tc.cert = newTestCert(t, tc.uuid, time.Now().Add(2*time.Hour))
+	_ = tc.GET("/device", 200)
+	stmt, err = tc.db.Prepare("TestOldCertCount", "SELECT COUNT(*) FROM old_certs")
+	require.Nil(t, err)
+	var count int
+	require.Nil(t, stmt.QueryRow().Scan(&count))
+	assert.Equal(t, 2, count)
 }
 
 func TestApiProxy(t *testing.T) {

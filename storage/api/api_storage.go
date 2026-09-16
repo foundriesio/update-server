@@ -123,20 +123,21 @@ type Storage struct {
 	db *storage.DbHandle
 	fs *storage.FsHandle
 
-	stmtDeviceCount      stmtDeviceCount
-	stmtDeviceDelete     stmtDeviceDelete
-	stmtDeviceGet        stmtDeviceGet
-	stmtDeviceGetGroups  stmtDeviceGetGroups
-	stmtDeviceGetLabels  stmtDeviceGetLabels
-	stmtDeviceList       map[OrderBy]stmtDeviceList
-	stmtDeniedDeviceList stmtDeniedDeviceList
-	stmtDevicePut        stmtDevicePut
-	stmtUndenyDevice     stmtUndenyDevice
-	stmtDeviceSetLabels  stmtDeviceSetLabels
-	stmtDeviceSetUpdate  stmtDeviceSetUpdate
-	stmtUpdateDelete     stmtUpdateDelete
-	stmtUpdateInsert     stmtUpdateInsert
-	stmtUpdateList       stmtUpdateList
+	stmtDeviceCount          stmtDeviceCount
+	stmtDeviceDelete         stmtDeviceDelete
+	stmtDeviceGet            stmtDeviceGet
+	stmtDeviceGetGroups      stmtDeviceGetGroups
+	stmtDeviceGetLabels      stmtDeviceGetLabels
+	stmtDeviceList           map[OrderBy]stmtDeviceList
+	stmtDeniedDeviceList     stmtDeniedDeviceList
+	stmtDevicePut            stmtDevicePut
+	stmtUndenyDevice         stmtUndenyDevice
+	stmtDeviceSetLabels      stmtDeviceSetLabels
+	stmtDeviceSetUpdate      stmtDeviceSetUpdate
+	stmtOldCertDeleteExpired stmtOldCertDeleteExpired
+	stmtUpdateDelete         stmtUpdateDelete
+	stmtUpdateInsert         stmtUpdateInsert
+	stmtUpdateList           stmtUpdateList
 }
 
 // Delete is DESTRUCTIVE. It both adds the device to the denied list in the DB
@@ -217,6 +218,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceSetLabels,
 		&handle.stmtDeviceSetUpdate,
 		&handle.stmtDevicePut,
+		&handle.stmtOldCertDeleteExpired,
 		&handle.stmtUpdateInsert,
 		&handle.stmtUpdateList,
 		&handle.stmtUpdateDelete,
@@ -234,6 +236,10 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 	}
 
 	return &handle, nil
+}
+
+func (s Storage) DeleteExpiredCerts(before int64) error {
+	return s.stmtOldCertDeleteExpired.run(before)
 }
 
 func (s Storage) DevicesList(opts DeviceListOpts) ([]DeviceListItem, int, error) {
@@ -815,6 +821,20 @@ func (s *stmtDeviceSetUpdate) run(tag, updateName string, uuids, groups []string
 		}
 	}
 	return nil
+}
+
+type stmtOldCertDeleteExpired storage.DbStmt
+
+func (s *stmtOldCertDeleteExpired) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiOldCertDeleteExpired", `
+		DELETE FROM old_certs
+		WHERE expires <= ?`)
+	return
+}
+
+func (s *stmtOldCertDeleteExpired) run(before int64) error {
+	_, err := s.Stmt.Exec(before)
+	return err
 }
 
 type stmtDeviceDelete storage.DbStmt

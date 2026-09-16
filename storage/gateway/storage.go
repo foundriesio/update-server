@@ -4,14 +4,21 @@
 package gateway
 
 import (
+	"crypto/sha1"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/foundriesio/update-server/storage"
+	"github.com/labstack/gommon/log"
 )
+
+var ErrCertPreviouslyUsed = errors.New("certificate was previously used")
 
 type (
 	// Convenience aliases for importing modules
@@ -104,8 +111,18 @@ func (d *Device) CheckIn(targetName, tag, ostreeHash string, apps string) error 
 	return d.storage.stmtDeviceCheckIn.run(d.Uuid, targetName, tag, ostreeHash, apps, now)
 }
 
-func (d *Device) RotateCert(cert string) error {
-	err1 := d.storage.stmtDeviceRotateCert.run(d.Uuid, cert)
+func (d *Device) RotateCert(current, next *x509.Certificate) error {
+	nextPEM := certPEM(next)
+	expires := current.NotAfter.Unix()
+	now := time.Now().Unix()
+	if expires < now {
+		expires = now
+	}
+	currentSHA1 := sha1.Sum(current.Raw)
+	nextSHA1 := sha1.Sum(next.Raw)
+	err1 := d.storage.stmtDeviceRotateCert.run(
+		d.Uuid, nextPEM, currentSHA1[:], nextSHA1[:], expires,
+	)
 
 	success := err1 == nil
 	corrId := fmt.Sprintf("certs-%d", time.Now().Unix())
@@ -123,10 +140,17 @@ func (d *Device) RotateCert(cert string) error {
 		slog.Error("Failed to record cert rotation event", "uuid", d.Uuid, "error", err)
 	}
 
-	if err1 != nil {
-		d.Cert = cert
+	if err1 == nil {
+		d.Cert = nextPEM
 	}
 	return err1
+}
+
+func certPEM(cert *x509.Certificate) string {
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Raw,
+	}))
 }
 
 func (d *Device) PutFile(name string, content string) error {
@@ -351,18 +375,50 @@ func (s *stmtDeviceGet) run(uuid string, d *Device) error {
 		&d.OstreeHash, &d.Apps, &d.groupNameModifiedAt)
 }
 
-type stmtDeviceRotateCert storage.DbStmt
-
-func (s *stmtDeviceRotateCert) Init(db storage.DbHandle) (err error) {
-	s.Stmt, err = db.Prepare("DeviceRotateCert", `
-		UPDATE devices
-		SET cert=?
-		WHERE uuid = ?`,
-	)
-	return
+type stmtDeviceRotateCert struct {
+	db storage.DbHandle
 }
 
-func (s *stmtDeviceRotateCert) run(uuid, cert string) error {
-	_, err := s.Stmt.Exec(cert, uuid)
-	return err
+func (s *stmtDeviceRotateCert) Init(db storage.DbHandle) (err error) {
+	s.db = db
+	return nil
+}
+
+func (s *stmtDeviceRotateCert) run(uuid, nextCert string, currentSHA1, nextSHA1 []byte, expires int64) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			log.Error("unable to rollback cert rotation", "error", err)
+		}
+	}()
+
+	_, err = tx.Exec(`
+			INSERT INTO old_certs(expires, sha1)
+			SELECT :expires, CASE
+				WHEN NOT EXISTS (SELECT 1 FROM old_certs WHERE sha1 = :new_hash)
+				THEN :old_hash ELSE :new_hash
+			END
+		`,
+		sql.Named("old_hash", currentSHA1),
+		sql.Named("new_hash", nextSHA1),
+		sql.Named("expires", expires),
+	)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
+			UPDATE devices 
+			SET cert = ? WHERE uuid = ?
+		`,
+		nextCert,
+		uuid,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

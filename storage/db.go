@@ -66,6 +66,10 @@ func (d DbHandle) Prepare(name, query string) (stmt *sql.Stmt, err error) {
 	return
 }
 
+func (d DbHandle) Begin() (*sql.Tx, error) {
+	return d.db.Begin()
+}
+
 func (d DbHandle) InitStmt(stmt ...DbStmtInit) (err error) {
 	for _, s := range stmt {
 		if err = s.Init(d); err != nil {
@@ -103,6 +107,11 @@ func createTables(db *sql.DB) error {
 		CREATE UNIQUE INDEX idx_device_name_unique ON devices(name) WHERE name != '';
 		CREATE INDEX idx_device_name ON devices(name);
 		CREATE INDEX idx_device_group ON devices(group_name);
+
+		CREATE TABLE old_certs (
+			expires INT NOT NULL,
+			sha1 BLOB(20) NOT NULL PRIMARY KEY CHECK(length(sha1) = 20)
+		) WITHOUT ROWID;
 
 		CREATE TABLE device_labels (
 			label VARCHAR(20) NOT NULL PRIMARY KEY
