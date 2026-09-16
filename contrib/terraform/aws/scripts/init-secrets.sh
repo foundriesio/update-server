@@ -10,7 +10,7 @@
 #
 # A ready-made auth-config.json is required (--auth-config-json): this script
 # does not generate a local-auth admin account for you. See docs/auth.md and
-# contrib/auth-config-{local,github,google}.json for templates -- copy one and
+# contrib/auth-config/ for templates -- copy one and
 # fill in a password/client secret to bootstrap a local admin user yourself.
 #
 # Run this once per deployment, BEFORE `terraform apply` -- it creates the
@@ -43,7 +43,7 @@ Required:
   --hostname NAME           Must match var.hostname in terraform.tfvars.
   --factory NAME            Must match var.factory in terraform.tfvars.
   --auth-config-json FILE   Path to auth-config.json. See docs/auth.md and
-                             contrib/auth-config-{local,github,google}.json.
+                             contrib/auth-config/.
 
 Options:
   --name-prefix NAME        Must match var.name_prefix (default: fioserver).

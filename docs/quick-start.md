@@ -8,9 +8,6 @@ Download the latest update server from:
 Save as `fioserver`.
 For Linux and Mac, make sure to `chmod +x fioserver`.
 
-To run the server in a Docker container instead, see
-[Running in a Container](./container.md).
-
 ## Configure Mutual TLS
 
 Devices authenticate with the server using mutual TLS. `pki-init` creates
