@@ -43,7 +43,7 @@ After clicking "Create", you'll be presented with a pop-up dialog that includes
 your Client ID and Secret. Make note of both these values. They are required
 for the next step.
 
-Copy `/contrib/auth-config-google.json` to `<configdir>/auth/auth-config.json`
+Copy `/contrib/auth-config/auth-config-google.json` to `<configdir>/auth/auth-config.json`
 and set the values:
 
 * `Config.ClientID`
@@ -66,7 +66,7 @@ can manage the new application. The "Client ID" will be displayed in plain
 text. You will also need to generate a client secret by clicking "Generate a new
 client secret". These two values are required for the next step.
 
-Copy `/contrib/auth-config-github.json` to `<configdir>/auth/auth-config.json`
+Copy `/contrib/auth-config/auth-config-github.json` to `<configdir>/auth/auth-config.json`
 and set the values:
 
 * `Config.ClientID`
@@ -79,7 +79,7 @@ and set the values:
 If you can not use an SSO provider, you can configure the server with locally
 managed users.
 
-Copy `contrib/auth-config-local.json` to `<configdir>/auth/auth-config.json`
+Copy `contrib/auth-config/auth-config-local.json` to `<configdir>/auth/auth-config.json`
 and set these optional values:
 
 * `Config.MinPasswordLength` — Set to enforce a minimum password length. `8` would require passwords be at least 8 characters. The default is 0—not enforced.

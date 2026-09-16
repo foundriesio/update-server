@@ -2,7 +2,7 @@
 
 This directory contains tools useful for local development
 
-## `auth-config-*.json`
+## `auth-config`
 
 Authentication provider sample configurations for GitHub, Google, and local
 username/password. See [configuring authentication](../docs/auth.md).
