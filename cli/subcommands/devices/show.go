@@ -77,6 +77,14 @@ func showDevice(devices api.DeviceApi, uuid string, aktoml, hwinfo bool) {
 		fmt.Println(" ", device.NetInfo)
 	}
 
+	if device.Cert != "" {
+		fmt.Println("\nCertificate:")
+		lines := strings.SplitSeq(device.Cert, "\n")
+		for line := range lines {
+			fmt.Printf("  %s\n", line)
+		}
+	}
+
 	if aktoml && device.Aktoml != "" {
 		fmt.Println("\nAktoml:")
 		lines := strings.SplitSeq(device.Aktoml, "\n")

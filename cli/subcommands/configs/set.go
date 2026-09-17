@@ -155,16 +155,16 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, encrypt, raw, repla
 }
 
 func getEcies(dcapi api.DeviceConfigsApi) *ecies.PublicKey {
-	pubBytes, err := dcapi.GetPubkey()
+	certBytes, err := dcapi.GetCert()
 	cobra.CheckErr(err)
-	if len(pubBytes) == 0 {
-		cobra.CheckErr(errors.New("device did not provide its public key"))
+	if len(certBytes) == 0 {
+		cobra.CheckErr(errors.New("device did not provide its certificate"))
 	}
-	pub, err := storage.PemBytesToObject([]byte(pubBytes), x509.ParsePKIXPublicKey)
+	cert, err := storage.PemBytesToObject([]byte(certBytes), x509.ParseCertificate)
 	cobra.CheckErr(err)
-	ecpub, ok := pub.(*ecdsa.PublicKey)
+	ecpub, ok := cert.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
-		cobra.CheckErr(errors.New("device did not provide a supported ECDSA public key"))
+		cobra.CheckErr(errors.New("device certificate does not contain a supported ECDSA public key"))
 	}
 	return ecies.ImportECDSAPublic(ecpub)
 }

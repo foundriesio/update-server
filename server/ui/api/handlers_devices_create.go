@@ -150,7 +150,7 @@ func (h handlers) deviceCreate(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Uuid is required")
 	}
 
-	cert, csr, err := genCert(req.Uuid, req.Csr, h.ca)
+	cert, _, err := genCert(req.Uuid, req.Csr, h.ca)
 	if err != nil {
 		return EchoError(c, err, http.StatusBadRequest, err.Error())
 	}
@@ -173,14 +173,9 @@ func (h handlers) deviceCreate(c echo.Context) error {
 		}
 	}
 
-	pubkey, err := pubkey(csr)
-	if err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to extract public key from CSR")
-	}
-
 	sotaBytes := genSotaToml(req, h.ca.DgUrl)
 
-	if err := h.storage.DeviceCreate(req.Uuid, pubkey, labels); err != nil {
+	if err := h.storage.DeviceCreate(req.Uuid, string(cert), labels); err != nil {
 		if storage.IsDbError(err, storage.ErrDbConstraintUnique) {
 			return EchoError(c, err, http.StatusConflict, "Device already exists")
 		}
@@ -217,18 +212,6 @@ func genCert(uuid, csr string, ca *DeviceCa) ([]byte, *x509.CertificateRequest, 
 
 	cert, err := ca.SignCsr(req)
 	return cert, req, err
-}
-
-func pubkey(csr *x509.CertificateRequest) (string, error) {
-	derBytes, err := x509.MarshalPKIXPublicKey(csr.PublicKey)
-	if err != nil {
-		return "", err
-	}
-	block := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: derBytes,
-	}
-	return string(pem.EncodeToMemory(block)), nil
 }
 
 func genSotaToml(req DeviceCreateRequest, urlBase string) []byte {

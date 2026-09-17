@@ -4,14 +4,21 @@
 package gateway
 
 import (
+	"crypto/sha1"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/foundriesio/update-server/storage"
+	"github.com/labstack/gommon/log"
 )
+
+var ErrCertPreviouslyUsed = errors.New("certificate was previously used")
 
 type (
 	// Convenience aliases for importing modules
@@ -63,9 +70,10 @@ type Storage struct {
 	db *DbHandle
 	fs *FsHandle
 
-	stmtDeviceCheckIn stmtDeviceCheckIn
-	stmtDeviceCreate  stmtDeviceCreate
-	stmtDeviceGet     stmtDeviceGet
+	stmtDeviceCheckIn    stmtDeviceCheckIn
+	stmtDeviceCreate     stmtDeviceCreate
+	stmtDeviceGet        stmtDeviceGet
+	stmtDeviceRotateCert stmtDeviceRotateCert
 
 	maxEvents int
 	maxStates int
@@ -80,7 +88,7 @@ type Device struct {
 	GroupName  string `json:"group_name"`
 	LastSeen   int64  `json:"last_seen"`
 	OstreeHash string `json:"ostree_hash"`
-	PubKey     string `json:"pubkey"`
+	Cert       string `json:"cert"`
 	TargetName string `json:"target_name"`
 	Tag        string `json:"tag"`
 	UpdateName string `json:"update_name"`
@@ -101,6 +109,48 @@ func (d *Device) CheckIn(targetName, tag, ostreeHash string, apps string) error 
 	d.Tag = tag
 	d.TargetName = targetName
 	return d.storage.stmtDeviceCheckIn.run(d.Uuid, targetName, tag, ostreeHash, apps, now)
+}
+
+func (d *Device) RotateCert(current, next *x509.Certificate) error {
+	nextPEM := certPEM(next)
+	expires := current.NotAfter.Unix()
+	now := time.Now().Unix()
+	if expires < now {
+		expires = now
+	}
+	currentSHA1 := sha1.Sum(current.Raw)
+	nextSHA1 := sha1.Sum(next.Raw)
+	err1 := d.storage.stmtDeviceRotateCert.run(
+		d.Uuid, nextPEM, currentSHA1[:], nextSHA1[:], expires,
+	)
+
+	success := err1 == nil
+	corrId := fmt.Sprintf("certs-%d", time.Now().Unix())
+	event := storage.DeviceUpdateEvent{
+		Id:         corrId,
+		DeviceTime: time.Now().UTC().Format(time.RFC3339),
+		Event: storage.DeviceEvent{
+			CorrelationId: corrId,
+			TargetName:    d.TargetName,
+			Success:       &success,
+		},
+		EventType: storage.DeviceEventType{Id: "CertRotationCompleted", Version: 1},
+	}
+	if err := d.ProcessEvents([]storage.DeviceUpdateEvent{event}); err != nil {
+		slog.Error("Failed to record cert rotation event", "uuid", d.Uuid, "error", err)
+	}
+
+	if err1 == nil {
+		d.Cert = nextPEM
+	}
+	return err1
+}
+
+func certPEM(cert *x509.Certificate) string {
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Raw,
+	}))
 }
 
 func (d *Device) PutFile(name string, content string) error {
@@ -240,6 +290,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceCheckIn,
 		&handle.stmtDeviceCreate,
 		&handle.stmtDeviceGet,
+		&handle.stmtDeviceRotateCert,
 	); err != nil {
 		return nil, err
 	}
@@ -247,9 +298,9 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 	return &handle, nil
 }
 
-func (s Storage) DeviceCreate(uuid, pubkey string) (*Device, error) {
+func (s Storage) DeviceCreate(uuid, cert string) (*Device, error) {
 	now := time.Now().Unix()
-	if err := s.stmtDeviceCreate.run(uuid, pubkey, now, now); err != nil {
+	if err := s.stmtDeviceCreate.run(uuid, cert, now, now); err != nil {
 		return nil, err
 	}
 
@@ -258,7 +309,7 @@ func (s Storage) DeviceCreate(uuid, pubkey string) (*Device, error) {
 		Uuid:     uuid,
 		Deleted:  false,
 		LastSeen: now,
-		PubKey:   pubkey,
+		Cert:     cert,
 	}
 	return &d, nil
 }
@@ -294,14 +345,14 @@ type stmtDeviceCreate storage.DbStmt
 
 func (s *stmtDeviceCreate) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("DeviceCreate", `
-		INSERT INTO devices(uuid, pubkey, created_at, last_seen, deleted)
+		INSERT INTO devices(uuid, cert, created_at, last_seen, deleted)
 		VALUES (?, ?, ?, ?, false)`,
 	)
 	return
 }
 
-func (s *stmtDeviceCreate) run(uuid, pubkey string, createdAt, lastSeen int64) error {
-	_, err := s.Stmt.Exec(uuid, pubkey, createdAt, lastSeen)
+func (s *stmtDeviceCreate) run(uuid, cert string, createdAt, lastSeen int64) error {
+	_, err := s.Stmt.Exec(uuid, cert, createdAt, lastSeen)
 	return err
 }
 
@@ -310,7 +361,7 @@ type stmtDeviceGet storage.DbStmt
 func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("DeviceGet", `
 		SELECT
-			deleted, pubkey, group_name, update_name, last_seen, tag, target_name,
+			deleted, cert, group_name, update_name, last_seen, tag, target_name,
 			ostree_hash, apps, group_name_modified_at
 		FROM devices
 		WHERE uuid = ?`,
@@ -320,6 +371,54 @@ func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 
 func (s *stmtDeviceGet) run(uuid string, d *Device) error {
 	return s.Stmt.QueryRow(uuid).Scan(
-		&d.Deleted, &d.PubKey, &d.GroupName, &d.UpdateName, &d.LastSeen, &d.Tag, &d.TargetName,
+		&d.Deleted, &d.Cert, &d.GroupName, &d.UpdateName, &d.LastSeen, &d.Tag, &d.TargetName,
 		&d.OstreeHash, &d.Apps, &d.groupNameModifiedAt)
+}
+
+type stmtDeviceRotateCert struct {
+	db storage.DbHandle
+}
+
+func (s *stmtDeviceRotateCert) Init(db storage.DbHandle) (err error) {
+	s.db = db
+	return nil
+}
+
+func (s *stmtDeviceRotateCert) run(uuid, nextCert string, currentSHA1, nextSHA1 []byte, expires int64) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			log.Error("unable to rollback cert rotation", "error", err)
+		}
+	}()
+
+	_, err = tx.Exec(`
+			INSERT INTO old_certs(expires, sha1)
+			SELECT :expires, CASE
+				WHEN NOT EXISTS (SELECT 1 FROM old_certs WHERE sha1 = :new_hash)
+				THEN :old_hash ELSE :new_hash
+			END
+		`,
+		sql.Named("old_hash", currentSHA1),
+		sql.Named("new_hash", nextSHA1),
+		sql.Named("expires", expires),
+	)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
+			UPDATE devices 
+			SET cert = ? WHERE uuid = ?
+		`,
+		nextCert,
+		uuid,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

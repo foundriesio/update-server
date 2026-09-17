@@ -32,6 +32,10 @@ func (d DbHandle) Prepare(name, query string) (stmt *sql.Stmt, err error) {
 	return nil, nil
 }
 
+func (d DbHandle) Begin() (*sql.Tx, error) {
+	return nil, nil
+}
+
 func (d DbHandle) InitStmt(stmt ...DbStmtInit) error {
 	return nil
 }

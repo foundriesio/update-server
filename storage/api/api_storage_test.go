@@ -46,12 +46,12 @@ func TestStorage(t *testing.T) {
 	require.Equal(t, 0, count)
 
 	// Create two devices to list/get on
-	d2, err := dg.DeviceCreate("uuid-1", "pubkey-value-1")
+	d2, err := dg.DeviceCreate("uuid-1", "cert-value-1")
 	require.Nil(t, err)
 	require.Nil(t, d2.PutFile(storage.AktomlFile, "aktoml content"))
 	require.Nil(t, d2.CheckIn("target", "tag", "hash", ""))
 	time.Sleep(time.Second)
-	_, err = dg.DeviceCreate("uuid-2", "pubkey-value-2")
+	_, err = dg.DeviceCreate("uuid-2", "cert-value-2")
 	require.Nil(t, err)
 
 	uuids, err := s.SetUpdateName("tag", "update42", []string{"uuid-1", "uuid-2"}, nil)
@@ -79,7 +79,7 @@ func TestStorage(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, "hash", d.OstreeHash)
 	assert.Equal(t, "tag", d.Tag)
-	assert.Equal(t, "pubkey-value-1", d.PubKey)
+	assert.Equal(t, "cert-value-1", d.Cert)
 	assert.Equal(t, "update42", d.UpdateName)
 	assert.Equal(t, "aktoml content", d.Aktoml)
 }
@@ -99,7 +99,7 @@ func TestDeviceDelete(t *testing.T) {
 	require.Nil(t, err)
 
 	// Create a device
-	_, err = dg.DeviceCreate("uuid-del", "pubkey-del")
+	_, err = dg.DeviceCreate("uuid-del", "cert-del")
 	require.Nil(t, err)
 
 	// Verify it exists
@@ -143,7 +143,7 @@ func TestDeviceRestore(t *testing.T) {
 	assert.False(t, undenied, "removing an unknown device from denied list should report false")
 
 	// Create and delete a device.
-	_, err = dg.DeviceCreate("uuid-restore", "pubkey-restore")
+	_, err = dg.DeviceCreate("uuid-restore", "cert-restore")
 	require.Nil(t, err)
 	d, err := s.DeviceGet("uuid-restore")
 	require.Nil(t, err)

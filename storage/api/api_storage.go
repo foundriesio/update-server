@@ -100,7 +100,7 @@ type Device struct {
 
 	Apps       []string `json:"apps"`
 	OstreeHash string   `json:"ostree-hash"`
-	PubKey     string   `json:"pubkey"`
+	Cert       string   `json:"cert"`
 	UpdateName string   `json:"update-name"`
 
 	Aktoml  string `json:"aktualizr-toml"`
@@ -123,20 +123,21 @@ type Storage struct {
 	db *storage.DbHandle
 	fs *storage.FsHandle
 
-	stmtDeviceCount      stmtDeviceCount
-	stmtDeviceDelete     stmtDeviceDelete
-	stmtDeviceGet        stmtDeviceGet
-	stmtDeviceGetGroups  stmtDeviceGetGroups
-	stmtDeviceGetLabels  stmtDeviceGetLabels
-	stmtDeviceList       map[OrderBy]stmtDeviceList
-	stmtDeniedDeviceList stmtDeniedDeviceList
-	stmtDevicePut        stmtDevicePut
-	stmtUndenyDevice     stmtUndenyDevice
-	stmtDeviceSetLabels  stmtDeviceSetLabels
-	stmtDeviceSetUpdate  stmtDeviceSetUpdate
-	stmtUpdateDelete     stmtUpdateDelete
-	stmtUpdateInsert     stmtUpdateInsert
-	stmtUpdateList       stmtUpdateList
+	stmtDeviceCount          stmtDeviceCount
+	stmtDeviceDelete         stmtDeviceDelete
+	stmtDeviceGet            stmtDeviceGet
+	stmtDeviceGetGroups      stmtDeviceGetGroups
+	stmtDeviceGetLabels      stmtDeviceGetLabels
+	stmtDeviceList           map[OrderBy]stmtDeviceList
+	stmtDeniedDeviceList     stmtDeniedDeviceList
+	stmtDevicePut            stmtDevicePut
+	stmtUndenyDevice         stmtUndenyDevice
+	stmtDeviceSetLabels      stmtDeviceSetLabels
+	stmtDeviceSetUpdate      stmtDeviceSetUpdate
+	stmtOldCertDeleteExpired stmtOldCertDeleteExpired
+	stmtUpdateDelete         stmtUpdateDelete
+	stmtUpdateInsert         stmtUpdateInsert
+	stmtUpdateList           stmtUpdateList
 }
 
 // Delete is DESTRUCTIVE. It both adds the device to the denied list in the DB
@@ -217,6 +218,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceSetLabels,
 		&handle.stmtDeviceSetUpdate,
 		&handle.stmtDevicePut,
+		&handle.stmtOldCertDeleteExpired,
 		&handle.stmtUpdateInsert,
 		&handle.stmtUpdateList,
 		&handle.stmtUpdateDelete,
@@ -234,6 +236,10 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 	}
 
 	return &handle, nil
+}
+
+func (s Storage) DeleteExpiredCerts(before int64) error {
+	return s.stmtOldCertDeleteExpired.run(before)
 }
 
 func (s Storage) DevicesList(opts DeviceListOpts) ([]DeviceListItem, int, error) {
@@ -284,7 +290,7 @@ func (s Storage) DeviceGet(uuid string) (*Device, error) {
 	if err := s.stmtDeviceGet.run(
 		uuid,
 		&d.CreatedAt, &d.LastSeen,
-		&d.PubKey, &d.UpdateName, &d.Tag, &d.Target, &d.OstreeHash,
+		&d.Cert, &d.UpdateName, &d.Tag, &d.Target, &d.OstreeHash,
 		&apps, &labels,
 	); err != nil {
 		if err == sql.ErrNoRows {
@@ -360,8 +366,8 @@ func (s Storage) ListUpdates(tag string) (map[string][]Update, error) {
 	return s.stmtUpdateList.run(tag)
 }
 
-func (s Storage) DeviceCreate(uuid, pubkey string, labels Labels) error {
-	return s.stmtDevicePut.run(uuid, pubkey, labels)
+func (s Storage) DeviceCreate(uuid, cert string, labels Labels) error {
+	return s.stmtDevicePut.run(uuid, cert, labels)
 }
 
 // DeleteUpdate removes an update's database row and on-disk directory. It
@@ -593,7 +599,7 @@ type stmtDeviceGet storage.DbStmt
 func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiDeviceGet", `
 		SELECT
-			created_at, last_seen, pubkey, update_name, tag, target_name, ostree_hash, apps, json(labels)
+			created_at, last_seen, cert, update_name, tag, target_name, ostree_hash, apps, json(labels)
 		FROM devices
 		WHERE uuid = ? AND deleted=false`,
 	)
@@ -603,10 +609,10 @@ func (s *stmtDeviceGet) Init(db storage.DbHandle) (err error) {
 func (s *stmtDeviceGet) run(
 	uuid string,
 	createdAt, lastSeen *int64,
-	pubkey, updateName, tag, targetName, ostreeHash, apps, labels *string,
+	cert, updateName, tag, targetName, ostreeHash, apps, labels *string,
 ) error {
 	return s.Stmt.QueryRow(uuid).Scan(
-		createdAt, lastSeen, pubkey, updateName, tag, targetName, ostreeHash, apps, labels)
+		createdAt, lastSeen, cert, updateName, tag, targetName, ostreeHash, apps, labels)
 }
 
 type stmtDeviceList storage.DbStmt
@@ -817,6 +823,20 @@ func (s *stmtDeviceSetUpdate) run(tag, updateName string, uuids, groups []string
 	return nil
 }
 
+type stmtOldCertDeleteExpired storage.DbStmt
+
+func (s *stmtOldCertDeleteExpired) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiOldCertDeleteExpired", `
+		DELETE FROM old_certs
+		WHERE expires <= ?`)
+	return
+}
+
+func (s *stmtOldCertDeleteExpired) run(before int64) error {
+	_, err := s.Stmt.Exec(before)
+	return err
+}
+
 type stmtDeviceDelete storage.DbStmt
 
 func (s *stmtDeviceDelete) Init(db storage.DbHandle) (err error) {
@@ -834,17 +854,17 @@ type stmtDevicePut storage.DbStmt
 
 func (s *stmtDevicePut) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiDevicePut", `
-		INSERT INTO devices (uuid, pubkey, labels, deleted, last_seen, created_at)
+		INSERT INTO devices (uuid, cert, labels, deleted, last_seen, created_at)
 		VALUES (?, ?, ?, false, 0, unixepoch())`)
 	return
 }
 
-func (s *stmtDevicePut) run(uuid, pubkey string, labels Labels) error {
+func (s *stmtDevicePut) run(uuid, cert string, labels Labels) error {
 	labelsJson, err := json.Marshal(labels)
 	if err != nil {
 		return fmt.Errorf("unexpected error marshalling labels to JSON: %w", err)
 	}
-	_, err = s.Stmt.Exec(uuid, pubkey, labelsJson)
+	_, err = s.Stmt.Exec(uuid, cert, labelsJson)
 	return err
 }
 

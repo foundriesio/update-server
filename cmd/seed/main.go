@@ -15,17 +15,19 @@ import (
 	"github.com/foundriesio/update-server/storage/users"
 )
 
-// dummyPubKey is a hardcoded RSA public key PEM block. It is only displayed in
-// the UI and is never verified by the seed tool.
-const dummyPubKey = `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJG
-O9pQBXaLqRGS4KMQpQs3wMYNg7guAlT7xHGQNpBsXhTNkqMFGbHLK3XFI+djNBKD
-4nlYRjMVDMGUCVKHmXpRxMIq6N1hIBfJrAXtP9iBNV6eXB2n0j7mYwXzZvRpPoD9
-7BFIL8A2RmaXYYSSGFOZBJqfIIQgIdAoaajsGfkf2JIQN0KlzJIVVgvA3JaVbG3T
-LRm4kXgBiH47vkJC8M7oYpj3KZS8VaVFCpWVgkIVtMNh3qqDC9gMjOq3hQcVU6UR
-YoEdwHGJ3jVQYVt5M3Z5bkqxZ0n8LxFSjuE7pqQqJKLmXZuIF1RZKoHb7pmJWxkv
-LQIDAQAB
------END PUBLIC KEY-----`
+// dummyCert is a hardcoded self-signed certificate PEM block. It is only
+// displayed in the UI and is never verified by the seed tool.
+const dummyCert = `-----BEGIN CERTIFICATE-----
+MIIBkDCCATWgAwIBAgIUASSBpEloP1vQnHRO5Q9Ni4QSZG4wCgYIKoZIzj0EAwIw
+HDEaMBgGA1UEAwwRZHVtbXktc2VlZC1kZXZpY2UwIBcNMjYwOTE0MTgxOTEzWhgP
+MjEyNjA4MjExODE5MTNaMBwxGjAYBgNVBAMMEWR1bW15LXNlZWQtZGV2aWNlMFkw
+EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAECfTFBykerBodsZbznZetxL1ueEMfy/ni
+kPuMmcOXiRJVyTC3iD/LzW8xjqhhyMJo3wKzXXSugP67LIp8PReiv6NTMFEwHQYD
+VR0OBBYEFMEc0cl8sIU5A+r7YswWfXz47RBfMB8GA1UdIwQYMBaAFMEc0cl8sIU5
+A+r7YswWfXz47RBfMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIh
+AOntqqRI1gOqud0M4hFhvnfR9oeEzcwQM+gUDIZ4DzxPAiEAufhCewkaL+t+kr3/
+FLLhok2AyI/tntF9/BmTfgmte3Q=
+-----END CERTIFICATE-----`
 
 var groups = []string{"alpha", "beta", "gamma", "delta", "epsilon"}
 
@@ -92,7 +94,7 @@ func seedDevices(datadir string, numDevices int) error {
 			skipped++
 			d = existing
 		} else {
-			d, err = gw.DeviceCreate(uuid, dummyPubKey)
+			d, err = gw.DeviceCreate(uuid, dummyCert)
 			if err != nil {
 				return fmt.Errorf("DeviceCreate(%s): %w", uuid, err)
 			}
