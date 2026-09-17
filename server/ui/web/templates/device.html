@@ -1,25 +1,27 @@
 {{ template "header" .}}
     <section class="device-overview">
 
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a href="/devices">Devices</a>
-        <span class="breadcrumb__sep">/</span>
-        <span class="breadcrumb__current">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</span>
-      </nav>
+      <div class="device-page-inner">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/devices">Devices</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</span>
+        </nav>
 
-      <div class="device-identity">
-        <div class="device-identity__name-row">
-          <h1 class="device-identity__name">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
-          {{ if .Device.Status }}
-          <a href="/devices/{{.Device.Uuid}}/updates/{{.Device.Status.CorrelationId}}"
-             title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}"
-             class="status-indicator">
-            <span class="status-indicator__dot{{if contains .Device.Status.Status "failed"}} is-danger{{end}}"></span>
-            {{.Device.Status.Status}}
-          </a>
-          {{ end }}
+        <div class="device-identity">
+          <div class="device-identity__name-row">
+            <h1 class="device-identity__name">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
+            {{ if .Device.Status }}
+            <a href="/devices/{{.Device.Uuid}}/updates/{{.Device.Status.CorrelationId}}"
+               title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}"
+               class="status-indicator">
+              <span class="status-indicator__dot{{if contains .Device.Status.Status "failed"}} is-danger{{end}}"></span>
+              {{.Device.Status.Status}}
+            </a>
+            {{ end }}
+          </div>
+          <div class="device-identity__uuid">{{.Device.Uuid}}</div>
         </div>
-        <div class="device-identity__uuid">{{.Device.Uuid}}</div>
       </div>
 
       <nav class="device-tabs" aria-label="Device views">
@@ -30,6 +32,7 @@
         <a href="/devices/{{.Device.Uuid}}/tests" class="device-tab">Tests</a>
       </nav>
 
+      <div class="device-page-inner">
       <div class="meta-section">
         <div class="meta-grid">
 
@@ -217,6 +220,7 @@
           <pre class="code-block">{{.Device.Aktoml}}</pre>
         </div>
       </details>
+      </div>
 
     </section>
 {{ template "footer" .}}
