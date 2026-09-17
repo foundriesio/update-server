@@ -917,11 +917,10 @@ func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
 	res := map[string][]Update{}
 	for rows.Next() {
 		var u Update
-		var t string
-		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.DeviceCount); err != nil {
+		if err = rows.Scan(&u.Tag, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.DeviceCount); err != nil {
 			return nil, err
 		}
-		res[t] = append(res[t], u)
+		res[u.Tag] = append(res[u.Tag], u)
 	}
 	return res, rows.Err()
 }

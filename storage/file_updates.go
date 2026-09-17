@@ -19,6 +19,7 @@ import (
 var ErrInvalidUpdate = errors.New("invalid update archive")
 
 type Update struct {
+	Tag        string `json:"tag"`
 	Name       string `json:"name"`
 	UploadedAt int64  `json:"uploaded-at"`
 	UploadedBy string `json:"uploaded-by"`
