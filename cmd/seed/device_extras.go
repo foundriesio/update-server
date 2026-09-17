@@ -66,11 +66,25 @@ func seedAppsOverride(ap *api.Storage, uuid, apps string) error {
 	return ap.SaveDeviceConfig(uuid, string(content), "noauth-fake-user", "seed: override compose apps")
 }
 
-// seedDeviceAppsStates saves a fake apps-states snapshot for the device's
-// "Apps States" page.
+// seedDeviceAppsStates saves a full history of fake apps-states snapshots for
+// the device's "Apps States" page, so the timeline/snapshot list has enough
+// real entries to exercise scrolling at capacity and CHANGED/SAME diffing.
+// gateway/storage.go hardcodes maxStates=10 (RolloverFiles trims anything
+// past that), so 10 writes is the most this page can ever show.
+// ostreeGen indexes a small hash pool so consecutive snapshots can share a
+// hash (SAME) or diverge (CHANGED); index 5 gets an unhealthy nginx service
+// to exercise the badge-bad styling with real seeded data.
 func seedDeviceAppsStates(d *gateway.Device, i int) error {
-	content := fmt.Sprintf(`{
-  "deviceTime": "2026-07-23T12:00:00Z",
+	ostreeGen := []int{0, 0, 1, 1, 1, 2, 3, 3, 4, 4}
+	base := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+	for n, g := range ostreeGen {
+		deviceTime := base.AddDate(0, 0, n).Format(time.RFC3339)
+		nginxState, nginxHealth, nginxStatus := "running", "healthy", "Up 2 hours"
+		if n == 5 {
+			nginxState, nginxHealth, nginxStatus = "error", "unhealthy", "Restarting (1) 12 seconds ago"
+		}
+		content := fmt.Sprintf(`{
+  "deviceTime": "%s",
   "ostree": "%064x",
   "apps": {
     "shellhttpd": {
@@ -82,14 +96,18 @@ func seedDeviceAppsStates(d *gateway.Device, i int) error {
     },
     "nginx": {
       "uri": "hub.foundries.io/local-factory/nginx@sha256:%064x",
-      "state": "running",
+      "state": "%s",
       "services": [
-        {"name": "nginx", "hash": "%064x", "health": "healthy", "image": "nginx:latest", "state": "running", "status": "Up 2 hours"}
+        {"name": "nginx", "hash": "%064x", "health": "%s", "image": "nginx:latest", "state": "%s", "status": "%s"}
       ]
     }
   }
-}`, i*0xdeadbeef, i*31, i*37, i*41, i*43)
-	return d.SaveAppsStates(content)
+}`, deviceTime, i*0xdeadbeef+g, i*31+g, i*37+g, i*41+g, nginxState, i*43+g, nginxHealth, nginxState, nginxStatus)
+		if err := d.SaveAppsStates(content); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // seedDeviceAppliedConfigs saves a fake merged applied-config envelope for
