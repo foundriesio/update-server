@@ -1,43 +1,248 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+    <section class="device-overview device-apps-states-page">
 
-    {{ range $idx, $item := .Apps}}
-      <details {{ if eq $idx 0 }}open{{end}}>
-        <summary role="button" class="secondary">{{$item.DeviceTime}}</summary>
-        <h3>OSTree Hash - {{$item.Ostree}}</h3>
-        <dl>
-        {{ range $app, $state := $item.Apps }}
-          <dt><strong>{{ $app }}</strong></dt>
-          <dd>
-            <dl>
-              <dt>State</dt>
-              <dd>{{ $state.State }}</dd>
-              <dt>URI</dt>
-              <dd>{{ $state.Uri }}</dd>
-              <dt>Services</dt>
-              <dd>
-                <dl>
-                  {{ range $service := $state.Services }}
-                    <dt>Name</dt>
-                    <dd>{{ $service.Name }}</dd>
-                    <dt>State</dt>
-                    <dd>{{ $service.State }}</dd>
-                    <dt>Health</dt>
-                    <dd>{{ $service.Health }}</dd>
-                    <dt>Status</dt>
-                    <dd>{{ $service.Status }}</dd>
-                    <dt>Image</dt>
-                    <dd>{{ $service.ImageUri }}</dd>
-                  {{ end }}
-                </dl>
-              </dd>
-            </dl>
-          </dd>
-        {{ end }}
-        </dl>
-      </details>
-    {{ end }}
+      <div class="device-page-inner">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/devices">Devices</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/devices/{{.Device.Uuid}}">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current">App States</span>
+        </nav>
+
+        <div class="device-identity">
+          <div class="device-identity__name-row">
+            <h1 class="device-identity__name">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
+            {{ if .Device.Status }}
+            <a href="/devices/{{.Device.Uuid}}/updates/{{.Device.Status.CorrelationId}}"
+               title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}"
+               class="status-indicator">
+              <span class="status-indicator__dot{{if contains .Device.Status.Status "failed"}} is-danger{{end}}"></span>
+              {{.Device.Status.Status}}
+            </a>
+            {{ end }}
+          </div>
+          <div class="device-identity__uuid">{{.Device.Uuid}}</div>
+        </div>
+      </div>
+
+      <nav class="device-tabs" aria-label="Device views">
+        <a href="/devices/{{.Device.Uuid}}" class="device-tab">Overview</a>
+        <span class="device-tab is-active" aria-current="page">App States</span>
+        <a href="/devices/{{.Device.Uuid}}/configs" class="device-tab">Configs</a>
+        <a href="/devices/{{.Device.Uuid}}/applied-configs" class="device-tab">Applied Configs</a>
+        <a href="/devices/{{.Device.Uuid}}/tests" class="device-tab">Tests</a>
+      </nav>
+
+      {{ if .Snapshots }}
+      <div class="timeline-bar" role="group" aria-label="Snapshot timeline — oldest to newest">
+        <span class="timeline-bar-label" aria-hidden="true">Timeline</span>
+        <div class="timeline-track">
+          {{ range $i, $s := .Snapshots }}
+          <button type="button"
+                  class="timeline-dot{{if $s.Changed}} is-changed{{end}}{{if eq $i 0}} is-active{{end}}"
+                  data-index="{{$i}}"
+                  title="{{$s.DeviceTime}}{{if $s.Changed}} · CHANGED{{else}} · same{{end}}"
+                  aria-label="Snapshot: {{$s.DeviceTime}}{{if $s.Changed}}, hash changed{{else}}, hash unchanged{{end}}"></button>
+          {{ if not (eq (add $i 1) (len $.Snapshots)) }}<span class="timeline-connector" aria-hidden="true"></span>{{ end }}
+          {{ end }}
+        </div>
+      </div>
+
+      <div class="split-view">
+
+        <div class="snapshot-list-panel">
+          <h2 class="snapshot-list-header" id="snapshot-list-label">Snapshots &mdash; {{len .Snapshots}} total</h2>
+          <ul class="snapshot-list" id="snapshot-list" role="listbox" aria-labelledby="snapshot-list-label" aria-activedescendant="snap-item-0">
+            {{ range $i, $s := .Snapshots }}
+            <li class="snapshot-item{{if $s.Changed}} is-changed{{end}}"
+                role="option" id="snap-item-{{$i}}" data-index="{{$i}}"
+                tabindex="{{if eq $i 0}}0{{else}}-1{{end}}"
+                aria-selected="{{if eq $i 0}}true{{else}}false{{end}}">
+              <span class="snap-dot" aria-hidden="true"></span>
+              <span class="snap-body">
+                <span class="snap-ts">{{$s.DeviceTime}}</span>
+                <span class="snap-hash">{{$s.Ostree}}</span>
+              </span>
+              <span class="snap-badge {{if $s.Changed}}snap-badge-changed{{else}}snap-badge-same{{end}}">{{if $s.Changed}}CHANGED{{else}}SAME{{end}}</span>
+            </li>
+            {{ end }}
+          </ul>
+        </div>
+
+        <div class="snapshot-detail-panel" id="snapshot-detail" role="region" aria-label="Snapshot details" aria-live="polite">
+          {{ range $i, $s := .Snapshots }}
+          <div class="detail-panel" data-index="{{$i}}"{{if ne $i 0}} hidden{{end}}>
+
+            <div class="detail-header">
+              <span class="detail-ts">Captured: {{$s.DeviceTime}}</span>
+              <div class="detail-hash-row">
+                <span class="detail-hash-label">OSTree</span>
+                <code class="detail-hash-code" title="{{$s.Ostree}}">{{$s.Ostree}}</code>
+                <button type="button" class="btn-ghost btn-sm btn-copy" data-hash="{{$s.Ostree}}" aria-label="Copy full OSTree hash">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <rect x="4" y="0.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                    <rect x="0.5" y="3.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1" fill="var(--surface-2)"/>
+                  </svg>
+                  <span class="btn-copy-label">Copy</span>
+                </button>
+                <span class="detail-diff-badge {{if $s.Changed}}detail-diff-changed{{else}}detail-diff-same{{end}}">{{if $s.Changed}}CHANGED{{else}}SAME{{end}}</span>
+              </div>
+            </div>
+
+            {{ if not $s.Changed }}
+            <div class="same-state-note">Hash unchanged. App state matches the snapshot from {{$s.RefTs}}.</div>
+            {{ end }}
+
+            {{ if $s.Apps }}
+            {{ range $appName, $app := $s.Apps }}
+            <div class="app-section">
+              <div class="app-section-header">
+                <h3 class="app-name">{{$appName}}</h3>
+                <span class="app-state-sep" aria-hidden="true">&mdash;</span>
+                <span class="badge badge-app {{badgeClass $app.State}}" aria-label="App state: {{$app.State}}">{{$app.State}}</span>
+              </div>
+              {{ if $app.Uri }}
+              <div class="app-meta">
+                <span class="app-meta-label">URI</span>
+                <span class="app-meta-uri">{{$app.Uri}}</span>
+              </div>
+              {{ end }}
+              <div class="services-table-wrap">
+                <table class="services-table" aria-label="Services for {{$appName}}">
+                  <thead>
+                    <tr>
+                      <th scope="col">Service</th>
+                      <th scope="col">State</th>
+                      <th scope="col">Health</th>
+                      <th scope="col">Uptime</th>
+                      <th scope="col">Image</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{ range $app.Services }}
+                    <tr>
+                      <td class="svc-name">{{.Name}}</td>
+                      <td><span class="badge {{badgeClass .State}}">{{if .State}}{{.State}}{{else}}&mdash;{{end}}</span></td>
+                      <td><span class="badge {{badgeClass .Health}}">{{if .Health}}{{.Health}}{{else}}&mdash;{{end}}</span></td>
+                      <td class="svc-uptime">{{if .Status}}{{.Status}}{{else}}&mdash;{{end}}</td>
+                      <td class="svc-image">{{if .ImageUri}}{{.ImageUri}}{{else}}<span class="svc-empty">&mdash;</span>{{end}}</td>
+                    </tr>
+                    {{ else }}
+                    <tr><td colspan="5" class="svc-empty">No services recorded.</td></tr>
+                    {{ end }}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {{ end }}
+            {{ else }}
+            <p class="empty-state">No app data for this snapshot.</p>
+            {{ end }}
+
+          </div>
+          {{ end }}
+        </div>
+
+      </div>
+      {{ else }}
+      <div class="meta-section">
+        <p class="empty-state">No app states have been reported for this device yet.</p>
+      </div>
+      {{ end }}
+
     </section>
-      
+
+    <script>
+    (function () {
+      var list = document.getElementById('snapshot-list');
+      var detail = document.getElementById('snapshot-detail');
+      var track = document.querySelector('.timeline-track');
+      if (!list || !detail) return;
+
+      function select(index) {
+        list.querySelectorAll('.snapshot-item').forEach(function (item) {
+          var selected = item.dataset.index === index;
+          item.setAttribute('aria-selected', selected ? 'true' : 'false');
+          item.tabIndex = selected ? 0 : -1;
+          if (selected) {
+            list.setAttribute('aria-activedescendant', item.id);
+            item.scrollIntoView({ block: 'nearest' });
+          }
+        });
+        if (track) {
+          track.querySelectorAll('.timeline-dot').forEach(function (dot) {
+            dot.classList.toggle('is-active', dot.dataset.index === index);
+          });
+        }
+        detail.querySelectorAll('.detail-panel').forEach(function (panel) {
+          panel.hidden = panel.dataset.index !== index;
+        });
+      }
+
+      list.addEventListener('click', function (e) {
+        var item = e.target.closest('.snapshot-item');
+        if (!item) return;
+        select(item.dataset.index);
+        item.focus();
+      });
+
+      list.addEventListener('keydown', function (e) {
+        var items = Array.prototype.slice.call(list.querySelectorAll('.snapshot-item'));
+        var idx = items.indexOf(document.activeElement);
+        if (idx === -1) return;
+
+        var target = null;
+        if (e.key === 'ArrowDown') target = items[idx + 1];
+        else if (e.key === 'ArrowUp') target = items[idx - 1];
+        else if (e.key === 'Home') target = items[0];
+        else if (e.key === 'End') target = items[items.length - 1];
+        else if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          select(document.activeElement.dataset.index);
+          return;
+        }
+
+        if (target) {
+          e.preventDefault();
+          select(target.dataset.index);
+          target.focus();
+        }
+      });
+
+      if (track) {
+        track.addEventListener('click', function (e) {
+          var dot = e.target.closest('.timeline-dot');
+          if (!dot) return;
+          select(dot.dataset.index);
+        });
+      }
+
+      detail.addEventListener('click', function (e) {
+        var btn = e.target.closest('.btn-copy');
+        if (!btn) return;
+        var hash = btn.getAttribute('data-hash');
+        var label = btn.querySelector('.btn-copy-label');
+        var showCopied = function () {
+          if (!label) return;
+          var original = label.textContent;
+          label.textContent = 'Copied!';
+          setTimeout(function () { label.textContent = original; }, 2000);
+        };
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(hash).then(showCopied);
+          return;
+        }
+        var ta = document.createElement('textarea');
+        ta.value = hash;
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); showCopied(); } catch (err) { /* clipboard unavailable */ }
+        document.body.removeChild(ta);
+      });
+    })();
+    </script>
 {{ template "footer" .}}

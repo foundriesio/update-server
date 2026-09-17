@@ -53,6 +53,21 @@ func Initials(username string) string {
 	return strings.ToUpper(string(r[0]))
 }
 
+// BadgeClass maps an app/service state or health value to one of three
+// existing semantic tones (good/bad/neutral) rather than a dedicated CSS
+// class per state — reuses the site's --success/--danger/--text-3 tokens
+// instead of adding a color pair for every possible value.
+func BadgeClass(state string) string {
+	switch strings.ToLower(state) {
+	case "running", "healthy":
+		return "badge-good"
+	case "stopped", "unhealthy", "failed", "error":
+		return "badge-bad"
+	default:
+		return "badge-neutral"
+	}
+}
+
 func init() {
 	// The go:embed bakes in whatever bytes the checkout had; a clone without git-lfs leaves pointer stubs and an unstyled UI.
 	entries, err := Assets.ReadDir(".")
@@ -110,6 +125,7 @@ func init() {
 		"contains":    strings.Contains,
 		"otherLabels": OtherLabels,
 		"initials":    Initials,
+		"badgeClass":  BadgeClass,
 		"json": func(v any) (json.RawMessage, error) {
 			b, err := json.Marshal(v)
 			return json.RawMessage(b), err
