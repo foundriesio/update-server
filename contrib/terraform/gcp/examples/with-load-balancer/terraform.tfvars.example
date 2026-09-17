@@ -1,0 +1,54 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Copy to terraform.tfvars and edit.
+
+project_id = "my-gcp-project"
+region     = "us-central1"
+zone       = "us-central1-a"
+image      = "fioserver-v0.9.2-amd64" # from `packer build`
+
+# The UI and the gateway need different names: the global HTTPS LB and the
+# regional TCP LB cannot share one DNS record. Both must be in the managed
+# zone below.
+hostname         = "dg.example.com"
+gateway_hostname = "devices.example.com"
+
+# Uncomment to expose the device gateway on a non-default port.
+# gateway_port = 8443
+
+factory = "my-factory"
+
+# Set this to your Cloud DNS managed zone IFF you use it for DNS. Otherwise
+# leave this blank. If left blank, the UI's managed certificate stays in
+# PROVISIONING until you create the A records yourself -- see the outputs
+# `ui_ip` and `gateway_ip` after apply.
+managed_zone_name = ""
+
+machine_type     = "e2-small"
+data_volume_size = 100
+
+# Uncomment to log every UI request to Cloud Logging.
+# enable_access_logging = true
+
+# Uncomment for a dual-stack VM and IPv6 on both the UI and the device
+# gateway. The gateway's IPv6 path bypasses the regional LB and opens
+# gateway_port directly on the VM to "::/0" -- see the README.
+# enable_ipv6 = true
+
+# Access. Prefer IAP (`gcloud compute ssh <instance> --tunnel-through-iap`)
+# over opening port 22; leaving both empty is fine and is the default.
+# ssh_public_key   = "ssh-ed25519 AAAA... me@example.com"
+# allowed_ssh_cidr = "203.0.113.0/24"
+
+# Uncomment to ship the fioserver journal to Cloud Logging.
+# enable_cloud_logging = true
+
+# Authentication and PKI/TUF key material are generated locally with
+# scripts/init-secrets.sh, not via a Terraform variable -- see the README.
+# The --hostname, --gateway-hostname, and --factory flags passed to that
+# script must match hostname, gateway_hostname, and factory above.
+
+labels = {
+  project = "update-server"
+}

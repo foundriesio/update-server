@@ -1,0 +1,42 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Copy to terraform.tfvars and edit.
+
+project_id = "my-gcp-project"
+region     = "us-central1"
+zone       = "us-central1-a"
+image      = "fioserver-v0.9.2-amd64" # from `packer build`
+
+# One name serves both the UI (443) and the device gateway (8443). It must
+# resolve to the instance's static IP before Caddy can get a certificate.
+hostname = "dg.example.com"
+
+# Uncomment to expose the device gateway on a non-default port.
+# gateway_port = 8443
+
+factory = "my-factory"
+
+# Set this and Terraform creates the A record for you. Otherwise create it
+# yourself, promptly -- Let's Encrypt cannot issue until the name resolves.
+managed_zone_name = "my-zone"
+
+machine_type     = "e2-small"
+data_volume_size = 100
+
+# Access. Prefer IAP (`gcloud compute ssh <instance> --tunnel-through-iap`)
+# over opening port 22; leaving both empty is fine and is the default.
+# ssh_public_key   = "ssh-ed25519 AAAA... me@example.com"
+# allowed_ssh_cidr = "203.0.113.0/24"
+
+# Uncomment to ship the fioserver journal to Cloud Logging.
+# enable_cloud_logging = true
+
+# Authentication and PKI/TUF key material are generated locally with
+# scripts/init-secrets.sh, not via a Terraform variable -- see the README.
+# The --hostname and --factory flags passed to that script must match
+# hostname and factory above.
+
+labels = {
+  project = "update-server"
+}
