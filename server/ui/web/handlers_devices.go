@@ -294,6 +294,11 @@ func (h handlers) devicesUpdateGet(c echo.Context) error {
 }
 
 func (h handlers) devicesAppsStates(c echo.Context) error {
+	var device api.Device
+	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid"), &device); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
 	type appState struct {
 		AppsStates []storage.AppsStates `json:"apps_states"`
 	}
@@ -304,12 +309,39 @@ func (h handlers) devicesAppsStates(c echo.Context) error {
 
 	ctx := struct {
 		baseCtx
-		Apps []storage.AppsStates
+		Device    api.Device
+		Snapshots []appSnapshot
 	}{
-		baseCtx: h.baseCtx(c, "Device - "+c.Param("uuid")+" Apps States", "devices"),
-		Apps:    states.AppsStates,
+		baseCtx:   h.baseCtx(c, "Device - "+c.Param("uuid")+" Apps States", "devices"),
+		Device:    device,
+		Snapshots: buildAppSnapshots(states.AppsStates),
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "device_apps_states.html", ctx)
+}
+
+// appSnapshot pairs a reported apps-states entry (states is newest-first)
+// with diff metadata against the entry right before it (i.e. the next-newer
+// one), so the template can show CHANGED/SAME badges without repeating the
+// comparison inline.
+type appSnapshot struct {
+	storage.AppsStates
+	Changed bool
+	// RefTs is the DeviceTime of the newest entry sharing this OSTree hash;
+	// only meaningful (and only rendered) when Changed is false.
+	RefTs string
+}
+
+func buildAppSnapshots(states []storage.AppsStates) []appSnapshot {
+	out := make([]appSnapshot, len(states))
+	var refTs string
+	for i, s := range states {
+		changed := i == 0 || s.Ostree != states[i-1].Ostree
+		if changed {
+			refTs = s.DeviceTime
+		}
+		out[i] = appSnapshot{AppsStates: s, Changed: changed, RefTs: refTs}
+	}
+	return out
 }
 
 func (h handlers) devicesTests(c echo.Context) error {
