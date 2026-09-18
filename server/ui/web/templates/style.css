@@ -5,7 +5,7 @@
    standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
 @import url('/css/pico_min_211.css') layer(pico);
 
-@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog;
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail;
 
 @layer tokens {
 
@@ -34,7 +34,7 @@
        brand tokens above are templated via branding.json). Values lifted
        from docs/superpowers/redesign/devices-list-labels/variant-details.html. */
     --text-2:        #555555;
-    --text-3:        #707070;
+    --text-3:        #636363;
     --border-1:      #e2e2e2;
     --interactive:   var(--brand-primary);
     --surface-hover: color-mix(in srgb, var(--brand-accent) 8%, transparent);
@@ -48,6 +48,19 @@
     --mono:          'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
     --accordion-row-hover: rgba(0, 5, 40, 0.23);
     --accordion-row-open:  rgba(20, 180, 225, 0.31);
+    --success:       #16a34a;
+    --warning:       #d97706;
+
+    /* Text colors for state badges (.badge-good/.badge-bad/.badge-neutral):
+       the plain --success/--danger tones are legible against solid surfaces
+       but fail 4.5:1 on their own color-mix() tint backgrounds in light mode
+       (measured ~2.8:1 / ~4.0:1). These give badge text a darker on-tint
+       shade without touching --success/--danger's other consumers (dots,
+       borders, plain status text). --dot-inactive fixes the same problem for
+       the timeline/snapshot "unchanged" dot (was --border-2 at ~1.4:1). */
+    --success-text:  #0d6e30;
+    --danger-text:   var(--danger-hover);
+    --dot-inactive:  #7a7a7a;
 }
 
 } /* end @layer tokens (part 1) */
@@ -202,6 +215,10 @@ i.trash {
   height: 20px;
   background-color: currentColor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='7' y='1.5' width='6' height='1.5' rx='0.4' fill='black'/%3E%3Crect x='3.5' y='3.8' width='13' height='2' rx='0.6'/%3E%3Crect x='4.5' y='6.2' width='11' height='11' rx='1.2'/%3E%3Cline x1='7.5' y1='8.5' x2='7.5' y2='15.5'/%3E%3Cline x1='10' y1='8.5' x2='10' y2='15.5'/%3E%3Cline x1='12.5' y1='8.5' x2='12.5' y2='15.5'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+[data-role="undo"] i.trash {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7v6h6'/%3E%3Cpath d='M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13'/%3E%3C/svg%3E") no-repeat center / contain;
 }
 
 i.password-reset {
@@ -444,6 +461,16 @@ dialog.file-content > article > section > ul {
     --danger-tint:   rgba(248, 113, 113, 0.14);
     --danger-hover:  #ef4444;
     --border-2:      #3a4657;
+    --success:       #22c55e;
+    --warning:       #f59e0b;
+
+    /* Dark theme's plain --success/--danger already clear 4.5:1 on their
+       badge tint backgrounds, unlike light mode — alias them instead of
+       repeating hex. --dot-inactive still needs its own value: --border-2
+       (~1.6-1.9:1 here) is too close to the dark surfaces to read as a dot. */
+    --success-text:  var(--success);
+    --danger-text:   var(--danger);
+    --dot-inactive:  #6f7c8a;
 
     /* Dark interactive color + surface/text bridge for Pico's own --pico-* vars
        (see the light-mode bridge near the top of this file for the rationale —
@@ -1279,3 +1306,1254 @@ summary.user-badge::after {
 
 } /* end @layer dialog (part 2: delete dialog) */
 
+/* ── Device detail page (device-detail redesign) ────────────────────────
+   Ported from docs/superpowers/redesign/device-detail/device-v3.html.
+   Reuses existing tokens (--text-*, --border-*, --interactive, --mono,
+   --chip-group-bg, --chip-tag-*, --danger, --focus-ring) instead of
+   inventing new ones; --success/--warning are the only new tokens (added
+   to the tokens layer above), used only by the status dot. Anchor color
+   comes free from Pico's own bridge (--pico-primary-underline etc. already
+   equal --interactive) — no `a { color: ... }` override needed here. */
+
+@layer device-detail {
+
+/* .device-overview stays uncapped on every device sub-page so nav.device-tabs
+   (a direct child, not wrapped below) spans the section's full width and its
+   border-bottom reads as one continuous line to the far edge. Everything
+   else sits inside .device-page-inner, which applies the same 860px cap the
+   original mockup used. Below 860px the cap drops (the app shell already
+   switches the sidenav to an overlay drawer there — see the existing #main
+   breakpoint further up this file), so content gets progressively more width
+   as the viewport narrows and the full viewport on mobile, without a second
+   bespoke breakpoint. App States' timeline/split-view content is a direct
+   child of .device-apps-states-page instead of .device-page-inner, so it
+   keeps expanding full width — its density (5-column services table, long
+   image URIs/hashes) benefits from the space; narrower viewports still fall
+   back to .services-table-wrap's overflow-x. */
+.device-page-inner {
+    max-width: 860px;
+}
+@media (max-width: 860px) {
+    .device-page-inner {
+        max-width: none;
+    }
+}
+
+/* Pico sets a bare `nav { justify-content: space-between }` default —
+   both .breadcrumb and .device-tabs below are plain <nav> elements, so
+   without this explicit override their items spread across the full row
+   instead of clustering at the start. */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-3);
+    margin-bottom: 24px;
+}
+.breadcrumb a {
+    color: var(--text-3);
+}
+.breadcrumb a:hover {
+    color: var(--text-2);
+}
+.breadcrumb__sep {
+    color: var(--border-2);
+}
+.breadcrumb__current {
+    color: var(--text-2);
+}
+.breadcrumb-uuid {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+}
+
+.device-identity {
+    margin-bottom: 28px;
+}
+.device-identity__name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+.device-identity__name {
+    margin: 0;
+}
+.device-identity__uuid {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-2);
+}
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: none;
+}
+.status-indicator:hover {
+    text-decoration: underline;
+}
+.status-indicator.is-static:hover {
+    text-decoration: none;
+}
+.status-indicator__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    flex-shrink: 0;
+}
+.status-indicator__dot.is-danger {
+    background: var(--danger);
+}
+.status-indicator__dot.is-warning {
+    background: var(--warning);
+}
+
+.device-tabs {
+    display: flex;
+    justify-content: flex-start;
+    border-bottom: 1px solid var(--border-1);
+    margin-bottom: 28px;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Scroll-shadow trick (CSS-only, no JS): the "local" cover gradients scroll
+       with content and sit exactly at its start/end, cancelling the "scroll"
+       shadow gradients there. On wide viewports where every tab fits, content
+       start == end == the visible edges, so both shadows self-cancel and
+       nothing renders. On narrow viewports where tabs overflow, the shadow
+       nearer the hidden tabs stays visible and recedes as the user scrolls
+       toward that edge — signalling "more tabs" without a media query. */
+    background:
+        linear-gradient(to right, var(--surface-2) 40%, transparent) 0 0,
+        linear-gradient(to left, var(--surface-2) 40%, transparent) 100% 0,
+        linear-gradient(to right, color-mix(in srgb, var(--text-1) 25%, transparent), transparent) 0 0,
+        linear-gradient(to left, color-mix(in srgb, var(--text-1) 25%, transparent), transparent) 100% 0;
+    background-repeat: no-repeat;
+    background-size: 20px 100%, 20px 100%, 10px 100%, 10px 100%;
+    background-attachment: local, local, scroll, scroll;
+}
+.device-tabs::-webkit-scrollbar {
+    display: none;
+}
+.device-tab {
+    font-size: 0.8rem;
+    color: var(--text-2);
+    text-decoration: none;
+    padding: 8px 16px 9px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.1s, border-color 0.1s;
+    white-space: nowrap;
+}
+.device-tab:hover {
+    color: var(--text-1);
+    text-decoration: none;
+}
+.device-tab.is-active {
+    color: var(--interactive);
+    border-bottom-color: var(--interactive);
+    font-weight: 600;
+}
+.device-tab:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+
+.meta-section {
+    margin-bottom: 28px;
+}
+.meta-section__title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 12px;
+}
+.meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+}
+@media (max-width: 640px) {
+    .meta-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.meta-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.meta-grid > .meta-row:nth-child(even) {
+    padding-left: 20px;
+    border-left: 1px solid var(--border-1);
+}
+@media (max-width: 640px) {
+    /* Single column now — every row is full-width, so the "right column"
+       border/indent that :nth-child(even) applies above for the 2-col
+       layout must be dropped, or it leaves a dangling left border on
+       alternating rows (present in the original mockup too, unnoticed
+       there since it was never checked at this width). Must come after
+       the unconditional rule above — same specificity, so source order
+       decides the winner regardless of the media query. */
+    .meta-grid > .meta-row:nth-child(even) {
+        padding-left: 0;
+        border-left: none;
+    }
+    /* label + value + row-action no longer fit one unwrapped line at
+       phone widths (esp. the Labels row: label + chips + "manage") —
+       let the row wrap and drop the right-edge pin so "manage" lands on
+       its own line instead of overflowing off-screen. */
+    .meta-row {
+        flex-wrap: wrap;
+    }
+    .meta-row-action {
+        margin-left: 0;
+    }
+}
+.meta-row--full {
+    grid-column: 1 / -1;
+    padding-left: 0 !important;
+    border-left: none !important;
+}
+.meta-label {
+    min-width: 130px;
+    font-size: 0.8rem;
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+.meta-value {
+    font-size: 0.85rem;
+    color: var(--text-1);
+    word-break: break-word;
+}
+.meta-value.is-mono,
+.meta-value .is-mono {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+}
+
+/* A row-level action (e.g. "manage" next to the Labels row) is a flex
+   sibling of .meta-label/.meta-value, not nested inside .meta-value —
+   pinned to the row's right edge via the flexbox auto-margin trick, so
+   its position never depends on how many chips .meta-value wraps to. */
+.meta-row-action {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.dd-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    line-height: 1.6;
+}
+.dd-chip--label {
+    background: var(--chip-group-bg);
+    color: var(--interactive);
+}
+.dd-chip--tag {
+    background: var(--chip-tag-bg);
+    color: var(--chip-tag-text);
+}
+.dd-chip--app {
+    background: var(--surface-1);
+    color: var(--text-2);
+    border: 1px solid var(--border-1);
+}
+
+.update-history {
+    margin-bottom: 28px;
+}
+.update-history__title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 12px;
+}
+.history-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.history-entry__target {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+}
+.history-entry__meta {
+    font-size: 0.78rem;
+    color: var(--text-3);
+}
+.update-history__view-all {
+    display: inline-block;
+    margin-top: 14px;
+    font-size: 0.75rem;
+}
+
+.device-updates {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    max-width: 860px;
+}
+@media (max-width: 860px) {
+    .device-updates {
+        max-width: none;
+    }
+}
+
+.flat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.flat-table td {
+    padding: 8px 0;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-1);
+    color: var(--text-1);
+    background: transparent;
+}
+.flat-table td:first-child {
+    color: var(--text-3);
+    font-size: 0.8rem;
+    width: 160px;
+    padding-right: 16px;
+    white-space: nowrap;
+}
+.flat-table td.is-mono {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+}
+
+pre.code-block {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--text-1);
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+}
+
+.collapsible-section {
+    margin-bottom: 24px;
+}
+.collapsible-section > summary {
+    display: block;
+    list-style: none;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 0;
+}
+.collapsible-section > summary::-webkit-details-marker { display: none; }
+.collapsible-section > summary::marker { content: none; }
+.collapsible-section > summary::after { display: none; }
+.collapsible-section .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.collapsible-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+.collapsible-toggle {
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    color: var(--interactive);
+    pointer-events: none;
+}
+.collapsible-toggle .toggle-hide { display: none; }
+.collapsible-section[open] .toggle-show { display: none; }
+.collapsible-section[open] .toggle-hide { display: inline; }
+.collapsible-body {
+    padding: 14px 0 0;
+}
+
+.update-identity {
+    margin-bottom: 28px;
+}
+.update-identity__name-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+.update-identity__name {
+    margin: 0;
+    font-family: var(--mono);
+}
+.update-identity__device {
+    font-size: 0.8rem;
+    color: var(--text-2);
+}
+
+.stepper-section {
+    margin-bottom: 28px;
+}
+.stepper {
+    position: relative;
+}
+.step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    column-gap: 16px;
+    padding-bottom: 20px;
+}
+.step:last-child {
+    padding-bottom: 0;
+}
+.step__rail {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+.step__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success);
+    margin-top: 3px;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px var(--surface-2);
+    z-index: 1;
+}
+.step__dot.is-fail {
+    background: var(--danger);
+}
+.step__line {
+    position: absolute;
+    top: 13px;
+    bottom: -20px;
+    left: 50%;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--border-1);
+}
+.step__body {
+    min-width: 0;
+}
+.step__head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+.step__name {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-1);
+}
+.step__fail-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--danger);
+}
+.step__time-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 0.75rem;
+    color: var(--text-3);
+}
+.step__time {
+    font-family: var(--mono);
+}
+.step__elapsed {
+    font-family: var(--mono);
+    color: var(--text-3);
+}
+.step__details {
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--text-3);
+}
+.step__details.is-empty {
+    font-style: italic;
+}
+
+} /* end @layer device-detail */
+
+
+@layer utils {
+
+/* Screen-reader-only text — used by device_labels.html's paired <label>s
+   for icon-only/visually-implicit form fields. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+} /* end @layer utils (part 5) */
+
+@layer device-detail {
+
+.section-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-3);
+    margin-bottom: 6px;
+}
+
+/* Device labels page — reuses .device-overview's 860px content cap
+   (see that rule earlier in this layer) under its own class name since
+   this page isn't a device overview. */
+.device-labels {
+    max-width: 860px;
+}
+@media (max-width: 860px) {
+    .device-labels {
+        max-width: none;
+    }
+}
+
+.page-header {
+    margin-bottom: 28px;
+}
+.page-header__title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin: 0;
+}
+.page-header__device {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-2);
+    margin-top: 4px;
+}
+
+.zone {
+    padding: 24px 0;
+}
+.zone:first-of-type {
+    padding-top: 0;
+}
+.zone-caption {
+    font-size: 0.8rem;
+    color: var(--text-2);
+    margin-bottom: 18px;
+    max-width: 560px;
+}
+.zone-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.zone-header .section-label {
+    margin-bottom: 0;
+}
+
+.field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 14px 14px 12px;
+    border-left: 3px solid transparent;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+.field-row.is-group {
+    border-left-color: var(--brand-accent);
+    background: var(--chip-group-bg);
+}
+.field-row__main {
+    flex: 1;
+    min-width: 0;
+}
+.field-row__key {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 6px;
+}
+.field-row.is-group .field-row__key {
+    color: var(--interactive);
+}
+.field-input {
+    width: 100%;
+    max-width: 360px;
+    height: auto;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--text-1);
+    background: var(--surface-2);
+    border: 1px solid var(--border-2);
+    border-radius: 3px;
+    padding: 7px 10px;
+    margin-bottom: 0;
+}
+.field-input:disabled {
+    color: var(--text-3);
+    background: var(--surface-hover);
+}
+.field-input:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+}
+.field-row__caption {
+    font-size: 0.75rem;
+    color: var(--text-3);
+    margin-top: 6px;
+    margin-bottom: 0;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-3);
+    padding: 6px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    margin-bottom: 0;
+}
+.btn-icon:hover {
+    color: var(--danger);
+    background: var(--danger-tint);
+}
+.btn-icon[data-role="undo"] {
+    color: var(--interactive);
+}
+.btn-icon[data-role="undo"]:hover {
+    background: var(--surface-hover);
+    color: var(--interactive);
+}
+
+.cell-input {
+    width: 100%;
+    height: auto;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--text-1);
+    background: var(--surface-2);
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    padding: 6px 8px;
+    margin-bottom: 0;
+}
+.cell-input:hover {
+    border-color: var(--border-2);
+}
+.cell-input.is-invalid {
+    border-color: var(--danger);
+}
+.token-row__caption {
+    margin-top: 4px;
+    min-height: 1em;
+}
+.cell-caption {
+    font-size: 0.72rem;
+    color: var(--danger);
+    margin: 0;
+    visibility: hidden;
+}
+.cell-caption.is-visible {
+    visibility: visible;
+}
+
+.token-list {
+    width: 100%;
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+.token-list__head {
+    display: flex;
+    gap: 16px;
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--border-2);
+}
+.token-list__head span {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+.token-list__col-key,
+.token-list__col-value {
+    flex: 1 1 0%;
+}
+.token-list__col-actions {
+    flex: 0 0 64px;
+    text-align: right;
+}
+.token-list__body {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.token-row {
+    margin-bottom: 0;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.token-row__fields {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.token-row__key,
+.token-row__value {
+    flex: 1 1 0%;
+    min-width: 0;
+}
+.token-row__actions {
+    flex: 0 0 64px;
+    display: flex;
+    justify-content: flex-end;
+}
+.token-row.is-removed {
+    background: var(--danger-tint);
+}
+.token-row.is-removed .cell-input {
+    opacity: 0.55;
+    pointer-events: none;
+}
+.token-row .btn-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-3);
+    padding: 4px 6px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0;
+}
+.token-row .btn-delete:hover {
+    color: var(--danger);
+    background: var(--danger-tint);
+}
+.token-row .btn-delete[data-role="undo"] {
+    color: var(--interactive);
+}
+.token-row .btn-delete[data-role="undo"]:hover {
+    background: var(--surface-hover);
+    color: var(--interactive);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 32px 0 16px;
+    margin-bottom: 0;
+    color: var(--text-3);
+    font-size: 0.8rem;
+}
+
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border-1);
+    background: transparent;
+    color: var(--interactive);
+    padding: 7px 16px;
+    border-radius: 3px;
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-bottom: 0;
+}
+.btn-ghost:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-2);
+}
+.btn-ghost.btn-sm {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+}
+
+.btn-solid {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: auto;
+    border: 1px solid var(--brand-primary);
+    background: var(--brand-primary);
+    color: #fff;
+    padding: 7px 16px;
+    border-radius: 3px;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 0;
+}
+.btn-solid:hover {
+    opacity: 0.88;
+}
+
+.actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 28px;
+}
+.save-status {
+    font-size: 0.78rem;
+    color: var(--text-3);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.save-status.is-visible {
+    opacity: 1;
+}
+
+} /* end @layer device-detail (labels page) */
+
+/* Device apps-states page — reuses .device-overview/.breadcrumb/.device-identity/
+   .device-tabs/.empty-state and existing tokens (--border-*, --interactive,
+   --surface-*, --text-*, --mono, --success, --danger, --focus-ring); only the
+   timeline/split-view/snapshot list/detail/services-table pieces below are new. */
+@layer device-detail {
+
+.timeline-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-1);
+    border-radius: 4px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.timeline-bar::-webkit-scrollbar { display: none; }
+.timeline-bar-label,
+.snapshot-list-header,
+.detail-hash-label,
+.app-meta-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+.timeline-bar-label {
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.timeline-track {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    flex: 1 0 auto;
+    min-width: 0;
+}
+.timeline-connector {
+    height: 2px;
+    flex: 1 1 12px;
+    min-width: 8px;
+    max-width: 28px;
+    background: var(--border-2);
+    border-radius: 1px;
+    flex-shrink: 0;
+}
+.timeline-dot {
+    position: relative;
+    width: 10px;
+    height: 10px;
+    margin: 0;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    background: var(--dot-inactive);
+    transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+/* Invisible hit area: the dot itself stays small (10-13px) so the timeline
+   reads as a compact strip, but WCAG 2.5.8 wants a 24x24 minimum target. */
+.timeline-dot::before {
+    content: '';
+    position: absolute;
+    inset: -7px;
+}
+.timeline-dot.is-changed {
+    width: 13px;
+    height: 13px;
+    background: var(--interactive);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive) 25%, transparent);
+}
+.timeline-dot.is-active {
+    background: var(--interactive) !important;
+    box-shadow: 0 0 0 3px var(--surface-1), 0 0 0 5px var(--interactive);
+    transform: scale(1.1);
+}
+.timeline-dot:hover:not(.is-active) { transform: scale(1.35); }
+.timeline-dot:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+    border-radius: 50%;
+}
+
+.split-view {
+    display: flex;
+    max-height: min(640px, 70vh);
+    border: 1px solid var(--border-1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.snapshot-list-panel {
+    width: 300px;
+    min-width: 300px;
+    min-height: 0;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-1);
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+.snapshot-list-panel::-webkit-scrollbar { display: none; }
+.snapshot-list-header {
+    margin: 0;
+    padding: 10px 14px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-1);
+    letter-spacing: 0.08em;
+    position: sticky;
+    top: 0;
+}
+.snapshot-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.snapshot-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 0;
+    padding: 16px 18px 16px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-1);
+    border-left: 3px solid transparent;
+    background: var(--surface-2);
+    transition: background 0.1s, border-color 0.1s;
+    user-select: none;
+    scroll-margin-top: 34px;
+}
+.snapshot-item:last-child { border-bottom: none; }
+.snapshot-item:hover { background: var(--surface-hover); }
+.snapshot-item[aria-selected="true"] {
+    background: var(--surface-hover);
+    border-left-color: var(--interactive);
+}
+/* --surface-hover's dark-mode tint (--brand-accent at 12%) lightens the row just
+   enough to push --text-3's default 4.6:1 (on --surface-2) down to 4.0:1 here,
+   below the 4.5:1 AA minimum. Scoped to this exact state instead of touching the
+   shared --text-3 token, which stays correct everywhere else it's used. */
+:root[data-theme="dark"] .snapshot-item[aria-selected="true"] .snap-hash {
+    color: #96a2af;
+}
+.snapshot-item:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+.snap-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+    background: var(--dot-inactive);
+}
+.snapshot-item.is-changed .snap-dot {
+    width: 10px;
+    height: 10px;
+    margin-top: 3px;
+    background: var(--interactive);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive) 20%, transparent);
+}
+.snap-body { flex: 1; min-width: 0; }
+.snap-ts {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-1);
+    white-space: nowrap;
+    line-height: 1.5;
+}
+.snap-hash {
+    display: block;
+    direction: rtl;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.5;
+    margin-top: 4px;
+}
+.snap-badge {
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 2px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.snap-badge-changed,
+.detail-diff-changed {
+    background: color-mix(in srgb, var(--interactive) 18%, transparent);
+    color: var(--interactive);
+}
+.snap-badge-same,
+.detail-diff-same {
+    background: var(--border-1);
+    color: var(--text-3);
+}
+
+.snapshot-detail-panel {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding: 20px 24px;
+    background: var(--surface-2);
+}
+.snapshot-detail-panel::-webkit-scrollbar { display: none; }
+
+.detail-header {
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border-1);
+}
+.detail-ts {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-3);
+    letter-spacing: 0.02em;
+    margin-bottom: 10px;
+}
+.detail-hash-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.detail-hash-label {
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+}
+.detail-hash-code {
+    display: inline-block;
+    flex: 1 1 auto;
+    min-width: 0;
+    vertical-align: middle;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-1);
+    background: var(--surface-1);
+    border: 1px solid var(--border-1);
+    padding: 3px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: text;
+}
+.btn-copy svg { display: block; flex-shrink: 0; }
+.detail-diff-badge {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 3px;
+}
+
+.same-state-note {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 12px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-1);
+    border-radius: 4px;
+    margin-bottom: 18px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-3);
+}
+
+.app-section { margin-bottom: 20px; }
+.app-section:last-child { margin-bottom: 0; }
+.app-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 9px 14px;
+    background: var(--bg-content);
+    border: 1px solid var(--border-1);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+}
+.app-name {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin: 0;
+}
+.app-state-sep {
+    color: var(--text-3);
+    font-size: 0.75rem;
+    margin: 0 2px;
+}
+.app-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 14px;
+    background: var(--bg-content);
+    border: 1px solid var(--border-1);
+    border-bottom: none;
+}
+.app-meta-label {
+    flex-shrink: 0;
+    letter-spacing: 0.06em;
+}
+.app-meta-uri {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-2);
+    word-break: break-all;
+}
+
+.services-table-wrap {
+    border: 1px solid var(--border-1);
+    border-radius: 0 0 4px 4px;
+    overflow-x: auto;
+}
+.services-table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+.services-table thead th {
+    /* PicoCSS adds a 3px bottom border to thead th — reset it. */
+    border-top: none;
+    border-right: none;
+    border-left: none;
+    padding: 8px 14px;
+    text-align: left;
+    background: var(--bg-content);
+    border-bottom: 1px solid var(--border-1);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+.services-table tbody td {
+    /* PicoCSS may add side borders and zebra-striping via its table rules — reset those too. */
+    border-top: none;
+    border-right: none;
+    border-left: none;
+    background: var(--bg-content);
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border-1);
+    vertical-align: middle;
+    color: var(--text-1);
+}
+.services-table tbody tr:last-child td { border-bottom: none; }
+.services-table tbody tr:hover td { background: var(--surface-hover); }
+.svc-name { font-family: var(--mono); font-size: 0.75rem; font-weight: 600; }
+.svc-image, .svc-uptime {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-2);
+}
+.svc-image { word-break: break-all; }
+.svc-uptime { white-space: nowrap; }
+.svc-empty { color: var(--text-3); font-family: var(--mono); }
+
+.badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.badge-good    { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success-text); }
+.badge-bad     { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger-text); }
+.badge-neutral { background: var(--border-1); color: var(--text-2); }
+.badge-app { font-size: 0.7rem; padding: 2px 8px; }
+
+@media (max-width: 860px) {
+    .split-view { flex-direction: column; }
+    .snapshot-list-panel {
+        width: 100%;
+        min-width: 0;
+        max-height: 260px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-1);
+    }
+    .snapshot-detail-panel { padding: 16px; }
+}
+
+} /* end @layer device-detail (apps-states page) */

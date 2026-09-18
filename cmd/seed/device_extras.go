@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/foundriesio/update-server/storage"
@@ -65,11 +66,25 @@ func seedAppsOverride(ap *api.Storage, uuid, apps string) error {
 	return ap.SaveDeviceConfig(uuid, string(content), "noauth-fake-user", "seed: override compose apps")
 }
 
-// seedDeviceAppsStates saves a fake apps-states snapshot for the device's
-// "Apps States" page.
+// seedDeviceAppsStates saves a full history of fake apps-states snapshots for
+// the device's "Apps States" page, so the timeline/snapshot list has enough
+// real entries to exercise scrolling at capacity and CHANGED/SAME diffing.
+// gateway/storage.go hardcodes maxStates=10 (RolloverFiles trims anything
+// past that), so 10 writes is the most this page can ever show.
+// ostreeGen indexes a small hash pool so consecutive snapshots can share a
+// hash (SAME) or diverge (CHANGED); index 5 gets an unhealthy nginx service
+// to exercise the badge-bad styling with real seeded data.
 func seedDeviceAppsStates(d *gateway.Device, i int) error {
-	content := fmt.Sprintf(`{
-  "deviceTime": "2026-07-23T12:00:00Z",
+	ostreeGen := []int{0, 0, 1, 1, 1, 2, 3, 3, 4, 4}
+	base := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+	for n, g := range ostreeGen {
+		deviceTime := base.AddDate(0, 0, n).Format(time.RFC3339)
+		nginxState, nginxHealth, nginxStatus := "running", "healthy", "Up 2 hours"
+		if n == 5 {
+			nginxState, nginxHealth, nginxStatus = "error", "unhealthy", "Restarting (1) 12 seconds ago"
+		}
+		content := fmt.Sprintf(`{
+  "deviceTime": "%s",
   "ostree": "%064x",
   "apps": {
     "shellhttpd": {
@@ -81,14 +96,18 @@ func seedDeviceAppsStates(d *gateway.Device, i int) error {
     },
     "nginx": {
       "uri": "hub.foundries.io/local-factory/nginx@sha256:%064x",
-      "state": "running",
+      "state": "%s",
       "services": [
-        {"name": "nginx", "hash": "%064x", "health": "healthy", "image": "nginx:latest", "state": "running", "status": "Up 2 hours"}
+        {"name": "nginx", "hash": "%064x", "health": "%s", "image": "nginx:latest", "state": "%s", "status": "%s"}
       ]
     }
   }
-}`, i*0xdeadbeef, i*31, i*37, i*41, i*43)
-	return d.SaveAppsStates(content)
+}`, deviceTime, i*0xdeadbeef+g, i*31+g, i*37+g, i*41+g, nginxState, i*43+g, nginxHealth, nginxState, nginxStatus)
+		if err := d.SaveAppsStates(content); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // seedDeviceAppliedConfigs saves a fake merged applied-config envelope for
@@ -130,6 +149,65 @@ func seedDeviceTests(d *gateway.Device, targetName string, i int) error {
 			if err := d.TestStoreArtifact(testId, "test.log", bytes.NewReader(artifact)); err != nil {
 				return fmt.Errorf("TestStoreArtifact(%s): %w", testId, err)
 			}
+		}
+	}
+	return nil
+}
+
+// updateHistoryStages is the full success event sequence for one simulated
+// update. A failed entry only sends the first 4 stages, the last one marked
+// unsuccessful, mirroring how a real failed install would look.
+var updateHistoryStages = []string{
+	"EcuDownloadStarted",
+	"EcuDownloadCompleted",
+	"EcuInstallationStarted",
+	"EcuInstallationApplied",
+	"EcuInstallationCompleted",
+}
+
+// seedDeviceUpdateHistory randomly gives about a third of devices a long
+// (10-15 entry) update history, so the device's "Update History" page isn't
+// always sparse, without making every seeded device look identical. Roughly
+// one in five entries is seeded as a failed update for visual variety.
+func seedDeviceUpdateHistory(d *gateway.Device, i int) error {
+	if rand.Intn(3) != 0 {
+		return nil
+	}
+
+	count := 10 + rand.Intn(6) // 10-15 entries
+	for j := 0; j < count; j++ {
+		failed := rand.Intn(5) == 0
+		stages := updateHistoryStages
+		if failed {
+			stages = updateHistoryStages[:4]
+		}
+
+		version := fmt.Sprintf("%d", 100+i*20+j)
+		targetName := fmt.Sprintf("intel-corei7-64-lmp-%s", version)
+		corrId := fmt.Sprintf("seed-hist-%d-%02d", i, j)
+		base := time.Now().UTC().AddDate(0, 0, -j)
+
+		events := make([]storage.DeviceUpdateEvent, 0, len(stages))
+		for k, stage := range stages {
+			success := true
+			if failed && k == len(stages)-1 {
+				success = false
+			}
+			events = append(events, storage.DeviceUpdateEvent{
+				Id:         fmt.Sprintf("%s-%d", corrId, k),
+				DeviceTime: base.Add(time.Duration(k) * time.Second).Format(time.RFC3339),
+				Event: storage.DeviceEvent{
+					CorrelationId: corrId,
+					Ecu:           "seed-ecu",
+					Success:       &success,
+					TargetName:    targetName,
+					Version:       version,
+				},
+				EventType: storage.DeviceEventType{Id: stage, Version: 1},
+			})
+		}
+		if err := d.ProcessEvents(events); err != nil {
+			return fmt.Errorf("ProcessEvents(%s, %s): %w", d.Uuid, corrId, err)
 		}
 	}
 	return nil

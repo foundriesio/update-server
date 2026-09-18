@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/foundriesio/update-server/context"
 	"github.com/foundriesio/update-server/server/ui/api"
@@ -132,25 +133,125 @@ func (h handlers) devicesGet(c echo.Context) error {
 		}
 	}
 
+	updates, err := fetchDeviceUpdates(c.Request().Context(), c.Param("uuid"))
+	if err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
+	const overviewUpdatesLimit = 5
+	recentUpdates := updates
+	if len(recentUpdates) > overviewUpdatesLimit {
+		recentUpdates = recentUpdates[:overviewUpdatesLimit]
+	}
+
+	ctx := struct {
+		baseCtx
+		Device        api.Device
+		IpInfo        *ipInfo
+		HwInfo        map[string]any
+		RecentUpdates []string
+		TotalUpdates  int
+	}{
+		baseCtx:       h.baseCtx(c, "Device - "+device.Uuid, "devices"),
+		Device:        device,
+		IpInfo:        infoPtr,
+		HwInfo:        hw,
+		RecentUpdates: recentUpdates,
+		TotalUpdates:  len(updates),
+	}
+	return h.templates.ExecuteTemplate(c.Response(), "device.html", ctx)
+}
+
+// fetchDeviceUpdates fetches the reverse-chronological list of update
+// correlation IDs for a device. Shared by devicesGet (capped preview) and
+// devicesUpdatesGet (full history page).
+func fetchDeviceUpdates(ctx context.Context, uuid string) ([]string, error) {
 	var updates []string
-	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/updates", &updates); err != nil {
+	if err := getJson(ctx, "/v1/devices/"+uuid+"/updates", &updates); err != nil {
+		return nil, err
+	}
+	return updates, nil
+}
+
+func (h handlers) devicesUpdatesGet(c echo.Context) error {
+	var device api.Device
+	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid"), &device); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
+	updates, err := fetchDeviceUpdates(c.Request().Context(), c.Param("uuid"))
+	if err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
 	ctx := struct {
 		baseCtx
 		Device  api.Device
-		IpInfo  *ipInfo
-		HwInfo  map[string]any
 		Updates []string
 	}{
 		baseCtx: h.baseCtx(c, "Device - "+device.Uuid, "devices"),
 		Device:  device,
-		IpInfo:  infoPtr,
-		HwInfo:  hw,
 		Updates: updates,
 	}
-	return h.templates.ExecuteTemplate(c.Response(), "device.html", ctx)
+	return h.templates.ExecuteTemplate(c.Response(), "device_updates.html", ctx)
+}
+
+// updateStep pairs a raw device update event with view-only fields the
+// template needs but shouldn't compute itself: elapsed time since the
+// previous step, and whether this specific step failed.
+type updateStep struct {
+	storage.DeviceUpdateEvent
+	Failed  bool
+	Elapsed string
+	Time    string
+}
+
+// updateStepTimeFormat is the clock-only display format for a step's
+// timestamp in the lifecycle stepper, e.g. "09:00:28".
+const updateStepTimeFormat = "15:04:05"
+
+// buildUpdateSteps enriches events (chronological, per the device-gateway
+// API) with per-step elapsed time and failure state, and reports the
+// update's overall pass/fail and total duration.
+//
+// failed is an all-or-nothing rollup: it is true if ANY event in the
+// history reports Success == false, even if later steps succeeded. The
+// UI has no notion of partial success, so one failed step marks the
+// whole update as failed. Success == nil (no verdict reported for that
+// event) never counts as a failure, at either the step or rollup level.
+func buildUpdateSteps(events []storage.DeviceUpdateEvent) (steps []updateStep, duration string, failed bool) {
+	steps = make([]updateStep, len(events))
+	start := parseDeviceTime(events[0].DeviceTime)
+	prev := start
+	for i, ev := range events {
+		t := parseDeviceTime(ev.DeviceTime)
+		stepFailed := ev.Event.Success != nil && !*ev.Event.Success
+		steps[i] = updateStep{
+			DeviceUpdateEvent: ev,
+			Failed:            stepFailed,
+			Elapsed:           "+" + formatDuration(t.Sub(prev)),
+			Time:              t.Format(updateStepTimeFormat),
+		}
+		failed = failed || stepFailed
+		prev = t
+	}
+	end := parseDeviceTime(events[len(events)-1].DeviceTime)
+	return steps, formatDuration(end.Sub(start)), failed
+}
+
+func parseDeviceTime(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+func formatDuration(d time.Duration) string {
+	if d < 0 {
+		d = 0
+	}
+	return d.Round(time.Second).String()
 }
 
 func (h handlers) devicesUpdateGet(c echo.Context) error {
@@ -164,25 +265,40 @@ func (h handlers) devicesUpdateGet(c echo.Context) error {
 		return h.handleUnexpected(c, err)
 	}
 
+	steps, duration, failed := buildUpdateSteps(events)
+
 	ctx := struct {
 		baseCtx
-		Raw       string
-		StartTime string
-		EndTime   string
-		Target    string
-		Events    []storage.DeviceUpdateEvent
+		Raw           string
+		StartTime     string
+		EndTime       string
+		Duration      string
+		Target        string
+		DeviceUuid    string
+		CorrelationId string
+		Failed        bool
+		Steps         []updateStep
 	}{
-		baseCtx:   h.baseCtx(c, "Device - "+c.Param("uuid"), "update: "+c.Param("update")),
-		Raw:       string(raw),
-		Events:    events,
-		Target:    events[0].Event.TargetName,
-		StartTime: events[0].DeviceTime,
-		EndTime:   events[len(events)-1].DeviceTime,
+		baseCtx:       h.baseCtx(c, "Update "+c.Param("update"), "devices"),
+		Raw:           string(raw),
+		Steps:         steps,
+		Target:        events[0].Event.TargetName,
+		StartTime:     events[0].DeviceTime,
+		EndTime:       events[len(events)-1].DeviceTime,
+		Duration:      duration,
+		DeviceUuid:    c.Param("uuid"),
+		CorrelationId: c.Param("update"),
+		Failed:        failed,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "device_update.html", ctx)
 }
 
 func (h handlers) devicesAppsStates(c echo.Context) error {
+	var device api.Device
+	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid"), &device); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
 	type appState struct {
 		AppsStates []storage.AppsStates `json:"apps_states"`
 	}
@@ -193,12 +309,39 @@ func (h handlers) devicesAppsStates(c echo.Context) error {
 
 	ctx := struct {
 		baseCtx
-		Apps []storage.AppsStates
+		Device    api.Device
+		Snapshots []appSnapshot
 	}{
-		baseCtx: h.baseCtx(c, "Device - "+c.Param("uuid")+" Apps States", "devices"),
-		Apps:    states.AppsStates,
+		baseCtx:   h.baseCtx(c, "Device - "+c.Param("uuid")+" Apps States", "devices"),
+		Device:    device,
+		Snapshots: buildAppSnapshots(states.AppsStates),
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "device_apps_states.html", ctx)
+}
+
+// appSnapshot pairs a reported apps-states entry (states is newest-first)
+// with diff metadata against the entry right before it (i.e. the next-newer
+// one), so the template can show CHANGED/SAME badges without repeating the
+// comparison inline.
+type appSnapshot struct {
+	storage.AppsStates
+	Changed bool
+	// RefTs is the DeviceTime of the newest entry sharing this OSTree hash;
+	// only meaningful (and only rendered) when Changed is false.
+	RefTs string
+}
+
+func buildAppSnapshots(states []storage.AppsStates) []appSnapshot {
+	out := make([]appSnapshot, len(states))
+	var refTs string
+	for i, s := range states {
+		changed := i == 0 || s.Ostree != states[i-1].Ostree
+		if changed {
+			refTs = s.DeviceTime
+		}
+		out[i] = appSnapshot{AppsStates: s, Changed: changed, RefTs: refTs}
+	}
+	return out
 }
 
 func (h handlers) devicesTests(c echo.Context) error {
