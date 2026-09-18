@@ -83,12 +83,16 @@ func (p oauth2BaseProvider) renderLoginPage(c echo.Context, reason string) error
 		pagectx.Base
 		LoginTip string
 		Name     string
-		Reason   string
+		// ProviderKey selects which provider's icon/copy oauth2-login.html
+		// renders; it is not used for any auth decision.
+		ProviderKey string
+		Reason      string
 	}{
-		Base:     p.pageCtx.Base(c, "Login", ""),
-		LoginTip: p.loginTip,
-		Name:     p.displayName,
-		Reason:   reason,
+		Base:        p.pageCtx.Base(c, "Login", ""),
+		LoginTip:    p.loginTip,
+		Name:        p.displayName,
+		ProviderKey: p.name,
+		Reason:      reason,
 	}
 	return templates.Templates.ExecuteTemplate(c.Response(), "oauth2-login.html", context)
 }
