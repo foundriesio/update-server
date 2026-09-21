@@ -119,26 +119,51 @@ func (h handlers) configsGroupItemDelete(c echo.Context) error {
 	return h.configsDeleteConfigFile(c, "/v1/configs/group/"+c.Param("name"))
 }
 
+// historyRevision pairs one config revision with whether it's the current one.
+type historyRevision struct {
+	api.ConfigFileSet
+	Current bool
+}
+
+// buildHistoryRevisions marks history[0] (newest-first) as the current revision.
+func buildHistoryRevisions(history []api.ConfigFileSet) []historyRevision {
+	revisions := make([]historyRevision, len(history))
+	for i, rev := range history {
+		revisions[i] = historyRevision{ConfigFileSet: rev, Current: i == 0}
+	}
+	return revisions
+}
+
 func (h handlers) configsDeviceItem(c echo.Context) error {
 	uuid := c.Param("uuid")
 	var device api.Device
 	if err := getJson(c.Request().Context(), "/v1/devices/"+uuid, &device); err != nil {
 		return h.handleUnexpected(c, err)
 	}
-	var configs api.ConfigFileSet
-	if err := getJson(c.Request().Context(), "/v1/configs/device/"+uuid, &configs); err != nil {
+	var history []api.ConfigFileSet
+	if err := getJson(c.Request().Context(), "/v1/configs/device/"+uuid+"/history?show-files=true", &history); err != nil {
 		return h.handleUnexpected(c, err)
+	}
+	// history[0] is the current config: reuse it instead of a second,
+	// redundant fetch of the same content.
+	var configs api.ConfigFileSet
+	if len(history) > 0 {
+		configs = history[0]
 	}
 	ctx := struct {
 		baseCtx
+		Device  api.Device
 		Configs api.ConfigFileSet
+		History []historyRevision
 		CanEdit bool
 	}{
 		baseCtx: h.baseCtx(c, fmt.Sprintf("Device \"%s\" Configs", uuid), "devices"),
+		Device:  device,
 		Configs: configs,
+		History: buildHistoryRevisions(history),
 		CanEdit: h.configsEditable(c),
 	}
-	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
+	return h.templates.ExecuteTemplate(c.Response(), "configs_device_item.html", ctx)
 }
 
 func (h handlers) configsDeviceItemApplied(c echo.Context) error {
