@@ -31,7 +31,7 @@
         </div> 
       </div>
 
-      <button onclick='location.href="/updates/{{$.Tag}}/{{$.Name}}/tail";'>Follow progress</button>
+      <button onclick='location.href="/updates/{{$.Name}}/tail";'>Follow progress</button>
       <button onclick="rolloutModal.show()">Create rollout</button>
     </section>
 
@@ -39,7 +39,7 @@
       <h2>Rollout history</h3>
       <ul>
       {{ range .Rollouts }}
-        <li><a href="/updates/{{$.Tag}}/{{$.Name}}/rollouts/{{.}}">{{.}}</a></li>
+        <li><a href="/updates/{{$.Name}}/rollouts/{{.}}">{{.}}</a></li>
       {{ end }}
       </ul>
 

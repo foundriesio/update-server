@@ -15,7 +15,7 @@
         <tbody>
           {{ range $update := .Updates }}
           <tr>
-            <td><a href="/updates/{{$update.Tag}}/{{ $update.Name }}">{{ $update.Name }}</a></td>
+            <td><a href="/updates/{{ $update.Name }}">{{ $update.Name }}</a></td>
             <td>{{ $update.Tag }}</td>
             <td>{{ tsToString $update.UploadedAt }}</td>
             <td>{{ $update.DeviceCount }}</td>
