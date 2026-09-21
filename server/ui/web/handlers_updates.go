@@ -145,14 +145,14 @@ func findCustomStrings(tuf api.UpdateTufResp, field string) []string {
 }
 
 func (h handlers) updatesList(c echo.Context) error {
-	var updates map[string][]api.Update
+	var updates []api.Update
 	if err := getJson(c.Request().Context(), "/v1/updates", &updates); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
 	ctx := struct {
 		baseCtx
-		Updates map[string][]api.Update
+		Updates []api.Update
 	}{
 		baseCtx: h.baseCtx(c, "Updates", "updates"),
 		Updates: updates,

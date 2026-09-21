@@ -31,20 +31,19 @@ type UpdateSummary = storage.UpdateSummary
 // @Description Requires scope: updates:read or updates:read-update
 // @Tags    Updates
 // @Produce json
-// @Success 200 {object} map[string][]Update
-// @Param   tag path string true "Update tag"
-// @Router  /updates/{tag} [get]
+// @Success 200 {object} []Update
+// @Param   tag query string true "Update tag (optional filter)"
+// @Router  /updates [get]
 func (h *handlers) updateList(c echo.Context) error {
-	tag := c.Param("tag")
+	tag := c.QueryParam("tag")
 
 	if updates, err := h.storage.ListUpdates(tag); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to look up updates")
 	} else {
-		shaped := map[string][]Update{}
-		for _, update := range updates {
-			shaped[update.Tag] = append(shaped[update.Tag], update)
+		if len(updates) == 0 {
+			updates = []Update{}
 		}
-		return c.JSON(http.StatusOK, shaped)
+		return c.JSON(http.StatusOK, updates)
 	}
 }
 
@@ -278,7 +277,11 @@ func (h *handlers) rolloutTail(c echo.Context) error {
 
 func validateUpdateParams(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if tag := c.Param("tag"); len(tag) > 0 && !validateTag(tag) {
+		tag := c.Param("tag")
+		if len(tag) == 0 {
+			tag = c.QueryParam("tag")
+		}
+		if len(tag) > 0 && !validateTag(tag) {
 			return echo.NewHTTPError(http.StatusNotFound, "Tag must match a given regexp: "+validTagRegex)
 		} else if update := c.Param("update"); len(update) > 0 && !validateUpdate(update) {
 			return echo.NewHTTPError(http.StatusNotFound, "Update name must match a given regexp: "+validUpdateRegex)

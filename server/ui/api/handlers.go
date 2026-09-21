@@ -72,9 +72,6 @@ func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, user
 	upd := g.Group("/updates")
 	upd.Use(validateUpdateParams)
 	upd.GET("", h.updateList, requireScope(users.ScopeUpdatesR))
-	upd.GET("/:tag", h.updateList, requireScope(users.ScopeUpdatesR))
-	// TODO: What data would we want to show for an update?
-	// upd.GET("/:tag/:update", h.updateGet, requireScope(users.ScopeDevicesR))
 	upd.POST("/:tag/:update", h.updateCreate, requireScope(users.ScopeUpdatesRU),
 		gzipContentTypeAsContentEncoding, middleware.Decompress())
 	upd.DELETE("/:tag/:update", h.updateDelete, requireScope(users.ScopeUpdatesD))

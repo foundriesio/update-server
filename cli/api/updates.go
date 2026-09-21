@@ -23,8 +23,8 @@ func (a *Api) Updates() UpdatesApi {
 	return UpdatesApi{api: a}
 }
 
-func (u UpdatesApi) List() (map[string][]Update, error) {
-	var updates map[string][]Update
+func (u UpdatesApi) List() ([]Update, error) {
+	var updates []Update
 	return updates, u.api.Get("/v1/updates", &updates)
 }
 
