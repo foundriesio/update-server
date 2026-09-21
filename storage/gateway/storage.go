@@ -217,7 +217,7 @@ func (d Device) GetOstreeFilePath(file string) string {
 	return d.storage.fs.Updates.Ostree.FilePath(d.UpdateName, file)
 }
 
-func (d Device) GetTufMeta(tag, file string) (string, error) {
+func (d Device) GetTufMeta(file string) (string, error) {
 	return d.storage.fs.Updates.Tuf.ReadFile(d.UpdateName, file)
 }
 
