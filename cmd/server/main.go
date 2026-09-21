@@ -13,8 +13,6 @@ import (
 	"github.com/foundriesio/update-server/version"
 )
 
-type VersionCmd struct{}
-
 type CommonArgs struct {
 	DataDir string `arg:"required" help:"Directory to store data"`
 
@@ -26,9 +24,12 @@ type CommonArgs struct {
 	Serve         *ServeCmd         `arg:"subcommand:serve" help:"Run the REST API and device-gateway services"`
 	TufInit       *TufInitCmd       `arg:"subcommand:tuf-init" help:"Initialize TUF keys and root metadata for this server"`
 	UserAdd       *UserAddCmd       `arg:"subcommand:user-add" help:"Add a new user if local authentication is enabled"`
-	Version       *VersionCmd       `arg:"subcommand:version" help:"Print the version of the program"`
 
 	ctx context.Context
+}
+
+func (CommonArgs) Version() string {
+	return version.Version
 }
 
 func main() {
@@ -61,8 +62,6 @@ func main() {
 		err = args.AuthInit.Run(args)
 	case args.UserAdd != nil:
 		err = args.UserAdd.Run(args)
-	case args.Version != nil:
-		fmt.Println(version.Version)
 	default:
 		p.Fail("missing required subcommand")
 	}
