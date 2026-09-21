@@ -35,7 +35,7 @@ func (h handlers) configsDeviceItemApps(c echo.Context) error {
 
 	var tagsToAppsMap map[string][]string
 	if device.Tag != "" && device.UpdateName != "" {
-		updateUrl := fmt.Sprintf("/v1/updates/%s/%s/tuf/targets.json", device.Tag, device.UpdateName)
+		updateUrl := fmt.Sprintf("/v1/updates/%s/tuf/targets.json", device.UpdateName)
 		var tufTargets tuf.AtsTufTargets
 		if err := getJson(c.Request().Context(), updateUrl, &tufTargets); err != nil {
 			return h.handleUnexpected(c, err)

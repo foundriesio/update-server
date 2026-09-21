@@ -28,21 +28,21 @@ func (u UpdatesApi) List() ([]Update, error) {
 	return updates, u.api.Get("/v1/updates", &updates)
 }
 
-func (u UpdatesApi) Get(tag, updateName string) ([]string, error) {
+func (u UpdatesApi) Get(updateName string) ([]string, error) {
 	var rollouts []string
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts"
+	endpoint := "/v1/updates/" + updateName + "/rollouts"
 	return rollouts, u.api.Get(endpoint, &rollouts)
 }
 
-func (u UpdatesApi) GetSummary(tag, updateName string) (UpdateSummary, error) {
+func (u UpdatesApi) GetSummary(updateName string) (UpdateSummary, error) {
 	var summary UpdateSummary
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/summary"
+	endpoint := "/v1/updates/" + updateName + "/summary"
 	return summary, u.api.Get(endpoint, &summary)
 }
 
-func (u UpdatesApi) GetDevicesForStatus(tag, updateName, status string) ([]string, error) {
+func (u UpdatesApi) GetDevicesForStatus(updateName, status string) ([]string, error) {
 	var devices []string
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/query?status=" + url.QueryEscape(status)
+	endpoint := "/v1/updates/" + updateName + "/query?status=" + url.QueryEscape(status)
 	return devices, u.api.Get(endpoint, &devices)
 }
 
@@ -51,9 +51,9 @@ func (u UpdatesApi) GetDevicesForStatus(tag, updateName, status string) ([]strin
 // corresponding metadata file.
 type UpdateTuf = map[string]map[string]any
 
-func (u UpdatesApi) GetTuf(tag, updateName string) (UpdateTuf, error) {
+func (u UpdatesApi) GetTuf(updateName string) (UpdateTuf, error) {
 	var tuf UpdateTuf
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/tuf"
+	endpoint := "/v1/updates/" + updateName + "/tuf"
 	return tuf, u.api.Get(endpoint, &tuf)
 }
 

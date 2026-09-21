@@ -52,9 +52,8 @@ func (h *handlers) updateList(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} UpdateSummary
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/summary [get]
+// @Router  /updates/{update}/summary [get]
 func (h *handlers) updateSummary(c echo.Context) error {
 	updateName := c.Param("update")
 	summary, err := h.storage.UpdateSummary(updateName)
@@ -69,9 +68,8 @@ func (h *handlers) updateSummary(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {array} string
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/query [get]
+// @Router  /updates/{update}/query [get]
 func (h *handlers) updateQuery(c echo.Context) error {
 	updateName := c.Param("update")
 	status := c.QueryParam("status")
@@ -139,9 +137,8 @@ func (h *handlers) updateTail(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {array} string
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/rollouts [get]
+// @Router  /updates/{update}/rollouts [get]
 func (h *handlers) rolloutList(c echo.Context) error {
 	updateName := c.Param("update")
 

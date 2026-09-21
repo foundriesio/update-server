@@ -806,7 +806,7 @@ func TestApiUpdateDelete(t *testing.T) {
 
 func TestApiRolloutList(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.GET("/updates/tag/update/rollouts", 403)
+	tc.GET("/updates/update/rollouts", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
 	s := func(data []byte) string {
@@ -818,18 +818,17 @@ func TestApiRolloutList(t *testing.T) {
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1b", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout4", "foo"))
 
-	data := tc.GET("/updates/tag1/update1/rollouts", 200)
+	data := tc.GET("/updates/update1/rollouts", 200)
 	assert.Equal(t, `["rollout1","rollout2"]`, s(data))
-	data = tc.GET("/updates/tag2/update1b/rollouts", 200)
+	data = tc.GET("/updates/update1b/rollouts", 200)
 	assert.Equal(t, `["rollout1"]`, s(data))
-	data = tc.GET("/updates/tag1/update2/rollouts", 200)
+	data = tc.GET("/updates/update2/rollouts", 200)
 	assert.Equal(t, `["rollout4"]`, s(data))
 
 	// Synthetic tag/update validation - create a bad tag/update on disk - request must still return 404
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
-	tc.GET("/updates/bad^tag/update42/rollouts", 404)
-	tc.GET("/updates/tag/update=bad/rollouts", 404)
+	tc.GET("/updates/update=bad/rollouts", 404)
 }
 
 func TestApiRolloutGet(t *testing.T) {

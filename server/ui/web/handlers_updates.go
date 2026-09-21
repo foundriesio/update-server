@@ -161,7 +161,7 @@ func (h handlers) updatesList(c echo.Context) error {
 }
 
 func (h handlers) updatesGet(c echo.Context) error {
-	url := fmt.Sprintf("/v1/updates/%s/%s/rollouts", c.Param("tag"), c.Param("name"))
+	url := fmt.Sprintf("/v1/updates/%s/rollouts", c.Param("name"))
 
 	var rollouts []string
 	if err := getJson(c.Request().Context(), url, &rollouts); err != nil {
@@ -169,7 +169,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 	}
 
 	var summary api.UpdateSummary
-	if err := getJson(c.Request().Context(), fmt.Sprintf("/v1/updates/%s/%s/summary", c.Param("tag"), c.Param("name")), &summary); err != nil {
+	if err := getJson(c.Request().Context(), fmt.Sprintf("/v1/updates/%s/summary", c.Param("name")), &summary); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
@@ -178,7 +178,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 		return h.handleUnexpected(c, err)
 	}
 
-	url = fmt.Sprintf("/v1/updates/%s/%s/tuf", c.Param("tag"), c.Param("name"))
+	url = fmt.Sprintf("/v1/updates/%s/tuf", c.Param("name"))
 	var tuf api.UpdateTufResp
 	tufErr := ""
 	if err := getJson(c.Request().Context(), url, &tuf); err != nil {

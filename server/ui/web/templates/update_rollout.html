@@ -104,7 +104,7 @@
         const list = document.getElementById('devicesList');
         list.innerHTML = '<li>Loading...</li>';
         devicesModal.show();
-        fetch('/v1/updates/{{.Tag}}/{{.Name}}/rollouts/{{.Rollout}}/query?status=' + encodeURIComponent(status))
+        fetch('/v1/updates/{{.Name}}/rollouts/{{.Rollout}}/query?status=' + encodeURIComponent(status))
           .then(response => response.json())
           .then(data => {
             const devicesList = data || [];

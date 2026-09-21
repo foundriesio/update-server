@@ -98,9 +98,8 @@ func (h handlers) updateDelete(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} UpdateTufResp
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/tuf [get]
+// @Router  /updates/{update}/tuf [get]
 func (h handlers) updateGetTuf(c echo.Context) error {
 	update := c.Param("update")
 
@@ -117,10 +116,9 @@ func (h handlers) updateGetTuf(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} UpdateTufItemResp
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   file path string true "File name"
-// @Router  /updates/{tag}/{update}/tuf/{file} [get]
+// @Router  /updates/{update}/tuf/{file} [get]
 func (h handlers) updateGetTufFile(c echo.Context) error {
 	update := c.Param("update")
 	file := c.Param("file")
