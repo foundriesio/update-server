@@ -3,12 +3,12 @@
       <h2>{{.Title}}</h2>
       {{ template "configs-item" . }}
       {{ if .CanEdit }}
-      <button name="AddFile">Add</button>
+      {{ template "configs-add-button" }}
       <script type="module">
         window.EditConfigsFileConfig.apiUrl = '/configs/global';
       </script>
       {{ end }}
-      <button onclick="location.href='/configs/global/history'">History</button>
+      <button type="button" class="btn-ghost btn-sm" onclick="location.href='/configs/global/history'">History</button>
     </section>
     {{ $groupsPerPage := 20 }}
     <section class="content-section">
@@ -46,8 +46,8 @@
       </nav>
       {{ end }}
       <script type="module">
-        const $ = document.querySelector.bind(document),
-              $$ = document.querySelectorAll.bind(document);
+        const $ = document.querySelector.bind(document);
+        const $$ = document.querySelectorAll.bind(document);
 
         /* Groups Sorting */
         function groupsFlipSort() {
@@ -67,9 +67,9 @@
         });
 
         /* Groups Paging */
-        const groupsPerPage = {{ $groupsPerPage }},
-              groupsTotal = {{ len .Groups }},
-              groupsTotalPages = Math.ceil(groupsTotal / groupsPerPage);
+        const groupsPerPage = {{ $groupsPerPage }};
+        const groupsTotal = {{ len .Groups }};
+        const groupsTotalPages = Math.ceil(groupsTotal / groupsPerPage);
 
         let groupsPage = 1;
 
