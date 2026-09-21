@@ -806,7 +806,7 @@ func TestApiUpdateDelete(t *testing.T) {
 	updates, err = tc.api.ListUpdates("tag2")
 	require.Nil(t, err)
 	require.Len(t, updates["tag2"], 1)
-	_, err = os.Stat(filepath.Join(updatesDir, "tag2", "update2"))
+	_, err = os.Stat(filepath.Join(updatesDir, "update2"))
 	require.NoError(t, err)
 }
 
@@ -821,17 +821,13 @@ func TestApiRolloutList(t *testing.T) {
 
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout2", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update1", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update1b", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update2", "rollout4", "foo"))
 
 	data := tc.GET("/updates/tag1/update1/rollouts", 200)
 	assert.Equal(t, `["rollout1","rollout2"]`, s(data))
-	data = tc.GET("/updates/tag2/update1/rollouts", 200)
+	data = tc.GET("/updates/tag2/update1b/rollouts", 200)
 	assert.Equal(t, `["rollout1"]`, s(data))
-	data = tc.GET("/updates/tag2/update2/rollouts", 200) // update not exists
-	assert.Equal(t, "[]", s(data))
-	data = tc.GET("/updates/tag3/update1/rollouts", 200) // tag not exists
-	assert.Equal(t, "[]", s(data))
 	data = tc.GET("/updates/tag1/update2/rollouts", 200)
 	assert.Equal(t, `["rollout4"]`, s(data))
 
@@ -863,7 +859,6 @@ func TestApiRolloutGet(t *testing.T) {
 	assert.Equal(t, `{"groups":["test","dev"],"committed":false}`, s(data))
 	tc.GET("/updates/tag1/update2/rollouts/rollout3", 404) // rollout not exists
 	tc.GET("/updates/tag1/update3/rollouts/rollout1", 404) // update not exists
-	tc.GET("/updates/tag2/update1/rollouts/rollout1", 404) // tag not exists
 	data = tc.GET("/updates/tag/update/rollouts/rollout", 200)
 	assert.Equal(t, `{"uuids":["uh"],"groups":["oh"],"committed":false}`, s(data))
 
@@ -1693,10 +1688,10 @@ func TestApiUpdateCreate(t *testing.T) {
 
 	// Verify files were extracted to the right place
 	updatesDir := tc.fs.Config.UpdatesDir()
-	root, err := os.ReadFile(filepath.Join(updatesDir, "main", "v1.0", "tuf", "root.json"))
+	root, err := os.ReadFile(filepath.Join(updatesDir, "v1.0", "tuf", "root.json"))
 	require.NoError(t, err)
 	assert.Equal(t, `{"signed":{}}`, string(root))
-	config, err := os.ReadFile(filepath.Join(updatesDir, "main", "v1.0", "ostree_repo", "config"))
+	config, err := os.ReadFile(filepath.Join(updatesDir, "v1.0", "ostree_repo", "config"))
 	require.NoError(t, err)
 	assert.Equal(t, "[core]\nrepo_version=1\n", string(config))
 
@@ -1708,7 +1703,7 @@ func TestApiUpdateCreate(t *testing.T) {
 	})
 	tc.POST("/updates/main/v2.0", 201, bytes.NewReader(appsTar.Bytes()),
 		"Content-Type", "application/x-tar")
-	appData, err := os.ReadFile(filepath.Join(updatesDir, "main", "v2.0", "apps", "myapp.json"))
+	appData, err := os.ReadFile(filepath.Join(updatesDir, "v2.0", "apps", "myapp.json"))
 	require.NoError(t, err)
 	assert.Equal(t, `{"name":"myapp"}`, string(appData))
 
@@ -1762,7 +1757,7 @@ func TestApiUpdateCreate(t *testing.T) {
 	}))
 	tc.POST("/updates/main/v4.0", 201, bytes.NewReader(gzTar.Bytes()),
 		"Content-Type", "application/gzip")
-	_, err = os.ReadFile(filepath.Join(updatesDir, "main", "v4.0", "tuf", "root.json"))
+	_, err = os.ReadFile(filepath.Join(updatesDir, "v4.0", "tuf", "root.json"))
 	require.NoError(t, err)
 
 	// Gzip-compressed tar via Content-Encoding header
@@ -1774,7 +1769,7 @@ func TestApiUpdateCreate(t *testing.T) {
 	tc.POST("/updates/main/v5.0", 201, bytes.NewReader(gzTar2.Bytes()),
 		"Content-Type", "application/x-tar",
 		"Content-Encoding", "gzip")
-	_, err = os.ReadFile(filepath.Join(updatesDir, "main", "v5.0", "tuf", "root.json"))
+	_, err = os.ReadFile(filepath.Join(updatesDir, "v5.0", "tuf", "root.json"))
 	require.NoError(t, err)
 
 	// Invalid gzip stream

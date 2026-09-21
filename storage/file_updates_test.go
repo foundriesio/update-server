@@ -53,7 +53,7 @@ func TestLatestRootMetaName(t *testing.T) {
 			tag := "test-tag"
 			update := "test-update"
 			category := "tuf"
-			dir := filepath.Join(tmpDir, tag, update, category)
+			dir := filepath.Join(tmpDir, update, category)
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				t.Fatal(err)
 			}

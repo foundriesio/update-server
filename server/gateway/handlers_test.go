@@ -758,7 +758,6 @@ func TestTufMeta(t *testing.T) {
 		{tcCi42, "CI test snapshot.json", "test", "42", "snapshot.json"},
 		{tcCi42, "CI test targets.json", "test", "42", "targets.json"},
 		{tcCi137, "CI test 137 targets.json", "test", "137", "targets.json"},
-		{tcCi137, "CI beta targets.json", "beta", "137", "targets.json"},
 	}
 
 	// Pre-create devices and set their update names before tests
@@ -802,14 +801,6 @@ func TestTufMeta(t *testing.T) {
 	t.Run("Missing 5.root.json", func(t *testing.T) {
 		tcCi42.t = t
 		_ = tcCi42.GET("/repo/5.root.json", 404, "x-ats-tags", "test")
-	})
-	t.Run("Missing targets.json for non-existing tag", func(t *testing.T) {
-		tcCi42.t = t
-		_ = tcCi42.GET("/repo/targets.json", 404, "x-ats-tags", "zero")
-	})
-	t.Run("Missing targets.json for existing tag but not matching update", func(t *testing.T) {
-		tcCi42.t = t
-		_ = tcCi42.GET("/repo/targets.json", 404, "x-ats-tags", "beta")
 	})
 }
 

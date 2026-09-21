@@ -53,7 +53,7 @@ func (s *updatesFsHandleWrap) init(root string) {
 // Delete removes the entire on-disk directory for an update (all categories:
 // tuf, ostree_repo, apps, rollouts, logs). A missing directory is not an error.
 func (s updatesFsHandleWrap) Delete(tag, update string) error {
-	dir := filepath.Join(s.root, tag, update)
+	dir := filepath.Join(s.root, update)
 	if err := os.RemoveAll(dir); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -106,10 +106,10 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 	var sawTuf, sawOstree, sawApps bool
 	txDir := ".update-upload-" + rand.Text()[:10]
 	root, destDir := filepath.Split(s.root)
-	destDir = filepath.Join(destDir, tag, update)
+	destDir = filepath.Join(destDir, update)
 	h := tarFsHandle{root: root}
 	return h.unpackTar(payload, destDir,
-		TarUnpackReplaceDest(true), // Replace updates with the same tag and name - uniqueness is checked on the database level.
+		TarUnpackReplaceDest(true), // Replace updates with the same name - uniqueness is checked on the database level.
 		TarUnpackUseTmpFile("update.tar"),
 		TarUnpackUseTmpDir(txDir),
 		TarUnpackOnEvents(tarUnpackEvents{
@@ -155,7 +155,7 @@ type UpdatesFsHandle struct {
 }
 
 func (s UpdatesFsHandle) FilePath(tag, update, name string) string {
-	return filepath.Join(s.root, tag, update, s.category, name)
+	return filepath.Join(s.root, update, s.category, name)
 }
 
 func (s UpdatesFsHandle) ReadFile(tag, update, name string) (string, error) {
@@ -218,7 +218,7 @@ func (s UpdatesFsHandle) AppendFile(tag, update, name, content string) error {
 }
 
 func (s UpdatesFsHandle) updateLocalHandle(tag, update string, forUpdate bool) (h baseFsHandle, err error) {
-	h.root = filepath.Join(s.root, tag, update, s.category)
+	h.root = filepath.Join(s.root, update, s.category)
 	if forUpdate {
 		if err = h.mkdirs(defaultDirAccess, true); err != nil {
 			err = fmt.Errorf("unable to create %s file storage for tag %s update %s: %w", s.category, tag, update, err)
