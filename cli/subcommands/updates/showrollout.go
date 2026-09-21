@@ -11,13 +11,13 @@ import (
 )
 
 var showRolloutCmd = &cobra.Command{
-	Use:   "show-rollout <tag> <update-name> <rollout>",
+	Use:   "show-rollout <update-name> <rollout>",
 	Short: "Show details for a specific rollout",
 	Long:  `Display detailed information about a rollout including UUIDs, groups, and effective devices`,
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := api.CtxGetApi(cmd.Context())
-		showRollout(api.Updates(), args[0], args[1], args[2])
+		showRollout(api.Updates(), args[0], args[1])
 		return nil
 	},
 }
@@ -27,16 +27,13 @@ func init() {
 	UpdatesCmd.AddCommand(showRolloutCmd)
 }
 
-func showRollout(updates api.UpdatesApi, tag, updateName, rollout string) {
-	rolloutData, err := updates.GetRollout(tag, updateName, rollout)
+func showRollout(updates api.UpdatesApi, updateName, rollout string) {
+	rolloutData, err := updates.GetRollout(updateName, rollout)
 	cobra.CheckErr(err)
 
-	fmt.Printf("Rollout: %s\n", rollout)
-	fmt.Printf("Update: %s\n", updateName)
-	fmt.Printf("Tag: %s\n", tag)
 	fmt.Printf("Committed: %v\n\n", rolloutData.Commit)
 
-	summary, err := updates.GetRolloutSummary(tag, updateName, rollout)
+	summary, err := updates.GetRolloutSummary(updateName, rollout)
 	if err != nil {
 		fmt.Printf("Error fetching rollout report: %v\n", err)
 		return
@@ -46,7 +43,7 @@ func showRollout(updates api.UpdatesApi, tag, updateName, rollout string) {
 		fmt.Printf("  %s: %d\n", status, count)
 		if showDevices {
 			fmt.Printf("    looking up devices ...")
-			devices, err := updates.GetDevicesForRolloutStatus(tag, updateName, rollout, status)
+			devices, err := updates.GetDevicesForRolloutStatus(updateName, rollout, status)
 			if err != nil {
 				fmt.Printf("\rError fetching devices for status %s: %v\n", status, err)
 			} else {

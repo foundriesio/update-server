@@ -834,10 +834,10 @@ func TestApiRolloutList(t *testing.T) {
 
 func TestApiRolloutGet(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.GET("/updates/tag/update/rollouts/rolling", 403)
+	tc.GET("/updates/update/rollouts/rolling", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
-	tc.GET("/updates/non-prod/tag/update/rollouts/rocks", 404)
+	tc.GET("/updates/update/rollouts/rocks", 404)
 
 	s := func(data []byte) string {
 		return strings.TrimSpace(string(data))
@@ -847,22 +847,21 @@ func TestApiRolloutGet(t *testing.T) {
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout2", `{"groups":["test","dev"]}`))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "rollout", `{"uuids":["uh"],"groups":["oh"]}`))
 
-	data := tc.GET("/updates/tag1/update1/rollouts/rollout1", 200)
+	data := tc.GET("/updates/update1/rollouts/rollout1", 200)
 	assert.Equal(t, `{"uuids":["123","xyz"],"committed":false}`, s(data))
-	data = tc.GET("/updates/tag1/update2/rollouts/rollout2", 200)
+	data = tc.GET("/updates/update2/rollouts/rollout2", 200)
 	assert.Equal(t, `{"groups":["test","dev"],"committed":false}`, s(data))
-	tc.GET("/updates/tag1/update2/rollouts/rollout3", 404) // rollout not exists
-	tc.GET("/updates/tag1/update3/rollouts/rollout1", 404) // update not exists
-	data = tc.GET("/updates/tag/update/rollouts/rollout", 200)
+	tc.GET("/updates/update2/rollouts/rollout3", 404) // rollout not exists
+	tc.GET("/updates/update3/rollouts/rollout1", 404) // update not exists
+	data = tc.GET("/updates/update/rollouts/rollout", 200)
 	assert.Equal(t, `{"uuids":["uh"],"groups":["oh"],"committed":false}`, s(data))
 
 	// Synthetic tag/update/rollout validation - create a bad tag/update/rollout on disk - request must still return 404
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "omg+", "foo"))
-	tc.GET("/updates/bad^tag/update42/rollouts/rollout1", 404)
-	tc.GET("/updates/tag/update=bad/rollouts/rollout1", 404)
-	tc.GET("/updates/tag/update/rollouts/omg+", 404)
+	tc.GET("/updates/update=bad/rollouts/rollout1", 404)
+	tc.GET("/updates/update/rollouts/omg+", 404)
 }
 
 func TestApiRolloutPut(t *testing.T) {
@@ -921,14 +920,14 @@ func TestApiRolloutPut(t *testing.T) {
 	// a failure pinpoints the differing rollout/device instead of a generic
 	// "condition never satisfied" timeout.
 	committed := func() bool {
-		return strings.Contains(s(tc.GET("/updates/tag1/update1/rollouts/rocks", 200)), `"committed":true`) &&
-			strings.Contains(s(tc.GET("/updates/tag2/update2/rollouts/rocks", 200)), `"committed":true`)
+		return strings.Contains(s(tc.GET("/updates/update1/rollouts/rocks", 200)), `"committed":true`) &&
+			strings.Contains(s(tc.GET("/updates/update2/rollouts/rocks", 200)), `"committed":true`)
 	}
 	require.Eventually(t, committed, 10*time.Second, 20*time.Millisecond)
 
-	data := tc.GET("/updates/tag1/update1/rollouts/rocks", 200)
+	data := tc.GET("/updates/update1/rollouts/rocks", 200)
 	assert.Equal(t, `{"uuids":["ci1","ci2","ci3"],"effective-uuids":["ci1","ci2"],"committed":true}`, s(data))
-	data = tc.GET("/updates/tag2/update2/rollouts/rocks", 200)
+	data = tc.GET("/updates/update2/rollouts/rocks", 200)
 	assert.Equal(t, `{"uuids":["prod2"],"groups":["grp1"],"effective-uuids":["ci4","prod2","prod3"],"committed":true}`, s(data))
 	dev, err := tc.api.DeviceGet("ci1")
 	require.Nil(t, err)
@@ -950,9 +949,8 @@ func TestApiRolloutPut(t *testing.T) {
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "omg+", "foo"))
-	tc.PUT("/updates/bad^tag/update42/rollouts/gogogo", 404, "foo")
-	tc.PUT("/updates/tag/update=bad/rollouts/gogogo", 404, "foo")
-	tc.PUT("/updates/tag/update/rollouts/omg+", 404, "foo")
+	tc.PUT("/updates/update=bad/rollouts/gogogo", 404, "foo")
+	tc.PUT("/updates/update/rollouts/omg+", 404, "foo")
 }
 
 func TestApiRolloutDaemon(t *testing.T) {
@@ -985,9 +983,9 @@ func TestApiRolloutDaemon(t *testing.T) {
 	require.Nil(t, tc.api.CreateRollout("tag2", "update2", "roll2", Rollout{Uuids: []string{"prod1"}}))
 
 	// Before the watchdog daemon processing, rollouts are not yet committed.
-	data := tc.GET("/updates/tag1/update1/rollouts/roll1", 200)
+	data := tc.GET("/updates/update1/rollouts/roll1", 200)
 	assert.Equal(t, `{"uuids":["ci1"],"committed":false}`, s(data))
-	data = tc.GET("/updates/tag2/update2/rollouts/roll2", 200)
+	data = tc.GET("/updates/update2/rollouts/roll2", 200)
 	assert.Equal(t, `{"uuids":["prod1"],"committed":false}`, s(data))
 	dev, err := tc.api.DeviceGet("ci1")
 	require.Nil(t, err)
@@ -999,8 +997,8 @@ func TestApiRolloutDaemon(t *testing.T) {
 	daemons.Start()
 	// After the watchdog daemon processing, rollouts are committed.
 	require.Eventually(t, func() bool {
-		d1 := s(tc.GET("/updates/tag1/update1/rollouts/roll1", 200))
-		d2 := s(tc.GET("/updates/tag2/update2/rollouts/roll2", 200))
+		d1 := s(tc.GET("/updates/update1/rollouts/roll1", 200))
+		d2 := s(tc.GET("/updates/update2/rollouts/roll2", 200))
 		dev1, err1 := tc.api.DeviceGet("ci1")
 		dev2, err2 := tc.api.DeviceGet("prod1")
 		return d1 == `{"uuids":["ci1"],"effective-uuids":["ci1"],"committed":true}` &&

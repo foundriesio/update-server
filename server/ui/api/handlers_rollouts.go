@@ -87,10 +87,9 @@ func (h *handlers) updateQuery(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} UpdateSummary
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout}/summary [get]
+// @Router  /updates/{update}/rollouts/{rollout}/summary [get]
 func (h *handlers) updateRolloutSummary(c echo.Context) error {
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")
@@ -106,10 +105,9 @@ func (h *handlers) updateRolloutSummary(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {array} string
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout}/query [get]
+// @Router  /updates/{update}/rollouts/{rollout}/query [get]
 func (h *handlers) updateRolloutQuery(c echo.Context) error {
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")
@@ -162,10 +160,9 @@ func (h *handlers) rolloutList(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} Rollout
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout} [get]
+// @Router  /updates/{update}/rollouts/{rollout} [get]
 func (h *handlers) rolloutGet(c echo.Context) error {
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")

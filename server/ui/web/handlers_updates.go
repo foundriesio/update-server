@@ -220,7 +220,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 }
 
 func (h handlers) updatesRollout(c echo.Context) error {
-	url := fmt.Sprintf("/v1/updates/%s/%s/rollouts/%s", c.Param("tag"), c.Param("name"), c.Param("rollout"))
+	url := fmt.Sprintf("/v1/updates/%s/rollouts/%s", c.Param("name"), c.Param("rollout"))
 
 	var details api.Rollout
 	if err := getJson(c.Request().Context(), url, &details); err != nil {
