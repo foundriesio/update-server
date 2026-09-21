@@ -159,7 +159,7 @@ func (s UpdatesFsHandle) FilePath(tag, update, name string) string {
 }
 
 func (s UpdatesFsHandle) ReadFile(tag, update, name string) (string, error) {
-	h, _ := s.updateLocalHandle(tag, update, false)
+	h, _ := s.updateLocalHandle(update, false)
 	content, err := h.readFile(name, false)
 	if err != nil {
 		err = fmt.Errorf("error reading %s file for tag %s update %s: %w", s.category, tag, update, err)
@@ -168,7 +168,7 @@ func (s UpdatesFsHandle) ReadFile(tag, update, name string) (string, error) {
 }
 
 func (s UpdatesFsHandle) LatestRootMetaName(tag, update string) (string, error) {
-	h, _ := s.updateLocalHandle(tag, update, false)
+	h, _ := s.updateLocalHandle(update, false)
 	files, err := h.matchFiles("", false)
 	if err != nil {
 		return "", fmt.Errorf("error find latest root metadata: %w", err)
@@ -195,12 +195,12 @@ func (s UpdatesFsHandle) LatestRootMetaName(tag, update string) (string, error) 
 }
 
 func (s UpdatesFsHandle) TailFileLines(tag, update, name string, stop DoneChan) iter.Seq2[string, error] {
-	h, _ := s.updateLocalHandle(tag, update, false)
+	h, _ := s.updateLocalHandle(update, false)
 	return h.readFileLines(name, false, stop)
 }
 
 func (s UpdatesFsHandle) WriteFile(tag, update, name, content string) error {
-	if h, err := s.updateLocalHandle(tag, update, true); err != nil {
+	if h, err := s.updateLocalHandle(update, true); err != nil {
 		return err
 	} else if err = h.writeFile(name, content, defaultFileAccess); err != nil {
 		return fmt.Errorf("error writing %s file for tag %s update %s: %w", s.category, tag, update, err)
@@ -209,7 +209,7 @@ func (s UpdatesFsHandle) WriteFile(tag, update, name, content string) error {
 }
 
 func (s UpdatesFsHandle) AppendFile(tag, update, name, content string) error {
-	if h, err := s.updateLocalHandle(tag, update, true); err != nil {
+	if h, err := s.updateLocalHandle(update, true); err != nil {
 		return err
 	} else if err = h.appendFile(name, content, defaultFileAccess); err != nil {
 		return fmt.Errorf("error appending %s file for tag %s update %s: %w", s.category, tag, update, err)
@@ -217,11 +217,11 @@ func (s UpdatesFsHandle) AppendFile(tag, update, name, content string) error {
 	return nil
 }
 
-func (s UpdatesFsHandle) updateLocalHandle(tag, update string, forUpdate bool) (h baseFsHandle, err error) {
+func (s UpdatesFsHandle) updateLocalHandle(update string, forUpdate bool) (h baseFsHandle, err error) {
 	h.root = filepath.Join(s.root, update, s.category)
 	if forUpdate {
 		if err = h.mkdirs(defaultDirAccess, true); err != nil {
-			err = fmt.Errorf("unable to create %s file storage for tag %s update %s: %w", s.category, tag, update, err)
+			err = fmt.Errorf("unable to create %s file storage for update %s: %w", s.category, update, err)
 		}
 	}
 	return
@@ -232,7 +232,7 @@ type RolloutsFsHandle struct {
 }
 
 func (s RolloutsFsHandle) ListFiles(tag, update string) ([]string, error) {
-	h, _ := s.updateLocalHandle(tag, update, false)
+	h, _ := s.updateLocalHandle(update, false)
 	return h.matchFiles("", true)
 }
 
