@@ -315,7 +315,7 @@ func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, gw *gateway.Stor
 				}); err != nil {
 					return fmt.Errorf("CommitRollout for %s/%s: %w", tag, name, err)
 				}
-				rollout, err := apiStorage.GetRollout(tag, name, rolloutName)
+				rollout, err := apiStorage.GetRollout(name, rolloutName)
 				if err != nil {
 					return fmt.Errorf("GetRollout for %s/%s: %w", tag, name, err)
 				}

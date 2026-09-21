@@ -50,10 +50,10 @@ type generatedTargetCustom struct {
 }
 
 func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
-	// tufVer/tgtVer are the highest existing versions for this tag. The new TUF
+	// tufVer/tgtVer are the highest existing versions across all updates. The new TUF
 	// metadata version is derived below (tufVer + 10); the target version reuses
 	// the highest existing value unless AppVersion overrides it.
-	tufVer, tgtVer, err := s.getLatestVersions(opts.Tag)
+	tufVer, tgtVer, err := s.getLatestVersions()
 	if err != nil {
 		return fmt.Errorf("unable to determine latest target versions: %w", err)
 	}
@@ -192,25 +192,27 @@ func marshallMeta(v any, version int) ([]byte, tuf.MetaItem, error) {
 }
 
 // getLatestVersions returns the highest TUF metadata version and the highest
-// target/app version currently present across all updates for the given tag.
+// target/app version currently present across all updates.
 // Both are zero when the tag has no existing TUF metadata.
-func (s Storage) getLatestVersions(tag string) (tufVersion, targetVersion int, err error) {
-	updates, err := s.ListUpdates(tag)
+func (s Storage) getLatestVersions() (tufVersion, targetVersion int, err error) {
+	updates, err := s.ListUpdates("")
 	if err != nil {
 		return 0, 0, err
 	}
-	for _, u := range updates[tag] {
-		var targets tuf.AtsTufTargets
-		if err := s.fs.Tuf.ReadTufMeta(tag, u.Name, storage.TufTargetsFile, &targets); err != nil {
-			// Skip updates that pre-date TUF or whose metadata is missing/unreadable.
-			continue
-		}
-		if tufVersion < targets.Signed.Version {
-			tufVersion = targets.Signed.Version
-		}
-		latest := targets.GetLatestTargetVersion()
-		if targetVersion < latest {
-			targetVersion = latest
+	for _, updates := range updates {
+		for _, u := range updates {
+			var targets tuf.AtsTufTargets
+			if err := s.fs.Tuf.ReadTufMeta(u.Name, storage.TufTargetsFile, &targets); err != nil {
+				// Skip updates that pre-date TUF or whose metadata is missing/unreadable.
+				continue
+			}
+			if tufVersion < targets.Signed.Version {
+				tufVersion = targets.Signed.Version
+			}
+			latest := targets.GetLatestTargetVersion()
+			if targetVersion < latest {
+				targetVersion = latest
+			}
 		}
 	}
 	return tufVersion, targetVersion, nil
@@ -228,7 +230,7 @@ func (s Storage) RefreshTufTimestamps(c context.Context) error {
 		log.Info("Checking TUF timestamp expiry for tag", "tag", tag, "updates", len(updates))
 		for _, u := range updates {
 			log.Debug("Checking timestamp for", "tag", tag, "update", u.Name)
-			if err := s.refreshTufTimestamp(c, tag, u); err != nil {
+			if err := s.refreshTufTimestamp(c, u); err != nil {
 				log.Error("Failed to refresh TUF timestamps", "tag", tag, "update", u.Name, "error", err)
 			}
 		}
@@ -236,17 +238,17 @@ func (s Storage) RefreshTufTimestamps(c context.Context) error {
 	return nil
 }
 
-func (s Storage) refreshTufTimestamp(c context.Context, tag string, update Update) error {
+func (s Storage) refreshTufTimestamp(c context.Context, update Update) error {
 	log := context.CtxGetLog(c)
 
 	var ts tuf.AtsTufTimestamp
-	if err := s.fs.Tuf.ReadTufMeta(tag, update.Name, storage.TufTimestampFile, &ts); err != nil {
+	if err := s.fs.Tuf.ReadTufMeta(update.Name, storage.TufTimestampFile, &ts); err != nil {
 		return fmt.Errorf("unable to read timestamp metadata: %w", err)
 	}
 
 	cutoff := clock.Now().UTC().Add(time.Hour * 24) // 1 day from now
 	if ts.Signed.Expires.After(cutoff) {
-		log.Debug("Timestamp okay", "tag", tag, "update", update.Name, "expiry", ts.Signed.Expires, "cutoff", cutoff)
+		log.Debug("Timestamp okay", "update", update.Name, "expiry", ts.Signed.Expires, "cutoff", cutoff)
 		return nil // timestamp is still valid, no need to refresh
 	}
 
@@ -262,10 +264,10 @@ func (s Storage) refreshTufTimestamp(c context.Context, tag string, update Updat
 		return fmt.Errorf("unable to marshal timestamp metadata: %w", err)
 	}
 
-	if err := s.fs.Tuf.WriteTimestamp(tag, update.Name, tsJson); err != nil {
+	if err := s.fs.Tuf.WriteTimestamp(update.Name, tsJson); err != nil {
 		return err
 	}
 
-	log.Info("Refreshed TUF timestamp", "tag", tag, "update", update.Name, "new_expiry", ts.Signed.Expires)
+	log.Info("Refreshed TUF timestamp", "update", update.Name, "new_expiry", ts.Signed.Expires)
 	return nil
 }

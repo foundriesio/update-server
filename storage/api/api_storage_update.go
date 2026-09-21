@@ -27,11 +27,11 @@ type UpdateSummary struct {
 	Status map[string]int `json:"summaries"`
 }
 
-func (s Storage) lastKnownStates(tag, name string, filterUuids map[string]any) (map[string]string, error) {
+func (s Storage) lastKnownStates(name string, filterUuids map[string]any) (map[string]string, error) {
 	lastStates := make(map[string]string)
 
 	// Collect the last known state for each device in the rollout.
-	for line, err := range s.TailRolloutsLog(tag, name, nil) {
+	for line, err := range s.TailRolloutsLog(name, nil) {
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				// No rollout log yet, return an empty report.
@@ -53,8 +53,8 @@ func (s Storage) lastKnownStates(tag, name string, filterUuids map[string]any) (
 	return lastStates, nil
 }
 
-func (s Storage) updateSummary(tag, name string, filterUuids map[string]any) (*UpdateSummary, error) {
-	lastStates, err := s.lastKnownStates(tag, name, filterUuids)
+func (s Storage) updateSummary(name string, filterUuids map[string]any) (*UpdateSummary, error) {
+	lastStates, err := s.lastKnownStates(name, filterUuids)
 	if err != nil {
 		return nil, err
 	} else if lastStates == nil {
@@ -80,8 +80,8 @@ func (s Storage) updateSummary(tag, name string, filterUuids map[string]any) (*U
 	return report, nil
 }
 
-func (s Storage) updateStateFor(tag, name, filterState string, filterUuids map[string]any) ([]string, error) {
-	lastStates, err := s.lastKnownStates(tag, name, filterUuids)
+func (s Storage) updateStateFor(name, filterState string, filterUuids map[string]any) ([]string, error) {
+	lastStates, err := s.lastKnownStates(name, filterUuids)
 	if err != nil {
 		return nil, err
 	} else if lastStates == nil {
@@ -106,16 +106,16 @@ func (s Storage) updateStateFor(tag, name, filterState string, filterUuids map[s
 	return result, nil
 }
 
-func (s Storage) UpdateSummary(tag, name string) (*UpdateSummary, error) {
-	return s.updateSummary(tag, name, nil)
+func (s Storage) UpdateSummary(name string) (*UpdateSummary, error) {
+	return s.updateSummary(name, nil)
 }
 
-func (s Storage) UpdateStateFor(tag, updateName, status string) ([]string, error) {
-	return s.updateStateFor(tag, updateName, status, nil)
+func (s Storage) UpdateStateFor(updateName, status string) ([]string, error) {
+	return s.updateStateFor(updateName, status, nil)
 }
 
-func (s Storage) RolloutSummary(tag, updateName, rolloutName string) (*UpdateSummary, error) {
-	rollout, err := s.GetRollout(tag, updateName, rolloutName)
+func (s Storage) RolloutSummary(updateName, rolloutName string) (*UpdateSummary, error) {
+	rollout, err := s.GetRollout(updateName, rolloutName)
 	if err != nil {
 		return nil, err
 	}
@@ -123,11 +123,11 @@ func (s Storage) RolloutSummary(tag, updateName, rolloutName string) (*UpdateSum
 	for _, uuid := range rollout.Effect {
 		filter[uuid] = nil
 	}
-	return s.updateSummary(tag, updateName, filter)
+	return s.updateSummary(updateName, filter)
 }
 
-func (s Storage) RolloutStateFor(tag, updateName, rolloutName, status string) ([]string, error) {
-	rollout, err := s.GetRollout(tag, updateName, rolloutName)
+func (s Storage) RolloutStateFor(updateName, rolloutName, status string) ([]string, error) {
+	rollout, err := s.GetRollout(updateName, rolloutName)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (s Storage) RolloutStateFor(tag, updateName, rolloutName, status string) ([
 	for _, uuid := range rollout.Effect {
 		filter[uuid] = nil
 	}
-	return s.updateStateFor(tag, updateName, status, filter)
+	return s.updateStateFor(updateName, status, filter)
 }
 
 // generateUpdateTuf probes the uploaded ostree/apps content for an update and

@@ -231,7 +231,7 @@ func writeUpdateTimestamp(t *testing.T, s *Storage, tag, update string, version 
 	tsJSON, err := json.Marshal(ts)
 	require.NoError(t, err)
 	require.NoError(t, s.InsertUpdate(tag, update, "tester"))
-	require.NoError(t, s.fs.Tuf.WriteTimestamp(tag, update, tsJSON))
+	require.NoError(t, s.fs.Tuf.WriteTimestamp(update, tsJSON))
 }
 
 func TestRefreshTufTimestamps(t *testing.T) {
@@ -254,7 +254,7 @@ func TestRefreshTufTimestamps(t *testing.T) {
 
 	// The soon-to-expire timestamp was re-signed with a fresh expiry.
 	var refreshed tuf.AtsTufTimestamp
-	require.NoError(t, s.fs.Tuf.ReadTufMeta(tag, "update-soon", storage.TufTimestampFile, &refreshed))
+	require.NoError(t, s.fs.Tuf.ReadTufMeta("update-soon", storage.TufTimestampFile, &refreshed))
 	expectedExpiry := fixedNow.Add(s.fs.Tuf.TimestampExpiration).Truncate(time.Second)
 	assert.Equal(t, expectedExpiry, refreshed.Signed.Expires)
 	assert.Equal(t, 1000, refreshed.Signed.Version, "refresh should not change the timestamp version")
@@ -263,7 +263,7 @@ func TestRefreshTufTimestamps(t *testing.T) {
 
 	// The future timestamp was left unchanged.
 	var untouched tuf.AtsTufTimestamp
-	require.NoError(t, s.fs.Tuf.ReadTufMeta(tag, "update-later", storage.TufTimestampFile, &untouched))
+	require.NoError(t, s.fs.Tuf.ReadTufMeta("update-later", storage.TufTimestampFile, &untouched))
 	assert.Equal(t, laterExpiry, untouched.Signed.Expires)
 	assert.Empty(t, untouched.Signatures, "future timestamp should not be re-signed")
 }

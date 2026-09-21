@@ -81,10 +81,9 @@ func (h handlers) updateCreate(c echo.Context) error {
 // @Param   update path string true "Update name"
 // @Router  /updates/{tag}/{update} [delete]
 func (h handlers) updateDelete(c echo.Context) error {
-	tag := c.Param("tag")
 	update := c.Param("update")
 
-	if err := h.storage.DeleteUpdate(tag, update); err != nil {
+	if err := h.storage.DeleteUpdate(update); err != nil {
 		if errors.Is(err, storage.ErrUpdateInUse) {
 			return EchoError(c, err, http.StatusConflict, "Update has devices assigned and cannot be deleted")
 		} else if errors.Is(err, os.ErrNotExist) {
@@ -104,10 +103,9 @@ func (h handlers) updateDelete(c echo.Context) error {
 // @Param   update path string true "Update name"
 // @Router  /updates/{tag}/{update}/tuf [get]
 func (h handlers) updateGetTuf(c echo.Context) error {
-	tag := c.Param("tag")
 	update := c.Param("update")
 
-	metas, err := h.storage.GetUpdateTufMetadata(tag, update)
+	metas, err := h.storage.GetUpdateTufMetadata(update)
 	if err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "failed to get update TUF metadata")
 	}
@@ -125,14 +123,13 @@ func (h handlers) updateGetTuf(c echo.Context) error {
 // @Param   file path string true "File name"
 // @Router  /updates/{tag}/{update}/tuf/{file} [get]
 func (h handlers) updateGetTufFile(c echo.Context) error {
-	tag := c.Param("tag")
 	update := c.Param("update")
 	file := c.Param("file")
 	if !validTufFile(file) {
 		err := fmt.Errorf("unknown TUF metadata file %s", file)
 		return EchoError(c, err, http.StatusNotFound, err.Error())
 	}
-	meta, err := h.storage.GetUpdateTufMetadataFile(tag, update, file)
+	meta, err := h.storage.GetUpdateTufMetadataFile(update, file)
 	if err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "failed to get update TUF metadata")
 	}

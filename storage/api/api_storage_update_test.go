@@ -32,7 +32,7 @@ func TestCreateUpdateGeneratesTufFromApps(t *testing.T) {
 
 	// Targets metadata was generated for the update.
 	var targets tuf.AtsTufTargets
-	require.NoError(t, s.fs.Tuf.ReadTufMeta("main", "v1.0", storage.TufTargetsFile, &targets))
+	require.NoError(t, s.fs.Tuf.ReadTufMeta("v1.0", storage.TufTargetsFile, &targets))
 	require.Len(t, targets.Signed.Targets, 1)
 
 	target, ok := targets.Signed.Targets["my-app-target-1"]
@@ -145,7 +145,7 @@ func TestDeleteUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deleting a non-existent update (unknown tag) returns ErrNotExist.
-	err = s.DeleteUpdate("main", "v1.0")
+	err = s.DeleteUpdate("v1.0")
 	require.ErrorIs(t, err, os.ErrNotExist)
 
 	// Seed an update with an on-disk directory.
@@ -153,7 +153,7 @@ func TestDeleteUpdate(t *testing.T) {
 	require.NoError(t, s.fs.Updates.Tuf.WriteFile("v1.0", storage.TufTargetsFile, "{}"))
 
 	// Deleting a non-existent name within an existing tag returns ErrNotExist.
-	err = s.DeleteUpdate("main", "v2.0")
+	err = s.DeleteUpdate("v2.0")
 	require.ErrorIs(t, err, os.ErrNotExist)
 
 	// An update with an assigned device cannot be deleted.
@@ -164,7 +164,7 @@ func TestDeleteUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, assigned, 1)
 
-	err = s.DeleteUpdate("main", "v1.0")
+	err = s.DeleteUpdate("v1.0")
 	require.ErrorIs(t, err, ErrUpdateInUse)
 
 	// The update and its files still exist after a refused delete.
@@ -178,7 +178,7 @@ func TestDeleteUpdate(t *testing.T) {
 	dev, err := s.DeviceGet("uuid-1")
 	require.NoError(t, err)
 	require.NoError(t, dev.Delete())
-	require.NoError(t, s.DeleteUpdate("main", "v1.0"))
+	require.NoError(t, s.DeleteUpdate("v1.0"))
 
 	// The database row is gone.
 	updates, err = s.ListUpdates("main")
@@ -190,6 +190,6 @@ func TestDeleteUpdate(t *testing.T) {
 	require.True(t, errors.Is(err, os.ErrNotExist), "expected update files to be removed, got %v", err)
 
 	// Deleting an already-deleted update returns ErrNotExist.
-	err = s.DeleteUpdate("main", "v1.0")
+	err = s.DeleteUpdate("v1.0")
 	require.ErrorIs(t, err, os.ErrNotExist)
 }

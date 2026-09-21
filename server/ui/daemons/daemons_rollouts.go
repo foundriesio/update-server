@@ -62,7 +62,7 @@ func (d *daemons) processJournal() (success bool) {
 		tag := line[0]
 		updateName := line[1]
 		rolloutName := line[2]
-		if rollout, err := d.storage.GetRollout(tag, updateName, rolloutName); err != nil {
+		if rollout, err := d.storage.GetRollout(updateName, rolloutName); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				log.Warn("rollout file not exist - skipping stale journal entry", "path", line)
 				continue

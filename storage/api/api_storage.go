@@ -373,8 +373,8 @@ func (s Storage) DeviceCreate(uuid, cert string, labels Labels) error {
 // DeleteUpdate removes an update's database row and on-disk directory. It
 // refuses (returning ErrUpdateInUse) if any non-denied device is still assigned
 // to the update. It returns ErrNotExist if the update does not exist.
-func (s Storage) DeleteUpdate(tag, name string) error {
-	existed, err := s.stmtUpdateDelete.run(tag, name)
+func (s Storage) DeleteUpdate(name string) error {
+	existed, err := s.stmtUpdateDelete.run(name)
 	if err != nil {
 		return err
 	}
@@ -384,7 +384,7 @@ func (s Storage) DeleteUpdate(tag, name string) error {
 	return s.fs.Updates.Delete(name)
 }
 
-func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[string]any, error) {
+func (s Storage) GetUpdateTufMetadata(updateName string) (map[string]map[string]any, error) {
 	handle := s.fs.Updates
 
 	latestRoot, err := handle.Tuf.LatestRootMetaName(updateName)
@@ -394,7 +394,7 @@ func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[st
 
 	meta := make(map[string]map[string]any)
 	for _, x := range []string{storage.TufTargetsFile, storage.TufSnapshotFile, storage.TufTimestampFile, latestRoot} {
-		metaDict, err := s.GetUpdateTufMetadataFile(tag, updateName, x)
+		metaDict, err := s.GetUpdateTufMetadataFile(updateName, x)
 		if err != nil {
 			return nil, err
 		}
@@ -407,7 +407,7 @@ func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[st
 	return meta, nil
 }
 
-func (s Storage) GetUpdateTufMetadataFile(tag, updateName, file string) (meta map[string]any, err error) {
+func (s Storage) GetUpdateTufMetadataFile(updateName, file string) (meta map[string]any, err error) {
 	var metaStr string
 	if metaStr, err = s.fs.Updates.Tuf.ReadFile(updateName, file); err != nil {
 	} else if err = json.Unmarshal([]byte(metaStr), &meta); err != nil {
@@ -416,11 +416,11 @@ func (s Storage) GetUpdateTufMetadataFile(tag, updateName, file string) (meta ma
 	return
 }
 
-func (s Storage) ListRollouts(tag, updateName string) ([]string, error) {
+func (s Storage) ListRollouts(updateName string) ([]string, error) {
 	return s.fs.Updates.Rollouts.ListFiles(updateName)
 }
 
-func (s Storage) GetRollout(tag, updateName, rolloutName string) (res Rollout, err error) {
+func (s Storage) GetRollout(updateName, rolloutName string) (res Rollout, err error) {
 	var content string
 	content, err = s.fs.Updates.Rollouts.ReadFile(updateName, rolloutName)
 	if err == nil {
@@ -429,7 +429,7 @@ func (s Storage) GetRollout(tag, updateName, rolloutName string) (res Rollout, e
 	return
 }
 
-func (s Storage) SaveRollout(tag, updateName, rolloutName string, rollout Rollout) error {
+func (s Storage) SaveRollout(updateName, rolloutName string, rollout Rollout) error {
 	if data, err := json.Marshal(rollout); err != nil {
 		return err
 	} else {
@@ -454,7 +454,7 @@ func (s Storage) CommitRollout(tag, updateName, rolloutName string, rollout Roll
 		return err
 	} else {
 		rollout.Commit = true
-		return s.SaveRollout(tag, updateName, rolloutName, rollout)
+		return s.SaveRollout(updateName, rolloutName, rollout)
 	}
 }
 
@@ -516,7 +516,7 @@ func (s Storage) SetUpdateName(tag, updateName string, uuids, groups []string) (
 	return
 }
 
-func (s Storage) TailRolloutsLog(tag, updateName string, stop storage.DoneChan) iter.Seq2[string, error] {
+func (s Storage) TailRolloutsLog(updateName string, stop storage.DoneChan) iter.Seq2[string, error] {
 	return s.fs.Updates.Logs.TailFileLines(updateName, storage.LogRolloutsFile, stop)
 }
 
@@ -930,13 +930,12 @@ type stmtUpdateDelete storage.DbStmt
 func (s *stmtUpdateDelete) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateDelete", `
 		DELETE FROM updates 
-		WHERE tag = ?
-  		AND name = ?;`)
+		WHERE name = ?`)
 	return
 }
 
-func (s *stmtUpdateDelete) run(tag, name string) (bool, error) {
-	res, err := s.Stmt.Exec(tag, name)
+func (s *stmtUpdateDelete) run(name string) (bool, error) {
+	res, err := s.Stmt.Exec(name)
 	if err != nil {
 		if err.Error() == ErrUpdateInUse.Error() {
 			return false, ErrUpdateInUse
