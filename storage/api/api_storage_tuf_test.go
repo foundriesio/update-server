@@ -192,7 +192,7 @@ func TestAddTargetIncrementsTufVersion(t *testing.T) {
 	existingJSON, err := json.Marshal(existing)
 	require.NoError(t, err)
 	require.NoError(t, s.InsertUpdate(tag, "update-5", "tester"))
-	require.NoError(t, s.fs.Updates.Tuf.WriteFile(tag, "update-5", storage.TufTargetsFile, string(existingJSON)))
+	require.NoError(t, s.fs.Updates.Tuf.WriteFile("update-5", storage.TufTargetsFile, string(existingJSON)))
 
 	tufDir := filepath.Join(t.TempDir(), "tuf")
 	// A new target should bump the TUF version above the existing one.

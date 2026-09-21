@@ -387,7 +387,7 @@ func (s Storage) DeleteUpdate(tag, name string) error {
 func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[string]any, error) {
 	handle := s.fs.Updates
 
-	latestRoot, err := handle.Tuf.LatestRootMetaName(tag, updateName)
+	latestRoot, err := handle.Tuf.LatestRootMetaName(updateName)
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +417,7 @@ func (s Storage) GetUpdateTufMetadataFile(tag, updateName, file string) (meta ma
 }
 
 func (s Storage) ListRollouts(tag, updateName string) ([]string, error) {
-	return s.fs.Updates.Rollouts.ListFiles(tag, updateName)
+	return s.fs.Updates.Rollouts.ListFiles(updateName)
 }
 
 func (s Storage) GetRollout(tag, updateName, rolloutName string) (res Rollout, err error) {
@@ -433,7 +433,7 @@ func (s Storage) SaveRollout(tag, updateName, rolloutName string, rollout Rollou
 	if data, err := json.Marshal(rollout); err != nil {
 		return err
 	} else {
-		return s.fs.Updates.Rollouts.WriteFile(tag, updateName, rolloutName, string(data))
+		return s.fs.Updates.Rollouts.WriteFile(updateName, rolloutName, string(data))
 	}
 }
 
@@ -445,7 +445,7 @@ func (s Storage) CreateRollout(tag, updateName, rolloutName string, rollout Roll
 	} else if err := h.AppendJournal(log); err != nil {
 		return err
 	} else {
-		return h.WriteFile(tag, updateName, rolloutName, string(data))
+		return h.WriteFile(updateName, rolloutName, string(data))
 	}
 }
 
@@ -517,7 +517,7 @@ func (s Storage) SetUpdateName(tag, updateName string, uuids, groups []string) (
 }
 
 func (s Storage) TailRolloutsLog(tag, updateName string, stop storage.DoneChan) iter.Seq2[string, error] {
-	return s.fs.Updates.Logs.TailFileLines(tag, updateName, storage.LogRolloutsFile, stop)
+	return s.fs.Updates.Logs.TailFileLines(updateName, storage.LogRolloutsFile, stop)
 }
 
 func (s Storage) ReadFactoryConfigHistory(latest int, withFiles bool) ([]*ConfigFileSet, error) {
@@ -595,7 +595,7 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 		return err
 	}
 	// Create an empty file so that users don't get errors trying to tail the update/rollout
-	_ = s.fs.Updates.Logs.AppendFile(tag, updateName, storage.LogRolloutsFile, "")
+	_ = s.fs.Updates.Logs.AppendFile(updateName, storage.LogRolloutsFile, "")
 	return nil
 }
 

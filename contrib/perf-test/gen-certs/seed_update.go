@@ -76,7 +76,7 @@ func seedUpdate(datadir, tag, updateName string, uuids []string, certs map[strin
 	}
 
 	targetName := fmt.Sprintf("%s-1", updateName)
-	ostreeHash, err := writeFixtureOstreeContent(fs, tag, updateName)
+	ostreeHash, err := writeFixtureOstreeContent(fs, updateName)
 	if err != nil {
 		return fmt.Errorf("write ostree fixture content: %w", err)
 	}
@@ -90,16 +90,16 @@ func seedUpdate(datadir, tag, updateName string, uuids []string, certs map[strin
 		return fmt.Errorf("build targets.json: %w", err)
 	}
 	expires := time.Now().UTC().AddDate(0, 6, 0).Format(time.RFC3339)
-	if err := fs.Updates.Tuf.WriteFile(tag, updateName, "targets.json", targets); err != nil {
+	if err := fs.Updates.Tuf.WriteFile(updateName, "targets.json", targets); err != nil {
 		return fmt.Errorf("write targets.json: %w", err)
 	}
-	if err := fs.Updates.Tuf.WriteFile(tag, updateName, "snapshot.json", snapshotJSON(expires)); err != nil {
+	if err := fs.Updates.Tuf.WriteFile(updateName, "snapshot.json", snapshotJSON(expires)); err != nil {
 		return fmt.Errorf("write snapshot.json: %w", err)
 	}
-	if err := fs.Updates.Tuf.WriteFile(tag, updateName, "timestamp.json", timestampJSON(expires)); err != nil {
+	if err := fs.Updates.Tuf.WriteFile(updateName, "timestamp.json", timestampJSON(expires)); err != nil {
 		return fmt.Errorf("write timestamp.json: %w", err)
 	}
-	if err := fs.Updates.Tuf.WriteFile(tag, updateName, "1.root.json", rootJSON(expires)); err != nil {
+	if err := fs.Updates.Tuf.WriteFile(updateName, "1.root.json", rootJSON(expires)); err != nil {
 		return fmt.Errorf("write 1.root.json: %w", err)
 	}
 
@@ -133,7 +133,7 @@ func seedUpdate(datadir, tag, updateName string, uuids []string, certs map[strin
 // bytes instead of a 0-byte no-op. The gateway's ostreeFileStream handler
 // only does a plain os.Open/copy — it doesn't parse ostree structure server
 // side — so the content itself just needs to exist at the expected path.
-func writeFixtureOstreeContent(fs *storage.FsHandle, tag, updateName string) (hexHash string, err error) {
+func writeFixtureOstreeContent(fs *storage.FsHandle, updateName string) (hexHash string, err error) {
 	content := make([]byte, 256*1024) // 256KiB: big enough to register as real download throughput
 	for i := range content {
 		content[i] = byte(i)
@@ -141,7 +141,7 @@ func writeFixtureOstreeContent(fs *storage.FsHandle, tag, updateName string) (he
 	sum := sha256.Sum256(content)
 	hexHash = hex.EncodeToString(sum[:])
 
-	if err := fs.Updates.Ostree.WriteFile(tag, updateName, "config", "[core]\nrepo_version=1\nmode=archive-z2\n"); err != nil {
+	if err := fs.Updates.Ostree.WriteFile(updateName, "config", "[core]\nrepo_version=1\nmode=archive-z2\n"); err != nil {
 		return "", err
 	}
 	// WriteFile does not create intermediate subdirectories (it only
@@ -152,14 +152,14 @@ func writeFixtureOstreeContent(fs *storage.FsHandle, tag, updateName string) (he
 	if err := os.MkdirAll(filepath.Dir(fs.Updates.Ostree.FilePath(updateName, objRel)), 0o755); err != nil {
 		return "", err
 	}
-	if err := fs.Updates.Ostree.WriteFile(tag, updateName, objRel, string(content)); err != nil {
+	if err := fs.Updates.Ostree.WriteFile(updateName, objRel, string(content)); err != nil {
 		return "", err
 	}
 	refRel := filepath.Join("refs", "heads", "perf-test")
 	if err := os.MkdirAll(filepath.Dir(fs.Updates.Ostree.FilePath(updateName, refRel)), 0o755); err != nil {
 		return "", err
 	}
-	if err := fs.Updates.Ostree.WriteFile(tag, updateName, refRel, hexHash+"\n"); err != nil {
+	if err := fs.Updates.Ostree.WriteFile(updateName, refRel, hexHash+"\n"); err != nil {
 		return "", err
 	}
 	return hexHash, nil

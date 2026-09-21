@@ -167,13 +167,13 @@ func (s UpdatesFsHandle) ReadFile(update, name string) (string, error) {
 	return content, err
 }
 
-func (s UpdatesFsHandle) LatestRootMetaName(tag, update string) (string, error) {
+func (s UpdatesFsHandle) LatestRootMetaName(update string) (string, error) {
 	h, _ := s.updateLocalHandle(update, false)
 	files, err := h.matchFiles("", false)
 	if err != nil {
 		return "", fmt.Errorf("error find latest root metadata: %w", err)
 	} else if len(files) == 0 {
-		return "", fmt.Errorf("no metadata files found for tag %s update %s", tag, update)
+		return "", fmt.Errorf("no metadata files found for update %s", update)
 	}
 	slices.SortFunc(files, func(a, b string) int {
 		aIsRoot := strings.HasSuffix(a, ".root.json")
@@ -194,25 +194,25 @@ func (s UpdatesFsHandle) LatestRootMetaName(tag, update string) (string, error) 
 	return files[0], nil
 }
 
-func (s UpdatesFsHandle) TailFileLines(tag, update, name string, stop DoneChan) iter.Seq2[string, error] {
+func (s UpdatesFsHandle) TailFileLines(update, name string, stop DoneChan) iter.Seq2[string, error] {
 	h, _ := s.updateLocalHandle(update, false)
 	return h.readFileLines(name, false, stop)
 }
 
-func (s UpdatesFsHandle) WriteFile(tag, update, name, content string) error {
+func (s UpdatesFsHandle) WriteFile(update, name, content string) error {
 	if h, err := s.updateLocalHandle(update, true); err != nil {
 		return err
 	} else if err = h.writeFile(name, content, defaultFileAccess); err != nil {
-		return fmt.Errorf("error writing %s file for tag %s update %s: %w", s.category, tag, update, err)
+		return fmt.Errorf("error writing %s file for update %s: %w", s.category, update, err)
 	}
 	return nil
 }
 
-func (s UpdatesFsHandle) AppendFile(tag, update, name, content string) error {
+func (s UpdatesFsHandle) AppendFile(update, name, content string) error {
 	if h, err := s.updateLocalHandle(update, true); err != nil {
 		return err
 	} else if err = h.appendFile(name, content, defaultFileAccess); err != nil {
-		return fmt.Errorf("error appending %s file for tag %s update %s: %w", s.category, tag, update, err)
+		return fmt.Errorf("error appending %s file for update %s: %w", s.category, update, err)
 	}
 	return nil
 }
@@ -231,7 +231,7 @@ type RolloutsFsHandle struct {
 	UpdatesFsHandle
 }
 
-func (s RolloutsFsHandle) ListFiles(tag, update string) ([]string, error) {
+func (s RolloutsFsHandle) ListFiles(update string) ([]string, error) {
 	h, _ := s.updateLocalHandle(update, false)
 	return h.matchFiles("", true)
 }

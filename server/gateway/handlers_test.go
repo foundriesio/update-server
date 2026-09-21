@@ -779,7 +779,7 @@ func TestTufMeta(t *testing.T) {
 	// Pre-create TUF data before tests
 	var err error
 	for _, ts := range tests {
-		err = ts.tc.fs.Updates.Tuf.WriteFile(ts.tag, ts.update, ts.role, ts.name)
+		err = ts.tc.fs.Updates.Tuf.WriteFile(ts.update, ts.role, ts.name)
 		require.Nil(t, err, ts.name)
 	}
 
@@ -849,20 +849,20 @@ func TestOstree(t *testing.T) {
 		}
 	}
 
-	writeFile := func(h baseStorage.UpdatesFsHandle, tag, update, path, content string) error {
+	writeFile := func(h baseStorage.UpdatesFsHandle, update, path, content string) error {
 		if parts := strings.Split(path, "/"); len(parts) > 1 {
 			require.Equal(t, 2, len(parts), content) // Only level 1 depth in tests
 			if err := os.MkdirAll(h.FilePath(update, parts[0]), 0o750); err != nil {
 				return err
 			}
 		}
-		return h.WriteFile(tag, update, path, content)
+		return h.WriteFile(update, path, content)
 	}
 
 	// Pre-create TUF data before tests
 	var err error
 	for _, ts := range tests {
-		err = writeFile(ts.tc.fs.Updates.Ostree, ts.tag, ts.update, ts.path, ts.name)
+		err = writeFile(ts.tc.fs.Updates.Ostree, ts.update, ts.path, ts.name)
 		require.Nil(t, err, ts.name)
 	}
 

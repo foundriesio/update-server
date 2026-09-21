@@ -736,14 +736,14 @@ func TestApiUpdateList(t *testing.T) {
 	}
 
 	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
 
 	require.Nil(t, tc.api.InsertUpdate("tag1", "update2", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update2", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout1", "foo"))
 
 	require.Nil(t, tc.api.InsertUpdate("tag2", "update1-2", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update1-2", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update3-2", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1-2", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update3-2", "rollout1", "foo"))
 
 	data := tc.GET("/updates", 200)
 	assert.Equal(t, map[string][]string{"tag1": {"update1", "update2"}, "tag2": {"update1-2"}}, updateNames(data))
@@ -756,7 +756,7 @@ func TestApiUpdateList(t *testing.T) {
 	assert.Equal(t, map[string][]string{}, updateNames(data))
 
 	// Synthetic tag validation - create a bad tag on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
 	tc.GET("/updates/bad^tag", 404)
 }
 
@@ -765,7 +765,7 @@ func TestApiUpdateDelete(t *testing.T) {
 
 	// Seed an update with an on-disk directory.
 	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
 
 	// No permission / wrong scope.
 	tc.DELETE("/updates/tag1/update1", 403)
@@ -793,7 +793,7 @@ func TestApiUpdateDelete(t *testing.T) {
 
 	// Deleting an update that a device is assigned to is a conflict.
 	require.Nil(t, tc.api.InsertUpdate("tag2", "update2", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update2", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout1", "foo"))
 	d, err := tc.gw.DeviceCreate("dev1", "cert1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag2", "", ""))
@@ -819,10 +819,10 @@ func TestApiRolloutList(t *testing.T) {
 		return strings.TrimSpace(string(data))
 	}
 
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout2", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update1b", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update2", "rollout4", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout2", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1b", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout4", "foo"))
 
 	data := tc.GET("/updates/tag1/update1/rollouts", 200)
 	assert.Equal(t, `["rollout1","rollout2"]`, s(data))
@@ -832,8 +832,8 @@ func TestApiRolloutList(t *testing.T) {
 	assert.Equal(t, `["rollout4"]`, s(data))
 
 	// Synthetic tag/update validation - create a bad tag/update on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
 	tc.GET("/updates/bad^tag/update42/rollouts", 404)
 	tc.GET("/updates/tag/update=bad/rollouts", 404)
 }
@@ -849,9 +849,9 @@ func TestApiRolloutGet(t *testing.T) {
 		return strings.TrimSpace(string(data))
 	}
 
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update1", "rollout1", `{"uuids":["123","xyz"]}`))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update2", "rollout2", `{"groups":["test","dev"]}`))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag", "update", "rollout", `{"uuids":["uh"],"groups":["oh"]}`))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", `{"uuids":["123","xyz"]}`))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout2", `{"groups":["test","dev"]}`))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "rollout", `{"uuids":["uh"],"groups":["oh"]}`))
 
 	data := tc.GET("/updates/tag1/update1/rollouts/rollout1", 200)
 	assert.Equal(t, `{"uuids":["123","xyz"],"committed":false}`, s(data))
@@ -863,9 +863,9 @@ func TestApiRolloutGet(t *testing.T) {
 	assert.Equal(t, `{"uuids":["uh"],"groups":["oh"],"committed":false}`, s(data))
 
 	// Synthetic tag/update/rollout validation - create a bad tag/update/rollout on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag", "update", "omg+", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "omg+", "foo"))
 	tc.GET("/updates/bad^tag/update42/rollouts/rollout1", 404)
 	tc.GET("/updates/tag/update=bad/rollouts/rollout1", 404)
 	tc.GET("/updates/tag/update/rollouts/omg+", 404)
@@ -879,9 +879,9 @@ func TestApiRolloutPut(t *testing.T) {
 	tc.PUT("/updates/tag/update/rollouts/rocks", 400, "{")
 	tc.PUT("/updates/tag/update/rollouts/rocks", 400, "{}")
 
-	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("tag1", "update1", "foo", "bar"))
+	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update1", "foo", "bar"))
 	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
-	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
+	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update2", "foo", "bar"))
 	require.Nil(t, tc.api.InsertUpdate("tag2", "update2", "user1"))
 	d, err := tc.gw.DeviceCreate("ci1", "cert1")
 	require.Nil(t, err)
@@ -955,9 +955,9 @@ func TestApiRolloutPut(t *testing.T) {
 	assert.Equal(t, "update2", dev.UpdateName)
 
 	// Synthetic tag/update/rollout validation - create a bad tag/update/rollout on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("bad^tag", "update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag", "update=bad", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag", "update", "omg+", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "omg+", "foo"))
 	tc.PUT("/updates/bad^tag/update42/rollouts/gogogo", 404, "foo")
 	tc.PUT("/updates/tag/update=bad/rollouts/gogogo", 404, "foo")
 	tc.PUT("/updates/tag/update/rollouts/omg+", 404, "foo")
@@ -975,8 +975,8 @@ func TestApiRolloutDaemon(t *testing.T) {
 	defer daemons.Shutdown()
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
-	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("tag1", "update1", "foo", "bar"))
-	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("tag2", "update2", "foo", "bar"))
+	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update1", "foo", "bar"))
+	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update2", "foo", "bar"))
 	d, err := tc.gw.DeviceCreate("ci1", "cert1")
 	require.Nil(t, err)
 	require.Nil(t, d.CheckIn("", "tag1", "", ""))

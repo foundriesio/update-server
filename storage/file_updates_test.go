@@ -50,7 +50,6 @@ func TestLatestRootMetaName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
-			tag := "test-tag"
 			update := "test-update"
 			category := "tuf"
 			dir := filepath.Join(tmpDir, update, category)
@@ -67,7 +66,7 @@ func TestLatestRootMetaName(t *testing.T) {
 				baseFsHandle: baseFsHandle{root: tmpDir},
 				category:     category,
 			}
-			got, err := h.LatestRootMetaName(tag, update)
+			got, err := h.LatestRootMetaName(update)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -92,7 +91,7 @@ func TestLatestRootMetaName_EmptyDir(t *testing.T) {
 		baseFsHandle: baseFsHandle{root: tmpDir},
 		category:     category,
 	}
-	_, err := h.LatestRootMetaName(tag, update)
+	_, err := h.LatestRootMetaName(update)
 	if err == nil {
 		t.Fatal("expected error for empty directory, got nil")
 	}

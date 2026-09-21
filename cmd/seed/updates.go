@@ -232,16 +232,16 @@ func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, gw *gateway.Stor
 		if err != nil {
 			return fmt.Errorf("build targets.json for %s/%s: %w", tag, name, err)
 		}
-		if err := fs.Updates.Tuf.WriteFile(tag, name, "targets.json", targets); err != nil {
+		if err := fs.Updates.Tuf.WriteFile(name, "targets.json", targets); err != nil {
 			return fmt.Errorf("write targets.json for %s/%s: %w", tag, name, err)
 		}
-		if err := fs.Updates.Tuf.WriteFile(tag, name, "snapshot.json", snapshotJSON(i, expires)); err != nil {
+		if err := fs.Updates.Tuf.WriteFile(name, "snapshot.json", snapshotJSON(i, expires)); err != nil {
 			return fmt.Errorf("write snapshot.json for %s/%s: %w", tag, name, err)
 		}
-		if err := fs.Updates.Tuf.WriteFile(tag, name, "timestamp.json", timestampJSON(i, expires)); err != nil {
+		if err := fs.Updates.Tuf.WriteFile(name, "timestamp.json", timestampJSON(i, expires)); err != nil {
 			return fmt.Errorf("write timestamp.json for %s/%s: %w", tag, name, err)
 		}
-		if err := fs.Updates.Tuf.WriteFile(tag, name, "1.root.json", rootJSON(i, expires)); err != nil {
+		if err := fs.Updates.Tuf.WriteFile(name, "1.root.json", rootJSON(i, expires)); err != nil {
 			return fmt.Errorf("write 1.root.json for %s/%s: %w", tag, name, err)
 		}
 
@@ -260,23 +260,23 @@ func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, gw *gateway.Stor
 		// --- Token files for ostree_repo and apps ---
 
 		const ostreeConfig = "[core]\nrepo_version=1\nmode=archive-z2\n"
-		if err := fs.Updates.Ostree.WriteFile(tag, name, "config", ostreeConfig); err != nil {
+		if err := fs.Updates.Ostree.WriteFile(name, "config", ostreeConfig); err != nil {
 			return fmt.Errorf("write ostree config for %s/%s: %w", tag, name, err)
 		}
 
 		const ociLayout = `{"imageLayoutVersion":"1.0.0"}`
-		if err := fs.Updates.Apps.WriteFile(tag, name, "oci-layout", ociLayout); err != nil {
+		if err := fs.Updates.Apps.WriteFile(name, "oci-layout", ociLayout); err != nil {
 			return fmt.Errorf("write oci-layout for %s/%s: %w", tag, name, err)
 		}
 		const indexJSON = `{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[]}`
-		if err := fs.Updates.Apps.WriteFile(tag, name, "index.json", indexJSON); err != nil {
+		if err := fs.Updates.Apps.WriteFile(name, "index.json", indexJSON); err != nil {
 			return fmt.Errorf("write index.json for %s/%s: %w", tag, name, err)
 		}
 
 		// --- Rollout (idempotent) ---
 
 		const rolloutName = "seed-rollout"
-		existing, err := fs.Updates.Rollouts.ListFiles(tag, name)
+		existing, err := fs.Updates.Rollouts.ListFiles(name)
 		if err != nil {
 			return fmt.Errorf("list rollouts for %s/%s: %w", tag, name, err)
 		}

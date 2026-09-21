@@ -182,7 +182,7 @@ func (d Device) ProcessEvents(events []storage.DeviceUpdateEvent) error {
 				return err
 			}
 			if err = d.storage.fs.Updates.Logs.AppendFile(
-				d.Tag, d.UpdateName, storage.LogRolloutsFile, string(bytes)+"\n"); err != nil {
+				d.UpdateName, storage.LogRolloutsFile, string(bytes)+"\n"); err != nil {
 				return err
 			}
 		}

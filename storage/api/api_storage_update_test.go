@@ -150,7 +150,7 @@ func TestDeleteUpdate(t *testing.T) {
 
 	// Seed an update with an on-disk directory.
 	require.NoError(t, s.InsertUpdate("main", "v1.0", "tester"))
-	require.NoError(t, s.fs.Updates.Tuf.WriteFile("main", "v1.0", storage.TufTargetsFile, "{}"))
+	require.NoError(t, s.fs.Updates.Tuf.WriteFile("v1.0", storage.TufTargetsFile, "{}"))
 
 	// Deleting a non-existent name within an existing tag returns ErrNotExist.
 	err = s.DeleteUpdate("main", "v2.0")
