@@ -763,27 +763,26 @@ func TestApiUpdateDelete(t *testing.T) {
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
 
 	// No permission / wrong scope.
-	tc.DELETE("/updates/tag1/update1", 403)
+	tc.DELETE("/updates/update1", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesRU
-	tc.DELETE("/updates/tag1/update1", 403)
+	tc.DELETE("/updates/update1", 403)
 
 	tc.u.AllowedScopes = users.ScopeUpdatesD
 
 	// 404 for a non-existent update.
-	tc.DELETE("/updates/tag1/no-such-update", 404)
+	tc.DELETE("/updates/no-such-update", 404)
 
 	// Synthetic tag/update validation must still return 404.
-	tc.DELETE("/updates/bad^tag/update42", 404)
-	tc.DELETE("/updates/tag/update=bad", 404)
+	tc.DELETE("/updates/update=bad", 404)
 
 	updatesDir := tc.fs.Config.UpdatesDir()
 
 	// Successful delete removes both the DB row and the on-disk directory.
-	tc.DELETE("/updates/tag1/update1", 204)
+	tc.DELETE("/updates/update1", 204)
 	updates, err := tc.api.ListUpdates("tag1")
 	require.Nil(t, err)
 	assert.Empty(t, updates)
-	_, err = os.Stat(filepath.Join(updatesDir, "tag1", "update1"))
+	_, err = os.Stat(filepath.Join(updatesDir, "update1"))
 	assert.True(t, os.IsNotExist(err))
 
 	// Deleting an update that a device is assigned to is a conflict.
@@ -795,7 +794,7 @@ func TestApiUpdateDelete(t *testing.T) {
 	_, err = tc.api.SetUpdateName("tag2", "update2", []string{"dev1"}, nil)
 	require.Nil(t, err)
 
-	tc.DELETE("/updates/tag2/update2", 409)
+	tc.DELETE("/updates/update2", 409)
 
 	// The update and its directory survive the rejected delete.
 	updates, err = tc.api.ListUpdates("tag2")

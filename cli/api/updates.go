@@ -130,7 +130,7 @@ func (u UpdatesApi) CreateUpdate(tag, updateName string, opts CreateUpdateOption
 	return err
 }
 
-func (u UpdatesApi) Delete(tag, updateName string) error {
-	endpoint := "/v1/updates/" + tag + "/" + updateName
+func (u UpdatesApi) Delete(updateName string) error {
+	endpoint := "/v1/updates/" + updateName
 	return u.api.Delete(endpoint)
 }

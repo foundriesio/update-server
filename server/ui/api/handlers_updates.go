@@ -77,9 +77,8 @@ func (h handlers) updateCreate(c echo.Context) error {
 // @Success 204
 // @Failure 404
 // @Failure 409
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update} [delete]
+// @Router  /updates/{update} [delete]
 func (h handlers) updateDelete(c echo.Context) error {
 	update := c.Param("update")
 
