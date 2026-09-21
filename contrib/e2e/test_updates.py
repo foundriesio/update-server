@@ -9,7 +9,11 @@ def test_update_upload(fiocli, sample_update):
     fiocli("updates", "upload", "main", "--hardware-id=amd64-linux", "fixture-update", str(sample_update))
 
     out = fiocli("updates", "list")
-    assert "main  fixture-update" in out, f"Uploaded update not found in 'updates list':\n{out}"
+    assert "fixture-update  main" in out, f"Uploaded update not found in 'updates list':\n{out}"
     
-    # TODO - once we merge the "cli-updates-show" branch out = fiocli("updates", "show", "main", "fixture-update")
-    # TODO - updates delete
+    out = fiocli("updates", "show", "fixture-update")
+    assert "Latest target name: default-1" in out
+
+    fiocli("updates", "delete", "fixture-update")
+    out = fiocli("updates", "list")
+    assert "fixture-update  main" not in out, f"Deleted update still found in 'updates list':\n{out}"
