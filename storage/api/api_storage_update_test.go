@@ -64,7 +64,7 @@ func TestCreateUpdateUsesUploadedTuf(t *testing.T) {
 	})
 	require.NoError(t, s.CreateUpdate("main", "v1.0", "tester", TargetOptions{}, tar))
 
-	raw, err := s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
+	raw, err := s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
 	require.NoError(t, err)
 	assert.JSONEq(t, validTargets, raw)
 }
@@ -171,7 +171,7 @@ func TestDeleteUpdate(t *testing.T) {
 	updates, err := s.ListUpdates("main")
 	require.NoError(t, err)
 	require.Len(t, updates["main"], 1)
-	_, err = s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
+	_, err = s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
 	require.NoError(t, err)
 
 	// Once no non-deleted device is assigned, the update can be deleted.
@@ -186,7 +186,7 @@ func TestDeleteUpdate(t *testing.T) {
 	require.Empty(t, updates["main"])
 
 	// The on-disk directory is gone.
-	_, err = s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
+	_, err = s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
 	require.True(t, errors.Is(err, os.ErrNotExist), "expected update files to be removed, got %v", err)
 
 	// Deleting an already-deleted update returns ErrNotExist.

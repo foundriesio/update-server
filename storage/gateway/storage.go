@@ -202,7 +202,7 @@ func (d Device) SaveAppsStates(content string) error {
 }
 
 func (d Device) GetAppsFilePath(file string) string {
-	return d.storage.fs.Updates.Apps.FilePath(d.Tag, d.UpdateName, file)
+	return d.storage.fs.Updates.Apps.FilePath(d.UpdateName, file)
 }
 
 func (d Device) SaveAppliedConfigs(cfg AppliedConfigs) error {
@@ -214,11 +214,11 @@ func (d Device) SaveAppliedConfigs(cfg AppliedConfigs) error {
 }
 
 func (d Device) GetOstreeFilePath(file string) string {
-	return d.storage.fs.Updates.Ostree.FilePath(d.Tag, d.UpdateName, file)
+	return d.storage.fs.Updates.Ostree.FilePath(d.UpdateName, file)
 }
 
 func (d Device) GetTufMeta(tag, file string) (string, error) {
-	return d.storage.fs.Updates.Tuf.ReadFile(tag, d.UpdateName, file)
+	return d.storage.fs.Updates.Tuf.ReadFile(d.UpdateName, file)
 }
 
 func (d Device) GetConfigs() (configs [3]*storage.ConfigFileSet, timestamp int64, err error) {

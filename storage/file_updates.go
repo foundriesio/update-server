@@ -52,13 +52,13 @@ func (s *updatesFsHandleWrap) init(root string) {
 
 // Delete removes the entire on-disk directory for an update (all categories:
 // tuf, ostree_repo, apps, rollouts, logs). A missing directory is not an error.
-func (s updatesFsHandleWrap) Delete(tag, update string) error {
+func (s updatesFsHandleWrap) Delete(update string) error {
 	dir := filepath.Join(s.root, update)
 	if err := os.RemoveAll(dir); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
-		return fmt.Errorf("error deleting file storage for update %s/%s: %w", tag, update, err)
+		return fmt.Errorf("error deleting file storage for update %s: %w", update, err)
 	}
 	return nil
 }
@@ -154,15 +154,15 @@ type UpdatesFsHandle struct {
 	category string
 }
 
-func (s UpdatesFsHandle) FilePath(tag, update, name string) string {
+func (s UpdatesFsHandle) FilePath(update, name string) string {
 	return filepath.Join(s.root, update, s.category, name)
 }
 
-func (s UpdatesFsHandle) ReadFile(tag, update, name string) (string, error) {
+func (s UpdatesFsHandle) ReadFile(update, name string) (string, error) {
 	h, _ := s.updateLocalHandle(update, false)
 	content, err := h.readFile(name, false)
 	if err != nil {
-		err = fmt.Errorf("error reading %s file for tag %s update %s: %w", s.category, tag, update, err)
+		err = fmt.Errorf("error reading %s file for update %s: %w", s.category, update, err)
 	}
 	return content, err
 }

@@ -381,7 +381,7 @@ func (s Storage) DeleteUpdate(tag, name string) error {
 	if !existed {
 		return os.ErrNotExist
 	}
-	return s.fs.Updates.Delete(tag, name)
+	return s.fs.Updates.Delete(name)
 }
 
 func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[string]any, error) {
@@ -409,7 +409,7 @@ func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[st
 
 func (s Storage) GetUpdateTufMetadataFile(tag, updateName, file string) (meta map[string]any, err error) {
 	var metaStr string
-	if metaStr, err = s.fs.Updates.Tuf.ReadFile(tag, updateName, file); err != nil {
+	if metaStr, err = s.fs.Updates.Tuf.ReadFile(updateName, file); err != nil {
 	} else if err = json.Unmarshal([]byte(metaStr), &meta); err != nil {
 		err = fmt.Errorf("failed to unmarshal %s: %w", file, err)
 	}
@@ -422,7 +422,7 @@ func (s Storage) ListRollouts(tag, updateName string) ([]string, error) {
 
 func (s Storage) GetRollout(tag, updateName, rolloutName string) (res Rollout, err error) {
 	var content string
-	content, err = s.fs.Updates.Rollouts.ReadFile(tag, updateName, rolloutName)
+	content, err = s.fs.Updates.Rollouts.ReadFile(updateName, rolloutName)
 	if err == nil {
 		err = json.Unmarshal([]byte(content), &res)
 	}

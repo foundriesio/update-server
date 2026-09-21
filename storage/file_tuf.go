@@ -222,7 +222,7 @@ func (h TufFsHandle) ReadRoot(version int) ([]byte, error) {
 
 // ReadTufMeta reads and unmarshals a TUF metadata file from an update.
 func (h TufFsHandle) ReadTufMeta(tag, update, name string, v any) error {
-	content, err := h.updates.Tuf.ReadFile(tag, update, name)
+	content, err := h.updates.Tuf.ReadFile(update, name)
 	if err != nil {
 		return err
 	}
