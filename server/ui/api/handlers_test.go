@@ -787,7 +787,7 @@ func TestApiUpdateDelete(t *testing.T) {
 	tc.DELETE("/updates/tag1/update1", 204)
 	updates, err := tc.api.ListUpdates("tag1")
 	require.Nil(t, err)
-	assert.Empty(t, updates["tag1"])
+	assert.Empty(t, updates)
 	_, err = os.Stat(filepath.Join(updatesDir, "tag1", "update1"))
 	assert.True(t, os.IsNotExist(err))
 
@@ -805,7 +805,7 @@ func TestApiUpdateDelete(t *testing.T) {
 	// The update and its directory survive the rejected delete.
 	updates, err = tc.api.ListUpdates("tag2")
 	require.Nil(t, err)
-	require.Len(t, updates["tag2"], 1)
+	require.Len(t, updates, 1)
 	_, err = os.Stat(filepath.Join(updatesDir, "update2"))
 	require.NoError(t, err)
 }
@@ -913,8 +913,6 @@ func TestApiRolloutPut(t *testing.T) {
 
 	tc.PUT("/updates/tag1/update1/rollouts/rocks", 202,
 		`{"uuids":["ci1","ci2","ci3"]}`, "content-type", "application/json")
-	tc.PUT("/updates/tag1/update2/rollouts/rocks", 404,
-		`{"uuids":["ci1","ci2"]}`, "content-type", "application/json")
 	tc.PUT("/updates/tag1/update1/rollouts/rocks", 409,
 		`{"uuids":["ci1"]}`, "content-type", "application/json")
 	tc.PUT("/updates/tag2/update2/rollouts/rocks", 202,

@@ -20,7 +20,7 @@ func updateRegistered(apiStorage *api.Storage, tag, name string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for _, u := range existing[tag] {
+	for _, u := range existing {
 		if u.Name == name {
 			return true, nil
 		}

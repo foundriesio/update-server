@@ -35,9 +35,8 @@ func TestSeedUpdates(t *testing.T) {
 	// Verify both updates are listed.
 	updates, err := apiStorage.ListUpdates("main")
 	require.NoError(t, err)
-	require.Contains(t, updates, "main", "expected 'main' tag in updates map")
-	names := make([]string, 0, len(updates["main"]))
-	for _, u := range updates["main"] {
+	names := make([]string, 0, len(updates))
+	for _, u := range updates {
 		names = append(names, u.Name)
 	}
 	require.Contains(t, names, "148", "expected update '148' under 'main'")

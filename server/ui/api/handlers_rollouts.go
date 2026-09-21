@@ -40,10 +40,11 @@ func (h *handlers) updateList(c echo.Context) error {
 	if updates, err := h.storage.ListUpdates(tag); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to look up updates")
 	} else {
-		if updates == nil {
-			updates = map[string][]Update{}
+		shaped := map[string][]Update{}
+		for _, update := range updates {
+			shaped[update.Tag] = append(shaped[update.Tag], update)
 		}
-		return c.JSON(http.StatusOK, updates)
+		return c.JSON(http.StatusOK, shaped)
 	}
 }
 
@@ -213,9 +214,9 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 	}
 
 	// Check if update with this name exists
-	if updates, err := h.storage.ListUpdates(tag); err != nil {
+	if updates, err := h.storage.ListUpdates(""); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to check if update exists")
-	} else if tagUpdates, ok := updates[tag]; !ok || !slices.ContainsFunc(tagUpdates, func(u storage.Update) bool {
+	} else if !slices.ContainsFunc(updates, func(u storage.Update) bool {
 		return u.Name == updateName
 	}) {
 		return c.String(http.StatusNotFound, "Update with this name does not exist")

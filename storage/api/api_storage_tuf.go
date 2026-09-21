@@ -199,20 +199,18 @@ func (s Storage) getLatestVersions() (tufVersion, targetVersion int, err error) 
 	if err != nil {
 		return 0, 0, err
 	}
-	for _, updates := range updates {
-		for _, u := range updates {
-			var targets tuf.AtsTufTargets
-			if err := s.fs.Tuf.ReadTufMeta(u.Name, storage.TufTargetsFile, &targets); err != nil {
-				// Skip updates that pre-date TUF or whose metadata is missing/unreadable.
-				continue
-			}
-			if tufVersion < targets.Signed.Version {
-				tufVersion = targets.Signed.Version
-			}
-			latest := targets.GetLatestTargetVersion()
-			if targetVersion < latest {
-				targetVersion = latest
-			}
+	for _, u := range updates {
+		var targets tuf.AtsTufTargets
+		if err := s.fs.Tuf.ReadTufMeta(u.Name, storage.TufTargetsFile, &targets); err != nil {
+			// Skip updates that pre-date TUF or whose metadata is missing/unreadable.
+			continue
+		}
+		if tufVersion < targets.Signed.Version {
+			tufVersion = targets.Signed.Version
+		}
+		latest := targets.GetLatestTargetVersion()
+		if targetVersion < latest {
+			targetVersion = latest
 		}
 	}
 	return tufVersion, targetVersion, nil
@@ -225,14 +223,10 @@ func (s Storage) RefreshTufTimestamps(c context.Context) error {
 	}
 
 	log := context.CtxGetLog(c)
-
-	for tag, updates := range updates {
-		log.Info("Checking TUF timestamp expiry for tag", "tag", tag, "updates", len(updates))
-		for _, u := range updates {
-			log.Debug("Checking timestamp for", "tag", tag, "update", u.Name)
-			if err := s.refreshTufTimestamp(c, u); err != nil {
-				log.Error("Failed to refresh TUF timestamps", "tag", tag, "update", u.Name, "error", err)
-			}
+	for _, u := range updates {
+		log.Debug("Checking timestamp for", "update", u.Name)
+		if err := s.refreshTufTimestamp(c, u); err != nil {
+			log.Error("Failed to refresh TUF timestamps", "update", u.Name, "error", err)
 		}
 	}
 	return nil

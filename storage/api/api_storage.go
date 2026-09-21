@@ -361,8 +361,8 @@ func (s Storage) ReadAppliedConfigs(uuid string) (*storage.AppliedConfigs, error
 
 var clearingEventTypes = []string{"EcuInstallationCompleted", "CertRotationCompleted", "MetadataUpdateCompleted"}
 
-// ListUpdates returns a map of tag to updates. If the tag is empty, it returns all tags.
-func (s Storage) ListUpdates(tag string) (map[string][]Update, error) {
+// ListUpdates returns updates filtered by tag. If the tag is empty, it returns all tags.
+func (s Storage) ListUpdates(tag string) ([]Update, error) {
 	return s.stmtUpdateList.run(tag)
 }
 
@@ -572,7 +572,7 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 	// This warrants the two-phase transaction, unless the user makes concurrent uploads of the same update.
 	if existing, err := s.stmtUpdateList.run(tag); err != nil {
 		return err
-	} else if lst, ok := existing[tag]; ok && len(lst) > 0 && slices.ContainsFunc(lst, func(item Update) bool {
+	} else if slices.ContainsFunc(existing, func(item Update) bool {
 		return item.Name == updateName
 	}) {
 		return storage.ErrDbConstraintUnique
@@ -908,21 +908,21 @@ func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
 	return
 }
 
-func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
+func (s *stmtUpdateList) run(tag string) ([]Update, error) {
 	rows, err := s.Stmt.Query(tag, tag)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close() //nolint:errcheck
-	res := map[string][]Update{}
+	var updates []Update
 	for rows.Next() {
 		var u Update
 		if err = rows.Scan(&u.Tag, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.DeviceCount); err != nil {
 			return nil, err
 		}
-		res[u.Tag] = append(res[u.Tag], u)
+		updates = append(updates, u)
 	}
-	return res, rows.Err()
+	return updates, rows.Err()
 }
 
 type stmtUpdateDelete storage.DbStmt

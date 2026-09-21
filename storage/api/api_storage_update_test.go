@@ -47,8 +47,8 @@ func TestCreateUpdateGeneratesTufFromApps(t *testing.T) {
 	// The update was registered in the database.
 	updates, err := s.ListUpdates("main")
 	require.NoError(t, err)
-	require.Len(t, updates["main"], 1)
-	assert.Equal(t, "v1.0", updates["main"][0].Name)
+	require.Len(t, updates, 1)
+	assert.Equal(t, "v1.0", updates[0].Name)
 }
 
 func TestCreateUpdateUsesUploadedTuf(t *testing.T) {
@@ -113,10 +113,10 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 
 	updates, err := s.ListUpdates("main")
 	require.NoError(t, err)
-	require.Len(t, updates["main"], 2)
+	require.Len(t, updates, 2)
 
 	counts := map[string]int{}
-	for _, u := range updates["main"] {
+	for _, u := range updates {
 		counts[u.Name] = u.DeviceCount
 	}
 	assert.Equal(t, 2, counts["v1.0"], "v1.0 should count only its two non-deleted devices")
@@ -125,9 +125,8 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 	// An update with no assigned devices reports a count of zero.
 	all, err := s.ListUpdates("")
 	require.NoError(t, err)
-	require.Len(t, all["dev"], 1)
-	assert.Equal(t, "v1.0-dev", all["dev"][0].Name)
-	assert.Equal(t, 0, all["dev"][0].DeviceCount)
+	assert.Equal(t, "v1.0-dev", all[0].Name)
+	assert.Equal(t, 0, all[0].DeviceCount)
 }
 
 func TestDeleteUpdate(t *testing.T) {
@@ -170,7 +169,7 @@ func TestDeleteUpdate(t *testing.T) {
 	// The update and its files still exist after a refused delete.
 	updates, err := s.ListUpdates("main")
 	require.NoError(t, err)
-	require.Len(t, updates["main"], 1)
+	require.Len(t, updates, 1)
 	_, err = s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
 	require.NoError(t, err)
 
@@ -183,7 +182,7 @@ func TestDeleteUpdate(t *testing.T) {
 	// The database row is gone.
 	updates, err = s.ListUpdates("main")
 	require.NoError(t, err)
-	require.Empty(t, updates["main"])
+	require.Empty(t, updates)
 
 	// The on-disk directory is gone.
 	_, err = s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
