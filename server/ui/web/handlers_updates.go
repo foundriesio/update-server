@@ -256,7 +256,7 @@ func (h handlers) updatesTail(c echo.Context) error {
 		TailUrl string
 	}{
 		baseCtx: h.baseCtx(c, "Rollout Progress", "updates"),
-		TailUrl: fmt.Sprintf("/v1/updates/%s/%s/tail", c.Param("tag"), c.Param("name")),
+		TailUrl: fmt.Sprintf("/v1/updates/%s/tail", c.Param("name")),
 	}
 
 	return h.templates.ExecuteTemplate(c.Response(), "update_tail.html", ctx)
@@ -268,7 +268,7 @@ func (h handlers) updatesRolloutTail(c echo.Context) error {
 		TailUrl string
 	}{
 		baseCtx: h.baseCtx(c, "Rollout Progress", "updates"),
-		TailUrl: fmt.Sprintf("/v1/updates/%s/%s/rollouts/%s/tail", c.Param("tag"), c.Param("name"), c.Param("rollout")),
+		TailUrl: fmt.Sprintf("/v1/updates/%s/rollouts/%s/tail", c.Param("name"), c.Param("rollout")),
 	}
 
 	return h.templates.ExecuteTemplate(c.Response(), "update_tail.html", ctx)

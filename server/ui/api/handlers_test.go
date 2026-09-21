@@ -1012,7 +1012,7 @@ func TestApiRolloutDaemon(t *testing.T) {
 
 func TestApiUpdateTail(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.GET("/updates/tag1/update1/tail", 403)
+	tc.GET("/updates/update1/tail", 403)
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
 	d, err := tc.gw.DeviceCreate("test-device-1", "cert1")
@@ -1040,7 +1040,7 @@ func TestApiUpdateTail(t *testing.T) {
 
 	// Before any events appear, check the correct error event is received.
 	done := make(chan bool)
-	rec := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/tag1/update1/tail", nil), done)
+	rec := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/update1/tail", nil), done)
 	expectedStream := `event: error
 id: 0
 retry: 1000
@@ -1064,9 +1064,9 @@ data: No rollout logs for this update yet.
 
 	// rec1 is plain request, rec2 is request with resumption.
 	done1 := make(chan bool)
-	rec1 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/tag1/update1/tail", nil), done1)
+	rec1 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/update1/tail", nil), done1)
 	done2 := make(chan bool)
-	req2 := httptest.NewRequest(http.MethodGet, "/v1/updates/tag1/update1/tail", nil)
+	req2 := httptest.NewRequest(http.MethodGet, "/v1/updates/update1/tail", nil)
 	req2.Header.Add("Last-Event-ID", "1")
 	rec2 := tc.DoAsync(req2, done2)
 
@@ -1112,7 +1112,7 @@ data: {"uuid":"test-device-1","correlationId":"uuid-1","target-name":"intel-core
 	keepaliveResponseInterval.Store(50 * time.Millisecond)
 	defer keepaliveResponseInterval.Store(saved)
 	done3 := make(chan bool)
-	rec3 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/tag1/update1/tail", nil), done3)
+	rec3 := tc.DoAsync(httptest.NewRequest(http.MethodGet, "/v1/updates/update1/tail", nil), done3)
 	expectedStream3 := expectedStream1 + keepaliveResponseText + keepaliveResponseText
 	requireBody(rec3, expectedStream3)
 	require.Equal(t, 200, rec3.Code())

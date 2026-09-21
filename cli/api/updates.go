@@ -57,8 +57,8 @@ func (u UpdatesApi) GetTuf(tag, updateName string) (UpdateTuf, error) {
 	return tuf, u.api.Get(endpoint, &tuf)
 }
 
-func (u UpdatesApi) Tail(tag, updateName string) (io.ReadCloser, error) {
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/tail"
+func (u UpdatesApi) Tail(updateName string) (io.ReadCloser, error) {
+	endpoint := "/v1/updates/" + updateName + "/tail"
 	return u.api.GetStream(endpoint)
 }
 
@@ -86,8 +86,8 @@ func (u UpdatesApi) CreateRollout(tag, updateName, rollout string, data Rollout)
 	return err
 }
 
-func (u UpdatesApi) TailRollout(tag, updateName, rollout string) (io.ReadCloser, error) {
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout + "/tail"
+func (u UpdatesApi) TailRollout(updateName, rollout string) (io.ReadCloser, error) {
+	endpoint := "/v1/updates/" + updateName + "/rollouts/" + rollout + "/tail"
 	return u.api.GetStream(endpoint)
 }
 

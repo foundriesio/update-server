@@ -126,9 +126,8 @@ func (h *handlers) updateRolloutQuery(c echo.Context) error {
 // @Tags    Updates
 // @Produce text/plain
 // @Success 200
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/tail [get]
+// @Router  /updates/{update}/tail [get]
 func (h *handlers) updateTail(c echo.Context) error {
 	ctx := c.Request().Context()
 	updateName := c.Param("update")
@@ -247,10 +246,9 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 // @Tags    Updates
 // @Produce text/plain
 // @Success 200
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout}/tail [get]
+// @Router  /updates/{update}/rollouts/{rollout}/tail [get]
 func (h *handlers) rolloutTail(c echo.Context) error {
 	ctx := c.Request().Context()
 	updateName := c.Param("update")
