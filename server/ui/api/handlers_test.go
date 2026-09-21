@@ -741,17 +741,17 @@ func TestApiUpdateList(t *testing.T) {
 	require.Nil(t, tc.api.InsertUpdate("tag1", "update2", "user1"))
 	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag1", "update2", "rollout1", "foo"))
 
-	require.Nil(t, tc.api.InsertUpdate("tag2", "update1", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update1", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update3", "rollout1", "foo"))
+	require.Nil(t, tc.api.InsertUpdate("tag2", "update1-2", "user1"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update1-2", "rollout1", "foo"))
+	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("tag2", "update3-2", "rollout1", "foo"))
 
 	data := tc.GET("/updates", 200)
-	assert.Equal(t, map[string][]string{"tag1": {"update1", "update2"}, "tag2": {"update1"}}, updateNames(data))
+	assert.Equal(t, map[string][]string{"tag1": {"update1", "update2"}, "tag2": {"update1-2"}}, updateNames(data))
 
 	data = tc.GET("/updates/tag1", 200)
 	assert.Equal(t, map[string][]string{"tag1": {"update1", "update2"}}, updateNames(data))
 	data = tc.GET("/updates/tag2", 200)
-	assert.Equal(t, map[string][]string{"tag2": {"update1"}}, updateNames(data))
+	assert.Equal(t, map[string][]string{"tag2": {"update1-2"}}, updateNames(data))
 	data = tc.GET("/updates/tag4", 200) // tag not exists
 	assert.Equal(t, map[string][]string{}, updateNames(data))
 

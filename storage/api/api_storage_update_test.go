@@ -86,7 +86,7 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 	// Seed updates: two on "main", one on "dev".
 	require.NoError(t, s.InsertUpdate("main", "v1.0", "tester"))
 	require.NoError(t, s.InsertUpdate("main", "v2.0", "tester"))
-	require.NoError(t, s.InsertUpdate("dev", "v1.0", "tester"))
+	require.NoError(t, s.InsertUpdate("dev", "v1.0-dev", "tester"))
 
 	// Create and check in devices on the "main" tag.
 	for _, uuid := range []string{"uuid-1", "uuid-2", "uuid-3", "uuid-4"} {
@@ -126,7 +126,7 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 	all, err := s.ListUpdates("")
 	require.NoError(t, err)
 	require.Len(t, all["dev"], 1)
-	assert.Equal(t, "v1.0", all["dev"][0].Name)
+	assert.Equal(t, "v1.0-dev", all["dev"][0].Name)
 	assert.Equal(t, 0, all["dev"][0].DeviceCount)
 }
 
