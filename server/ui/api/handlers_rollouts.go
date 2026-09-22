@@ -182,13 +182,11 @@ func (h *handlers) rolloutGet(c echo.Context) error {
 // @Param data body Rollout true "Rollout data"
 // @Produce json
 // @Success 202
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout} [put]
+// @Router  /updates/{update}/rollouts/{rollout} [put]
 func (h *handlers) rolloutPut(c echo.Context) error {
 	ctx := c.Request().Context()
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")
 	var (
@@ -205,12 +203,11 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Effective uuids are readonly")
 	}
 
-	// Check if update with this name exists
-	if updates, err := h.storage.ListUpdates(""); err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to check if update exists")
-	} else if !slices.ContainsFunc(updates, func(u storage.Update) bool {
-		return u.Name == updateName
-	}) {
+	update, err := h.storage.GetUpdate(updateName)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to look up update")
+	}
+	if update == nil {
 		return c.String(http.StatusNotFound, "Update with this name does not exist")
 	}
 
@@ -223,11 +220,11 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 		return c.String(http.StatusConflict, "Rollout with this name already exists")
 	}
 
-	if err = h.storage.CreateRollout(tag, updateName, rolloutName, rollout); err != nil {
+	if err = h.storage.CreateRollout(update.Tag, updateName, rolloutName, rollout); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to save rollout to disk")
 	}
 	go func() {
-		if err := h.storage.CommitRollout(tag, updateName, rolloutName, rollout); err != nil {
+		if err := h.storage.CommitRollout(update.Tag, updateName, rolloutName, rollout); err != nil {
 			// Background daemon should correct any database inconsistency, so we still return success here.
 			CtxGetLog(ctx).Error("Failed to update devices for rollout", "error", err)
 		}

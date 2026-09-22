@@ -865,11 +865,11 @@ func TestApiRolloutGet(t *testing.T) {
 
 func TestApiRolloutPut(t *testing.T) {
 	tc := NewTestClient(t)
-	tc.PUT("/updates/tag/update/rollouts/rolling", 403, "{}")
+	tc.PUT("/updates/update/rollouts/rolling", 403, "{}")
 	tc.u.AllowedScopes = users.ScopeUpdatesRU
 
-	tc.PUT("/updates/tag/update/rollouts/rocks", 400, "{")
-	tc.PUT("/updates/tag/update/rollouts/rocks", 400, "{}")
+	tc.PUT("/updates/update/rollouts/rocks", 400, "{")
+	tc.PUT("/updates/update/rollouts/rocks", 400, "{}")
 
 	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update1", "foo", "bar"))
 	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
@@ -903,13 +903,13 @@ func TestApiRolloutPut(t *testing.T) {
 	grp1 := "grp1"
 	require.Nil(t, tc.api.PatchDeviceLabels(map[string]*string{"group": &grp1}, []string{"prod3", "prod4", "ci4"}))
 
-	tc.PUT("/updates/tag1/update1/rollouts/rocks", 202,
+	tc.PUT("/updates/update1/rollouts/rocks", 202,
 		`{"uuids":["ci1","ci2","ci3"]}`, "content-type", "application/json")
-	tc.PUT("/updates/tag1/update1/rollouts/rocks", 409,
+	tc.PUT("/updates/update1/rollouts/rocks", 409,
 		`{"uuids":["ci1"]}`, "content-type", "application/json")
-	tc.PUT("/updates/tag2/update2/rollouts/rocks", 202,
+	tc.PUT("/updates/update2/rollouts/rocks", 202,
 		`{"uuids":["prod2"],"groups":["grp1"]}`, "content-type", "application/json")
-	tc.PUT("/updates/tag1/update1b/rollouts/rocks", 404,
+	tc.PUT("/updates/update1b/rollouts/rocks", 404,
 		`{"uuids":["prod2"],"groups":["grp1"]}`, "content-type", "application/json")
 
 	s := func(data []byte) string {

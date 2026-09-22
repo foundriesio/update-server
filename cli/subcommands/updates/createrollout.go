@@ -12,17 +12,17 @@ import (
 )
 
 var createRolloutCmd = &cobra.Command{
-	Use:   "create-rollout <tag> <update-name> <rollout-name>",
+	Use:   "create-rollout <update-name> <rollout-name>",
 	Short: "Create a new rollout for an update",
 	Long:  `Create a new rollout specifying device UUIDs and/or groups to target`,
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := api.CtxGetApi(cmd.Context())
 
 		uuids, _ := cmd.Flags().GetString("uuids")
 		groups, _ := cmd.Flags().GetString("groups")
 
-		cobra.CheckErr(createRollout(api.Updates(), args[0], args[1], args[2], uuids, groups))
+		cobra.CheckErr(createRollout(api.Updates(), args[0], args[1], uuids, groups))
 		return nil
 	},
 }
@@ -33,7 +33,7 @@ func init() {
 	createRolloutCmd.Flags().String("groups", "", "Comma-separated list of device groups")
 }
 
-func createRollout(updates api.UpdatesApi, tag, updateName, rolloutName, uuidsStr, groupsStr string) error {
+func createRollout(updates api.UpdatesApi, updateName, rolloutName, uuidsStr, groupsStr string) error {
 	if uuidsStr == "" && groupsStr == "" {
 		return fmt.Errorf("at least one of --uuids or --groups must be specified")
 	}
@@ -63,6 +63,6 @@ func createRollout(updates api.UpdatesApi, tag, updateName, rolloutName, uuidsSt
 		Groups: groups,
 	}
 
-	cobra.CheckErr(updates.CreateRollout(tag, updateName, rolloutName, rollout))
+	cobra.CheckErr(updates.CreateRollout(updateName, rolloutName, rollout))
 	return nil
 }

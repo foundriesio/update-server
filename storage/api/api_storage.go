@@ -136,6 +136,7 @@ type Storage struct {
 	stmtDeviceSetUpdate      stmtDeviceSetUpdate
 	stmtOldCertDeleteExpired stmtOldCertDeleteExpired
 	stmtUpdateDelete         stmtUpdateDelete
+	stmtUpdateGet            stmtUpdateGet
 	stmtUpdateInsert         stmtUpdateInsert
 	stmtUpdateList           stmtUpdateList
 }
@@ -219,6 +220,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceSetUpdate,
 		&handle.stmtDevicePut,
 		&handle.stmtOldCertDeleteExpired,
+		&handle.stmtUpdateGet,
 		&handle.stmtUpdateInsert,
 		&handle.stmtUpdateList,
 		&handle.stmtUpdateDelete,
@@ -382,6 +384,17 @@ func (s Storage) DeleteUpdate(name string) error {
 		return os.ErrNotExist
 	}
 	return s.fs.Updates.Delete(name)
+}
+
+func (s Storage) GetUpdate(name string) (*Update, error) {
+	u, err := s.stmtUpdateGet.run(name)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &u, nil
 }
 
 func (s Storage) GetUpdateTufMetadata(updateName string) (map[string]map[string]any, error) {
@@ -947,4 +960,20 @@ func (s *stmtUpdateDelete) run(name string) (bool, error) {
 		return false, err
 	}
 	return rowsAffected > 0, nil
+}
+
+type stmtUpdateGet storage.DbStmt
+
+func (s *stmtUpdateGet) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiUpdateGet", `
+		SELECT tag, name, uploaded_at, uploaded_by
+		FROM updates
+		WHERE name = ?`)
+	return
+}
+
+func (s *stmtUpdateGet) run(name string) (u Update, err error) {
+	err = s.Stmt.QueryRow(name).Scan(
+		&u.Tag, &u.Name, &u.UploadedAt, &u.UploadedBy)
+	return
 }

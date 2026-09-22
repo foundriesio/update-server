@@ -80,8 +80,8 @@ func (u UpdatesApi) GetDevicesForRolloutStatus(updateName, rollout, status strin
 	return devices, u.api.Get(endpoint, &devices)
 }
 
-func (u UpdatesApi) CreateRollout(tag, updateName, rollout string, data Rollout) error {
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout
+func (u UpdatesApi) CreateRollout(updateName, rollout string, data Rollout) error {
+	endpoint := "/v1/updates/" + updateName + "/rollouts/" + rollout
 	_, err := u.api.Put(endpoint, data)
 	return err
 }
