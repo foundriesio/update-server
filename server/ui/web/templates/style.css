@@ -1505,6 +1505,9 @@ summary.user-badge::after {
 .files-table td {
     background-color: transparent !important;
 }
+.files-table td:first-child {
+    padding-left: 0;
+}
 .file-name {
     font-family: var(--mono);
     font-size: 0.8rem;
@@ -1512,6 +1515,7 @@ summary.user-badge::after {
 .icon-delete {
     cursor: pointer;
     padding: 2px;
+    margin-bottom: 0;
     border: none;
     border-radius: 2px;
     background: none;
