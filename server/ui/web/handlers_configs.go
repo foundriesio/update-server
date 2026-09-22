@@ -168,6 +168,10 @@ func (h handlers) configsDeviceItem(c echo.Context) error {
 
 func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 	uuid := c.Param("uuid")
+	var device api.Device
+	if err := getJson(c.Request().Context(), "/v1/devices/"+uuid, &device); err != nil {
+		return h.handleUnexpected(c, err)
+	}
 	var applied api.AppliedConfigs
 	if err := getJson(c.Request().Context(), "/v1/configs/device/"+uuid+"/applied", &applied); err != nil {
 		return h.handleUnexpected(c, err)
@@ -175,9 +179,11 @@ func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 
 	ctx := struct {
 		baseCtx
+		Device  api.Device
 		Configs api.AppliedConfigs
 	}{
 		baseCtx: h.baseCtx(c, fmt.Sprintf("Device \"%s\" Applied Config", uuid), "devices"),
+		Device:  device,
 		Configs: applied,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "applied_configs_item.html", ctx)
