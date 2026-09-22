@@ -69,6 +69,46 @@ func TestBuildUpdateStepsClampsNegativeElapsed(t *testing.T) {
 	}
 }
 
+func TestBuildTestStatsCountsPassedAndFailed(t *testing.T) {
+	tests := []storage.TargetTest{
+		{Status: "PASSED"},
+		{Status: "FAILED"},
+		{Status: "RUNNING"},
+	}
+
+	total, passed, failed := buildTestStats(tests)
+
+	if total != 3 {
+		t.Errorf("total = %d, want 3", total)
+	}
+	if passed != 1 {
+		t.Errorf("passed = %d, want 1", passed)
+	}
+	if failed != 1 {
+		t.Errorf("failed = %d, want 1", failed)
+	}
+}
+
+func TestBuildTestRowsComputesDurationOnlyWhenCompleted(t *testing.T) {
+	completed := int64(1700000045)
+	tests := []storage.TargetTest{
+		{CreatedOn: 1700000000, CompletedOn: &completed, Status: "PASSED"},
+		{CreatedOn: 1700000000, Status: "RUNNING"},
+	}
+
+	rows := buildTestRows(tests)
+
+	if rows[0].Duration != "00:45" {
+		t.Errorf("rows[0].Duration = %q, want 00:45", rows[0].Duration)
+	}
+	if rows[1].Duration != "" {
+		t.Errorf("rows[1].Duration = %q, want empty for a running test", rows[1].Duration)
+	}
+	if rows[1].CompletedShort != "" {
+		t.Errorf("rows[1].CompletedShort = %q, want empty for a running test", rows[1].CompletedShort)
+	}
+}
+
 func TestBuildUpdateStepsNilSuccessIsNotFailure(t *testing.T) {
 	events := []storage.DeviceUpdateEvent{
 		{DeviceTime: "2026-08-30T09:00:27Z", Event: storage.DeviceEvent{}},

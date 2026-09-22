@@ -568,7 +568,7 @@ dialog.file-content > article > section > ul {
 .device-table thead th {
     text-align: left;
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -2623,7 +2623,7 @@ pre.code-block {
     background: var(--bg-content);
     border-bottom: 1px solid var(--border-1);
     font-family: var(--mono);
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.07em;
     text-transform: uppercase;
@@ -2741,3 +2741,90 @@ pre.code-block {
 }
 
 } /* end @layer device-detail (applied-configs page) */
+
+/* Device tests page — reuses .device-page-inner/.breadcrumb/.device-identity/
+   .device-tabs/.layer-grid/.layer-card/.badge/.empty-state and existing tokens
+   (--success, --success-text, --danger, --danger-text, --border-1, --text-*,
+   --mono, --focus-ring); only the tests-table/status-badge pieces below are new. */
+@layer device-detail {
+
+.tests-table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.tests-table thead th {
+    border-top: none;
+    border-right: none;
+    border-left: none;
+    background: var(--bg-content);
+    text-align: left;
+    padding: 0 12px 10px 0;
+    border-bottom: 1px solid var(--border-2);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+.tests-table tbody td {
+    border-top: none;
+    border-right: none;
+    border-left: none;
+    background: var(--bg-content);
+    padding: 13px 12px 13px 0;
+    border-bottom: 1px solid var(--border-1);
+    vertical-align: middle;
+    color: var(--text-1);
+}
+.tests-table tbody tr:last-child td { border-bottom: none; }
+.tests-table tbody tr:hover td { background: var(--surface-hover); }
+
+.col-status { width: 110px; }
+.col-duration { width: 90px; }
+.tests-table thead th.col-duration { text-align: right; }
+
+.test-id-value { font-family: var(--mono); font-size: 0.75rem; }
+.test-name { color: var(--text-1); word-break: break-word; }
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+.status-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.status-badge--pass { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success-text); }
+.status-badge--pass::before { background: var(--success); }
+.status-badge--fail { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger-text); }
+.status-badge--fail::before { background: var(--danger); }
+.status-badge--running { background: var(--border-1); color: var(--text-2); }
+.status-badge--running::before { background: var(--text-2); }
+
+.timestamp-value { color: var(--text-2); white-space: nowrap; }
+.duration-value { font-family: var(--mono); font-size: 0.75rem; color: var(--text-3); white-space: nowrap; }
+
+.tests-table tbody td:last-child { text-align: right; }
+
+@media (max-width: 720px) {
+    .tests-table thead { display: none; }
+    .tests-table, .tests-table tbody, .tests-table tr, .tests-table td { display: block; width: auto; }
+    .tests-table tbody tr { padding: 12px 0; }
+    .tests-table tbody td { padding: 4px 0; border-bottom: none; }
+    .tests-table tbody td:last-child { text-align: left; }
+    .tests-table tbody tr:not(:last-child) { border-bottom: 1px solid var(--border-1); }
+}
+
+} /* end @layer device-detail (tests page) */
