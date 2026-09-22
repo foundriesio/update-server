@@ -17,7 +17,7 @@ def test_full_update_flow(fiocli, fiocli_tail, sample_update, registered_device,
     # Create a rollout targeting this specific device
     fiocli(
         "updates", "create-rollout",
-        "main", UPDATE_NAME, ROLLOUT_NAME,
+        UPDATE_NAME, ROLLOUT_NAME,
         "--uuids", uuid,
     )
 
