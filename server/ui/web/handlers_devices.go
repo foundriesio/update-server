@@ -344,20 +344,100 @@ func buildAppSnapshots(states []storage.AppsStates) []appSnapshot {
 	return out
 }
 
+// testRow adds display-ready fields (short + full timestamps, mm:ss duration)
+// derived from a TargetTest, so device_tests.html never formats raw epoch
+// seconds itself. Completed*/Duration stay "" while a test is still RUNNING
+// (CompletedOn is nil) - the template renders that as an em dash.
+type testRow struct {
+	storage.TargetTest
+	CreatedShort   string
+	CreatedFull    string
+	CompletedShort string
+	CompletedFull  string
+	Duration       string
+}
+
+func shortTs(ts int64) string {
+	return time.Unix(ts, 0).Format("Jan 2, 15:04:05")
+}
+
+func fullTs(ts int64) string {
+	return time.Unix(ts, 0).Format(time.RFC3339)
+}
+
+func formatTestDuration(seconds int64) string {
+	if seconds < 0 {
+		seconds = 0
+	}
+	return fmt.Sprintf("%02d:%02d", seconds/60, seconds%60)
+}
+
+func buildTestRows(tests []storage.TargetTest) []testRow {
+	rows := make([]testRow, len(tests))
+	for i, t := range tests {
+		row := testRow{
+			TargetTest:   t,
+			CreatedShort: shortTs(t.CreatedOn),
+			CreatedFull:  fullTs(t.CreatedOn),
+		}
+		if t.CompletedOn != nil {
+			row.CompletedShort = shortTs(*t.CompletedOn)
+			row.CompletedFull = fullTs(*t.CompletedOn)
+			row.Duration = formatTestDuration(*t.CompletedOn - t.CreatedOn)
+		}
+		rows[i] = row
+	}
+	return rows
+}
+
+// buildTestStats counts PASSED/FAILED tests; RUNNING tests count toward total
+// but not passed/failed, so pass/fail rates dilute while a run is in flight.
+func buildTestStats(tests []storage.TargetTest) (total, passed, failed int) {
+	total = len(tests)
+	for _, t := range tests {
+		switch t.Status {
+		case "PASSED":
+			passed++
+		case "FAILED":
+			failed++
+		}
+	}
+	return total, passed, failed
+}
+
 func (h handlers) devicesTests(c echo.Context) error {
+	var device api.Device
+	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid"), &device); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+
 	var tests []storage.TargetTest
 	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/tests", &tests); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
+	total, passed, failed := buildTestStats(tests)
+
 	ctx := struct {
 		baseCtx
-		DeviceUuid string
-		Tests      []storage.TargetTest
+		Device   api.Device
+		Tests    []testRow
+		Total    int
+		Passed   int
+		Failed   int
+		PassRate int
+		FailRate int
 	}{
-		baseCtx:    h.baseCtx(c, "Device - "+c.Param("uuid")+" Tests", "devices"),
-		DeviceUuid: c.Param("uuid"),
-		Tests:      tests,
+		baseCtx: h.baseCtx(c, "Device - "+c.Param("uuid")+" Tests", "devices"),
+		Device:  device,
+		Tests:   buildTestRows(tests),
+		Total:   total,
+		Passed:  passed,
+		Failed:  failed,
+	}
+	if total > 0 {
+		ctx.PassRate = passed * 100 / total
+		ctx.FailRate = failed * 100 / total
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "device_tests.html", ctx)
 }

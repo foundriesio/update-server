@@ -1,33 +1,100 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+    <section class="device-overview">
 
-      <table class="striped">
-        <thead>
-          <tr>
-            <th>Test ID</th>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Created</th>
-            <th>Completed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{ range .Tests }}
-          <tr>
-            <td><a href="/devices/{{$.DeviceUuid}}/tests/{{.Uuid}}">{{.Uuid}}</a></td>
-            <td>{{.Name}}</td>
-            <td>{{.Status}}</td>
-            <td>{{tsToString .CreatedOn}}</td>
-            <td>{{ if .CompletedOn }}{{tsToString .CompletedOn}}{{ else }}-{{ end }}</td>
-          </tr>
-          {{ else }}
-          <tr>
-            <td colspan="6"><i>No tests found</i></td>
-          </tr>
-          {{ end }}
-        </tbody>
-      </table>
+      <div class="device-page-inner">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/devices">Devices</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/devices/{{.Device.Uuid}}">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current">Tests</span>
+        </nav>
+
+        <div class="device-identity">
+          <div class="device-identity__name-row">
+            <h1 class="device-identity__name">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
+            {{ if .Device.Status }}
+            <a href="/devices/{{.Device.Uuid}}/updates/{{.Device.Status.CorrelationId}}"
+               title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}"
+               class="status-indicator">
+              <span class="status-indicator__dot{{if contains .Device.Status.Status "failed"}} is-danger{{end}}"></span>
+              {{.Device.Status.Status}}
+            </a>
+            {{ end }}
+          </div>
+          <div class="device-identity__uuid">{{.Device.Uuid}}</div>
+        </div>
+      </div>
+
+      <nav class="device-tabs" aria-label="Device views">
+        <a href="/devices/{{.Device.Uuid}}" class="device-tab">Overview</a>
+        <a href="/devices/{{.Device.Uuid}}/apps-states" class="device-tab">App States</a>
+        <a href="/devices/{{.Device.Uuid}}/configs" class="device-tab">Configs</a>
+        <a href="/devices/{{.Device.Uuid}}/applied-configs" class="device-tab">Applied Configs</a>
+        <span class="device-tab is-active" aria-current="page">Tests</span>
+      </nav>
+
+      <div class="device-page-inner">
+        {{ if .Tests }}
+        <div class="layer-grid">
+          <div class="layer-card">
+            <div class="layer-card__head">
+              <span class="layer-card__name">Total Runs</span>
+              <span class="badge badge-neutral">{{.Total}}</span>
+            </div>
+            <div class="layer-card__detail">Recorded for this device.</div>
+          </div>
+
+          <div class="layer-card">
+            <div class="layer-card__head">
+              <span class="layer-card__name">Passed</span>
+              <span class="badge badge-good">{{.Passed}}</span>
+            </div>
+            <div class="layer-card__detail">{{.PassRate}}% pass rate.</div>
+          </div>
+
+          <div class="layer-card">
+            <div class="layer-card__head">
+              <span class="layer-card__name">Failed</span>
+              <span class="badge badge-bad">{{.Failed}}</span>
+            </div>
+            <div class="layer-card__detail">{{ if eq .Failed 0 }}No failures.{{ else }}{{.FailRate}}% fail rate &mdash; needs attention.{{ end }}</div>
+          </div>
+        </div>
+
+        <table class="tests-table">
+          <thead>
+            <tr>
+              <th scope="col">Test ID</th>
+              <th scope="col">Name</th>
+              <th scope="col" class="col-status">Status</th>
+              <th scope="col">Created</th>
+              <th scope="col">Completed</th>
+              <th scope="col" class="col-duration">Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range .Tests }}
+            <tr>
+              <td><span class="sr-only">Test ID: </span><a class="test-id-value" href="/devices/{{$.Device.Uuid}}/tests/{{.Uuid}}">{{.Uuid}}</a></td>
+              <td class="test-name"><span class="sr-only">Name: </span>{{.Name}}</td>
+              <td>
+                <span class="sr-only">Status: </span>
+                {{ if eq .Status "PASSED" }}<span class="status-badge status-badge--pass">PASSED</span>
+                {{ else if eq .Status "FAILED" }}<span class="status-badge status-badge--fail">FAILED</span>
+                {{ else }}<span class="status-badge status-badge--running">{{.Status}}</span>{{ end }}
+              </td>
+              <td><span class="sr-only">Created: </span><span class="timestamp-value" title="{{.CreatedFull}}">{{.CreatedShort}}</span></td>
+              <td><span class="sr-only">Completed: </span>{{ if .CompletedShort }}<span class="timestamp-value" title="{{.CompletedFull}}">{{.CompletedShort}}</span>{{ else }}<span class="timestamp-value">&mdash;</span>{{ end }}</td>
+              <td><span class="sr-only">Duration: </span>{{ if .Duration }}<span class="duration-value">{{.Duration}}</span>{{ else }}<span class="duration-value">&mdash;</span>{{ end }}</td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+        {{ else }}
+        <p class="empty-state">No tests have been recorded for this device yet.</p>
+        {{ end }}
+      </div>
+
     </section>
-
 {{ template "footer" .}}
