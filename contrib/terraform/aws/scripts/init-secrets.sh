@@ -30,18 +30,17 @@ FIOSERVER=fioserver
 NAME_PREFIX=fioserver
 HOSTNAME=""
 GATEWAY_HOSTNAME=""
-FACTORY=""
+OU=""
 TLS_EXPIRY_DAYS=3650
 AUTH_CONFIG_FILE=""
 REGION=""
 
 usage() {
     cat <<'EOF'
-Usage: init-secrets.sh --hostname HOST --factory NAME --auth-config-json FILE [options]
+Usage: init-secrets.sh --hostname HOST --auth-config-json FILE [options]
 
 Required:
   --hostname NAME           Must match var.hostname in terraform.tfvars.
-  --factory NAME            Must match var.factory in terraform.tfvars.
   --auth-config-json FILE   Path to auth-config.json. See docs/auth.md and
                              contrib/auth-config/.
 
@@ -49,6 +48,8 @@ Options:
   --name-prefix NAME        Must match var.name_prefix (default: fioserver).
   --gateway-hostname NAME   Must match var.gateway_hostname, if set. Defaults
                              to --hostname, matching the Terraform default.
+  --ou NAME                 Override the PKI certificate Organizational Unit
+                             (default: fio-update-server).
   --tls-expiry-days N       Must match var.tls_expiry_days (default: 3650).
   --fioserver PATH          Path to the fioserver binary that matches the
                              version in the deployed AMI (default: fioserver
@@ -66,7 +67,7 @@ while [ $# -gt 0 ]; do
     --name-prefix) NAME_PREFIX="$2"; shift 2 ;;
     --hostname) HOSTNAME="$2"; shift 2 ;;
     --gateway-hostname) GATEWAY_HOSTNAME="$2"; shift 2 ;;
-    --factory) FACTORY="$2"; shift 2 ;;
+    --ou) OU="$2"; shift 2 ;;
     --tls-expiry-days) TLS_EXPIRY_DAYS="$2"; shift 2 ;;
     --auth-config-json) AUTH_CONFIG_FILE="$2"; shift 2 ;;
     --fioserver) FIOSERVER="$2"; shift 2 ;;
@@ -77,7 +78,6 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$HOSTNAME" ] || { usage; die "--hostname is required"; }
-[ -n "$FACTORY" ] || { usage; die "--factory is required"; }
 [ -n "$AUTH_CONFIG_FILE" ] || { usage; die "--auth-config-json is required"; }
 [ -r "$AUTH_CONFIG_FILE" ] || die "cannot read $AUTH_CONFIG_FILE"
 [ -z "$GATEWAY_HOSTNAME" ] && GATEWAY_HOSTNAME="$HOSTNAME"
@@ -135,11 +135,16 @@ install -d -m 0750 "${DATADIR}/auth"
 cp "$AUTH_CONFIG_FILE" "${DATADIR}/auth/auth-config.json"
 chmod 0640 "${DATADIR}/auth/auth-config.json"
 
-log "running pki-init for ${GATEWAY_HOSTNAME} (factory ${FACTORY})"
-"$FIOSERVER" --datadir "$DATADIR" pki-init \
-    --dnsname "$GATEWAY_HOSTNAME" \
-    --factory "$FACTORY" \
+PKI_ARGS=(
+    --dnsname "$GATEWAY_HOSTNAME"
     --tlsexpirydays "$TLS_EXPIRY_DAYS"
+)
+if [ -n "$OU" ]; then
+    PKI_ARGS+=(--ou "$OU")
+fi
+
+log "running pki-init for ${GATEWAY_HOSTNAME}"
+"$FIOSERVER" --datadir "$DATADIR" pki-init "${PKI_ARGS[@]}"
 
 log "running tuf-init"
 "$FIOSERVER" --datadir "$DATADIR" tuf-init
