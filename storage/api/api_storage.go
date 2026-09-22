@@ -583,11 +583,10 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 	// First, check the database for uniqueness by (tag, name).
 	// Then, save the upload, and finally, insert into the database.
 	// This warrants the two-phase transaction, unless the user makes concurrent uploads of the same update.
-	if existing, err := s.stmtUpdateList.run(tag); err != nil {
+	existing, err := s.GetUpdate(updateName)
+	if err != nil {
 		return err
-	} else if slices.ContainsFunc(existing, func(item Update) bool {
-		return item.Name == updateName
-	}) {
+	} else if existing != nil {
 		return storage.ErrDbConstraintUnique
 	}
 	cleanup := func(cleanupErr error) {
@@ -600,7 +599,7 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 			return s.generateUpdateTuf(updateDir, tag, opts)
 		}
 	}
-	err := s.fs.Updates.SaveUpload(tag, updateName, payload, tufCreate, cleanup)
+	err = s.fs.Updates.SaveUpload(tag, updateName, payload, tufCreate, cleanup)
 	if err != nil {
 		return err
 	}
