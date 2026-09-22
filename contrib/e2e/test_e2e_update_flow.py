@@ -27,7 +27,7 @@ def test_full_update_flow(fiocli, fiocli_tail, sample_update, registered_device,
     # Tail the rollout in a background thread before triggering the update
     stop_tail = fiocli_tail(
         #"updates", "tail", "ci", "main", UPDATE_NAME, "--rollout", ROLLOUT_NAME,
-        "updates", "tail", "main", UPDATE_NAME,
+        "updates", "tail", UPDATE_NAME,
     )
 
     # Verify update events are recorded for the device

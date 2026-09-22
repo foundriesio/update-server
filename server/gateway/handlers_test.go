@@ -758,7 +758,6 @@ func TestTufMeta(t *testing.T) {
 		{tcCi42, "CI test snapshot.json", "test", "42", "snapshot.json"},
 		{tcCi42, "CI test targets.json", "test", "42", "targets.json"},
 		{tcCi137, "CI test 137 targets.json", "test", "137", "targets.json"},
-		{tcCi137, "CI beta targets.json", "beta", "137", "targets.json"},
 	}
 
 	// Pre-create devices and set their update names before tests
@@ -780,7 +779,7 @@ func TestTufMeta(t *testing.T) {
 	// Pre-create TUF data before tests
 	var err error
 	for _, ts := range tests {
-		err = ts.tc.fs.Updates.Tuf.WriteFile(ts.tag, ts.update, ts.role, ts.name)
+		err = ts.tc.fs.Updates.Tuf.WriteFile(ts.update, ts.role, ts.name)
 		require.Nil(t, err, ts.name)
 	}
 
@@ -802,14 +801,6 @@ func TestTufMeta(t *testing.T) {
 	t.Run("Missing 5.root.json", func(t *testing.T) {
 		tcCi42.t = t
 		_ = tcCi42.GET("/repo/5.root.json", 404, "x-ats-tags", "test")
-	})
-	t.Run("Missing targets.json for non-existing tag", func(t *testing.T) {
-		tcCi42.t = t
-		_ = tcCi42.GET("/repo/targets.json", 404, "x-ats-tags", "zero")
-	})
-	t.Run("Missing targets.json for existing tag but not matching update", func(t *testing.T) {
-		tcCi42.t = t
-		_ = tcCi42.GET("/repo/targets.json", 404, "x-ats-tags", "beta")
 	})
 }
 
@@ -858,20 +849,20 @@ func TestOstree(t *testing.T) {
 		}
 	}
 
-	writeFile := func(h baseStorage.UpdatesFsHandle, tag, update, path, content string) error {
+	writeFile := func(h baseStorage.UpdatesFsHandle, update, path, content string) error {
 		if parts := strings.Split(path, "/"); len(parts) > 1 {
 			require.Equal(t, 2, len(parts), content) // Only level 1 depth in tests
-			if err := os.MkdirAll(h.FilePath(tag, update, parts[0]), 0o750); err != nil {
+			if err := os.MkdirAll(h.FilePath(update, parts[0]), 0o750); err != nil {
 				return err
 			}
 		}
-		return h.WriteFile(tag, update, path, content)
+		return h.WriteFile(update, path, content)
 	}
 
 	// Pre-create TUF data before tests
 	var err error
 	for _, ts := range tests {
-		err = writeFile(ts.tc.fs.Updates.Ostree, ts.tag, ts.update, ts.path, ts.name)
+		err = writeFile(ts.tc.fs.Updates.Ostree, ts.update, ts.path, ts.name)
 		require.Nil(t, err, ts.name)
 	}
 

@@ -169,11 +169,10 @@ func createTables(db *sql.DB) error {
 		) WITHOUT ROWID;
 
 		CREATE TABLE updates (
+			name        VARCHAR(80) NOT NULL PRIMARY KEY,
 			tag         VARCHAR(80) NOT NULL,
-			name        VARCHAR(80) NOT NULL,
 			uploaded_at INT NOT NULL DEFAULT 0,
-			uploaded_by TEXT NOT NULL DEFAULT '',
-			PRIMARY KEY (tag, name)
+			uploaded_by TEXT NOT NULL DEFAULT ''
 		) WITHOUT ROWID;
 
 		CREATE TRIGGER prevent_delete_update_in_use

@@ -32,7 +32,7 @@ func TestCreateUpdateGeneratesTufFromApps(t *testing.T) {
 
 	// Targets metadata was generated for the update.
 	var targets tuf.AtsTufTargets
-	require.NoError(t, s.fs.Tuf.ReadTufMeta("main", "v1.0", storage.TufTargetsFile, &targets))
+	require.NoError(t, s.fs.Tuf.ReadTufMeta("v1.0", storage.TufTargetsFile, &targets))
 	require.Len(t, targets.Signed.Targets, 1)
 
 	target, ok := targets.Signed.Targets["my-app-target-1"]
@@ -47,8 +47,8 @@ func TestCreateUpdateGeneratesTufFromApps(t *testing.T) {
 	// The update was registered in the database.
 	updates, err := s.ListUpdates("main")
 	require.NoError(t, err)
-	require.Len(t, updates["main"], 1)
-	assert.Equal(t, "v1.0", updates["main"][0].Name)
+	require.Len(t, updates, 1)
+	assert.Equal(t, "v1.0", updates[0].Name)
 }
 
 func TestCreateUpdateUsesUploadedTuf(t *testing.T) {
@@ -64,7 +64,7 @@ func TestCreateUpdateUsesUploadedTuf(t *testing.T) {
 	})
 	require.NoError(t, s.CreateUpdate("main", "v1.0", "tester", TargetOptions{}, tar))
 
-	raw, err := s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
+	raw, err := s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
 	require.NoError(t, err)
 	assert.JSONEq(t, validTargets, raw)
 }
@@ -86,7 +86,7 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 	// Seed updates: two on "main", one on "dev".
 	require.NoError(t, s.InsertUpdate("main", "v1.0", "tester"))
 	require.NoError(t, s.InsertUpdate("main", "v2.0", "tester"))
-	require.NoError(t, s.InsertUpdate("dev", "v1.0", "tester"))
+	require.NoError(t, s.InsertUpdate("dev", "v1.0-dev", "tester"))
 
 	// Create and check in devices on the "main" tag.
 	for _, uuid := range []string{"uuid-1", "uuid-2", "uuid-3", "uuid-4"} {
@@ -113,10 +113,10 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 
 	updates, err := s.ListUpdates("main")
 	require.NoError(t, err)
-	require.Len(t, updates["main"], 2)
+	require.Len(t, updates, 2)
 
 	counts := map[string]int{}
-	for _, u := range updates["main"] {
+	for _, u := range updates {
 		counts[u.Name] = u.DeviceCount
 	}
 	assert.Equal(t, 2, counts["v1.0"], "v1.0 should count only its two non-deleted devices")
@@ -125,9 +125,8 @@ func TestListUpdatesDeviceCount(t *testing.T) {
 	// An update with no assigned devices reports a count of zero.
 	all, err := s.ListUpdates("")
 	require.NoError(t, err)
-	require.Len(t, all["dev"], 1)
-	assert.Equal(t, "v1.0", all["dev"][0].Name)
-	assert.Equal(t, 0, all["dev"][0].DeviceCount)
+	assert.Equal(t, "v1.0-dev", all[0].Name)
+	assert.Equal(t, 0, all[0].DeviceCount)
 }
 
 func TestDeleteUpdate(t *testing.T) {
@@ -145,15 +144,15 @@ func TestDeleteUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deleting a non-existent update (unknown tag) returns ErrNotExist.
-	err = s.DeleteUpdate("main", "v1.0")
+	err = s.DeleteUpdate("v1.0")
 	require.ErrorIs(t, err, os.ErrNotExist)
 
 	// Seed an update with an on-disk directory.
 	require.NoError(t, s.InsertUpdate("main", "v1.0", "tester"))
-	require.NoError(t, s.fs.Updates.Tuf.WriteFile("main", "v1.0", storage.TufTargetsFile, "{}"))
+	require.NoError(t, s.fs.Updates.Tuf.WriteFile("v1.0", storage.TufTargetsFile, "{}"))
 
 	// Deleting a non-existent name within an existing tag returns ErrNotExist.
-	err = s.DeleteUpdate("main", "v2.0")
+	err = s.DeleteUpdate("v2.0")
 	require.ErrorIs(t, err, os.ErrNotExist)
 
 	// An update with an assigned device cannot be deleted.
@@ -164,32 +163,32 @@ func TestDeleteUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, assigned, 1)
 
-	err = s.DeleteUpdate("main", "v1.0")
+	err = s.DeleteUpdate("v1.0")
 	require.ErrorIs(t, err, ErrUpdateInUse)
 
 	// The update and its files still exist after a refused delete.
 	updates, err := s.ListUpdates("main")
 	require.NoError(t, err)
-	require.Len(t, updates["main"], 1)
-	_, err = s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
+	require.Len(t, updates, 1)
+	_, err = s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
 	require.NoError(t, err)
 
 	// Once no non-deleted device is assigned, the update can be deleted.
 	dev, err := s.DeviceGet("uuid-1")
 	require.NoError(t, err)
 	require.NoError(t, dev.Delete())
-	require.NoError(t, s.DeleteUpdate("main", "v1.0"))
+	require.NoError(t, s.DeleteUpdate("v1.0"))
 
 	// The database row is gone.
 	updates, err = s.ListUpdates("main")
 	require.NoError(t, err)
-	require.Empty(t, updates["main"])
+	require.Empty(t, updates)
 
 	// The on-disk directory is gone.
-	_, err = s.fs.Updates.Tuf.ReadFile("main", "v1.0", storage.TufTargetsFile)
+	_, err = s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
 	require.True(t, errors.Is(err, os.ErrNotExist), "expected update files to be removed, got %v", err)
 
 	// Deleting an already-deleted update returns ErrNotExist.
-	err = s.DeleteUpdate("main", "v1.0")
+	err = s.DeleteUpdate("v1.0")
 	require.ErrorIs(t, err, os.ErrNotExist)
 }

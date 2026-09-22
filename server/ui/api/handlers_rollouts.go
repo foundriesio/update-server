@@ -31,17 +31,17 @@ type UpdateSummary = storage.UpdateSummary
 // @Description Requires scope: updates:read or updates:read-update
 // @Tags    Updates
 // @Produce json
-// @Success 200 {object} map[string][]Update
-// @Param   tag path string true "Update tag"
-// @Router  /updates/{tag} [get]
+// @Success 200 {object} []Update
+// @Param   tag query string true "Update tag (optional filter)"
+// @Router  /updates [get]
 func (h *handlers) updateList(c echo.Context) error {
-	tag := c.Param("tag")
+	tag := c.QueryParam("tag")
 
 	if updates, err := h.storage.ListUpdates(tag); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to look up updates")
 	} else {
-		if updates == nil {
-			updates = map[string][]Update{}
+		if len(updates) == 0 {
+			updates = []Update{}
 		}
 		return c.JSON(http.StatusOK, updates)
 	}
@@ -52,13 +52,11 @@ func (h *handlers) updateList(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} UpdateSummary
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/summary [get]
+// @Router  /updates/{update}/summary [get]
 func (h *handlers) updateSummary(c echo.Context) error {
-	tag := c.Param("tag")
 	updateName := c.Param("update")
-	summary, err := h.storage.UpdateSummary(tag, updateName)
+	summary, err := h.storage.UpdateSummary(updateName)
 	if err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to get update summary")
 	}
@@ -70,14 +68,12 @@ func (h *handlers) updateSummary(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {array} string
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/query [get]
+// @Router  /updates/{update}/query [get]
 func (h *handlers) updateQuery(c echo.Context) error {
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 	status := c.QueryParam("status")
-	devices, err := h.storage.UpdateStateFor(tag, updateName, status)
+	devices, err := h.storage.UpdateStateFor(updateName, status)
 	if err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to get update query")
 	}
@@ -89,15 +85,13 @@ func (h *handlers) updateQuery(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} UpdateSummary
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout}/summary [get]
+// @Router  /updates/{update}/rollouts/{rollout}/summary [get]
 func (h *handlers) updateRolloutSummary(c echo.Context) error {
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")
-	summary, err := h.storage.RolloutSummary(tag, updateName, rolloutName)
+	summary, err := h.storage.RolloutSummary(updateName, rolloutName)
 	if err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to get rollout report")
 	}
@@ -109,16 +103,14 @@ func (h *handlers) updateRolloutSummary(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {array} string
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout}/query [get]
+// @Router  /updates/{update}/rollouts/{rollout}/query [get]
 func (h *handlers) updateRolloutQuery(c echo.Context) error {
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")
 	status := c.QueryParam("status")
-	devices, err := h.storage.RolloutStateFor(tag, updateName, rolloutName, status)
+	devices, err := h.storage.RolloutStateFor(updateName, rolloutName, status)
 	if err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to get rollout query")
 	}
@@ -130,15 +122,13 @@ func (h *handlers) updateRolloutQuery(c echo.Context) error {
 // @Tags    Updates
 // @Produce text/plain
 // @Success 200
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/tail [get]
+// @Router  /updates/{update}/tail [get]
 func (h *handlers) updateTail(c echo.Context) error {
 	ctx := c.Request().Context()
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 	// Read file infinitely until client disconnects (writes to ctx.Done() channel).
-	reader := h.storage.TailRolloutsLog(tag, updateName, ctx.Done())
+	reader := h.storage.TailRolloutsLog(updateName, ctx.Done())
 	return streamUpdateLogs(c, reader)
 }
 
@@ -147,14 +137,12 @@ func (h *handlers) updateTail(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {array} string
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
-// @Router  /updates/{tag}/{update}/rollouts [get]
+// @Router  /updates/{update}/rollouts [get]
 func (h *handlers) rolloutList(c echo.Context) error {
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 
-	if rollouts, err := h.storage.ListRollouts(tag, updateName); err != nil {
+	if rollouts, err := h.storage.ListRollouts(updateName); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to look up update rollouts")
 	} else {
 		if rollouts == nil {
@@ -169,16 +157,14 @@ func (h *handlers) rolloutList(c echo.Context) error {
 // @Tags    Updates
 // @Produce json
 // @Success 200 {object} Rollout
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout} [get]
+// @Router  /updates/{update}/rollouts/{rollout} [get]
 func (h *handlers) rolloutGet(c echo.Context) error {
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")
 
-	if rollout, err := h.storage.GetRollout(tag, updateName, rolloutName); err != nil {
+	if rollout, err := h.storage.GetRollout(updateName, rolloutName); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return EchoError(c, err, http.StatusNotFound, "Not found rollout")
 		} else {
@@ -196,13 +182,11 @@ func (h *handlers) rolloutGet(c echo.Context) error {
 // @Param data body Rollout true "Rollout data"
 // @Produce json
 // @Success 202
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout} [put]
+// @Router  /updates/{update}/rollouts/{rollout} [put]
 func (h *handlers) rolloutPut(c echo.Context) error {
 	ctx := c.Request().Context()
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")
 	var (
@@ -219,17 +203,16 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Effective uuids are readonly")
 	}
 
-	// Check if update with this name exists
-	if updates, err := h.storage.ListUpdates(tag); err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to check if update exists")
-	} else if tagUpdates, ok := updates[tag]; !ok || !slices.ContainsFunc(tagUpdates, func(u storage.Update) bool {
-		return u.Name == updateName
-	}) {
+	update, err := h.storage.GetUpdate(updateName)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to look up update")
+	}
+	if update == nil {
 		return c.String(http.StatusNotFound, "Update with this name does not exist")
 	}
 
 	// Check if rollout with this name already exists
-	if _, err = h.storage.GetRollout(tag, updateName, rolloutName); err != nil {
+	if _, err = h.storage.GetRollout(updateName, rolloutName); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to check if rollout exists")
 		}
@@ -237,11 +220,11 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 		return c.String(http.StatusConflict, "Rollout with this name already exists")
 	}
 
-	if err = h.storage.CreateRollout(tag, updateName, rolloutName, rollout); err != nil {
+	if err = h.storage.CreateRollout(update.Tag, updateName, rolloutName, rollout); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to save rollout to disk")
 	}
 	go func() {
-		if err := h.storage.CommitRollout(tag, updateName, rolloutName, rollout); err != nil {
+		if err := h.storage.CommitRollout(update.Tag, updateName, rolloutName, rollout); err != nil {
 			// Background daemon should correct any database inconsistency, so we still return success here.
 			CtxGetLog(ctx).Error("Failed to update devices for rollout", "error", err)
 		}
@@ -254,16 +237,14 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 // @Tags    Updates
 // @Produce text/plain
 // @Success 200
-// @Param   tag path string true "Update tag"
 // @Param   update path string true "Update name"
 // @Param   rollout path string true "Rollout name"
-// @Router  /updates/{tag}/{update}/rollouts/{rollout}/tail [get]
+// @Router  /updates/{update}/rollouts/{rollout}/tail [get]
 func (h *handlers) rolloutTail(c echo.Context) error {
 	ctx := c.Request().Context()
-	tag := c.Param("tag")
 	updateName := c.Param("update")
 	rolloutName := c.Param("rollout")
-	if rollout, err := h.storage.GetRollout(tag, updateName, rolloutName); err != nil {
+	if rollout, err := h.storage.GetRollout(updateName, rolloutName); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return EchoError(c, err, http.StatusNotFound, "Not found rollout")
 		} else {
@@ -277,7 +258,7 @@ func (h *handlers) rolloutTail(c echo.Context) error {
 		return streamUpdateLogs(c, reader)
 	} else {
 		// Read file infinitely until client disconnects (writes to ctx.Done() channel).
-		reader := h.storage.TailRolloutsLog(tag, updateName, ctx.Done())
+		reader := h.storage.TailRolloutsLog(updateName, ctx.Done())
 		reader = filterUpdateLogs(rollout.Effect, reader)
 		return streamUpdateLogs(c, reader)
 	}
@@ -285,7 +266,11 @@ func (h *handlers) rolloutTail(c echo.Context) error {
 
 func validateUpdateParams(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if tag := c.Param("tag"); len(tag) > 0 && !validateTag(tag) {
+		tag := c.Param("tag")
+		if len(tag) == 0 {
+			tag = c.QueryParam("tag")
+		}
+		if len(tag) > 0 && !validateTag(tag) {
 			return echo.NewHTTPError(http.StatusNotFound, "Tag must match a given regexp: "+validTagRegex)
 		} else if update := c.Param("update"); len(update) > 0 && !validateUpdate(update) {
 			return echo.NewHTTPError(http.StatusNotFound, "Update name must match a given regexp: "+validUpdateRegex)

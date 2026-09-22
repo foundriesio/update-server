@@ -136,6 +136,7 @@ type Storage struct {
 	stmtDeviceSetUpdate      stmtDeviceSetUpdate
 	stmtOldCertDeleteExpired stmtOldCertDeleteExpired
 	stmtUpdateDelete         stmtUpdateDelete
+	stmtUpdateGet            stmtUpdateGet
 	stmtUpdateInsert         stmtUpdateInsert
 	stmtUpdateList           stmtUpdateList
 }
@@ -219,6 +220,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 		&handle.stmtDeviceSetUpdate,
 		&handle.stmtDevicePut,
 		&handle.stmtOldCertDeleteExpired,
+		&handle.stmtUpdateGet,
 		&handle.stmtUpdateInsert,
 		&handle.stmtUpdateList,
 		&handle.stmtUpdateDelete,
@@ -361,8 +363,8 @@ func (s Storage) ReadAppliedConfigs(uuid string) (*storage.AppliedConfigs, error
 
 var clearingEventTypes = []string{"EcuInstallationCompleted", "CertRotationCompleted", "MetadataUpdateCompleted"}
 
-// ListUpdates returns a map of tag to updates. If the tag is empty, it returns all tags.
-func (s Storage) ListUpdates(tag string) (map[string][]Update, error) {
+// ListUpdates returns updates filtered by tag. If the tag is empty, it returns all tags.
+func (s Storage) ListUpdates(tag string) ([]Update, error) {
 	return s.stmtUpdateList.run(tag)
 }
 
@@ -373,28 +375,39 @@ func (s Storage) DeviceCreate(uuid, cert string, labels Labels) error {
 // DeleteUpdate removes an update's database row and on-disk directory. It
 // refuses (returning ErrUpdateInUse) if any non-denied device is still assigned
 // to the update. It returns ErrNotExist if the update does not exist.
-func (s Storage) DeleteUpdate(tag, name string) error {
-	existed, err := s.stmtUpdateDelete.run(tag, name)
+func (s Storage) DeleteUpdate(name string) error {
+	existed, err := s.stmtUpdateDelete.run(name)
 	if err != nil {
 		return err
 	}
 	if !existed {
 		return os.ErrNotExist
 	}
-	return s.fs.Updates.Delete(tag, name)
+	return s.fs.Updates.Delete(name)
 }
 
-func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[string]any, error) {
+func (s Storage) GetUpdate(name string) (*Update, error) {
+	u, err := s.stmtUpdateGet.run(name)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (s Storage) GetUpdateTufMetadata(updateName string) (map[string]map[string]any, error) {
 	handle := s.fs.Updates
 
-	latestRoot, err := handle.Tuf.LatestRootMetaName(tag, updateName)
+	latestRoot, err := handle.Tuf.LatestRootMetaName(updateName)
 	if err != nil {
 		return nil, err
 	}
 
 	meta := make(map[string]map[string]any)
 	for _, x := range []string{storage.TufTargetsFile, storage.TufSnapshotFile, storage.TufTimestampFile, latestRoot} {
-		metaDict, err := s.GetUpdateTufMetadataFile(tag, updateName, x)
+		metaDict, err := s.GetUpdateTufMetadataFile(updateName, x)
 		if err != nil {
 			return nil, err
 		}
@@ -407,33 +420,33 @@ func (s Storage) GetUpdateTufMetadata(tag, updateName string) (map[string]map[st
 	return meta, nil
 }
 
-func (s Storage) GetUpdateTufMetadataFile(tag, updateName, file string) (meta map[string]any, err error) {
+func (s Storage) GetUpdateTufMetadataFile(updateName, file string) (meta map[string]any, err error) {
 	var metaStr string
-	if metaStr, err = s.fs.Updates.Tuf.ReadFile(tag, updateName, file); err != nil {
+	if metaStr, err = s.fs.Updates.Tuf.ReadFile(updateName, file); err != nil {
 	} else if err = json.Unmarshal([]byte(metaStr), &meta); err != nil {
 		err = fmt.Errorf("failed to unmarshal %s: %w", file, err)
 	}
 	return
 }
 
-func (s Storage) ListRollouts(tag, updateName string) ([]string, error) {
-	return s.fs.Updates.Rollouts.ListFiles(tag, updateName)
+func (s Storage) ListRollouts(updateName string) ([]string, error) {
+	return s.fs.Updates.Rollouts.ListFiles(updateName)
 }
 
-func (s Storage) GetRollout(tag, updateName, rolloutName string) (res Rollout, err error) {
+func (s Storage) GetRollout(updateName, rolloutName string) (res Rollout, err error) {
 	var content string
-	content, err = s.fs.Updates.Rollouts.ReadFile(tag, updateName, rolloutName)
+	content, err = s.fs.Updates.Rollouts.ReadFile(updateName, rolloutName)
 	if err == nil {
 		err = json.Unmarshal([]byte(content), &res)
 	}
 	return
 }
 
-func (s Storage) SaveRollout(tag, updateName, rolloutName string, rollout Rollout) error {
+func (s Storage) SaveRollout(updateName, rolloutName string, rollout Rollout) error {
 	if data, err := json.Marshal(rollout); err != nil {
 		return err
 	} else {
-		return s.fs.Updates.Rollouts.WriteFile(tag, updateName, rolloutName, string(data))
+		return s.fs.Updates.Rollouts.WriteFile(updateName, rolloutName, string(data))
 	}
 }
 
@@ -445,7 +458,7 @@ func (s Storage) CreateRollout(tag, updateName, rolloutName string, rollout Roll
 	} else if err := h.AppendJournal(log); err != nil {
 		return err
 	} else {
-		return h.WriteFile(tag, updateName, rolloutName, string(data))
+		return h.WriteFile(updateName, rolloutName, string(data))
 	}
 }
 
@@ -454,7 +467,7 @@ func (s Storage) CommitRollout(tag, updateName, rolloutName string, rollout Roll
 		return err
 	} else {
 		rollout.Commit = true
-		return s.SaveRollout(tag, updateName, rolloutName, rollout)
+		return s.SaveRollout(updateName, rolloutName, rollout)
 	}
 }
 
@@ -516,8 +529,8 @@ func (s Storage) SetUpdateName(tag, updateName string, uuids, groups []string) (
 	return
 }
 
-func (s Storage) TailRolloutsLog(tag, updateName string, stop storage.DoneChan) iter.Seq2[string, error] {
-	return s.fs.Updates.Logs.TailFileLines(tag, updateName, storage.LogRolloutsFile, stop)
+func (s Storage) TailRolloutsLog(updateName string, stop storage.DoneChan) iter.Seq2[string, error] {
+	return s.fs.Updates.Logs.TailFileLines(updateName, storage.LogRolloutsFile, stop)
 }
 
 func (s Storage) ReadFactoryConfigHistory(latest int, withFiles bool) ([]*ConfigFileSet, error) {
@@ -570,11 +583,10 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 	// First, check the database for uniqueness by (tag, name).
 	// Then, save the upload, and finally, insert into the database.
 	// This warrants the two-phase transaction, unless the user makes concurrent uploads of the same update.
-	if existing, err := s.stmtUpdateList.run(tag); err != nil {
+	existing, err := s.GetUpdate(updateName)
+	if err != nil {
 		return err
-	} else if lst, ok := existing[tag]; ok && len(lst) > 0 && slices.ContainsFunc(lst, func(item Update) bool {
-		return item.Name == updateName
-	}) {
+	} else if existing != nil {
 		return storage.ErrDbConstraintUnique
 	}
 	cleanup := func(cleanupErr error) {
@@ -587,7 +599,7 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 			return s.generateUpdateTuf(updateDir, tag, opts)
 		}
 	}
-	err := s.fs.Updates.SaveUpload(tag, updateName, payload, tufCreate, cleanup)
+	err = s.fs.Updates.SaveUpload(tag, updateName, payload, tufCreate, cleanup)
 	if err != nil {
 		return err
 	}
@@ -595,7 +607,7 @@ func (s Storage) CreateUpdate(tag, updateName, uploadedBy string, opts TargetOpt
 		return err
 	}
 	// Create an empty file so that users don't get errors trying to tail the update/rollout
-	_ = s.fs.Updates.Logs.AppendFile(tag, updateName, storage.LogRolloutsFile, "")
+	_ = s.fs.Updates.Logs.AppendFile(updateName, storage.LogRolloutsFile, "")
 	return nil
 }
 
@@ -908,22 +920,21 @@ func (s *stmtUpdateList) Init(db storage.DbHandle) (err error) {
 	return
 }
 
-func (s *stmtUpdateList) run(tag string) (map[string][]Update, error) {
+func (s *stmtUpdateList) run(tag string) ([]Update, error) {
 	rows, err := s.Stmt.Query(tag, tag)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close() //nolint:errcheck
-	res := map[string][]Update{}
+	var updates []Update
 	for rows.Next() {
 		var u Update
-		var t string
-		if err = rows.Scan(&t, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.DeviceCount); err != nil {
+		if err = rows.Scan(&u.Tag, &u.Name, &u.UploadedAt, &u.UploadedBy, &u.DeviceCount); err != nil {
 			return nil, err
 		}
-		res[t] = append(res[t], u)
+		updates = append(updates, u)
 	}
-	return res, rows.Err()
+	return updates, rows.Err()
 }
 
 type stmtUpdateDelete storage.DbStmt
@@ -931,13 +942,12 @@ type stmtUpdateDelete storage.DbStmt
 func (s *stmtUpdateDelete) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("apiUpdateDelete", `
 		DELETE FROM updates 
-		WHERE tag = ?
-  		AND name = ?;`)
+		WHERE name = ?`)
 	return
 }
 
-func (s *stmtUpdateDelete) run(tag, name string) (bool, error) {
-	res, err := s.Stmt.Exec(tag, name)
+func (s *stmtUpdateDelete) run(name string) (bool, error) {
+	res, err := s.Stmt.Exec(name)
 	if err != nil {
 		if err.Error() == ErrUpdateInUse.Error() {
 			return false, ErrUpdateInUse
@@ -949,4 +959,20 @@ func (s *stmtUpdateDelete) run(tag, name string) (bool, error) {
 		return false, err
 	}
 	return rowsAffected > 0, nil
+}
+
+type stmtUpdateGet storage.DbStmt
+
+func (s *stmtUpdateGet) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("apiUpdateGet", `
+		SELECT tag, name, uploaded_at, uploaded_by
+		FROM updates
+		WHERE name = ?`)
+	return
+}
+
+func (s *stmtUpdateGet) run(name string) (u Update, err error) {
+	err = s.Stmt.QueryRow(name).Scan(
+		&u.Tag, &u.Name, &u.UploadedAt, &u.UploadedBy)
+	return
 }

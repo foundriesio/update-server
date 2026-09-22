@@ -23,26 +23,26 @@ func (a *Api) Updates() UpdatesApi {
 	return UpdatesApi{api: a}
 }
 
-func (u UpdatesApi) List() (map[string][]Update, error) {
-	var updates map[string][]Update
+func (u UpdatesApi) List() ([]Update, error) {
+	var updates []Update
 	return updates, u.api.Get("/v1/updates", &updates)
 }
 
-func (u UpdatesApi) Get(tag, updateName string) ([]string, error) {
+func (u UpdatesApi) Get(updateName string) ([]string, error) {
 	var rollouts []string
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts"
+	endpoint := "/v1/updates/" + updateName + "/rollouts"
 	return rollouts, u.api.Get(endpoint, &rollouts)
 }
 
-func (u UpdatesApi) GetSummary(tag, updateName string) (UpdateSummary, error) {
+func (u UpdatesApi) GetSummary(updateName string) (UpdateSummary, error) {
 	var summary UpdateSummary
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/summary"
+	endpoint := "/v1/updates/" + updateName + "/summary"
 	return summary, u.api.Get(endpoint, &summary)
 }
 
-func (u UpdatesApi) GetDevicesForStatus(tag, updateName, status string) ([]string, error) {
+func (u UpdatesApi) GetDevicesForStatus(updateName, status string) ([]string, error) {
 	var devices []string
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/query?status=" + url.QueryEscape(status)
+	endpoint := "/v1/updates/" + updateName + "/query?status=" + url.QueryEscape(status)
 	return devices, u.api.Get(endpoint, &devices)
 }
 
@@ -51,43 +51,43 @@ func (u UpdatesApi) GetDevicesForStatus(tag, updateName, status string) ([]strin
 // corresponding metadata file.
 type UpdateTuf = map[string]map[string]any
 
-func (u UpdatesApi) GetTuf(tag, updateName string) (UpdateTuf, error) {
+func (u UpdatesApi) GetTuf(updateName string) (UpdateTuf, error) {
 	var tuf UpdateTuf
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/tuf"
+	endpoint := "/v1/updates/" + updateName + "/tuf"
 	return tuf, u.api.Get(endpoint, &tuf)
 }
 
-func (u UpdatesApi) Tail(tag, updateName string) (io.ReadCloser, error) {
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/tail"
+func (u UpdatesApi) Tail(updateName string) (io.ReadCloser, error) {
+	endpoint := "/v1/updates/" + updateName + "/tail"
 	return u.api.GetStream(endpoint)
 }
 
-func (u UpdatesApi) GetRollout(tag, updateName, rollout string) (Rollout, error) {
+func (u UpdatesApi) GetRollout(updateName, rollout string) (Rollout, error) {
 	var r Rollout
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout
+	endpoint := "/v1/updates/" + updateName + "/rollouts/" + rollout
 	return r, u.api.Get(endpoint, &r)
 }
 
-func (u UpdatesApi) GetRolloutSummary(tag, updateName, rollout string) (UpdateSummary, error) {
+func (u UpdatesApi) GetRolloutSummary(updateName, rollout string) (UpdateSummary, error) {
 	var report UpdateSummary
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout + "/summary"
+	endpoint := "/v1/updates/" + updateName + "/rollouts/" + rollout + "/summary"
 	return report, u.api.Get(endpoint, &report)
 }
 
-func (u UpdatesApi) GetDevicesForRolloutStatus(tag, updateName, rollout, status string) ([]string, error) {
+func (u UpdatesApi) GetDevicesForRolloutStatus(updateName, rollout, status string) ([]string, error) {
 	var devices []string
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout + "/query?status=" + url.QueryEscape(status)
+	endpoint := "/v1/updates/" + updateName + "/rollouts/" + rollout + "/query?status=" + url.QueryEscape(status)
 	return devices, u.api.Get(endpoint, &devices)
 }
 
-func (u UpdatesApi) CreateRollout(tag, updateName, rollout string, data Rollout) error {
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout
+func (u UpdatesApi) CreateRollout(updateName, rollout string, data Rollout) error {
+	endpoint := "/v1/updates/" + updateName + "/rollouts/" + rollout
 	_, err := u.api.Put(endpoint, data)
 	return err
 }
 
-func (u UpdatesApi) TailRollout(tag, updateName, rollout string) (io.ReadCloser, error) {
-	endpoint := "/v1/updates/" + tag + "/" + updateName + "/rollouts/" + rollout + "/tail"
+func (u UpdatesApi) TailRollout(updateName, rollout string) (io.ReadCloser, error) {
+	endpoint := "/v1/updates/" + updateName + "/rollouts/" + rollout + "/tail"
 	return u.api.GetStream(endpoint)
 }
 
@@ -130,7 +130,7 @@ func (u UpdatesApi) CreateUpdate(tag, updateName string, opts CreateUpdateOption
 	return err
 }
 
-func (u UpdatesApi) Delete(tag, updateName string) error {
-	endpoint := "/v1/updates/" + tag + "/" + updateName
+func (u UpdatesApi) Delete(updateName string) error {
+	endpoint := "/v1/updates/" + updateName
 	return u.api.Delete(endpoint)
 }

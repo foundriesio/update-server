@@ -29,12 +29,10 @@ func listUpdates(api *api.Api) {
 	allUpdates, err := api.Updates().List()
 	cobra.CheckErr(err)
 
-	t := subcommands.NewTableWriter([]string{"TAG", "NAME", "UPLOADED AT", "DEVICE COUNT", "UPLOADED BY"})
+	t := subcommands.NewTableWriter([]string{"NAME", "TAG", "UPLOADED AT", "DEVICE COUNT", "UPLOADED BY"})
 
-	for tag, updates := range allUpdates {
-		for _, update := range updates {
-			t.AddRow(tag, update.Name, time.Unix(update.UploadedAt, 0).Format(time.RFC3339), update.DeviceCount, update.UploadedBy)
-		}
+	for _, update := range allUpdates {
+		t.AddRow(update.Name, update.Tag, time.Unix(update.UploadedAt, 0).Format(time.RFC3339), update.DeviceCount, update.UploadedBy)
 	}
 
 	t.Render()

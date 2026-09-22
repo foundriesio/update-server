@@ -35,16 +35,15 @@ func TestSeedUpdates(t *testing.T) {
 	// Verify both updates are listed.
 	updates, err := apiStorage.ListUpdates("main")
 	require.NoError(t, err)
-	require.Contains(t, updates, "main", "expected 'main' tag in updates map")
-	names := make([]string, 0, len(updates["main"]))
-	for _, u := range updates["main"] {
+	names := make([]string, 0, len(updates))
+	for _, u := range updates {
 		names = append(names, u.Name)
 	}
 	require.Contains(t, names, "148", "expected update '148' under 'main'")
 	require.Contains(t, names, "149", "expected update '149' under 'main'")
 
 	// Verify GetUpdateTufMetadata returns parseable data for update "148".
-	meta, err := apiStorage.GetUpdateTufMetadata("main", "148")
+	meta, err := apiStorage.GetUpdateTufMetadata("148")
 	require.NoError(t, err)
 	require.Contains(t, meta, "targets.json", "TUF metadata missing targets.json")
 	require.Contains(t, meta, "snapshot.json", "TUF metadata missing snapshot.json")
@@ -75,11 +74,11 @@ func TestSeedUpdates(t *testing.T) {
 	require.Equal(t, "148", target.Custom.Version, "target version must be the numeric string '148'")
 
 	// Verify rollout was created and committed for update 148.
-	rollouts, err := apiStorage.ListRollouts("main", "148")
+	rollouts, err := apiStorage.ListRollouts("148")
 	require.NoError(t, err)
 	require.Contains(t, rollouts, "seed-rollout", "expected seed-rollout to be created for update 148")
 
-	rollout, err := apiStorage.GetRollout("main", "148", "seed-rollout")
+	rollout, err := apiStorage.GetRollout("148", "seed-rollout")
 	require.NoError(t, err)
 	require.True(t, rollout.Commit, "expected seed-rollout for update 148 to be committed")
 	require.Contains(t, rollout.Effect, "seed-device-00001", "expected alpha-group device to be assigned the update")

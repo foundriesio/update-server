@@ -66,7 +66,7 @@ func (handlers) metaHandler(c echo.Context, role, file string) error {
 	c.SetRequest(req.WithContext(CtxWithLog(ctx, log)))
 
 	d := CtxGetDevice(ctx)
-	if content, err := d.GetTufMeta(tag, file); err != nil {
+	if content, err := d.GetTufMeta(file); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return EchoError(c, err, http.StatusNotFound, "Not found TUF role")
 		} else {

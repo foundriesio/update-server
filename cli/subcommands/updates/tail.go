@@ -14,14 +14,14 @@ import (
 )
 
 var tailCmd = &cobra.Command{
-	Use:   "tail <tag> <update-name>",
+	Use:   "tail <update-name>",
 	Short: "Tail update logs",
 	Long:  `Follow server-side events for an update or specific rollout`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := api.CtxGetApi(cmd.Context())
 		rollout, _ := cmd.Flags().GetString("rollout")
-		cobra.CheckErr(tailUpdate(cmd, api.Updates(), args[0], args[1], rollout))
+		cobra.CheckErr(tailUpdate(cmd, api.Updates(), args[0], rollout))
 		return nil
 	},
 }
@@ -31,16 +31,16 @@ func init() {
 	tailCmd.Flags().String("rollout", "", "Specific rollout to tail (optional)")
 }
 
-func tailUpdate(cmd *cobra.Command, updates api.UpdatesApi, tag, updateName, rollout string) error {
+func tailUpdate(cmd *cobra.Command, updates api.UpdatesApi, updateName, rollout string) error {
 	var fd io.ReadCloser
 	var err error
 
 	if rollout != "" {
-		fd, err = updates.TailRollout(tag, updateName, rollout)
-		fmt.Printf("Tailing rollout '%s' for update %s/%s\n", rollout, tag, updateName)
+		fd, err = updates.TailRollout(updateName, rollout)
+		fmt.Printf("Tailing rollout '%s' for update %s\n", rollout, updateName)
 	} else {
-		fd, err = updates.Tail(tag, updateName)
-		fmt.Printf("Tailing all rollouts for update %s/%s\n", tag, updateName)
+		fd, err = updates.Tail(updateName)
+		fmt.Printf("Tailing all rollouts for update %s\n", updateName)
 	}
 	cobra.CheckErr(err)
 	fmt.Println("Press Ctrl+C to stop...")

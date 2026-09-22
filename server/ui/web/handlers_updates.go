@@ -145,14 +145,14 @@ func findCustomStrings(tuf api.UpdateTufResp, field string) []string {
 }
 
 func (h handlers) updatesList(c echo.Context) error {
-	var updates map[string][]api.Update
+	var updates []api.Update
 	if err := getJson(c.Request().Context(), "/v1/updates", &updates); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
 	ctx := struct {
 		baseCtx
-		Updates map[string][]api.Update
+		Updates []api.Update
 	}{
 		baseCtx: h.baseCtx(c, "Updates", "updates"),
 		Updates: updates,
@@ -161,7 +161,7 @@ func (h handlers) updatesList(c echo.Context) error {
 }
 
 func (h handlers) updatesGet(c echo.Context) error {
-	url := fmt.Sprintf("/v1/updates/%s/%s/rollouts", c.Param("tag"), c.Param("name"))
+	url := fmt.Sprintf("/v1/updates/%s/rollouts", c.Param("name"))
 
 	var rollouts []string
 	if err := getJson(c.Request().Context(), url, &rollouts); err != nil {
@@ -169,7 +169,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 	}
 
 	var summary api.UpdateSummary
-	if err := getJson(c.Request().Context(), fmt.Sprintf("/v1/updates/%s/%s/summary", c.Param("tag"), c.Param("name")), &summary); err != nil {
+	if err := getJson(c.Request().Context(), fmt.Sprintf("/v1/updates/%s/summary", c.Param("name")), &summary); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 
@@ -178,7 +178,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 		return h.handleUnexpected(c, err)
 	}
 
-	url = fmt.Sprintf("/v1/updates/%s/%s/tuf", c.Param("tag"), c.Param("name"))
+	url = fmt.Sprintf("/v1/updates/%s/tuf", c.Param("name"))
 	var tuf api.UpdateTufResp
 	tufErr := ""
 	if err := getJson(c.Request().Context(), url, &tuf); err != nil {
@@ -220,7 +220,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 }
 
 func (h handlers) updatesRollout(c echo.Context) error {
-	url := fmt.Sprintf("/v1/updates/%s/%s/rollouts/%s", c.Param("tag"), c.Param("name"), c.Param("rollout"))
+	url := fmt.Sprintf("/v1/updates/%s/rollouts/%s", c.Param("name"), c.Param("rollout"))
 
 	var details api.Rollout
 	if err := getJson(c.Request().Context(), url, &details); err != nil {
@@ -256,7 +256,7 @@ func (h handlers) updatesTail(c echo.Context) error {
 		TailUrl string
 	}{
 		baseCtx: h.baseCtx(c, "Rollout Progress", "updates"),
-		TailUrl: fmt.Sprintf("/v1/updates/%s/%s/tail", c.Param("tag"), c.Param("name")),
+		TailUrl: fmt.Sprintf("/v1/updates/%s/tail", c.Param("name")),
 	}
 
 	return h.templates.ExecuteTemplate(c.Response(), "update_tail.html", ctx)
@@ -268,7 +268,7 @@ func (h handlers) updatesRolloutTail(c echo.Context) error {
 		TailUrl string
 	}{
 		baseCtx: h.baseCtx(c, "Rollout Progress", "updates"),
-		TailUrl: fmt.Sprintf("/v1/updates/%s/%s/rollouts/%s/tail", c.Param("tag"), c.Param("name"), c.Param("rollout")),
+		TailUrl: fmt.Sprintf("/v1/updates/%s/rollouts/%s/tail", c.Param("name"), c.Param("rollout")),
 	}
 
 	return h.templates.ExecuteTemplate(c.Response(), "update_tail.html", ctx)

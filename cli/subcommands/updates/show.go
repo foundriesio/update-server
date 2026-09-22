@@ -16,13 +16,13 @@ var showTufDetails bool
 var showDevices bool
 
 var showCmd = &cobra.Command{
-	Use:   "show <tag> <update-name>",
+	Use:   "show <update-name>",
 	Short: "Show details for an update",
 	Long:  `Display details about an update from its TUF metadata`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		api := api.CtxGetApi(cmd.Context())
-		showUpdate(api.Updates(), args[0], args[1])
+		showUpdate(api.Updates(), args[0])
 		return nil
 	},
 }
@@ -33,16 +33,12 @@ func init() {
 	UpdatesCmd.AddCommand(showCmd)
 }
 
-func showUpdate(updates api.UpdatesApi, tag, updateName string) {
-	tuf, err := updates.GetTuf(tag, updateName)
+func showUpdate(updates api.UpdatesApi, updateName string) {
+	tuf, err := updates.GetTuf(updateName)
 	cobra.CheckErr(err)
 
-	fmt.Println("# Details")
-	fmt.Printf("Update: %s\n", updateName)
-	fmt.Printf("Tag: %s\n\n", tag)
-
-	showRolloutSummary(updates, tag, updateName)
-	showRollouts(updates, tag, updateName)
+	showRolloutSummary(updates, updateName)
+	showRollouts(updates, updateName)
 
 	fmt.Println("# TUF metadata")
 	if showTufDetails {
@@ -74,9 +70,9 @@ func showUpdate(updates api.UpdatesApi, tag, updateName string) {
 	printApps(custom)
 }
 
-func showRolloutSummary(updates api.UpdatesApi, tag, updateName string) {
+func showRolloutSummary(updates api.UpdatesApi, updateName string) {
 	fmt.Println("# Rollout summary")
-	summary, err := updates.GetSummary(tag, updateName)
+	summary, err := updates.GetSummary(updateName)
 	if err != nil {
 		fmt.Printf("Error fetching rollout summary: %v\n\n", err)
 		return
@@ -86,7 +82,7 @@ func showRolloutSummary(updates api.UpdatesApi, tag, updateName string) {
 		fmt.Printf("  %s: %d\n", status, count)
 		if showDevices {
 			fmt.Printf("    looking up devices ...")
-			devices, err := updates.GetDevicesForStatus(tag, updateName, status)
+			devices, err := updates.GetDevicesForStatus(updateName, status)
 			if err != nil {
 				fmt.Printf("\rError fetching devices for status %s: %v\n", status, err)
 			} else {
@@ -100,8 +96,8 @@ func showRolloutSummary(updates api.UpdatesApi, tag, updateName string) {
 	fmt.Println()
 }
 
-func showRollouts(updates api.UpdatesApi, tag, updateName string) {
-	rollouts, err := updates.Get(tag, updateName)
+func showRollouts(updates api.UpdatesApi, updateName string) {
+	rollouts, err := updates.Get(updateName)
 	cobra.CheckErr(err)
 
 	if len(rollouts) == 0 {

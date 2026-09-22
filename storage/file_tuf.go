@@ -221,13 +221,13 @@ func (h TufFsHandle) ReadRoot(version int) ([]byte, error) {
 }
 
 // ReadTufMeta reads and unmarshals a TUF metadata file from an update.
-func (h TufFsHandle) ReadTufMeta(tag, update, name string, v any) error {
-	content, err := h.updates.Tuf.ReadFile(tag, update, name)
+func (h TufFsHandle) ReadTufMeta(update, name string, v any) error {
+	content, err := h.updates.Tuf.ReadFile(update, name)
 	if err != nil {
 		return err
 	}
 	if err := json.Unmarshal([]byte(content), v); err != nil {
-		return fmt.Errorf("unable to parse %s for tag %s update %s: %w", name, tag, update, err)
+		return fmt.Errorf("unable to parse %s for update %s: %w", name, update, err)
 	}
 	return nil
 }
@@ -282,8 +282,8 @@ func (h TufFsHandle) WriteMeta(tufDir string, targets, snapshot, timestamp []byt
 	return nil
 }
 
-func (h TufFsHandle) WriteTimestamp(tag, update string, ts []byte) error {
-	return h.updates.Tuf.WriteFile(tag, update, "timestamp.json", string(ts))
+func (h TufFsHandle) WriteTimestamp(update string, ts []byte) error {
+	return h.updates.Tuf.WriteFile(update, "timestamp.json", string(ts))
 }
 
 // writeRoot persists a root metadata file as <version>.root.json.

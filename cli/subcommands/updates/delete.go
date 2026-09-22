@@ -9,13 +9,13 @@ import (
 )
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <tag> <update-name>",
+	Use:   "delete <update-name>",
 	Short: "Delete an update",
 	Long:  `Delete an update from the server. Fails if devices are still assigned to it.`,
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		api := api.CtxGetApi(cmd.Context())
-		cobra.CheckErr(api.Updates().Delete(args[0], args[1]))
+		cobra.CheckErr(api.Updates().Delete(args[0]))
 	},
 }
 

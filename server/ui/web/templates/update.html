@@ -31,7 +31,7 @@
         </div> 
       </div>
 
-      <button onclick='location.href="/updates/{{$.Tag}}/{{$.Name}}/tail";'>Follow progress</button>
+      <button onclick='location.href="/updates/{{$.Name}}/tail";'>Follow progress</button>
       <button onclick="rolloutModal.show()">Create rollout</button>
     </section>
 
@@ -39,7 +39,7 @@
       <h2>Rollout history</h3>
       <ul>
       {{ range .Rollouts }}
-        <li><a href="/updates/{{$.Tag}}/{{$.Name}}/rollouts/{{.}}">{{.}}</a></li>
+        <li><a href="/updates/{{$.Name}}/rollouts/{{.}}">{{.}}</a></li>
       {{ end }}
       </ul>
 
@@ -199,7 +199,7 @@
         const list = document.getElementById('devicesList');
         list.innerHTML = '<li>Loading...</li>';
         devicesModal.show();
-        fetch('/v1/updates/{{.Tag}}/{{.Name}}/query?status=' + encodeURIComponent(status))
+        fetch('/v1/updates/{{.Name}}/query?status=' + encodeURIComponent(status))
           .then(response => response.json())
           .then(data => {
             const devicesList = data || [];
@@ -239,7 +239,7 @@
           groups: selectedGroups
         };
 
-        fetch('/v1/updates/{{.Tag}}/{{.Name}}/rollouts/' + document.getElementById('name').value, {
+        fetch('/v1/updates/{{.Name}}/rollouts/' + document.getElementById('name').value, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

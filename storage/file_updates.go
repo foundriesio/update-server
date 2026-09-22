@@ -19,6 +19,7 @@ import (
 var ErrInvalidUpdate = errors.New("invalid update archive")
 
 type Update struct {
+	Tag        string `json:"tag"`
 	Name       string `json:"name"`
 	UploadedAt int64  `json:"uploaded-at"`
 	UploadedBy string `json:"uploaded-by"`
@@ -51,13 +52,13 @@ func (s *updatesFsHandleWrap) init(root string) {
 
 // Delete removes the entire on-disk directory for an update (all categories:
 // tuf, ostree_repo, apps, rollouts, logs). A missing directory is not an error.
-func (s updatesFsHandleWrap) Delete(tag, update string) error {
-	dir := filepath.Join(s.root, tag, update)
+func (s updatesFsHandleWrap) Delete(update string) error {
+	dir := filepath.Join(s.root, update)
 	if err := os.RemoveAll(dir); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
-		return fmt.Errorf("error deleting file storage for update %s/%s: %w", tag, update, err)
+		return fmt.Errorf("error deleting file storage for update %s: %w", update, err)
 	}
 	return nil
 }
@@ -105,10 +106,10 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 	var sawTuf, sawOstree, sawApps bool
 	txDir := ".update-upload-" + rand.Text()[:10]
 	root, destDir := filepath.Split(s.root)
-	destDir = filepath.Join(destDir, tag, update)
+	destDir = filepath.Join(destDir, update)
 	h := tarFsHandle{root: root}
 	return h.unpackTar(payload, destDir,
-		TarUnpackReplaceDest(true), // Replace updates with the same tag and name - uniqueness is checked on the database level.
+		TarUnpackReplaceDest(true), // Replace updates with the same name - uniqueness is checked on the database level.
 		TarUnpackUseTmpFile("update.tar"),
 		TarUnpackUseTmpDir(txDir),
 		TarUnpackOnEvents(tarUnpackEvents{
@@ -153,26 +154,26 @@ type UpdatesFsHandle struct {
 	category string
 }
 
-func (s UpdatesFsHandle) FilePath(tag, update, name string) string {
-	return filepath.Join(s.root, tag, update, s.category, name)
+func (s UpdatesFsHandle) FilePath(update, name string) string {
+	return filepath.Join(s.root, update, s.category, name)
 }
 
-func (s UpdatesFsHandle) ReadFile(tag, update, name string) (string, error) {
-	h, _ := s.updateLocalHandle(tag, update, false)
+func (s UpdatesFsHandle) ReadFile(update, name string) (string, error) {
+	h, _ := s.updateLocalHandle(update, false)
 	content, err := h.readFile(name, false)
 	if err != nil {
-		err = fmt.Errorf("error reading %s file for tag %s update %s: %w", s.category, tag, update, err)
+		err = fmt.Errorf("error reading %s file for update %s: %w", s.category, update, err)
 	}
 	return content, err
 }
 
-func (s UpdatesFsHandle) LatestRootMetaName(tag, update string) (string, error) {
-	h, _ := s.updateLocalHandle(tag, update, false)
+func (s UpdatesFsHandle) LatestRootMetaName(update string) (string, error) {
+	h, _ := s.updateLocalHandle(update, false)
 	files, err := h.matchFiles("", false)
 	if err != nil {
 		return "", fmt.Errorf("error find latest root metadata: %w", err)
 	} else if len(files) == 0 {
-		return "", fmt.Errorf("no metadata files found for tag %s update %s", tag, update)
+		return "", fmt.Errorf("no metadata files found for update %s", update)
 	}
 	slices.SortFunc(files, func(a, b string) int {
 		aIsRoot := strings.HasSuffix(a, ".root.json")
@@ -193,34 +194,34 @@ func (s UpdatesFsHandle) LatestRootMetaName(tag, update string) (string, error) 
 	return files[0], nil
 }
 
-func (s UpdatesFsHandle) TailFileLines(tag, update, name string, stop DoneChan) iter.Seq2[string, error] {
-	h, _ := s.updateLocalHandle(tag, update, false)
+func (s UpdatesFsHandle) TailFileLines(update, name string, stop DoneChan) iter.Seq2[string, error] {
+	h, _ := s.updateLocalHandle(update, false)
 	return h.readFileLines(name, false, stop)
 }
 
-func (s UpdatesFsHandle) WriteFile(tag, update, name, content string) error {
-	if h, err := s.updateLocalHandle(tag, update, true); err != nil {
+func (s UpdatesFsHandle) WriteFile(update, name, content string) error {
+	if h, err := s.updateLocalHandle(update, true); err != nil {
 		return err
 	} else if err = h.writeFile(name, content, defaultFileAccess); err != nil {
-		return fmt.Errorf("error writing %s file for tag %s update %s: %w", s.category, tag, update, err)
+		return fmt.Errorf("error writing %s file for update %s: %w", s.category, update, err)
 	}
 	return nil
 }
 
-func (s UpdatesFsHandle) AppendFile(tag, update, name, content string) error {
-	if h, err := s.updateLocalHandle(tag, update, true); err != nil {
+func (s UpdatesFsHandle) AppendFile(update, name, content string) error {
+	if h, err := s.updateLocalHandle(update, true); err != nil {
 		return err
 	} else if err = h.appendFile(name, content, defaultFileAccess); err != nil {
-		return fmt.Errorf("error appending %s file for tag %s update %s: %w", s.category, tag, update, err)
+		return fmt.Errorf("error appending %s file for update %s: %w", s.category, update, err)
 	}
 	return nil
 }
 
-func (s UpdatesFsHandle) updateLocalHandle(tag, update string, forUpdate bool) (h baseFsHandle, err error) {
-	h.root = filepath.Join(s.root, tag, update, s.category)
+func (s UpdatesFsHandle) updateLocalHandle(update string, forUpdate bool) (h baseFsHandle, err error) {
+	h.root = filepath.Join(s.root, update, s.category)
 	if forUpdate {
 		if err = h.mkdirs(defaultDirAccess, true); err != nil {
-			err = fmt.Errorf("unable to create %s file storage for tag %s update %s: %w", s.category, tag, update, err)
+			err = fmt.Errorf("unable to create %s file storage for update %s: %w", s.category, update, err)
 		}
 	}
 	return
@@ -230,8 +231,8 @@ type RolloutsFsHandle struct {
 	UpdatesFsHandle
 }
 
-func (s RolloutsFsHandle) ListFiles(tag, update string) ([]string, error) {
-	h, _ := s.updateLocalHandle(tag, update, false)
+func (s RolloutsFsHandle) ListFiles(update string) ([]string, error) {
+	h, _ := s.updateLocalHandle(update, false)
 	return h.matchFiles("", true)
 }
 
