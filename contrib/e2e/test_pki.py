@@ -5,10 +5,10 @@
 
 SERVER_URL = "http://localhost:8080"
 
-# update_server's pki-init runs with --factory e2e-factory and
+# update_server's pki-init runs with the default OU (fio-update-server) and
 # --dnsname update-server, so these strings must show up in the root CA,
 # device CA, and gateway TLS certificate subjects respectively.
-EXPECTED_SUBJECTS = ("e2e-factory-root", "e2e-factory-device-ca", "update-server")
+EXPECTED_SUBJECTS = ("fio-update-server-root", "fio-update-server-device-ca", "update-server")
 EXPECTED_SECTIONS = ("Root CA", "Gateway TLS Certificate", "Device CA", "CA Bundles")
 
 
