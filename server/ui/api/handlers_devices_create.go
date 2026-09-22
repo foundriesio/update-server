@@ -90,9 +90,6 @@ func LoadDeviceCa(fs *storage.FsHandle, gatewayAddr string) (*DeviceCa, error) {
 }
 
 func (ca DeviceCa) SignCsr(csr *x509.CertificateRequest) ([]byte, error) {
-	if !slices.Equal(ca.CaCert.Subject.OrganizationalUnit, csr.Subject.OrganizationalUnit) {
-		return nil, fmt.Errorf("CSR OU %v does not match CA OU %v", csr.Subject.OrganizationalUnit, ca.CaCert.Subject.OrganizationalUnit)
-	}
 	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate serial number: %w", err)

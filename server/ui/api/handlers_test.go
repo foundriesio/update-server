@@ -1165,11 +1165,11 @@ func TestApiDeviceCreate(t *testing.T) {
 	assert.Contains(t, devResp.ClientPem, "BEGIN CERTIFICATE")
 	assert.Contains(t, devResp.SotaToml, "compose_apps_proxy = \"")
 
-	// Try a bad OU
+	// Try an alternative OU
 	devCsrTemplate = x509.CertificateRequest{
 		Subject: pkix.Name{
 			CommonName:         "test-uuid-2",
-			OrganizationalUnit: []string{"bad-ou"},
+			OrganizationalUnit: []string{"something-else"},
 		},
 	}
 	devCsrDER, err = x509.CreateCertificateRequest(rand.Reader, &devCsrTemplate, devKey)
@@ -1184,11 +1184,11 @@ func TestApiDeviceCreate(t *testing.T) {
 	}
 	body, err = json.Marshal(req)
 	require.Nil(t, err)
-	tc.POST("/devices", http.StatusBadRequest, bytes.NewReader(body), "content-type", "application/json")
+	tc.POST("/devices", http.StatusCreated, bytes.NewReader(body), "content-type", "application/json")
 
-	// Test rate limiting by sending rapid requests - 1st should succeed, next will be rate limited
+	// Test rate limiting by sending rapid requests: 1st should conflict (duplicate), next should be rate limited
 	time.Sleep(500 * time.Millisecond) // Ensure any previous rate limit buckets are reset
-	tc.POST("/devices", http.StatusBadRequest, bytes.NewReader(body), "content-type", "application/json")
+	tc.POST("/devices", http.StatusConflict, bytes.NewReader(body), "content-type", "application/json")
 	tc.POST("/devices", http.StatusTooManyRequests, bytes.NewReader(body), "content-type", "application/json")
 }
 
