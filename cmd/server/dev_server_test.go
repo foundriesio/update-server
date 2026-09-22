@@ -18,7 +18,6 @@ func TestDevServerInit(t *testing.T) {
 
 	cmd := DevServerInitCmd{
 		DnsName:       "example.com",
-		Factory:       "example",
 		AdminPassword: "supersecret",
 	}
 	common := CommonArgs{DataDir: tmpDir}
@@ -30,7 +29,7 @@ func TestDevServerInit(t *testing.T) {
 	// PKI was created.
 	rootCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsRootPemFile), x509.ParseCertificate)
 	require.Nil(t, err)
-	require.Equal(t, []string{"example"}, rootCrt.Subject.OrganizationalUnit)
+	require.Equal(t, []string{"fio-update-server"}, rootCrt.Subject.OrganizationalUnit)
 
 	// Local auth was configured.
 	cfg, err := fs.Auth.GetAuthConfig()

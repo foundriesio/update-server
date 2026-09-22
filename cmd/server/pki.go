@@ -82,7 +82,7 @@ func tlsCertTemplate(csr *x509.CertificateRequest, caCrt *x509.Certificate, seri
 
 // buildCsr generates a new EC key and a TLS certificate signing request for the
 // given DNS name and factory. It returns the key and the DER-encoded CSR bytes.
-func buildCsr(dnsName, factory string) (*ecdsa.PrivateKey, []byte, error) {
+func buildCsr(dnsName, ou string) (*ecdsa.PrivateKey, []byte, error) {
 	priv, err := generateEcKey()
 	if err != nil {
 		return nil, nil, err
@@ -91,7 +91,7 @@ func buildCsr(dnsName, factory string) (*ecdsa.PrivateKey, []byte, error) {
 	template := x509.CertificateRequest{
 		Subject: pkix.Name{
 			CommonName:         dnsName,
-			OrganizationalUnit: []string{factory},
+			OrganizationalUnit: []string{ou},
 		},
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		DNSNames:           []string{dnsName},

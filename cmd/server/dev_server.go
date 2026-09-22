@@ -19,7 +19,6 @@ import (
 // metadata (tuf-init).
 type DevServerInitCmd struct {
 	DnsName       string `help:"DNS host name devices address this gateway with (default: system host name)"`
-	Factory       string `default:"acme" help:"Factory name"`
 	AdminPassword string `arg:"--admin-password" default:"admin" help:"Password for the local admin user"`
 }
 
@@ -40,7 +39,7 @@ func (c DevServerInitCmd) Run(args CommonArgs) error {
 		}
 	}
 
-	pkiInit := PkiInitCmd{DnsName: dnsName, Factory: c.Factory, TlsExpiryDays: 365, CaExpiryDays: 7300}
+	pkiInit := PkiInitCmd{DnsName: dnsName, OU: "fio-update-server", TlsExpiryDays: 365, CaExpiryDays: 7300}
 	if err := pkiInit.Run(args); err != nil {
 		return fmt.Errorf("pki-init: %w", err)
 	}
@@ -60,7 +59,7 @@ func (c DevServerInitCmd) Run(args CommonArgs) error {
 		fmt.Println("If DNS resolution fails, edit /etc/hosts on your devices.")
 	}
 	fmt.Println("Device registration command will be:")
-	fmt.Printf(" fio-device-register --device-api=http://%s:8080/v1/devices --oauth-api=http://%s:8080/oauth2 --factory=%s\n", dnsName, dnsName, c.Factory)
+	fmt.Printf(" fio-device-register --device-api=http://%s:8080/v1/devices --oauth-api=http://%s:8080/oauth2\n", dnsName, dnsName)
 	fmt.Println()
 
 	if err := (AuthInitCmd{Local: true}).Run(args); err != nil {

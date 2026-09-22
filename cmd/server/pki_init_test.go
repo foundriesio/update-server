@@ -19,7 +19,7 @@ func TestPkiInit(t *testing.T) {
 
 	cmd := PkiInitCmd{
 		DnsName:       "example.com",
-		Factory:       "example",
+		OU:            "example",
 		TlsExpiryDays: 365,
 		CaExpiryDays:  3650,
 	}
