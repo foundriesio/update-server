@@ -98,7 +98,12 @@ html, body {
     --pico-primary-hover-background: var(--brand-accent);
     --pico-primary-hover-border:     var(--brand-accent);
     --pico-primary-hover-underline:  var(--brand-accent);
-    --pico-primary-focus:            var(--brand-accent);
+    /* Darkened: plain --brand-accent measures ~2:1 against --surface-1
+       here, below the 3:1 WCAG 1.4.11 floor for a non-text focus
+       indicator (Pico's own default focus box-shadow uses this token
+       directly, unlayered, so it wins over our layered rules for any
+       control without an explicit :focus-visible override). */
+    --pico-primary-focus:            color-mix(in srgb, var(--brand-accent) 65%, black);
     --pico-primary-inverse:          #fff;
     --pico-background-color:         var(--surface-1);
     --pico-card-background-color:    var(--surface-2);
@@ -1403,6 +1408,13 @@ summary.user-badge::after {
     gap: 12px;
     margin-bottom: 6px;
 }
+/* .status-badge/.status-indicator sit next to a taller h1 — baseline
+   alignment sits them low against it. Override just these children
+   instead of the shared row default. */
+.device-identity__name-row .status-badge,
+.device-identity__name-row .status-indicator {
+    align-self: center;
+}
 .device-identity__name {
     margin: 0;
 }
@@ -1726,6 +1738,7 @@ pre.code-block {
     white-space: pre-wrap;
     word-break: break-all;
     margin: 0;
+    padding: 2px;
 }
 
 .collapsible-section {
@@ -2787,6 +2800,10 @@ pre.code-block {
 .tests-table thead th.col-duration { text-align: right; }
 
 .test-id-value { font-family: var(--mono); font-size: 0.75rem; }
+.test-id-value:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
 .test-name { color: var(--text-1); word-break: break-word; }
 
 .status-badge {
@@ -2812,6 +2829,8 @@ pre.code-block {
 .status-badge--fail::before { background: var(--danger); }
 .status-badge--running { background: var(--border-1); color: var(--text-2); }
 .status-badge--running::before { background: var(--text-2); }
+.status-badge--skip { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+.status-badge--skip::before { background: var(--warning); }
 
 .timestamp-value { color: var(--text-2); white-space: nowrap; }
 .duration-value { font-family: var(--mono); font-size: 0.75rem; color: var(--text-3); white-space: nowrap; }
@@ -2828,3 +2847,41 @@ pre.code-block {
 }
 
 } /* end @layer device-detail (tests page) */
+
+/* Device test detail page — reuses .device-overview/.device-page-inner/
+   .breadcrumb/.device-identity/.meta-section/.meta-grid/.status-badge/
+   .tests-table/.empty-state/.btn-ghost/.sr-only/.cell-empty/pre.code-block
+   and existing tokens (--border-1, --text-1, --mono). New rules below: a
+   left-aligned, whitespace-preserving override for the Results table's
+   last column (Details can hold multi-line text, unlike Duration on the
+   tests list page), and the Artifacts file-row layout. */
+@layer device-detail {
+
+.results-table tbody td:last-child {
+    text-align: left;
+    white-space: pre-wrap;
+}
+
+.artifact-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.artifact-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.artifact-row:last-child { border-bottom: none; }
+
+.artifact-name {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-1);
+    word-break: break-all;
+}
+
+} /* end @layer device-detail (test detail page) */
