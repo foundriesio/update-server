@@ -86,7 +86,7 @@
 
           {{ if .User }}
           <details class="dropdown">
-            <summary class="user-badge">{{ initials .User.Username }}</summary>
+            <summary class="user-badge" aria-label="User menu">{{ initials .User.Username }}</summary>
             <ul>
               <li><a href="/settings">Settings</a></li>
               <li><a href="/auth/logout">Logout</a></li>

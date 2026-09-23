@@ -1,18 +1,18 @@
 {{ define "configs-item-files" }}
-      <h4>Files:</h4>
+      <h3 class="meta-section__title meta-section__title--sub">Files</h3>
       {{ with .Configs.Files }}
-      <table class="striped">
+      <table class="files-table">
          <tbody>
            {{ range $name, $_ := . }}
            <tr>
-             <td style="min-width: 20em;" name="FileName">{{ $name }}</td>
+             <td class="file-name" style="min-width: 20em;" name="FileName">{{ $name }}</td>
              <td style="min-width: 5em; text-align: right;">
                {{ if gt (len .OnChanged) 0 }}
                <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range .OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
                {{ if .Unencrypted }}
-               <i class="icontip gear" aria-label="View{{ if $.CanEdit }} or edit{{ end }} file content"
-                  onclick="event.preventDefault();this.nextElementSibling.showModal()"></i>
+               <button type="button" class="icontip icon-view" aria-label="View{{ if $.CanEdit }} or edit{{ end }} file content"
+                  onclick="this.nextElementSibling.showModal()"><i class="gear"></i></button>
                <dialog class="file-content">
                  <article>
                    <header>
@@ -43,7 +43,7 @@
                <i class="icontip lock-closed" aria-label="File content is encrypted"></i>
                {{ end }}
                {{ if $.CanEdit }}
-               <i class="icontip" aria-label="Delete file"><i class="trash" style="transform: translateY(0.1em)"></i></i>
+               <button type="button" class="icontip icon-delete" aria-label="Delete file"><i class="trash"></i></button>
                {{ end }}
              </td>
            </tr>
@@ -54,7 +54,7 @@
       {{ if .CanEdit }}
         {{ template "configs-item-edit-dialog" $ }}
         <script type="module">
-            document.querySelectorAll('td i.trash').forEach( el => {
+            document.querySelectorAll('td button.icon-delete').forEach( el => {
             el.addEventListener('click', ev => {
               const fileName = el.closest('tr').querySelector('td[name="FileName"]').textContent.trim();
               const reason = window.prompt(`Are you sure to delete config file "${fileName}"?\nThis action cannot be reverted.\n\nReason:`, '');
@@ -93,20 +93,35 @@
 
 {{ define "configs-item" }}
       {{ with .Configs }}
-      <p><b>Reason:</b> {{.Reason}}</p>
-      <p><b>Created At:</b> {{tsToString .CreatedAt}}</p>
-      <p><b>Created By:</b> {{.CreatedBy}}</p>
+      <div class="meta-section">
+        <div class="meta-grid">
+          <div class="meta-row">
+            <span class="meta-label">Reason</span>
+            <span class="meta-value">{{.Reason}}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Created on</span>
+            <span class="meta-value is-mono">{{tsToDate .CreatedAt}}</span>
+          </div>
+          <div class="meta-row meta-row--full">
+            <span class="meta-label">Created by</span>
+            <span class="meta-value">{{.CreatedBy}}</span>
+          </div>
+        </div>
+      </div>
       {{ template "configs-item-files" $ }}
       {{ end }}
 {{ end}}
+
+{{ define "configs-add-button" }}<button type="button" name="AddFile" class="btn-ghost btn-sm">Add</button>{{ end }}
 
 {{ template "header" .}}
     <section class="content-section">
       <h2>{{.Title}}</h2>
       {{ template "configs-item" . }}
       {{ if .CanEdit }}
-      <button name="AddFile">Add</button>
+      {{ template "configs-add-button" }}
       {{ end }}
-      <button onclick="location.href=location.pathname+'/history'">History</button>
+      <button type="button" class="btn-ghost btn-sm" onclick="location.href=location.pathname+'/history'">History</button>
     </section>
 {{ template "footer" .}}
