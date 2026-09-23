@@ -451,11 +451,11 @@ func (h handlers) devicesTestGet(c echo.Context) error {
 	ctx := struct {
 		baseCtx
 		DeviceUuid string
-		Test       storage.TargetTest
+		Test       testRow
 	}{
 		baseCtx:    h.baseCtx(c, "Device - "+c.Param("uuid")+" Test - "+test.Name, "devices"),
 		DeviceUuid: c.Param("uuid"),
-		Test:       test,
+		Test:       buildTestRows([]storage.TargetTest{test})[0],
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "device_test.html", ctx)
 }

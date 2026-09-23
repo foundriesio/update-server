@@ -1,85 +1,99 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
-      <p><a href="/devices/{{.DeviceUuid}}/tests">&larr; Back to tests</a></p>
+    <section class="device-overview">
 
-      <div class="grid device-details">
-        <div>
-          <dl>
-            <dt>Test ID</dt>
-            <dd>{{.Test.Uuid}}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
-            <dt>Name</dt>
-            <dd>{{.Test.Name}}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl>
-            <dt>Status</dt>
-            <dd>{{.Test.Status}}</dd>
-          </dl>
-        </div>
-      </div>
+      <div class="device-page-inner">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/devices">Devices</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/devices/{{.DeviceUuid}}">{{.DeviceUuid}}</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/devices/{{.DeviceUuid}}/tests">Tests</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current">{{.Test.Name}}</span>
+        </nav>
 
-      <div class="grid device-details">
-        <div>
-          <dl>
-            <dt>Created</dt>
-            <dd>{{tsToString .Test.CreatedOn}}</dd>
-          </dl>
+        <div class="device-identity">
+          <div class="device-identity__name-row">
+            <h1 class="device-identity__name">{{.Test.Name}}</h1>
+            {{ if eq .Test.Status "PASSED" }}<span class="status-badge status-badge--pass">PASSED</span>
+            {{ else if eq .Test.Status "FAILED" }}<span class="status-badge status-badge--fail">FAILED</span>
+            {{ else }}<span class="status-badge status-badge--running">{{.Test.Status}}</span>{{ end }}
+          </div>
+          <div class="device-identity__uuid">{{.Test.Uuid}}</div>
         </div>
-        <div>
-          <dl>
-            <dt>Completed</dt>
-            <dd>{{ if .Test.CompletedOn }}{{tsToString .Test.CompletedOn}}{{ else }}-{{ end }}</dd>
-          </dl>
+
+        <div class="meta-section">
+          <div class="meta-grid">
+            <div class="meta-row">
+              <span class="meta-label">Created</span>
+              <span class="meta-value is-mono" title="{{.Test.CreatedFull}}">{{.Test.CreatedShort}}</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Completed</span>
+              <span class="meta-value is-mono">{{ if .Test.CompletedShort }}<span title="{{.Test.CompletedFull}}">{{.Test.CompletedShort}}</span>{{ else }}<span class="cell-empty">&mdash;</span>{{ end }}</span>
+            </div>
+            <div class="meta-row meta-row--full">
+              <span class="meta-label">Duration</span>
+              <span class="meta-value is-mono">{{ if .Test.Duration }}{{.Test.Duration}}{{ else }}<span class="cell-empty">&mdash;</span>{{ end }}</span>
+            </div>
+          </div>
         </div>
-        <div>
+
+        {{ if .Test.Details }}
+        <div class="meta-section">
+          <h2 class="meta-section__title">Details</h2>
+          <pre class="code-block">{{.Test.Details}}</pre>
         </div>
-      </div>
-
-      {{ if .Test.Details }}
-      <div>
-        <h3>Details</h3>
-        <pre>{{.Test.Details}}</pre>
-      </div>
-      {{ end }}
-    </section>
-
-    {{ if .Test.Results }}
-    <section class="content-section">
-      <h3>Results</h3>
-      <table class="striped">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{ range .Test.Results }}
-          <tr>
-            <td>{{.Name}}</td>
-            <td>{{.Status}}</td>
-            <td>{{ if .Details }}<pre>{{.Details}}</pre>{{ else }}-{{ end }}</td>
-          </tr>
-          {{ end }}
-        </tbody>
-      </table>
-    </section>
-    {{ end }}
-
-    <section class="content-section">
-      <h3>Artifacts</h3>
-      <ul>
-        {{ range .Test.Artifacts }}
-        <li><a href="/v1/devices/{{$.DeviceUuid}}/tests/{{$.Test.Uuid}}/{{.}}">{{.}}</a></li>
         {{ end }}
-      </ul>
-    </section>
 
+        <div class="meta-section">
+          <h2 class="meta-section__title">Results</h2>
+          {{ if .Test.Results }}
+          <table class="tests-table results-table">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col" class="col-status">Status</th>
+                <th scope="col">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ range .Test.Results }}
+              <tr>
+                <td class="test-name"><span class="sr-only">Name: </span>{{.Name}}</td>
+                <td>
+                  <span class="sr-only">Status: </span>
+                  {{ if eq .Status "PASSED" }}<span class="status-badge status-badge--pass">PASSED</span>
+                  {{ else if eq .Status "FAILED" }}<span class="status-badge status-badge--fail">FAILED</span>
+                  {{ else if eq .Status "SKIPPED" }}<span class="status-badge status-badge--skip">SKIPPED</span>
+                  {{ else }}<span class="status-badge status-badge--running">{{.Status}}</span>{{ end }}
+                </td>
+                <td><span class="sr-only">Details: </span>{{ if .Details }}{{.Details}}{{ else }}<span class="cell-empty">&mdash;</span>{{ end }}</td>
+              </tr>
+              {{ end }}
+            </tbody>
+          </table>
+          {{ else }}
+          <p class="empty-state">No results have been recorded for this test yet.</p>
+          {{ end }}
+        </div>
+
+        {{ if .Test.Artifacts }}
+        <div class="meta-section">
+          <h2 class="meta-section__title">Artifacts</h2>
+          <div class="artifact-list">
+            {{ range .Test.Artifacts }}
+            <div class="artifact-row">
+              <span class="artifact-name">{{.}}</span>
+              <a class="btn-ghost btn-sm" href="/v1/devices/{{$.DeviceUuid}}/tests/{{$.Test.Uuid}}/{{.}}" download aria-label="Download {{.}}">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M5.5 1v6.5M2.5 5.5 5.5 8.5 8.5 5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 9.5h9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+              </a>
+            </div>
+            {{ end }}
+          </div>
+        </div>
+        {{ end }}
+      </div>
+
+    </section>
 {{ template "footer" .}}
