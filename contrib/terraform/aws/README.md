@@ -99,11 +99,15 @@ lookup, rather than succeeding and letting the instance fail loudly at boot.
 ```bash
 cd scripts
 ./init-secrets.sh --hostname dg.example.com --gateway-hostname devices.example.com \
-    --factory my-factory --auth-config-json /path/to/auth-config.json
+    --auth-config-json /path/to/auth-config.json
 ```
 
 > [!NOTE]
 > This script requires the `secretsmanager:CreateSecret` IAM role.
+
+`pki-init` uses `fio-update-server` as the certificate Organizational Unit by
+default. If an integration requires a different OU, pass `--ou <name>` to
+`init-secrets.sh`.
 
 The values passed here for `region` and `name-prefix` must match the corresponding Terraform variables
 exactly — they compute the same Secrets Manager names and PKI/TUF identity

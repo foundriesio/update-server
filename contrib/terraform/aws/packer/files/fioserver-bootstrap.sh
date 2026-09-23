@@ -57,7 +57,7 @@ fi
 # Empty volume, but an escrow exists: this is a replacement instance, a
 # rebuild onto a fresh volume, or the very first boot after
 # scripts/init-secrets.sh has run. Restore rather than generate, so the
-# factory identity and every enrolled device survive.
+# PKI identity and every enrolled device survive.
 HMAC_B64="$(secret_get hmac-secret)"
 if [ -z "$HMAC_B64" ]; then
     die "no provisioned datadir and no escrow in Secrets Manager;" \

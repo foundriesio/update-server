@@ -14,7 +14,7 @@ import (
 
 type PkiInitCmd struct {
 	DnsName       string `arg:"required" help:"DNS host name devices address this gateway with"`
-	Factory       string `arg:"required"`
+	OU            string `default:"fio-update-server" help:"Organizational Unit for the CA"`
 	TlsExpiryDays int    `default:"365" help:"TLS certificate validity in days"`
 	CaExpiryDays  int    `default:"7300" help:"Root and device CA certificate validity in days"`
 }
@@ -39,8 +39,8 @@ func (c PkiInitCmd) Run(args CommonArgs) error {
 	}
 	rootTemplate := &x509.Certificate{
 		Subject: pkix.Name{
-			CommonName:         c.Factory + "-root",
-			OrganizationalUnit: []string{c.Factory},
+			CommonName:         c.OU + "-root",
+			OrganizationalUnit: []string{c.OU},
 		},
 		SerialNumber:          serial,
 		NotBefore:             time.Now(),
@@ -71,7 +71,7 @@ func (c PkiInitCmd) Run(args CommonArgs) error {
 	}
 
 	// 2. TLS keypair signed by the root CA (reusing the create-csr/sign-csr path)
-	tlsKey, csrBytes, err := buildCsr(c.DnsName, c.Factory)
+	tlsKey, csrBytes, err := buildCsr(c.DnsName, c.OU)
 	if err != nil {
 		return err
 	}
@@ -110,8 +110,8 @@ func (c PkiInitCmd) Run(args CommonArgs) error {
 	}
 	deviceTemplate := &x509.Certificate{
 		Subject: pkix.Name{
-			CommonName:         c.Factory + "-device-ca",
-			OrganizationalUnit: []string{c.Factory},
+			CommonName:         c.OU + "-device-ca",
+			OrganizationalUnit: []string{c.OU},
 		},
 		Issuer:                rootCrt.Subject,
 		SerialNumber:          deviceSerial,

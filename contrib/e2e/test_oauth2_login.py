@@ -53,7 +53,7 @@ def local_auth_server(fioserver_bin):
 
     print("\n[setup] Initialising auth (local mode), PKI and TUF ...", flush=True)
     run("auth-init", "--local")
-    run("pki-init", "--dnsname", "localhost", "--factory", FACTORY)
+    run("pki-init", "--dnsname", "localhost")
     run("tuf-init")
     run("user-add", "--username", ADMIN[0], "--password", ADMIN[1])
     run(

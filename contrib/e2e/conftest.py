@@ -312,7 +312,7 @@ def update_server(request, fioserver_bin):
     
     print("\n[setup] Generating PKI ...", flush=True)
     subprocess.run(
-        [str(fioserver_bin), "--datadir", str(datadir), "pki-init", "--dnsname", "update-server", "--factory", "e2e-factory"],
+        [str(fioserver_bin), "--datadir", str(datadir), "pki-init", "--dnsname", "update-server"],
         check=True,
         capture_output=True,
     )
