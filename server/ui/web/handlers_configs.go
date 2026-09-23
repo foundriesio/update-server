@@ -4,6 +4,10 @@
 package web
 
 import (
+	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -11,6 +15,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/foundriesio/update-server/server/ui/api"
+	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/users"
 )
 
@@ -31,11 +36,13 @@ func (h handlers) configsList(c echo.Context) error {
 		Configs api.ConfigFileSet
 		Groups  []string
 		CanEdit bool
+		PubKey  string
 	}{
 		baseCtx: h.baseCtx(c, "Global Configs", "configs"),
 		Configs: configs,
 		Groups:  groups,
 		CanEdit: h.configsEditable(c),
+		PubKey:  "",
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "configs_list.html", ctx)
 }
@@ -80,10 +87,12 @@ func (h handlers) configsGroupItem(c echo.Context) error {
 		baseCtx
 		Configs api.ConfigFileSet
 		CanEdit bool
+		PubKey  string
 	}{
 		baseCtx: h.baseCtx(c, fmt.Sprintf("Group \"%s\" Configs", group), "configs"),
 		Configs: configs,
 		CanEdit: h.configsEditable(c),
+		PubKey:  "",
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
 }
@@ -129,14 +138,20 @@ func (h handlers) configsDeviceItem(c echo.Context) error {
 	if err := getJson(c.Request().Context(), "/v1/configs/device/"+uuid, &configs); err != nil {
 		return h.handleUnexpected(c, err)
 	}
+	pubkey, err := parseDevicePublicKey(device.Cert)
+	if err != nil {
+		return h.handleUnexpected(c, err)
+	}
 	ctx := struct {
 		baseCtx
 		Configs api.ConfigFileSet
 		CanEdit bool
+		PubKey  string
 	}{
 		baseCtx: h.baseCtx(c, fmt.Sprintf("Device \"%s\" Configs", uuid), "devices"),
 		Configs: configs,
 		CanEdit: h.configsEditable(c),
+		PubKey:  pubkey,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
 }
@@ -147,7 +162,6 @@ func (h handlers) configsDeviceItemApplied(c echo.Context) error {
 	if err := getJson(c.Request().Context(), "/v1/configs/device/"+uuid+"/applied", &applied); err != nil {
 		return h.handleUnexpected(c, err)
 	}
-
 	ctx := struct {
 		baseCtx
 		Configs api.AppliedConfigs
@@ -199,6 +213,7 @@ func (h handlers) configsPatchConfigFile(c echo.Context, apiUrl string) error {
 		Reason    string
 		FileName  string
 		OnChanged string
+		Encrypted bool
 		Value     string
 	}
 	if err := c.Bind(&patch); err != nil {
@@ -217,7 +232,7 @@ func (h handlers) configsPatchConfigFile(c echo.Context, apiUrl string) error {
 	configs.Files[patch.FileName] = api.ConfigFile{
 		// Split by newline and skip white-space only lines.
 		OnChanged:   strings.FieldsFunc(patch.OnChanged, func(r rune) bool { return r == '\n' }),
-		Unencrypted: true,
+		Unencrypted: !patch.Encrypted,
 		Value:       patch.Value,
 	}
 	if err := putJson(ctx, apiUrl, configs, nil); err != nil {
@@ -247,4 +262,23 @@ func (h handlers) configsDeleteConfigFile(c echo.Context, apiUrl string) error {
 		}
 	}
 	return c.NoContent(http.StatusOK)
+}
+
+func parseDevicePublicKey(certPem string) (string, error) {
+	certPem = strings.TrimSpace(certPem)
+	if len(certPem) == 0 {
+		return "", nil
+	}
+	if cert, err := storage.PemBytesToObject([]byte(certPem), x509.ParseCertificate); err != nil {
+		return "", err
+	} else if pubkey, ok := cert.PublicKey.(*ecdsa.PublicKey); !ok {
+		return "", fmt.Errorf("unsupported device certificate key type %T, must be ecdsa", cert.PublicKey)
+	} else if dh, err := pubkey.ECDH(); err != nil {
+		return "", fmt.Errorf("failed to initialize ECDH key exchange: %w", err)
+	} else if dh.Curve() != ecdh.P256() {
+		return "", fmt.Errorf("unsupported device certificate key curve %s, must be P256", pubkey.Params().Name)
+	} else {
+		// Pass only alphanumeric characters and dash for safe JavaScript injection in a template.
+		return base64.RawURLEncoding.EncodeToString(dh.Bytes()), nil
+	}
 }
