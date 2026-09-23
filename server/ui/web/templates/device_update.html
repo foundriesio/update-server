@@ -1,96 +1,98 @@
 {{ template "header" .}}
     <section class="device-overview">
 
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a href="/devices">Devices</a>
-        <span class="breadcrumb__sep">/</span>
-        <a href="/devices/{{.DeviceUuid}}" class="breadcrumb-uuid">{{.DeviceUuid}}</a>
-        <span class="breadcrumb__sep">/</span>
-        <a href="/devices/{{.DeviceUuid}}/updates">Updates</a>
-        <span class="breadcrumb__sep">/</span>
-        <span class="breadcrumb__current">Update {{.CorrelationId}}</span>
-      </nav>
+      <div class="device-page-inner">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/devices">Devices</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/devices/{{.DeviceUuid}}" class="breadcrumb-uuid">{{.DeviceUuid}}</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/devices/{{.DeviceUuid}}/updates">Updates</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current">Update {{.CorrelationId}}</span>
+        </nav>
 
-      <div class="update-identity">
-        <div class="update-identity__name-row">
-          <h1 class="update-identity__name">{{.Target}}</h1>
-          <span class="status-indicator is-static">
-            <span class="status-indicator__dot{{if .Failed}} is-danger{{end}}"></span>
-            {{if .Failed}}Failed{{else}}Succeeded{{end}}
-          </span>
-        </div>
-        <div class="update-identity__device">Applied to <a href="/devices/{{.DeviceUuid}}">{{.DeviceUuid}}</a></div>
-      </div>
-
-      <div class="meta-section">
-        <div class="meta-grid">
-
-          <div class="meta-row">
-            <span class="meta-label">Start time</span>
-            <span class="meta-value is-mono">{{.StartTime}}</span>
-          </div>
-
-          <div class="meta-row">
-            <span class="meta-label">End time</span>
-            <span class="meta-value is-mono">{{.EndTime}}</span>
-          </div>
-
-          <div class="meta-row">
-            <span class="meta-label">Duration</span>
-            <span class="meta-value is-mono">{{.Duration}}</span>
-          </div>
-
-          <div class="meta-row">
-            <span class="meta-label">Target</span>
-            <span class="meta-value is-mono">{{.Target}}</span>
-          </div>
-
-        </div>
-      </div>
-
-      <div class="stepper-section">
-        <h2 class="meta-section__title">Lifecycle</h2>
-        <div class="stepper">
-          {{ range $i, $step := .Steps }}
-          <div class="step">
-            <div class="step__rail">
-              <span class="step__dot{{if $step.Failed}} is-fail{{end}}"></span>
-              {{ if not (eq (add $i 1) (len $.Steps)) }}<span class="step__line"></span>{{ end }}
-            </div>
-            <div class="step__body">
-              <div class="step__head">
-                <span class="step__name">{{$step.EventType.Id}}</span>
-                {{ if $step.Failed }}<span class="step__fail-label">Failed</span>{{ end }}
-              </div>
-              <div class="step__time-row">
-                <span class="step__time">{{$step.Time}}</span>
-                <span class="step__elapsed">{{$step.Elapsed}}</span>
-              </div>
-              {{ if $step.Event.Details }}
-              <div class="step__details">{{$step.Event.Details}}</div>
-              {{ else }}
-              <div class="step__details is-empty">No details reported</div>
-              {{ end }}
-            </div>
-          </div>
-          {{ end }}
-        </div>
-      </div>
-
-      <details class="collapsible-section">
-        <summary>
-          <div class="summary-row">
-            <span class="collapsible-title">Raw Events</span>
-            <span class="collapsible-toggle">
-              <span class="toggle-show">Show</span>
-              <span class="toggle-hide">Hide</span>
+        <div class="update-identity">
+          <div class="update-identity__name-row">
+            <h1 class="update-identity__name">{{.Target}}</h1>
+            <span class="status-indicator is-static">
+              <span class="status-indicator__dot{{if .Failed}} is-danger{{end}}"></span>
+              {{if .Failed}}Failed{{else}}Succeeded{{end}}
             </span>
           </div>
-        </summary>
-        <div class="collapsible-body">
-          <pre class="code-block">{{.Raw}}</pre>
+          <div class="update-identity__device">Applied to <a href="/devices/{{.DeviceUuid}}">{{.DeviceUuid}}</a></div>
         </div>
-      </details>
+
+        <div class="meta-section">
+          <div class="meta-grid">
+
+            <div class="meta-row">
+              <span class="meta-label">Start time</span>
+              <span class="meta-value is-mono">{{.StartTime}}</span>
+            </div>
+
+            <div class="meta-row">
+              <span class="meta-label">End time</span>
+              <span class="meta-value is-mono">{{.EndTime}}</span>
+            </div>
+
+            <div class="meta-row">
+              <span class="meta-label">Duration</span>
+              <span class="meta-value is-mono">{{.Duration}}</span>
+            </div>
+
+            <div class="meta-row">
+              <span class="meta-label">Target</span>
+              <span class="meta-value is-mono">{{.Target}}</span>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="stepper-section">
+          <h2 class="meta-section__title">Lifecycle</h2>
+          <div class="stepper">
+            {{ range $i, $step := .Steps }}
+            <div class="step">
+              <div class="step__rail">
+                <span class="step__dot{{if $step.Failed}} is-fail{{end}}"></span>
+                {{ if not (eq (add $i 1) (len $.Steps)) }}<span class="step__line"></span>{{ end }}
+              </div>
+              <div class="step__body">
+                <div class="step__head">
+                  <span class="step__name">{{$step.EventType.Id}}</span>
+                  {{ if $step.Failed }}<span class="step__fail-label">Failed</span>{{ end }}
+                </div>
+                <div class="step__time-row">
+                  <span class="step__time">{{$step.Time}}</span>
+                  <span class="step__elapsed">{{$step.Elapsed}}</span>
+                </div>
+                {{ if $step.Event.Details }}
+                <div class="step__details">{{$step.Event.Details}}</div>
+                {{ else }}
+                <div class="step__details is-empty">No details reported</div>
+                {{ end }}
+              </div>
+            </div>
+            {{ end }}
+          </div>
+        </div>
+
+        <details class="collapsible-section">
+          <summary>
+            <div class="summary-row">
+              <span class="collapsible-title">Raw Events</span>
+              <span class="collapsible-toggle">
+                <span class="toggle-show">Show</span>
+                <span class="toggle-hide">Hide</span>
+              </span>
+            </div>
+          </summary>
+          <div class="collapsible-body">
+            <pre class="code-block">{{.Raw}}</pre>
+          </div>
+        </details>
+      </div>
 
     </section>
 {{ template "footer" .}}
