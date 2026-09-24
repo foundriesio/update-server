@@ -42,7 +42,7 @@ func (h handlers) configsList(c echo.Context) error {
 
 func (h handlers) configsGlobalHistory(c echo.Context) error {
 	var history []api.ConfigFileSet
-	if err := getJson(c.Request().Context(), "/v1/configs/factory/history?show-files=false", &history); err != nil {
+	if err := getJson(c.Request().Context(), "/v1/configs/factory/history?show-files=true", &history); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 	ctx := struct {
