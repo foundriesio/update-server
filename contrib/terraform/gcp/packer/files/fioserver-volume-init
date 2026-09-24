@@ -1,0 +1,42 @@
+#!/bin/bash
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Label the fioserver data disk, formatting it only if it is genuinely blank.
+#
+# Safety is the whole point of this script: it must never reformat a disk that
+# holds a provisioned datadir, because that would destroy the TUF root key and
+# the device PKI. modules/server attaches the disk with an explicit
+# device_name ("fiodata"), so unlike AWS -- where Nitro instances can renumber
+# /dev/sdf to /dev/nvme1n1 and the AMI has to scan every disk for "the one
+# blank one" -- the path here is always /dev/disk/by-id/google-fiodata. That
+# still leaves one thing to check: it must have no filesystem signature before
+# this script touches it.
+
+set -euo pipefail
+
+LABEL=fiodata
+DEV=/dev/disk/by-id/google-fiodata
+
+log() { echo "volume-init: $*"; }
+
+if [ -e "/dev/disk/by-label/${LABEL}" ]; then
+    log "/dev/disk/by-label/${LABEL} already exists; nothing to do"
+    exit 0
+fi
+
+[ -e "$DEV" ] || {
+    echo "volume-init: ERROR: $DEV not found; is the data disk attached with device_name=fiodata?" >&2
+    exit 1
+}
+
+if blkid -p "$DEV" >/dev/null 2>&1; then
+    echo "volume-init: ERROR: $DEV already has a signature but no ${LABEL} label; refusing to reformat" >&2
+    echo "volume-init: inspect blkid/lsblk output on the instance" >&2
+    exit 1
+fi
+
+log "formatting ${DEV} as ext4 with label ${LABEL}"
+mkfs.ext4 -q -L "$LABEL" "$DEV"
+udevadm settle
+log "done"

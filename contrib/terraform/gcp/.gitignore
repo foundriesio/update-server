@@ -1,0 +1,16 @@
+packer_build/
+*.pkr.hcl.json
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Never commit real variable values. The .example files are the tracked
+# templates.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example

@@ -1,0 +1,24 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# One-shot bootstrap that decides between "already provisioned" and "restore
+# from the Secret Manager escrow". It runs on every boot and is idempotent;
+# see the script for why the ordering of those tests matters.
+
+[Unit]
+Description=Bootstrap the fioserver datadir
+Requires=data.mount
+After=data.mount network-online.target
+Wants=network-online.target
+Before=fioserver.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/fioserver/env
+ExecStart=/usr/local/sbin/fioserver-bootstrap
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

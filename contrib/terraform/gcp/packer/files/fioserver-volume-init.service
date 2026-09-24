@@ -1,0 +1,15 @@
+[Unit]
+Description=Initialize the fioserver data volume
+DefaultDependencies=no
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+Before=data.mount
+ConditionPathExists=!/dev/disk/by-label/fiodata
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/fioserver-volume-init
+
+[Install]
+WantedBy=local-fs.target
