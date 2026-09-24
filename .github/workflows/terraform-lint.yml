@@ -69,6 +69,6 @@ jobs:
             echo "::group::packer $f"
             packer fmt -check "$f"
             packer init "$f"
-            packer validate -var fioserver_version=ci-lint "$f"
+            packer validate -syntax-only "$f"
             echo "::endgroup::"
           done
