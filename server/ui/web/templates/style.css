@@ -3058,25 +3058,4 @@ pre.code-block {
     text-decoration: underline;
 }
 
-.history-toolbar {
-    margin-bottom: 8px;
-}
-.history-toolbar .sort-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--text-2);
-    font-size: 0.82rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    padding: 8px 0;
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-    margin: 0;
-}
-.history-toolbar .sort-btn:hover {
-    color: var(--text-1);
-}
-
 } /* end @layer configs-list */

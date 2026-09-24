@@ -11,15 +11,6 @@
   <p class="page-subtitle">{{ len .History }} {{ if eq (len .History) 1 }}revision{{ else }}revisions{{ end }}</p>
 
   {{ $perPage := 20 }}
-  <div class="history-toolbar">
-    <button class="sort-btn history-header" aria-label="Sorted descending (newest first), click for ascending">
-      Created at <span class="sort-indicator">▼</span>
-    </button>
-    <button class="sort-btn history-header hidden" aria-label="Sorted ascending (oldest first), click for descending">
-      Created at <span class="sort-indicator">▲</span>
-    </button>
-  </div>
-
   <div class="history-list" id="history-list">
     {{ range $i, $rev := .History }}
     <details class="collapsible-section{{ if ge $i $perPage }} hidden{{ end }}"{{ if $rev.Current }} open{{ end }}>
@@ -30,7 +21,7 @@
             <span class="history-summary-row__by">by {{$rev.CreatedBy}}</span>
           </div>
           <div class="history-summary-row__right">
-            <span class="history-summary-row__meta is-mono">{{tsToString $rev.CreatedAt}}</span>
+            <span class="history-summary-row__meta is-mono">{{tsToDate $rev.CreatedAt}}</span>
             <span class="collapsible-toggle">
               <span class="toggle-show">Show</span>
               <span class="toggle-hide">Hide</span>
@@ -68,16 +59,6 @@
       $$ = document.querySelectorAll.bind(document);
 
   var list = $('#history-list');
-
-  /* History Sorting */
-  $$('.history-header').forEach(function (el) {
-    el.addEventListener('click', function (ev) {
-      ev.preventDefault();
-      $$('.history-header').forEach(function (b) { b.classList.toggle('hidden'); });
-      Array.from(list.children).reverse().forEach(function (item) { list.appendChild(item); });
-      if (historyTotalPages > 1) { updatePageTable(); }
-    });
-  });
 
   /* History Paging */
   var historyPerPage = {{ $perPage }},
