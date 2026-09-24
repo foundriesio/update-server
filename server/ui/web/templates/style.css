@@ -989,6 +989,10 @@ dialog.file-content > article > section > ul {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
 }
+summary.user-badge:focus-visible {
+    outline: 2px solid var(--focus-ring) !important;
+    outline-offset: 2px;
+}
 summary.user-badge {
     width: 28px !important;
     height: 28px !important;
