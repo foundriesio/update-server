@@ -75,10 +75,14 @@ func TestServe(t *testing.T) {
 
 	r, err := http.Get(fmt.Sprintf("http://%s/doesnotexist", apiAddress))
 	require.Nil(t, err)
+	defer r.Body.Close() //nolint:errcheck
 	require.Equal(t, http.StatusNotFound, r.StatusCode)
 	require.Equal(t, 12, len(r.Header.Get("X-Request-Id")))
 
-	_, err = http.Get(fmt.Sprintf("https://%s/doesnotexist", gatewayAddress))
+	r, err = http.Get(fmt.Sprintf("https://%s/doesnotexist", gatewayAddress))
+	if err == nil {
+		defer r.Body.Close() //nolint:errcheck
+	}
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "failed to verify certificate")
 
