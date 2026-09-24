@@ -10,11 +10,11 @@ linters:
     - gocyclo
     - govet
     - ineffassign
+    - misspell
     - staticcheck
+    - unconvert
     - unparam
     - unused
-    - misspell
-    - unconvert
 formatters:
   enable:
     - gofmt
