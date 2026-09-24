@@ -194,7 +194,7 @@ func (s baseFsHandle) readFileLines(name string, ignoreNotExist bool, infinitySt
 				yield("", err)
 			}
 		} else {
-			defer fd.Close() // nolint:errcheck
+			defer fd.Close() //nolint:errcheck
 		TAIL:
 			scanner := bufio.NewScanner(fd) // line reader
 			for scanner.Scan() {

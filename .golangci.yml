@@ -11,14 +11,19 @@ linters:
   enable:
     - dupl
     - errcheck
+    - gocheckcompilerdirectives
     - gocyclo
     - govet
     - ineffassign
     - misspell
+    - nolintlint
     - staticcheck
     - unconvert
     - unparam
     - unused
+  settings:
+    nolintlint:
+      require-specific: true
 formatters:
   enable:
     - gofmt

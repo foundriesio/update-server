@@ -93,13 +93,13 @@ func loadTufKeysArchive(path string) ([]tuf.AtsKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to open keys archive: %w", err)
 	}
-	defer f.Close() // nolint:errcheck
+	defer f.Close() //nolint:errcheck
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open keys archive (expected a gzipped tarball): %w", err)
 	}
-	defer gz.Close() // nolint:errcheck
+	defer gz.Close() //nolint:errcheck
 
 	var keys []tuf.AtsKey
 	tr := tar.NewReader(gz)
@@ -140,13 +140,13 @@ func loadTufRootsArchive(path string) ([][]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to open roots archive: %w", err)
 	}
-	defer f.Close() // nolint:errcheck
+	defer f.Close() //nolint:errcheck
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open roots archive (expected a gzipped tarball): %w", err)
 	}
-	defer gz.Close() // nolint:errcheck
+	defer gz.Close() //nolint:errcheck
 
 	var roots [][]byte
 	tr := tar.NewReader(gz)

@@ -118,7 +118,7 @@ func oauth2DeviceFlow(configPath, contextName, serverURL, scopes string, expires
 	if err != nil {
 		return fmt.Errorf("failed to request device code: %w", err)
 	}
-	defer resp.Body.Close() // nolint:errcheck
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
