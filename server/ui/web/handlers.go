@@ -91,7 +91,6 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
 	e.DELETE("/configs/group/:name", h.configsGroupItemDelete, h.requireSession,
 		h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
-	e.GET("/configs/group/:name/history", h.configsGroupItemHistory, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices", h.devicesList, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid", h.devicesGet, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid/apps-states", h.devicesAppsStates, h.requireSession, h.requireScope(users.ScopeDevicesR))
