@@ -163,32 +163,13 @@
     <span class="chip chip-group">group</span>
   </div>
 
-  {{ with .Configs }}
-  <div class="meta-grid">
-    <div class="meta-row">
-      <span class="meta-label">Reason</span>
-      <span class="meta-value">{{.Reason}}</span>
-    </div>
-    <div class="meta-row">
-      <span class="meta-label">Created on</span>
-      <span class="meta-value is-mono">{{tsToDate .CreatedAt}}</span>
-    </div>
-    <div class="meta-row meta-row--full">
-      <span class="meta-label">Created by</span>
-      <span class="meta-value">{{.CreatedBy}}</span>
-    </div>
+  <div class="meta-section">
+    <h2 class="meta-section__title">Current Configuration</h2>
+    {{ template "configs-item" . }}
+    {{ if .CanEdit }}
+    {{ template "configs-add-button" }}
+    {{ end }}
   </div>
-  <div class="configs-files-wrapper">
-    <p class="section-label">Files</p>
-    {{ template "configs-item-files" $ }}
-  </div>
-  {{ end }}
-
-  {{ if .CanEdit }}
-  <div class="action-row">
-    <button class="btn-ghost btn-sm" name="AddFile">Add</button>
-  </div>
-  {{ end }}
 
   <div class="meta-section">
     <h2 class="meta-section__title">Revision History ({{len .History}})</h2>
