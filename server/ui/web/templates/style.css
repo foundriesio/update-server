@@ -3011,6 +3011,7 @@ pre.code-block {
     text-align: left;
     padding: 0;
     background: transparent;
+    font-size: 0.82rem;
 }
 .configs-group-table .sort-btn {
     background: transparent;
@@ -3034,7 +3035,6 @@ pre.code-block {
 }
 .configs-group-table tbody tr {
     border-bottom: 1px solid var(--border-1);
-    cursor: pointer;
     transition: background 0.1s;
 }
 .configs-group-table tbody tr:hover {
@@ -3044,6 +3044,7 @@ pre.code-block {
     padding: 9px 0;
     background: transparent;
     color: var(--text-1);
+    font-size: 0.82rem;
 }
 .configs-group-table tbody td a {
     color: var(--interactive);
