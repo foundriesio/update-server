@@ -1,0 +1,116 @@
+{{ template "header" .}}
+<div class="configs-page">
+
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="/configs">Configs</a>
+    <span class="breadcrumb__sep">/</span>
+    <span class="breadcrumb__current">History</span>
+  </nav>
+
+  <h1 class="page-title">Global Configs History</h1>
+  <p class="page-subtitle">{{ len .History }} {{ if eq (len .History) 1 }}revision{{ else }}revisions{{ end }}</p>
+
+  {{ $perPage := 20 }}
+  <table class="configs-group-table">
+    <thead>
+      <tr>
+        <th>
+          <button class="sort-btn history-header" aria-label="Sorted descending (newest first), click for ascending">
+            Created at <span class="sort-indicator">▼</span>
+          </button>
+          <button class="sort-btn history-header hidden" aria-label="Sorted ascending (oldest first), click for descending">
+            Created at <span class="sort-indicator">▲</span>
+          </button>
+        </th>
+        <th>Created by</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody id="history-table">
+      {{ range $i, $rev := .History }}
+      <tr{{ if ge $i $perPage }} class="hidden"{{ end }}>
+        <td class="is-mono">{{ tsToString $rev.CreatedAt }}</td>
+        <td>{{ $rev.CreatedBy }}</td>
+        <td style="word-break: break-word;">{{ $rev.Reason }}{{ if $rev.Current }} <span class="badge badge-good">Current</span>{{ end }}</td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+  {{ if gt (len .History) $perPage }}
+  <div class="pagination">
+    <span class="pagination-summary">Showing page <span id="history-page">1</span> of <span id="history-page-total"></span></span>
+    <div class="pagination-controls">
+      <a id="history-page-first" class="page-link hidden" href="#" role="button" aria-label="First page">&laquo;</a>
+      <a id="history-page-prev" class="page-link hidden" href="#" role="button" aria-label="Previous page">&lsaquo;</a>
+      <a id="history-page-next" class="page-link" href="#" role="button" aria-label="Next page">&rsaquo;</a>
+      <a id="history-page-last" class="page-link" href="#" role="button" aria-label="Last page">&raquo;</a>
+    </div>
+  </div>
+  {{ end }}
+
+</div>
+
+<script>
+(function () {
+  var $ = document.querySelector.bind(document),
+      $$ = document.querySelectorAll.bind(document);
+
+  /* History Sorting */
+  $$('.history-header').forEach(function (el) {
+    el.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      $$('.history-header').forEach(function (b) { b.classList.toggle('hidden'); });
+      var tbl = $('#history-table');
+      Array.from(tbl.rows).reverse().forEach(function (row) { tbl.appendChild(row); });
+      if (historyTotalPages > 1) { updatePageTable(); }
+    });
+  });
+
+  /* History Paging */
+  var historyPerPage = {{ $perPage }},
+      historyTotal = {{ len .History }},
+      historyTotalPages = Math.ceil(historyTotal / historyPerPage);
+
+  var historyPage = 1;
+
+  function updatePageNum(el) {
+    switch (el.id) {
+    case 'history-page-first': historyPage = 1; break;
+    case 'history-page-prev':  historyPage -= 1; break;
+    case 'history-page-next':  historyPage += 1; break;
+    case 'history-page-last':  historyPage = historyTotalPages; break;
+    }
+  }
+
+  function updatePageNav() {
+    $('#history-page').textContent = historyPage;
+    $('#history-page-first').classList.toggle('hidden', historyPage === 1);
+    $('#history-page-prev').classList.toggle('hidden', historyPage === 1);
+    $('#history-page-next').classList.toggle('hidden', historyPage === historyTotalPages);
+    $('#history-page-last').classList.toggle('hidden', historyPage === historyTotalPages);
+  }
+
+  function updatePageTable() {
+    var end = historyPage * historyPerPage,
+        start = end - historyPerPage,
+        tbl = $('#history-table');
+    Array.from(tbl.rows).forEach(function (row, index) {
+      row.classList.toggle('hidden', index < start || index >= end);
+    });
+  }
+
+  if (historyTotalPages > 1) {
+    $('#history-page-total').textContent = historyTotalPages;
+    $$('.pagination-controls .page-link').forEach(function (el) {
+      el.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        updatePageNum(el);
+        updatePageNav();
+        updatePageTable();
+      });
+    });
+  }
+})();
+</script>
+
+{{ template "footer" .}}
