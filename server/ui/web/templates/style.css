@@ -977,15 +977,19 @@ dialog.file-content > article > section > ul {
     align-items: center;
     gap: 20px;
 }
-.topbar-right a {
+/* Direct-child combinator: scopes this to the "Docs" link only. A plain
+   descendant selector also matched the Settings/Logout links inside
+   details.dropdown > ul — forcing this bar's white-on-brand-color text
+   onto the dropdown's light popup background, making them illegible. */
+.topbar-right > a {
     color: rgba(255, 255, 255, 0.75);
     text-decoration: none;
     transition: color 0.1s;
 }
-.topbar-right a:hover {
+.topbar-right > a:hover {
     color: #fff;
 }
-.topbar-right a:focus-visible {
+.topbar-right > a:focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
 }
