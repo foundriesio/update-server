@@ -69,7 +69,7 @@ func (p *ghProvider) userFromToken(c echo.Context, token *oauth2.Token) (*users.
 			slog.Error("unable to close github user body", "error", err)
 		}
 	}()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, c.String(resp.StatusCode, "Unable to read user profile: "+string(msg))
 	}
@@ -88,7 +88,7 @@ func (p *ghProvider) userFromToken(c echo.Context, token *oauth2.Token) (*users.
 			slog.Error("unable to close github user organizations body", "error", err)
 		}
 	}()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, c.String(resp.StatusCode, "Unable to read user organizations: "+string(msg))
 	}

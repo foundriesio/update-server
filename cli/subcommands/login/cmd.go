@@ -120,7 +120,7 @@ func oauth2DeviceFlow(configPath, contextName, serverURL, scopes string, expires
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("failed to get device code (status %d): %s", resp.StatusCode, string(body))
 	}
@@ -198,7 +198,7 @@ func pollForToken(serverURL, deviceCode string) (string, error) {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == http.StatusOK {
 		var tokenResp models.DeviceTokenResponse
 		if err := json.Unmarshal(body, &tokenResp); err != nil {
 			return "", fmt.Errorf("failed to decode token response: %w", err)

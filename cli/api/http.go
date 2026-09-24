@@ -76,7 +76,7 @@ func (a Api) get(resource string, opts ...HttpOption) (*http.Response, error) {
 	options.apply(opts)
 	url := a.URL + resource
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -99,7 +99,7 @@ func (a Api) Delete(resource string, opts ...HttpOption) error {
 	options.apply(opts)
 	url := a.URL + resource
 
-	req, err := http.NewRequest("DELETE", url, nil)
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -125,7 +125,7 @@ func (a Api) Post(resource string, body any, opts ...HttpOption) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", url, reader)
+	req, err := http.NewRequest(http.MethodPost, url, reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -151,7 +151,7 @@ func (a Api) Put(resource string, body any, opts ...HttpOption) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("PUT", url, reader)
+	req, err := http.NewRequest(http.MethodPut, url, reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
