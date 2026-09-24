@@ -41,25 +41,18 @@ func (h handlers) configsList(c echo.Context) error {
 }
 
 func (h handlers) configsGlobalHistory(c echo.Context) error {
-	openIndex, err := echo.QueryParamOr(c, "open", -1)
-	if err != nil {
-		return h.handleUnexpected(c, err)
-	}
 	var history []api.ConfigFileSet
-	uri := fmt.Sprintf("/v1/configs/factory/history?show-files=%t", openIndex >= 0)
-	if err := getJson(c.Request().Context(), uri, &history); err != nil {
+	if err := getJson(c.Request().Context(), "/v1/configs/factory/history?show-files=true", &history); err != nil {
 		return h.handleUnexpected(c, err)
 	}
 	ctx := struct {
 		baseCtx
-		History   []api.ConfigFileSet
-		OpenIndex int
+		History []historyRevision
 	}{
-		baseCtx:   h.baseCtx(c, "Global Configs History", "configs"),
-		History:   history,
-		OpenIndex: openIndex,
+		baseCtx: h.baseCtx(c, "Global Configs History", "configs"),
+		History: buildHistoryRevisions(history),
 	}
-	return h.templates.ExecuteTemplate(c.Response(), "configs_history.html", ctx)
+	return h.templates.ExecuteTemplate(c.Response(), "configs_global_history.html", ctx)
 }
 
 func (h handlers) configsGlobalPatch(c echo.Context) error {
@@ -71,44 +64,31 @@ func (h handlers) configsGlobalDelete(c echo.Context) error {
 }
 
 func (h handlers) configsGroupItem(c echo.Context) error {
-	var configs api.ConfigFileSet
 	group := c.Param("name")
-	if err := getJson(c.Request().Context(), "/v1/configs/group/"+group, &configs); err != nil {
+	var history []api.ConfigFileSet
+	if err := getJson(c.Request().Context(), "/v1/configs/group/"+group+"/history?show-files=true", &history); err != nil {
 		return h.handleUnexpected(c, err)
+	}
+	// history[0] is the current config: reuse it instead of a second,
+	// redundant fetch of the same content.
+	var configs api.ConfigFileSet
+	if len(history) > 0 {
+		configs = history[0]
 	}
 	ctx := struct {
 		baseCtx
+		Group   string
 		Configs api.ConfigFileSet
+		History []historyRevision
 		CanEdit bool
 	}{
 		baseCtx: h.baseCtx(c, fmt.Sprintf("Group \"%s\" Configs", group), "configs"),
+		Group:   group,
 		Configs: configs,
+		History: buildHistoryRevisions(history),
 		CanEdit: h.configsEditable(c),
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "configs_item.html", ctx)
-}
-
-func (h handlers) configsGroupItemHistory(c echo.Context) error {
-	group := c.Param("name")
-	openIndex, err := echo.QueryParamOr(c, "open", -1)
-	if err != nil {
-		return h.handleUnexpected(c, err)
-	}
-	var history []api.ConfigFileSet
-	uri := fmt.Sprintf("/v1/configs/group/"+group+"/history?show-files=%t", openIndex >= 0)
-	if err := getJson(c.Request().Context(), uri, &history); err != nil {
-		return h.handleUnexpected(c, err)
-	}
-	ctx := struct {
-		baseCtx
-		History   []api.ConfigFileSet
-		OpenIndex int
-	}{
-		baseCtx:   h.baseCtx(c, fmt.Sprintf("Group \"%s\" Configs History", group), "configs"),
-		History:   history,
-		OpenIndex: openIndex,
-	}
-	return h.templates.ExecuteTemplate(c.Response(), "configs_history.html", ctx)
 }
 
 func (h handlers) configsGroupItemPatch(c echo.Context) error {
