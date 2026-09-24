@@ -118,6 +118,37 @@
 
 {{ define "configs-add-button" }}<button type="button" name="AddFile" class="btn-ghost btn-sm">Add</button>{{ end }}
 
+{{ define "configs-history-list" }}
+      <div class="history-list">
+        {{ range .History }}
+        <details class="collapsible-section"{{ if .Current }} open{{ end }}>
+          <summary>
+            <div class="summary-row">
+              <div class="history-summary-row__main">
+                <span class="history-reason">{{.Reason}}{{ if .Current }} <span class="badge badge-good">Current</span>{{ end }}</span>
+                <span class="history-summary-row__by">by {{.CreatedBy}}</span>
+              </div>
+              <div class="history-summary-row__right">
+                <span class="history-summary-row__meta">{{tsToDate .CreatedAt}}</span>
+                <span class="collapsible-toggle">
+                  <span class="toggle-show">Show</span>
+                  <span class="toggle-hide">Hide</span>
+                </span>
+              </div>
+            </div>
+          </summary>
+          <div class="collapsible-body">
+            {{ range $name, $file := .Files }}
+            <div class="file-name">{{ $name }}</div>
+            {{ else }}
+            <p class="history-empty-note"><i>No files in this revision.</i></p>
+            {{ end }}
+          </div>
+        </details>
+        {{ end }}
+      </div>
+{{ end }}
+
 {{ template "header" .}}
 <div class="configs-page">
 
@@ -161,34 +192,7 @@
 
   <div class="meta-section">
     <h2 class="meta-section__title">Revision History ({{len .History}})</h2>
-    <div class="history-list">
-      {{ range .History }}
-      <details class="collapsible-section"{{ if .Current }} open{{ end }}>
-        <summary>
-          <div class="summary-row">
-            <div class="history-summary-row__main">
-              <span class="history-reason">{{.Reason}}{{ if .Current }} <span class="badge badge-good">Current</span>{{ end }}</span>
-              <span class="history-summary-row__by">by {{.CreatedBy}}</span>
-            </div>
-            <div class="history-summary-row__right">
-              <span class="history-summary-row__meta">{{tsToDate .CreatedAt}}</span>
-              <span class="collapsible-toggle">
-                <span class="toggle-show">Show</span>
-                <span class="toggle-hide">Hide</span>
-              </span>
-            </div>
-          </div>
-        </summary>
-        <div class="collapsible-body">
-          {{ range $name, $file := .Files }}
-          <div class="file-name">{{ $name }}</div>
-          {{ else }}
-          <p class="history-empty-note"><i>No files in this revision.</i></p>
-          {{ end }}
-        </div>
-      </details>
-      {{ end }}
-    </div>
+    {{ template "configs-history-list" . }}
   </div>
 
 </div>
