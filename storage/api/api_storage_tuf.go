@@ -4,13 +4,10 @@
 package api
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 
 	"github.com/foundriesio/update-server/clock"
 	"github.com/foundriesio/update-server/context"
@@ -113,7 +110,7 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 	}
 	targets.Signatures = []tuf.Signature{targetsSig}
 
-	targetsBytes, targetsMeta, err := marshallMeta(targets, targets.Signed.Version)
+	targetsBytes, targetsMeta, err := tuf.MarshalMeta(targets, targets.Signed.Version)
 	if err != nil {
 		return fmt.Errorf("unable to marshal targets metadata: %w", err)
 	}
@@ -137,7 +134,7 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 	}
 	ss.Signatures = []tuf.Signature{snapshotSig}
 
-	ssBytes, ssMeta, err := marshallMeta(ss, ss.Signed.Version)
+	ssBytes, ssMeta, err := tuf.MarshalMeta(ss, ss.Signed.Version)
 	if err != nil {
 		return fmt.Errorf("unable to marshal snapshot metadata: %w", err)
 	}
@@ -168,7 +165,7 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 	}
 	ts.Signatures = []tuf.Signature{timestampSig}
 
-	tsBytes, _, err := marshallMeta(ts, ts.Signed.Version)
+	tsBytes, _, err := tuf.MarshalMeta(ts, ts.Signed.Version)
 	if err != nil {
 		return fmt.Errorf("unable to marshal timestamp metadata: %w", err)
 	}
@@ -178,17 +175,6 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 	}
 
 	return nil
-}
-
-// marshallMeta encodes v as canonical JSON and returns its bytes, length, and
-// sha256 hash.
-func marshallMeta(v any, version int) ([]byte, tuf.MetaItem, error) {
-	b, err := cjson.EncodeCanonical(v)
-	if err != nil {
-		return nil, tuf.MetaItem{}, err
-	}
-	sum := sha256.Sum256(b)
-	return b, tuf.MetaItem{Version: version, Length: int64(len(b)), Hashes: tuf.Hashes{"sha256": sum[:]}}, nil
 }
 
 // getLatestVersions returns the highest TUF metadata version and the highest
