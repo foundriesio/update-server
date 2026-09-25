@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -263,7 +264,7 @@ func (s *stmtTokenLookup) run(value string) (*Token, int64, error) {
 		&t.ExpiresAt,
 		&scopesStr,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, 0, nil
 	} else if err != nil {
 		return nil, 0, err

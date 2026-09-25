@@ -48,7 +48,7 @@ func NewServer(ctx context.Context, echo *echo.Echo, name string, bindAddr strin
 func (s server) Start(quit chan error) {
 	log := context.CtxGetLog(s.context)
 	go func() {
-		if err := s.echo.StartServer(s.server); err != nil && err != http.ErrServerClosed {
+		if err := s.echo.StartServer(s.server); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("failed to start server", "error", err)
 			quit <- fmt.Errorf("failed to start server %s: %w", s.name, err)
 		}

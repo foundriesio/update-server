@@ -320,7 +320,7 @@ func (s Storage) DeviceCreate(uuid, cert string) (*Device, error) {
 func (s Storage) DeviceGet(uuid string) (*Device, error) {
 	d := Device{storage: s, Uuid: uuid}
 	if err := s.stmtDeviceGet.run(uuid, &d); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			err = nil
 		}
 		return nil, err

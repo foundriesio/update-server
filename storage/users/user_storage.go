@@ -5,6 +5,7 @@ package users
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -155,39 +156,42 @@ func (s Storage) Create(u *User) error {
 
 func (s Storage) Upsert(username, email string, scopes Scopes) (*User, error) {
 	u, err := s.stmtUserGetByName.run(username)
-	switch err {
-	case sql.ErrNoRows:
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
 		u = &User{
 			Username:      username,
 			Email:         email,
 			AllowedScopes: scopes,
 		}
 		return u, s.Create(u)
-	case nil:
-		u.h = s
 	}
-	return u, err
+	u.h = s
+	return u, nil
 }
 
 func (s Storage) Get(username string) (*User, error) {
 	u, err := s.stmtUserGetByName.run(username)
-	switch err {
-	case sql.ErrNoRows:
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
 		return nil, nil
-	case nil:
-		u.h = s
 	}
+	u.h = s
 	return u, err
 }
 
 func (s Storage) GetByID(id int64) (*User, error) {
 	u, err := s.stmtUserGetById.run(id)
-	switch err {
-	case sql.ErrNoRows:
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
 		return nil, nil
-	case nil:
-		u.h = s
 	}
+	u.h = s
 	return u, err
 }
 

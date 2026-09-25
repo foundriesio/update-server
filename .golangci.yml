@@ -12,6 +12,7 @@ linters:
     - bodyclose
     - dupl
     - errcheck
+    - errorlint
     - exptostd
     - gocheckcompilerdirectives
     - gocyclo

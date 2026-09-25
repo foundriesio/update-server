@@ -135,13 +135,13 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 						return fmt.Errorf("%w: missing required %q directory", ErrInvalidUpdate, UpdatesTufDir)
 					}
 					if err := tufCreateFunc(filepath.Join(root, txDir, "unpacked")); err != nil {
-						return fmt.Errorf("%w: unable to generate TUF metadata: %v", ErrInvalidUpdate, err)
+						return fmt.Errorf("%w: unable to generate TUF metadata: %v", ErrInvalidUpdate, err) //nolint:errorlint
 					}
 				}
 
 				path := filepath.Join(root, txDir, "unpacked/tuf/targets.json")
 				if err := checkUpdateTargets(path, tag); err != nil {
-					return fmt.Errorf("%w: %v", ErrInvalidUpdate, err)
+					return fmt.Errorf("%w: %v", ErrInvalidUpdate, err) //nolint:errorlint
 				}
 				return nil
 			},

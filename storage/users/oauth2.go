@@ -6,6 +6,7 @@ package users
 import (
 	"crypto/rand"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -114,7 +115,7 @@ func (s *stmtOAuth2DeviceAuthGetByDeviceCode) run(deviceCode string) (*OAuth2Dev
 		&auth.Authorized,
 		&auth.Denied,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -154,7 +155,7 @@ func (s *stmtOAuth2DeviceAuthGetByUserCode) run(userCode string) (*OAuth2DeviceA
 		&auth.Authorized,
 		&auth.Denied,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

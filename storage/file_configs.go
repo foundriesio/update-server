@@ -144,7 +144,7 @@ func (s ConfigsFsHandle) SaveUpload(payload io.Reader, onCleanupFailure func(err
 			onTmpCleanupError: onCleanupFailure,
 			onTmpRenameError: func(err error) (bool, error) {
 				return true, ErrConfigUploadBroken{
-					err:         fmt.Errorf("failed to make uploaded config active: %s", err),
+					err:         fmt.Errorf("failed to make uploaded config active: %w", err),
 					ConfigsPath: s.root, // not h.root
 					UploadPath:  filepath.Join(h.root, txDir),
 				}

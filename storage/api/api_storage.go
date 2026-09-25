@@ -295,7 +295,7 @@ func (s Storage) DeviceGet(uuid string) (*Device, error) {
 		&d.Cert, &d.UpdateName, &d.Tag, &d.Target, &d.OstreeHash,
 		&apps, &labels,
 	); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			err = nil
 		}
 		return nil, err
@@ -389,7 +389,7 @@ func (s Storage) DeleteUpdate(name string) error {
 func (s Storage) GetUpdate(name string) (*Update, error) {
 	u, err := s.stmtUpdateGet.run(name)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -949,6 +949,7 @@ func (s *stmtUpdateDelete) Init(db storage.DbHandle) (err error) {
 func (s *stmtUpdateDelete) run(name string) (bool, error) {
 	res, err := s.Stmt.Exec(name)
 	if err != nil {
+		// This error goes from an SQL statement, so check strings instead of errors.
 		if err.Error() == ErrUpdateInUse.Error() {
 			return false, ErrUpdateInUse
 		}

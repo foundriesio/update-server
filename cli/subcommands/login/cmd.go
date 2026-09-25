@@ -5,6 +5,7 @@ package login
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -156,7 +157,8 @@ func oauth2DeviceFlow(configPath, contextName, serverURL, scopes string, expires
 		}
 
 		// Check if we should continue polling
-		if oauth2Err, ok := err.(*oauth2Error); ok {
+		var oauth2Err *oauth2Error
+		if errors.As(err, &oauth2Err) {
 			switch oauth2Err.ErrorCode {
 			case "authorization_pending":
 				continue
