@@ -9,6 +9,8 @@ issues:
 
 linters:
   enable:
+    - asciicheck
+    - bidichk
     - bodyclose
     - dupl
     - errcheck
