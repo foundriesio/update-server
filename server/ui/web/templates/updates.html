@@ -1,84 +1,155 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+<div class="updates-page">
 
-      <table>
-        <thead>
-          <tr>
-            <th>Update name</th>
-            <th>Tag</th>
-            <th>Uploaded at</th>
-            <th>Device count</th>
-            <th>Uploaded by</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{ range $update := .Updates }}
-          <tr>
-            <td><a href="/updates/{{ $update.Name }}">{{ $update.Name }}</a></td>
-            <td>{{ $update.Tag }}</td>
-            <td>{{ tsToString $update.UploadedAt }}</td>
-            <td>{{ $update.DeviceCount }}</td>
-            <td>{{ $update.UploadedBy }}</td>
-          </tr>
-          {{ end }}
-        </tbody>
-      </table>
-    </section>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Updates</h1>
+      <p class="page-subtitle">{{ len .Updates }} update{{ if ne (len .Updates) 1 }}s{{ end }} uploaded</p>
+    </div>
+    <button type="button" class="btn-solid" id="show-upload-btn">Upload update</button>
+  </div>
 
-    <section class="content-section">
-      <details>
-        <summary><h2 style="display:inline;">Upload Update</h2></summary>
-        <p>Offline updates can be created with <code>fioctl targets offline-update</code>.
-            This command creates a directory with the offline update content.
-            This directory includes subdirectories for "tuf", "ostree_repo", and "apps".
+  {{ if .Updates }}
+  <div class="update-server-tables updates-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Update name</th>
+          <th>Tag</th>
+          <th>Uploaded at</th>
+          <th>Device count</th>
+          <th>Uploaded by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $update := .Updates }}
+        <tr class="update-row" data-href="/updates/{{ $update.Name }}">
+          <td class="cell-name"><a href="/updates/{{ $update.Name }}">{{ $update.Name }}</a></td>
+          <td><span class="chip chip-tag">{{ $update.Tag }}</span></td>
+          <td class="cell-ts">{{ tsToString $update.UploadedAt }}</td>
+          <td>{{ $update.DeviceCount }}</td>
+          <td class="cell-uploaded-by">{{ $update.UploadedBy }}</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+  {{ else }}
+  <p class="updates-empty">No updates uploaded yet. Use <strong>Upload update</strong> to create one.</p>
+  {{ end }}
+
+  <dialog id="upload-dialog" aria-labelledby="upload-dlg-title" class="upload-dialog">
+    <article>
+      <div class="dlg-header">
+        <h2 id="upload-dlg-title">Upload update</h2>
+        <button class="dlg-close" id="dlg-close-btn" type="button" aria-label="Close dialog">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="dlg-body">
+        <p class="upload-intro">
+          Select the directory containing the offline update. It should include the
+          <code translate="no">tuf</code>, <code translate="no">ostree_repo</code>, and
+          <code translate="no">apps</code> subdirectories.
+        </p>
+        <p class="upload-intro">
+          Create it with <code translate="no">fioctl targets offline-update</code>.
         </p>
 
-        <form id="upload-form" onsubmit="return false;">
-          <label for="upload-tag">Tag</label>
-          <input type="text" id="upload-tag" placeholder="e.g. main" required />
-
-          <label for="upload-name">Update name</label>
-          <input type="text" id="upload-name" placeholder="e.g. v1.0" required />
-
-          <details id="upload-advanced">
-            <summary role="button">Advanced options</summary>
-            <p><small>These optional fields override the TUF target metadata that is
-                otherwise generated automatically from the update content.</small></p>
-
-            <label for="upload-version">Version</label>
-            <input type="number" id="upload-version" placeholder="Override the target version (AppVersion)" />
-
-            <label for="upload-target-name">Target name</label>
-            <input type="text" id="upload-target-name" placeholder="Override the target name" />
-
-            <label for="upload-hardware-id">Hardware ID</label>
-            <input type="text" id="upload-hardware-id" placeholder="Override the hardware id" />
-
-            <label for="upload-ostree-hash">Ostree hash</label>
-            <input type="text" id="upload-ostree-hash" placeholder="Override the ostree hash" />
-
-            <label for="upload-apps">Apps</label>
-            <input type="text" id="upload-apps" placeholder="name=sha256,name2=sha256" />
-            <small>Comma-separated list of docker compose apps as <code>name=sha256</code>.</small>
-          </details>
-          
-          <label for="upload-dir-btn">Update directory</label>
-          <input type="file" id="upload-dir" webkitdirectory multiple hidden />
-          <button type="button" id="upload-dir-btn" class="secondary" aria-describedby="upload-dir-status">Choose directory</button>
-          <small id="upload-dir-status" role="status">No directory selected.</small>
-
-          <div id="upload-progress" style="display:none;">
-            <progress id="upload-bar" value="0" max="100"></progress>
-            <small id="upload-status"></small>
+        <form id="upload-form" autocomplete="off" onsubmit="return false;">
+          <div class="field-grid">
+            <div class="field-row">
+              <label class="field-row__key" for="upload-tag">Tag</label>
+              <input class="field-input" type="text" id="upload-tag" name="tag"
+                placeholder="e.g. main" aria-describedby="upload-tag-hint" spellcheck="false" required />
+              <p class="field-row__caption" id="upload-tag-hint">Used to group compatible update targets.</p>
+            </div>
+            <div class="field-row">
+              <label class="field-row__key" for="upload-name">Update name</label>
+              <input class="field-input" type="text" id="upload-name" name="name"
+                placeholder="e.g. 152" aria-describedby="upload-name-hint" spellcheck="false" required />
+              <p class="field-row__caption" id="upload-name-hint">A unique name operators can identify later.</p>
+            </div>
           </div>
 
-          <div id="upload-result" style="display:none;"></div>
+          <div class="field-row upload-directory-field">
+            <span class="field-row__key">Update directory</span>
+            <div class="directory-picker">
+              <input class="visually-hidden" type="file" id="upload-dir" name="directory"
+                aria-describedby="upload-file-summary" webkitdirectory multiple required />
+              <label class="directory-picker__button" for="upload-dir">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M1.75 4.25h4l1.5 1.5h7v6.5H1.75v-8Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+                </svg>
+                Choose directory
+              </label>
+              <span class="directory-picker__status" id="upload-file-summary"
+                aria-live="polite">No directory selected</span>
+            </div>
+          </div>
 
-          <button type="button" id="upload-btn" style="display:block;" onclick="uploadUpdate()" disabled>Upload</button>
+          <details id="upload-advanced">
+            <summary>
+              <span>Advanced options</span>
+              <span class="collapsible-toggle">
+                <span class="toggle-show">Show</span>
+                <span class="toggle-hide">Hide</span>
+              </span>
+            </summary>
+            <div class="upload-advanced-content">
+              <p class="upload-advanced-hint">These optional fields override the TUF target
+                metadata that is otherwise generated automatically from the update content.</p>
+
+              <div class="field-grid">
+                <div class="field-row">
+                  <label class="field-row__key" for="upload-version">Version</label>
+                  <input class="field-input" type="number" id="upload-version" name="version"
+                    placeholder="AppVersion" />
+                </div>
+                <div class="field-row">
+                  <label class="field-row__key" for="upload-target-name">Target name</label>
+                  <input class="field-input" type="text" id="upload-target-name" name="target-name"
+                    placeholder="Override target name" spellcheck="false" />
+                </div>
+                <div class="field-row">
+                  <label class="field-row__key" for="upload-hardware-id">Hardware ID</label>
+                  <input class="field-input" type="text" id="upload-hardware-id" name="hardware-id"
+                    placeholder="e.g. intel-corei7-64" spellcheck="false" />
+                </div>
+                <div class="field-row">
+                  <label class="field-row__key" for="upload-ostree-hash">OSTree hash</label>
+                  <input class="field-input" type="text" id="upload-ostree-hash" name="ostree-hash"
+                    placeholder="SHA-256" spellcheck="false" />
+                </div>
+              </div>
+              <div class="field-row upload-apps-field">
+                <label class="field-row__key" for="upload-apps">Apps</label>
+                <input class="field-input" type="text" id="upload-apps" name="apps"
+                  placeholder="name=sha256,name2=sha256" aria-describedby="upload-apps-hint" spellcheck="false" />
+                <p class="field-row__caption" id="upload-apps-hint">Comma-separated Docker Compose apps in
+                  <code translate="no">name=sha256</code> format.</p>
+              </div>
+            </div>
+          </details>
+          <div id="upload-progress" style="display:none;">
+            <progress id="upload-bar" value="0" max="100"></progress>
+            <small id="upload-status" aria-live="polite"></small>
+          </div>
+
+          <div id="upload-result" aria-live="polite" style="display:none;"></div>
         </form>
-      </details>
-    </section>
+      </div>
+      <div class="dlg-footer">
+        <button class="dlg-btn dlg-btn-cancel" id="upload-cancel-btn" type="button">Cancel</button>
+        <button class="dlg-btn dlg-btn-upload" id="upload-btn" type="button" onclick="uploadUpdate()">Upload</button>
+      </div>
+    </article>
+  </dialog>
+
+</div>
 
     <script>
     const uploadDir = document.getElementById('upload-dir');
@@ -263,12 +334,17 @@
       return b + ' B';
     }
 
+    let uploading = false;
+    let uploadXhr = null;
+
     async function uploadUpdate() {
       if (uploadBtn.disabled) return;
       const tagEl = document.getElementById('upload-tag');
       const nameEl = document.getElementById('upload-name');
       const dirEl = document.getElementById('upload-dir');
       const btn = document.getElementById('upload-btn');
+      const cancelBtn = document.getElementById('upload-cancel-btn');
+      const closeBtn = document.getElementById('dlg-close-btn');
       const progressDiv = document.getElementById('upload-progress');
       const progressBar = document.getElementById('upload-bar');
       const statusEl = document.getElementById('upload-status');
@@ -331,9 +407,12 @@
         }
       }
 
+      uploading = true;
       btn.disabled = true;
       uploadDirBtn.disabled = true;
       btn.textContent = 'Uploading...';
+      cancelBtn.textContent = 'Stop upload';
+      closeBtn.disabled = true;
       progressDiv.style.display = 'block';
       resultDiv.style.display = 'none';
       progressBar.value = 0;
@@ -351,6 +430,7 @@
 
         await new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
+          uploadXhr = xhr;
           xhr.open('POST', url);
           xhr.setRequestHeader('Content-Type', 'application/x-tar');
           if (csrfToken) {
@@ -377,13 +457,23 @@
             reject(new Error('Network error during upload'));
           };
 
+          xhr.onabort = function() {
+            reject(new Error('Upload cancelled'));
+          };
+
           xhr.send(tarBlob);
         });
 
         progressBar.value = 100;
         statusEl.textContent = 'Upload complete: ' + formatBytes(tarBlob.size);
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<p style="color:green;"><strong>Update ' + tag + '/' + updateName + ' created successfully.</strong></p>';
+        resultDiv.textContent = '';
+        const okMsg = document.createElement('p');
+        okMsg.style.color = 'green';
+        const okStrong = document.createElement('strong');
+        okStrong.textContent = 'Update ' + tag + '/' + updateName + ' created successfully.';
+        okMsg.appendChild(okStrong);
+        resultDiv.appendChild(okMsg);
 
         // Clear the form
         document.getElementById('upload-form').reset();
@@ -395,13 +485,94 @@
 
       } catch (err) {
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<p style="color:red;"><strong>Error:</strong> ' + err.message + '</p>';
+        resultDiv.textContent = '';
+        const errMsg = document.createElement('p');
+        if (err.message === 'Upload cancelled') {
+          errMsg.textContent = 'Upload cancelled.';
+        } else {
+          errMsg.style.color = 'red';
+          const errStrong = document.createElement('strong');
+          errStrong.textContent = 'Error: ' + err.message;
+          errMsg.appendChild(errStrong);
+        }
+        resultDiv.appendChild(errMsg);
       } finally {
-        btn.disabled = dirEl.files.length === 0;
-        uploadDirBtn.disabled = false;
+        uploading = false;
+        uploadXhr = null;
+        btn.disabled = false;
         btn.textContent = 'Upload';
+        cancelBtn.textContent = 'Cancel';
+        closeBtn.disabled = false;
       }
     }
+
+    document.querySelectorAll('.update-row').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('a')) {
+          return;
+        }
+        window.location.href = row.dataset.href;
+      });
+    });
+
+    (function () {
+      const dialog = document.getElementById('upload-dialog');
+      const showBtn = document.getElementById('show-upload-btn');
+      const closeBtn = document.getElementById('dlg-close-btn');
+      const cancelBtn = document.getElementById('upload-cancel-btn');
+      const dirInput = document.getElementById('upload-dir');
+      const fileSummary = document.getElementById('upload-file-summary');
+
+      function openDialog() {
+        document.getElementById('upload-form').reset();
+        fileSummary.textContent = 'No directory selected';
+        document.getElementById('upload-progress').style.display = 'none';
+        document.getElementById('upload-result').style.display = 'none';
+        dialog.showModal();
+      }
+
+      showBtn.addEventListener('click', openDialog);
+      closeBtn.addEventListener('click', function () { dialog.close(); });
+      cancelBtn.addEventListener('click', function () {
+        if (uploading) {
+          if (uploadXhr) {
+            uploadXhr.abort();
+          }
+          return;
+        }
+        dialog.close();
+      });
+
+      dialog.addEventListener('cancel', function (e) {
+        if (uploading) {
+          e.preventDefault();
+        }
+      });
+
+      dialog.addEventListener('click', function (e) {
+        if (uploading) {
+          return;
+        }
+        if (e.target === dialog) {
+          dialog.close();
+        }
+      });
+
+      dialog.addEventListener('close', function () {
+        showBtn.focus();
+      });
+
+      dirInput.addEventListener('change', function () {
+        const files = dirInput.files;
+        if (!files || files.length === 0) {
+          fileSummary.textContent = 'No directory selected';
+          return;
+        }
+        let totalBytes = 0;
+        for (const file of files) { totalBytes += file.size; }
+        fileSummary.textContent = files.length + ' file' + (files.length === 1 ? '' : 's') + ' selected (' + formatBytes(totalBytes) + ')';
+      });
+    })();
     </script>
 
 {{ template "footer" .}}
