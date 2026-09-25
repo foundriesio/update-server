@@ -225,6 +225,15 @@ func (h TufFsHandle) ReadRoot(version int) ([]byte, error) {
 	return []byte(content), nil
 }
 
+// ReadDefaultMeta returns the raw content of a metadata file served to devices
+// with no update assigned. The error wraps os.ErrNotExist when it is missing.
+func (h TufFsHandle) ReadDefaultMeta(name string) (string, error) {
+	if strings.HasSuffix(name, rootJsonSuffix) {
+		return h.readFile(name, false)
+	}
+	return baseFsHandle{root: filepath.Join(h.root, tufDefaultDir)}.readFile(name, false)
+}
+
 // ReadTufMeta reads and unmarshals a TUF metadata file from an update.
 func (h TufFsHandle) ReadTufMeta(update, name string, v any) error {
 	content, err := h.updates.Tuf.ReadFile(update, name)
