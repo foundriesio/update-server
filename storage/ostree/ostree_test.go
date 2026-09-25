@@ -53,7 +53,7 @@ func TestReadFileNotFound(t *testing.T) {
 // from an OSTree repo, without needing the repo present at test time.
 func TestParseEmbedded(t *testing.T) {
 	// Real commit object from intel-corei7-64-lmp ref.
-	commitB64 := "b3N0cmVlLnJlZi1iaW5kaW5nAAAAAAAAaW50ZWwtY29yZWk3LTY0LWxtcAAUAGFzEzG1AK7bkK3BehHydWbJRP6wPpY4vI+hYupk5Q+pVKRATCJhbmR5LXRlc3Qtd2l0aC1zY3JpcHQiAAAAAAAAAAAAAABn+ChCa+Nk2LmOpzozokSSqmXmf2OtHDlC+3CH7tP9Ui8XXvtEag7xG3zBZ/O2A+WFx+7utnX6pBLV7HP2KYjrC2xUiJhralJSMg=="
+	commitB64 := "b3N0cmVlLnJlZi1iaW5kaW5nAAAAAAAAaW50ZWwtY29yZWk3LTY0LWxtcAAUAGFzEzG1AK7bkK3BehHydWbJRP6wPpY4vI+hYupk5Q+pVKRATCJhbmR5LXRlc3Qtd2l0aC1zY3JpcHQiAAAAAAAAAAAAAABn+ChCa+Nk2LmOpzozokSSqmXmf2OtHDlC+3CH7tP9Ui8XXvtEag7xG3zBZ/O2A+WFx+7utnX6pBLV7HP2KYjrC2xUiJhralJSMg==" //nolint:lll
 	// Real dirtree object for /usr/lib/sota/conf.d in that commit.
 	confdDirtreeB64 := "NDAtaGFyZHdhcmUtaWQudG9tbAC1ZC8Sl/gPnTzhmR+/MldHJ2cJ86zkuVmJlEO4r3IvSBQ0Ni1wa2NzMTEtbGFiZWwudG9tbADMqpJ1rI4WLNXdRi4t7EcPxlwFlOexZusMtkDgXeAKuBU1a20="
 	// Raw content of the target file.

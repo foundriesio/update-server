@@ -20,6 +20,7 @@ linters:
     - gocyclo
     - govet
     - ineffassign
+    - lll
     - misspell
     - nolintlint
     - staticcheck
@@ -28,6 +29,8 @@ linters:
     - unused
     - usestdlibvars
   settings:
+    lll:
+      line-length: 200
     nolintlint:
       require-specific: true
 formatters:
