@@ -5,32 +5,34 @@
           display: none !important;
         }
 
-        dialog.file-content > article > section > form textarea {
-          white-space: pre;
-          /* A field-sizing: content is not supported by Firefox/Safari and is badly implemented by others - do via the JavaScript. June 2026. */
-          /* field-sizing: content; */
-          resize: none;
-          overflow: hidden;
-          min-height: 2rem;
-          min-width: 100%;
-          font-size: inherit;
-        }
+        dialog.file-content > article > section {
+          form textarea {
+            white-space: pre;
+            /* A field-sizing: content is not supported by Firefox/Safari and is badly implemented by others - do via the JavaScript. June 2026. */
+            /* field-sizing: content; */
+            resize: none;
+            overflow: hidden;
+            min-height: 2rem;
+            min-width: 100%;
+            font-size: inherit;
+          }
 
-        dialog.file-content > article > section > form input {
-          min-width: 100%;
-          font-size: inherit;
-        }
+          form input {
+            min-width: 100%;
+            font-size: inherit;
+          }
 
-        dialog.file-content > article > section > form input:read-only {
-          {{/* Make it look like a span when editing a file, as a name is read-only */}}
-          cursor: inherit;
-          font-size: inherit;
-          user-select: inherit;
-          background: transparent;
-          caret-color: transparent;
-          border-color: transparent;
-          outline: none;
-          min-width: auto;
+          form input:read-only {
+            {{/* Make it look like a span when editing a file, as a name is read-only */}}
+            cursor: inherit;
+            font-size: inherit;
+            user-select: inherit;
+            background: transparent;
+            caret-color: transparent;
+            border-color: transparent;
+            outline: none;
+            min-width: auto;
+          }
         }
       </style>
       <dialog id="EditConfigsFile" class="file-content" data-mode="add">
