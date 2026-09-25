@@ -5,6 +5,7 @@ package storage
 
 import (
 	"crypto/ed25519"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -172,4 +173,64 @@ func TestRootMetaJSONFormat(t *testing.T) {
 		require.True(t, ok, "missing role %s", role)
 	}
 	require.True(t, strings.Contains(string(content), "\"keytype\": \"ED25519\""))
+}
+
+// requireValidDefaultMeta asserts the default metadata is signed by the
+// latest root's role keys, expires with it, and chains by hash.
+func requireValidDefaultMeta(t *testing.T, fs *FsHandle) {
+	t.Helper()
+	roots, err := fs.Tuf.GetRoots()
+	require.NoError(t, err)
+	root := roots[len(roots)-1]
+
+	read := func(name string, v any) []byte {
+		raw, err := os.ReadFile(filepath.Join(fs.Config.TufDir(), tufDefaultDir, name))
+		require.NoError(t, err, name)
+		require.NoError(t, json.Unmarshal(raw, v), name)
+		return raw
+	}
+	verify := func(role tuf.RoleName, sigs []tuf.Signature, signed any) {
+		require.Len(t, sigs, 1, role)
+		require.Equal(t, root.Signed.Roles[role].KeyIDs, []string{sigs[0].KeyID}, role)
+		pub, err := hex.DecodeString(root.Signed.Keys[sigs[0].KeyID].KeyValue.Public)
+		require.NoError(t, err)
+		msg, err := cjson.EncodeCanonical(signed)
+		require.NoError(t, err)
+		require.True(t, ed25519.Verify(ed25519.PublicKey(pub), msg, sigs[0].Signature), role)
+	}
+	requireRef := func(item tuf.MetaItem, raw []byte, version int) {
+		sum := sha256.Sum256(raw)
+		require.Equal(t, version, item.Version)
+		require.Equal(t, int64(len(raw)), item.Length)
+		require.Equal(t, tuf.HexBytes(sum[:]), item.Hashes["sha256"])
+	}
+
+	var targets tuf.AtsTufTargets
+	targetsRaw := read(TufTargetsFile, &targets)
+	verify(tuf.RoleTargets, targets.Signatures, targets.Signed)
+	require.Equal(t, "Targets", targets.Signed.Type)
+	require.Equal(t, 1, targets.Signed.Version)
+	require.Empty(t, targets.Signed.Targets)
+	require.True(t, root.Signed.Expires.Equal(targets.Signed.Expires))
+	require.Contains(t, string(targetsRaw), `"targets":{}`, "targets must serialize as an object, not null")
+
+	var ss tuf.AtsTufSnapshot
+	ssRaw := read(TufSnapshotFile, &ss)
+	verify(tuf.RoleSnapshot, ss.Signatures, ss.Signed)
+	require.Equal(t, 1, ss.Signed.Version)
+	require.True(t, root.Signed.Expires.Equal(ss.Signed.Expires))
+	requireRef(ss.Signed.Meta[TufTargetsFile], targetsRaw, 1)
+
+	var ts tuf.AtsTufTimestamp
+	read(TufTimestampFile, &ts)
+	verify(tuf.RoleTimestamp, ts.Signatures, ts.Signed)
+	require.Equal(t, 1000, ts.Signed.Version)
+	require.True(t, root.Signed.Expires.Equal(ts.Signed.Expires))
+	requireRef(ts.Signed.Meta[TufSnapshotFile], ssRaw, 1)
+}
+
+func TestInitTufDefaultMeta(t *testing.T) {
+	fs := newTufTestFs(t)
+	require.NoError(t, fs.Tuf.InitTuf())
+	requireValidDefaultMeta(t, fs)
 }

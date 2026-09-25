@@ -157,6 +157,7 @@ func TestImportTufEd25519(t *testing.T) {
 	// Server keys load and match the new root.
 	require.NoError(t, fs.Tuf.LoadTuf())
 	require.Equal(t, newKid, fs.Tuf.signers[tuf.RoleRoot].Id)
+	requireValidDefaultMeta(t, fs)
 }
 
 func TestImportTufRSA(t *testing.T) {
