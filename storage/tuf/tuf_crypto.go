@@ -109,3 +109,14 @@ func (s *Signer) Sign(signed any) (Signature, error) {
 	sig := ed25519.Sign(s.private, msg)
 	return Signature{KeyID: s.Id, Method: SigEd25519, Signature: sig}, nil
 }
+
+// MarshalMeta encodes v as canonical JSON and returns its bytes along with the
+// MetaItem (version, length, sha256) that references it.
+func MarshalMeta(v any, version int) ([]byte, MetaItem, error) {
+	b, err := cjson.EncodeCanonical(v)
+	if err != nil {
+		return nil, MetaItem{}, err
+	}
+	sum := sha256.Sum256(b)
+	return b, MetaItem{Version: version, Length: int64(len(b)), Hashes: Hashes{"sha256": sum[:]}}, nil
+}
