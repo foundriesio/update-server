@@ -8,6 +8,20 @@ permissions:
   contents: read
 
 jobs:
+  lint-policy-check:
+    name: lint-bypass-policy-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check Nolint Directives
+        run: |
+          if grep -nirPI 'nolint([^:]|$|:.*(all|bidichk|asciicheck))' --include='*.go' .; then
+            echo "Golang code tries to bypass linter code security checks";
+            exit 1;
+          fi
+          echo "Linter policy security check passed";
+
   lint:
     name: golangci-lint
     runs-on: ubuntu-latest
