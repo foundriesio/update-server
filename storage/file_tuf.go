@@ -34,6 +34,8 @@ var ErrTufAlreadyInitialized = errors.New("TUF is already initialized")
 const (
 	// tufKeysDir holds the encrypted role private keys.
 	tufKeysDir = "keys"
+	// tufDefaultDir holds the metadata served to devices with no update assigned.
+	tufDefaultDir = "default"
 	// rootJsonSuffix is the suffix for versioned root metadata files.
 	rootJsonSuffix = ".root.json"
 
@@ -147,7 +149,10 @@ func (h TufFsHandle) InitTuf() error {
 		return fmt.Errorf("unable to sign root metadata: %w", err)
 	}
 	root.Signatures = []tuf.Signature{signed}
-	return h.writeRoot(root)
+	if err := h.writeRoot(root); err != nil {
+		return err
+	}
+	return h.writeDefaultMeta(signers, root.Signed.Expires)
 }
 
 // LoadTuf loads and decrypts the role private keys into the handle. It returns
@@ -284,6 +289,85 @@ func (h TufFsHandle) WriteMeta(tufDir string, targets, snapshot, timestamp []byt
 
 func (h TufFsHandle) WriteTimestamp(update string, ts []byte) error {
 	return h.updates.Tuf.WriteFile(update, "timestamp.json", string(ts))
+}
+
+// writeDefaultMeta signs and stores an empty targets.json with matching
+// snapshot.json and timestamp.json. They expire with the root so they never
+// need refreshing.
+func (h TufFsHandle) writeDefaultMeta(signers map[tuf.RoleName]*tuf.Signer, expires time.Time) error {
+	targets := tuf.AtsTufTargets{
+		Signed: tuf.TargetsMeta{
+			SignedCommon: tuf.SignedCommon{
+				Type:    tuf.RoleTargets.TufType(),
+				Version: 1,
+				Expires: expires,
+			},
+			Targets: tuf.TargetFiles{},
+		},
+	}
+	sig, err := signers[tuf.RoleTargets].Sign(targets.Signed)
+	if err != nil {
+		return fmt.Errorf("unable to sign default targets metadata: %w", err)
+	}
+	targets.Signatures = []tuf.Signature{sig}
+	targetsBytes, targetsMeta, err := tuf.MarshalMeta(targets, targets.Signed.Version)
+	if err != nil {
+		return fmt.Errorf("unable to marshal default targets metadata: %w", err)
+	}
+
+	ss := tuf.AtsTufSnapshot{
+		Signed: tuf.SnapshotMeta{
+			SignedCommon: tuf.SignedCommon{
+				Type:    tuf.RoleSnapshot.TufType(),
+				Version: targets.Signed.Version,
+				Expires: expires,
+			},
+			Meta: map[string]tuf.MetaItem{TufTargetsFile: targetsMeta},
+		},
+	}
+	if sig, err = signers[tuf.RoleSnapshot].Sign(ss.Signed); err != nil {
+		return fmt.Errorf("unable to sign default snapshot metadata: %w", err)
+	}
+	ss.Signatures = []tuf.Signature{sig}
+	ssBytes, ssMeta, err := tuf.MarshalMeta(ss, ss.Signed.Version)
+	if err != nil {
+		return fmt.Errorf("unable to marshal default snapshot metadata: %w", err)
+	}
+
+	// Follows the targets.Version*1000 timestamp scheme used for updates.
+	ts := tuf.AtsTufTimestamp{
+		Signed: tuf.TimestampMeta{
+			SignedCommon: tuf.SignedCommon{
+				Type:    tuf.RoleTimestamp.TufType(),
+				Version: targets.Signed.Version * 1000,
+				Expires: expires,
+			},
+			Meta: map[string]tuf.MetaItem{TufSnapshotFile: ssMeta},
+		},
+	}
+	if sig, err = signers[tuf.RoleTimestamp].Sign(ts.Signed); err != nil {
+		return fmt.Errorf("unable to sign default timestamp metadata: %w", err)
+	}
+	ts.Signatures = []tuf.Signature{sig}
+	tsBytes, _, err := tuf.MarshalMeta(ts, ts.Signed.Version)
+	if err != nil {
+		return fmt.Errorf("unable to marshal default timestamp metadata: %w", err)
+	}
+
+	handle := baseFsHandle{root: filepath.Join(h.root, tufDefaultDir)}
+	if err := handle.mkdirs(defaultDirAccess, true); err != nil {
+		return fmt.Errorf("unable to create default TUF directory: %w", err)
+	}
+	for _, pair := range [][2]string{
+		{TufTargetsFile, string(targetsBytes)},
+		{TufSnapshotFile, string(ssBytes)},
+		{TufTimestampFile, string(tsBytes)},
+	} {
+		if err := handle.writeFile(pair[0], pair[1], defaultFileAccess); err != nil {
+			return fmt.Errorf("unable to write default %s: %w", pair[0], err)
+		}
+	}
+	return nil
 }
 
 // writeRoot persists a root metadata file as <version>.root.json.
