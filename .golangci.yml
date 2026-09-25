@@ -22,6 +22,7 @@ linters:
     - godoclint
     - goheader
     - govet
+    - iface
     - ineffassign
     - iotamixing
     - lll
