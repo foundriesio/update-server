@@ -19,12 +19,12 @@
             font-size: inherit;
           }
 
-          form input {
+          form input:not([type="checkbox"]) {
             min-width: 100%;
             font-size: inherit;
           }
 
-          form input:read-only {
+          form input[readonly] {
             {{/* Make it look like a span when editing a file, as a name is read-only */}}
             cursor: inherit;
             font-size: inherit;
@@ -34,6 +34,15 @@
             border-color: transparent;
             outline: none;
             min-width: auto;
+          }
+
+          {{/* Changes the default checkbox color, which is invisible with our theme */}}
+          form input[type="checkbox"] {
+            border-color: var(--pico-primary);
+            box-shadow: none;
+          }
+          form input[type="checkbox"]:focus, input[type="checkbox"]:active {
+            border-color: var(--pico-primary-focus);
           }
         }
       </style>
