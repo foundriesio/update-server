@@ -179,8 +179,11 @@ func (s Storage) GenerateTufMeta(tufDir string, opts TargetOptions) error {
 
 // getLatestVersions returns the highest TUF metadata version and the highest
 // target/app version currently present across all updates.
-// Both are zero when the tag has no existing TUF metadata.
+// The TUF version is never below 1, the version of the default metadata
+// served to devices with no update; the target version is zero when no
+// update has TUF metadata.
 func (s Storage) getLatestVersions() (tufVersion, targetVersion int, err error) {
+	tufVersion = 1
 	updates, err := s.ListUpdates("")
 	if err != nil {
 		return 0, 0, err
