@@ -7,6 +7,15 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
+
+	models "github.com/foundriesio/update-server/storage"
+)
+
+const (
+	CertsRootPemFile     = models.CertsRootPemFile
+	CertsCasPemFile      = models.CertsCasPemFile
+	CertsTlsPemFile      = models.CertsTlsPemFile
+	CertsDeviceCaPemFile = models.CertsDeviceCaPemFile
 )
 
 type PkiApi struct {

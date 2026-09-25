@@ -17,11 +17,13 @@ linters:
     - errorlint
     - exptostd
     - gocheckcompilerdirectives
+    - goconst
     - gocyclo
     - godoclint
     - goheader
     - govet
     - ineffassign
+    - iotamixing
     - lll
     - loggercheck
     - misspell
@@ -32,6 +34,8 @@ linters:
     - unused
     - usestdlibvars
   settings:
+    goconst:
+      ignore-tests: true
     godoclint:
       disable:
         - pkg-doc  # We use copyright instead
