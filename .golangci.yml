@@ -21,6 +21,7 @@ linters:
     - govet
     - ineffassign
     - lll
+    - loggercheck
     - misspell
     - nolintlint
     - staticcheck
@@ -31,6 +32,8 @@ linters:
   settings:
     lll:
       line-length: 200
+    loggercheck:
+      slog: true
     nolintlint:
       require-specific: true
 formatters:
