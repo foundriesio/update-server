@@ -18,6 +18,7 @@ linters:
     - exptostd
     - gocheckcompilerdirectives
     - gocyclo
+    - godoclint
     - goheader
     - govet
     - ineffassign
@@ -31,6 +32,10 @@ linters:
     - unused
     - usestdlibvars
   settings:
+    godoclint:
+      disable:
+        - pkg-doc  # We use copyright instead
+        - start-with-name  # Prevents many false-positives of regular comments
     goheader:
       template: |-
         Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.

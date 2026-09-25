@@ -10,6 +10,7 @@
 // endpoint: the gateway never verifies TUF signatures on GET (that's a
 // TUF-client-side concern), so unsigned fixture content is sufficient here
 // and far cheaper to produce.
+
 package main
 
 import (

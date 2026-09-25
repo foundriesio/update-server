@@ -8,6 +8,7 @@
 // nothing to compare a warm cache against. Always on (unlike --seed-update):
 // a real fleet always has a factory config, so this makes device:config
 // traffic more representative for every scene, not just the warm/cold pair.
+
 package main
 
 import (
