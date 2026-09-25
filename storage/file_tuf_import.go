@@ -155,7 +155,10 @@ func (h TufFsHandle) importTuf(roots []importedRoot, candidateKeys []tuf.AtsKey)
 			return fmt.Errorf("unable to write %s: %w", name, err)
 		}
 	}
-	return h.writeRoot(newRoot)
+	if err := h.writeRoot(newRoot); err != nil {
+		return err
+	}
+	return h.writeDefaultMeta(signers, newRoot.Signed.Expires)
 }
 
 func findFirstRootSigner(keyIDs []string, candidateKeys []tuf.AtsKey) (*tuf.ImportSigner, error) {
