@@ -25,6 +25,7 @@ const MissingState = "Missing"
 type UpdateSummary struct {
 	// A map of device status to the number of devices in that status for the update.
 	Status map[string]int `json:"summaries"`
+	Tag    string
 }
 
 func (s Storage) lastKnownStates(name string, filterUuids map[string]any) (map[string]string, error) {
@@ -54,16 +55,21 @@ func (s Storage) lastKnownStates(name string, filterUuids map[string]any) (map[s
 }
 
 func (s Storage) updateSummary(name string, filterUuids map[string]any) (*UpdateSummary, error) {
+	u, err := s.GetUpdate(name)
+	if err != nil {
+		return nil, err
+	}
 	lastStates, err := s.lastKnownStates(name, filterUuids)
 	if err != nil {
 		return nil, err
 	} else if lastStates == nil {
 		return &UpdateSummary{
 			Status: make(map[string]int),
+			Tag:    u.Tag,
 		}, nil
 	}
 
-	report := &UpdateSummary{Status: make(map[string]int)}
+	report := &UpdateSummary{Status: make(map[string]int), Tag: u.Tag}
 	for uuid, status := range lastStates {
 		count, ok := report.Status[status]
 		if !ok {

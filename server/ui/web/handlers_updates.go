@@ -204,7 +204,7 @@ func (h handlers) updatesGet(c echo.Context) error {
 		TufError     string
 	}{
 		baseCtx:      h.baseCtx(c, "Update Details", "updates"),
-		Tag:          c.Param("tag"),
+		Tag:          summary.Tag,
 		Name:         c.Param("name"),
 		Summary:      summary,
 		Rollouts:     rollouts,
@@ -241,7 +241,7 @@ func (h handlers) updatesRollout(c echo.Context) error {
 		Summary api.UpdateSummary
 	}{
 		baseCtx: h.baseCtx(c, "Rollout Details", "updates"),
-		Tag:     c.Param("tag"),
+		Tag:     summary.Tag,
 		Name:    c.Param("name"),
 		Rollout: c.Param("rollout"),
 		Details: details,
