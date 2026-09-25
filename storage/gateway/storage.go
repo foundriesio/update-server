@@ -218,6 +218,9 @@ func (d Device) GetOstreeFilePath(file string) string {
 }
 
 func (d Device) GetTufMeta(file string) (string, error) {
+	if len(d.UpdateName) == 0 {
+		return d.storage.fs.Tuf.ReadDefaultMeta(file)
+	}
 	return d.storage.fs.Updates.Tuf.ReadFile(d.UpdateName, file)
 }
 
