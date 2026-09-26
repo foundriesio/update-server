@@ -42,7 +42,8 @@ func uploadConfigs(capi api.ConfigsApi, path string, isDir bool) error {
 		reporter func(string, chan bool, chan bool)
 	)
 
-	if isDir {
+	switch {
+	case isDir:
 		if stat, err := os.Stat(path); err != nil {
 			return fmt.Errorf("failed to stat directory '%s': %w", path, err)
 		} else if !stat.Mode().IsDir() {
@@ -62,7 +63,7 @@ func uploadConfigs(capi api.ConfigsApi, path string, isDir bool) error {
 
 		reader = subcommands.GzipStream(progress.StreamWriter(subcommands.TarStream(sourcer)))
 		defer reader.Close() //nolint:errcheck
-	} else {
+	default:
 		var isGzip bool
 		switch ext := filepath.Ext(path); ext {
 		case ".tar":

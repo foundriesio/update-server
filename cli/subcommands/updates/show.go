@@ -200,6 +200,7 @@ func targetSha256(target map[string]any) string {
 
 func printApps(custom map[string]any) {
 	apps := make(map[string]string)
+	//nolint:nestif // auto-generated AI code.
 	if custom != nil {
 		if dockerApps, ok := custom["docker_compose_apps"].(map[string]any); ok {
 			for name, val := range dockerApps {

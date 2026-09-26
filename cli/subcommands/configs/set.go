@@ -92,7 +92,8 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, encrypt, raw, repla
 		err  error
 	)
 	cfg.Reason = reason
-	if raw {
+	switch {
+	case raw:
 		if raw && len(files) != 1 {
 			return errors.New("raw file only accepts one file argument")
 		}
@@ -104,7 +105,7 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, encrypt, raw, repla
 		}
 		cobra.CheckErr(err)
 		cobra.CheckErr(json.Unmarshal(data, &cfg.Files))
-	} else {
+	default:
 		cfg.Files = make(map[string]api.ConfigFile, len(files))
 		for _, keyval := range files {
 			parts := strings.SplitN(keyval, "=", 2)

@@ -28,6 +28,7 @@ linters:
     - lll
     - loggercheck
     - misspell
+    - nestif
     - nolintlint
     - staticcheck
     - unconvert
@@ -49,6 +50,8 @@ linters:
       line-length: 200
     loggercheck:
       slog: true
+    nestif:
+      min-complexity: 6
     nolintlint:
       require-specific: true
 formatters:
