@@ -17,6 +17,7 @@ linters:
     - errorlint
     - exptostd
     - gocheckcompilerdirectives
+    - gocognit
     - goconst
     - gocyclo
     - godoclint
@@ -38,6 +39,8 @@ linters:
     - unused
     - usestdlibvars
   settings:
+    gocognit:
+      min-complexity: 40
     goconst:
       ignore-tests: true
     godoclint:
