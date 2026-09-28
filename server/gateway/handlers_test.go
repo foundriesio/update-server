@@ -34,6 +34,7 @@ import (
 	"github.com/foundriesio/update-server/server"
 	baseStorage "github.com/foundriesio/update-server/storage"
 	storage "github.com/foundriesio/update-server/storage/gateway"
+	"github.com/foundriesio/update-server/storage/tuf"
 )
 
 type testClient struct {
@@ -802,6 +803,32 @@ func TestTufMeta(t *testing.T) {
 		tcCi42.t = t
 		_ = tcCi42.GET("/repo/5.root.json", 404, "x-ats-tags", "test")
 	})
+}
+
+func TestTufMetaNoUpdate(t *testing.T) {
+	tc := NewTestClient(t)
+	_ = tc.GET("/device", 200) // This creates the device via auto-register
+
+	// Without tuf-init there is no default metadata to serve.
+	_ = tc.GET("/repo/targets.json", 404, "x-ats-tags", "test")
+
+	require.Nil(t, tc.fs.Auth.InitHmacSecret())
+	require.Nil(t, tc.fs.Tuf.InitTuf())
+
+	for _, role := range []string{"1.root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+		t.Run(role, func(t *testing.T) {
+			tc.t = t
+			_ = tc.GET("/repo/"+role, 200, "x-ats-tags", "test")
+		})
+		tc.t = t
+	}
+
+	var targets tuf.AtsTufTargets
+	require.Nil(t, json.Unmarshal(tc.GET("/repo/targets.json", 200, "x-ats-tags", "test"), &targets))
+	assert.Equal(t, 1, targets.Signed.Version)
+	assert.Empty(t, targets.Signed.Targets)
+
+	_ = tc.GET("/repo/2.root.json", 404, "x-ats-tags", "test")
 }
 
 func TestOstree(t *testing.T) {

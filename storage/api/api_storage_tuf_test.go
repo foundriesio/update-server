@@ -100,7 +100,7 @@ func TestAddTarget(t *testing.T) {
 	var targets tuf.AtsTufTargets
 	readTufMeta(t, tufDir, storage.TufTargetsFile, &targets)
 	assert.Equal(t, "Targets", targets.Signed.Type)
-	assert.Equal(t, 1, targets.Signed.Version)
+	assert.Equal(t, 2, targets.Signed.Version, "must exceed the default metadata's version 1")
 	assert.Equal(t, fixedNow.Add(s.fs.Tuf.TargetsExpiration).Truncate(time.Second), targets.Signed.Expires)
 	require.Len(t, targets.Signed.Targets, 1)
 
