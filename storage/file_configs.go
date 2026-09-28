@@ -24,7 +24,7 @@ import (
 // - $root/device/$uuid/ - device configs
 // Inner directory structure:
 // - .journal - an ordered append-only journal of config history, where the last line is the latest config file name.
-// - $config_sha156 - each config file contains the entire config JSON, with file name being a sha256 hash of its contents.
+// - $config_sha256 - each config file contains the entire config JSON, with file name being a sha256 hash of its contents.
 // Note: a config file can be technicallt anything; using a sha256 hash as a name simply allows to avoid collisions.
 // An interesting aspect is that any config rollbacks will result into the same hash, effectively compressing disk usage.
 

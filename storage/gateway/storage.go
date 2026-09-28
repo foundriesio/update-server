@@ -4,13 +4,13 @@
 package gateway
 
 import (
-	"crypto/sha1"
 	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"time"
 
@@ -118,11 +118,11 @@ func (d *Device) RotateCert(current, next *x509.Certificate) error {
 	if expires < now {
 		expires = now
 	}
-	currentSHA1 := sha1.Sum(current.Raw)
-	nextSHA1 := sha1.Sum(next.Raw)
-	err1 := d.storage.stmtDeviceRotateCert.run(
-		d.Uuid, nextPEM, currentSHA1[:], nextSHA1[:], expires,
-	)
+
+	currentHash := OldCertHash(current.Raw)
+	nextHash := OldCertHash(next.Raw)
+
+	err1 := d.storage.stmtDeviceRotateCert.run(d.Uuid, nextPEM, currentHash, nextHash, expires)
 
 	success := err1 == nil
 	corrId := fmt.Sprintf("certs-%d", time.Now().Unix())
@@ -387,7 +387,7 @@ func (s *stmtDeviceRotateCert) Init(db storage.DbHandle) (err error) {
 	return nil
 }
 
-func (s *stmtDeviceRotateCert) run(uuid, nextCert string, currentSHA1, nextSHA1 []byte, expires int64) error {
+func (s *stmtDeviceRotateCert) run(uuid, nextCert string, currentHash, nextHash []byte, expires int64) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -399,14 +399,14 @@ func (s *stmtDeviceRotateCert) run(uuid, nextCert string, currentSHA1, nextSHA1 
 	}()
 
 	_, err = tx.Exec(`
-			INSERT INTO old_certs(expires, sha1)
+			INSERT INTO old_certs(expires, hash)
 			SELECT :expires, CASE
-				WHEN NOT EXISTS (SELECT 1 FROM old_certs WHERE sha1 = :new_hash)
+				WHEN NOT EXISTS (SELECT 1 FROM old_certs WHERE hash = :new_hash)
 				THEN :old_hash ELSE :new_hash
 			END
 		`,
-		sql.Named("old_hash", currentSHA1),
-		sql.Named("new_hash", nextSHA1),
+		sql.Named("old_hash", currentHash),
+		sql.Named("new_hash", nextHash),
 		sql.Named("expires", expires),
 	)
 	if err != nil {
@@ -424,4 +424,10 @@ func (s *stmtDeviceRotateCert) run(uuid, nextCert string, currentSHA1, nextSHA1 
 	}
 
 	return tx.Commit()
+}
+
+func OldCertHash(data []byte) []byte {
+	h := fnv.New128a()
+	_, _ = h.Write(data)
+	return h.Sum(nil)
 }

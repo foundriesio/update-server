@@ -8,7 +8,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -200,15 +199,15 @@ func TestCertRotation(t *testing.T) {
 	assert.True(t, *evt.Event.Success)
 
 	stmt, err := tc.db.Prepare(
-		"TestOldCert", "SELECT expires, sha1 FROM old_certs",
+		"TestOldCert", "SELECT expires, hash FROM old_certs",
 	)
 	require.Nil(t, err)
 	var expires int64
 	var fingerprint []byte
 	require.Nil(t, stmt.QueryRow().Scan(&expires, &fingerprint))
 	assert.Equal(t, oldCert.NotAfter.Unix(), expires)
-	expectedFingerprint := sha1.Sum(oldCert.Raw)
-	assert.Equal(t, expectedFingerprint[:], fingerprint)
+	expectedFingerprint := storage.OldCertHash(oldCert.Raw)
+	assert.Equal(t, expectedFingerprint, fingerprint)
 
 	// A certificate cannot be rotated back into use while its old entry is live.
 	tc.cert = oldCert
