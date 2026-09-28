@@ -19,19 +19,19 @@ const CsrfHeaderName = "X-CSRF-Token"
 // SetCsrfCookie sets a CSRF cookie on the response. It should be called when a new session is created.
 func SetCsrfCookie(c echo.Context, expires time.Time, secure bool) string {
 	token := rand.Text()
-	samesite := http.SameSiteStrictMode
-	if !secure {
-		samesite = http.SameSiteLaxMode
-	}
-	c.SetCookie(&http.Cookie{
+	cookie := http.Cookie{
 		Name:     CsrfCookieName,
 		Value:    token,
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   secure,
-		SameSite: samesite,
-	})
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	if !secure {
+		cookie = developmentCookie(cookie)
+	}
+	c.SetCookie(&cookie)
 	return token
 }
 
@@ -90,3 +90,11 @@ func PassCsrfCookie(ctx context.Context, req *http.Request) {
 type ctxKey int
 
 const ctxKeyCsrfToken ctxKey = iota
+
+//gosec:disable G124 // Insecure cookies are OK in development mode.
+func developmentCookie(cookie http.Cookie) http.Cookie {
+	// Using value type allows to run security checks on the original cookie, and only disable for development.
+	cookie.SameSite = http.SameSiteLaxMode
+	cookie.Secure = false
+	return cookie
+}
