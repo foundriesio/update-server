@@ -59,6 +59,12 @@ Because probing is a best effort, you can override any of these attributes
 with flags, which is also useful when uploading content that has no
 `ostree_repo` (for example, an apps-only update):
 
+For an apps-only update, `--ostree-hash` is required and must match the
+currently installed OSTree commit on the device receiving the update. If
+devices have different installed commits, create a separate update for each
+commit. Without this override, the server uses the hash of empty content,
+which the device may try to fetch as an OSTree commit.
+
 ```
   fiocli updates upload main 148 ./148 \
     --hardware-id intel-corei7-64 \
