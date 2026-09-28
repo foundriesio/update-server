@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+const defaultTarItemSizeLimit int64 = 1 << 22 // 4 MB
+
+var ErrDecompressedSizeExceedsLimit = errors.New("decompressed size exceeds limit")
+
 type tarUnpackConfig struct {
 	createDest  bool
 	replaceDest bool
@@ -21,6 +25,7 @@ type tarUnpackConfig struct {
 	fileAccess  os.FileMode
 	tmpFile     string
 	tmpDir      string
+	maxItemSize int64
 	events      tarUnpackEvents
 }
 
@@ -93,6 +98,13 @@ func TarUnpackUseTmpFile(val string) TarUnpackOption {
 	}
 }
 
+func TarUnpackMaxItemFileSize(val int64) TarUnpackOption {
+	return func(cfg tarUnpackConfig) tarUnpackConfig {
+		cfg.maxItemSize = val
+		return cfg
+	}
+}
+
 func TarUnpackOnEvents(val tarUnpackEvents) TarUnpackOption {
 	return func(cfg tarUnpackConfig) tarUnpackConfig {
 		cfg.events = val
@@ -109,6 +121,7 @@ func (s tarFsHandle) unpackTar(srcReader io.Reader, destDir string, opts ...TarU
 		replaceDest: false,
 		dirAccess:   defaultDirAccess,
 		fileAccess:  defaultFileAccess,
+		maxItemSize: defaultTarItemSizeLimit,
 	}
 	for _, opt := range opts {
 		cfg = opt(cfg)
@@ -288,10 +301,24 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 		if err = os.MkdirAll(dirPath, cfg.dirAccess); err != nil {
 			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
 		}
-		if file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
+
+		if hdr.Size > cfg.maxItemSize {
+			// If header declares oversize - fail instantly; otherwise, try to read and let limit reader control oversize.
+			return fmt.Errorf("failed to unpack file '%s': %w %d", hdr.Name, ErrDecompressedSizeExceedsLimit, cfg.maxItemSize)
+		} else if file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
 			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-		} else if err = _copyAndCloseOut(file, tarReader); err != nil {
-			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+		} else {
+			limitReader := &io.LimitedReader{
+				R: tarReader,
+				N: cfg.maxItemSize + 1,
+			}
+			if err = _copyAndCloseOut(file, limitReader); err != nil {
+				return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+			}
+			if limitReader.N <= 0 {
+				// We read at least over byte above limit - guaranteed oversize.
+				return fmt.Errorf("failed to unpack file '%s': %w %d", hdr.Name, ErrDecompressedSizeExceedsLimit, cfg.maxItemSize)
+			}
 		}
 	}
 	if cfg.events.onUnpackComplete != nil {
