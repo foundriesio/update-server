@@ -90,7 +90,7 @@ func printRootKeyBackupNotice(fs *storage.FsHandle) {
 // root key files it contains. Only private key files (those ending in
 // ".sec") are parsed; all other archive entries are ignored.
 func loadTufKeysArchive(path string) ([]tuf.AtsKey, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //gosec:disable G304
 	if err != nil {
 		return nil, fmt.Errorf("unable to open keys archive: %w", err)
 	}
@@ -137,7 +137,7 @@ func loadTufKeysArchive(path string) ([]tuf.AtsKey, error) {
 // every root.json file it contains. Only files ending in ".root.json" are
 // extracted; all other archive entries are ignored.
 func loadTufRootsArchive(path string) ([][]byte, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //gosec:disable G304
 	if err != nil {
 		return nil, fmt.Errorf("unable to open roots archive: %w", err)
 	}

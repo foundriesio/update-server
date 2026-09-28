@@ -101,7 +101,7 @@ func setConfigs(capi api.SpecificConfigsApi, files []string, encrypt, raw, repla
 		if path == "-" {
 			data, err = io.ReadAll(os.Stdin)
 		} else {
-			data, err = os.ReadFile(path)
+			data, err = os.ReadFile(path) //gosec:disable G304 // We support file path inclusion for file upload.
 		}
 		cobra.CheckErr(err)
 		cobra.CheckErr(json.Unmarshal(data, &cfg.Files))

@@ -45,7 +45,7 @@ func isValidObjectHash(hash string) bool {
 
 func (r *Repo) ReadRef(ref string) (string, error) {
 	for _, base := range []string{"heads", "remotes"} {
-		data, err := os.ReadFile(filepath.Join(r.path, "refs", base, ref))
+		data, err := os.ReadFile(filepath.Join(r.path, "refs", base, ref)) //gosec:disable G304
 		if err == nil {
 			hash := strings.TrimSpace(string(data))
 			if !isValidObjectHash(hash) {

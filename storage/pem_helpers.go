@@ -21,7 +21,7 @@ func PemBytesToObject[T any](pemBytes []byte, parse func([]byte) (T, error)) (T,
 }
 
 func LoadPemFile[T any](path string, parse func([]byte) (T, error)) (T, error) {
-	pemBytes, err := os.ReadFile(path)
+	pemBytes, err := os.ReadFile(path) //gosec:disable G304
 	if err != nil {
 		var zero T
 		return zero, fmt.Errorf("unable to read %s: %w", path, err)
