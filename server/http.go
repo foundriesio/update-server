@@ -39,6 +39,8 @@ func NewServer(ctx context.Context, echo *echo.Echo, name string, bindAddr strin
 		BaseContext: func(net.Listener) context.Context { return ctx },
 		ConnContext: adjustConnContext,
 		TLSConfig:   tlsConfig,
+		// Set to 5 seconds for now to prevent SlowLoris attack; segregate for user-vs-device facing APIs later.
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 	// We cannot push request context, but at least make it JSON, show the server name and error file line.
 	echo.StdLogger = context.StdLogAdapter(log, true)
