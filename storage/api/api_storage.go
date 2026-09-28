@@ -826,6 +826,7 @@ func (s *stmtDeviceSetUpdate) run(tag, updateName string, uuids, groups []string
 	if rows, err := s.Stmt.Query(updateName, tag, uuidsStr, groupsStr); err != nil {
 		return err
 	} else {
+		defer rows.Close() //nolint:errcheck
 		var resUuid string
 		for rows.Next() {
 			if err = rows.Scan(&resUuid); err != nil {

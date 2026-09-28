@@ -30,9 +30,11 @@ linters:
     - misspell
     - nestif
     - nolintlint
+    - sqlclosecheck
     - staticcheck
     - unconvert
     - unparam
+    - unqueryvet
     - unused
     - usestdlibvars
   settings:
@@ -54,6 +56,10 @@ linters:
       min-complexity: 6
     nolintlint:
       require-specific: true
+    unqueryvet:
+      # In addition to default checks
+      check-n1: true
+      check-tx-leaks: true
 formatters:
   enable:
     - gofmt

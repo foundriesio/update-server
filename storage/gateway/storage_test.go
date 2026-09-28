@@ -167,6 +167,7 @@ func Test_ProcessEvents(t *testing.T) {
 
 	stmt, err := db.Prepare("TestProcessEvents", "UPDATE devices SET update_name=?, tag=? WHERE uuid=?")
 	require.Nil(t, err)
+	defer stmt.Close() //nolint:errcheck
 	_, err = stmt.Exec(d.UpdateName, d.Tag, d.Uuid)
 	require.Nil(t, err)
 
