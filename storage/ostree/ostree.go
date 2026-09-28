@@ -212,7 +212,7 @@ func (r *Repo) readContentObject(fileHash string) ([]byte, error) {
 	}
 
 	zr := flate.NewReader(bytes.NewReader(raw[contentStart:]))
-	defer zr.Close() // nolint:errcheck
+	defer zr.Close() //nolint:errcheck
 	content, err := io.ReadAll(zr)
 	if err != nil {
 		return nil, fmt.Errorf("decompressing file object %s: %w", fileHash[:8], err)

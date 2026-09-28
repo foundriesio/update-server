@@ -151,13 +151,14 @@ func (s tarFsHandle) _checkDestDir(destDir, destDirPath string, cfg tarUnpackCon
 		destEmpty = len(destItems) == 0
 	}
 
-	if !destExists {
+	switch {
+	case !destExists:
 		if cfg.createDest {
 			if err := os.MkdirAll(destDirPath, cfg.dirAccess); err != nil {
 				return fmt.Errorf("failed to create destination '%s': %w", destDir, err)
 			}
 		}
-	} else if !destEmpty {
+	case !destEmpty:
 		if cfg.replaceDest {
 			if err := os.RemoveAll(destDirPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("failed to clean destination '%s': %w", destDir, err)

@@ -216,12 +216,13 @@ func genSotaToml(req DeviceCreateRequest, urlBase string) []byte {
 		req.SotaConfigDir = "/var/sota"
 	}
 
+	const fileSource = "file"
 	sota := SotaToml{
 		"tls": {
 			"server":      urlBase,
-			"ca_source":   "file",
-			"pkey_source": "file",
-			"cert_source": "file",
+			"ca_source":   fileSource,
+			"pkey_source": fileSource,
+			"cert_source": fileSource,
 		},
 		"provision": {
 			"server":                  urlBase,
@@ -229,7 +230,7 @@ func genSotaToml(req DeviceCreateRequest, urlBase string) []byte {
 		},
 		"uptane": {
 			"repo_server": urlBase + "/repo",
-			"key_source":  "file",
+			"key_source":  fileSource,
 		},
 		"pacman": {
 			"type":               "ostree",

@@ -35,16 +35,16 @@ a file. Use one of the --just-* flags to print a single certificate.`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		pki := api.CtxGetApi(cmd.Context()).Pki()
-		certs := []string{"root.crt", "tls.crt", "device-ca.crt", "cas.pem"}
+		certs := []string{api.CertsRootPemFile, api.CertsTlsPemFile, api.CertsDeviceCaPemFile, api.CertsCasPemFile}
 		switch {
 		case justRoot:
-			certs = []string{"root.crt"}
+			certs = []string{api.CertsRootPemFile}
 		case justTls:
-			certs = []string{"tls.crt"}
+			certs = []string{api.CertsTlsPemFile}
 		case justDeviceCa:
-			certs = []string{"device-ca.crt"}
+			certs = []string{api.CertsDeviceCaPemFile}
 		case justCas:
-			certs = []string{"cas.pem"}
+			certs = []string{api.CertsCasPemFile}
 		}
 		doShow(pki, certs)
 	},
@@ -66,10 +66,10 @@ func doShow(pki api.PkiApi, certs []string) {
 		cobra.CheckErr(err)
 
 		var certTitles = map[string]string{
-			"root.crt":      "Root CA",
-			"tls.crt":       "Gateway TLS Certificate",
-			"device-ca.crt": "Device CA",
-			"cas.pem":       "CA Bundles",
+			api.CertsRootPemFile:     "Root CA",
+			api.CertsTlsPemFile:      "Gateway TLS Certificate",
+			api.CertsDeviceCaPemFile: "Device CA",
+			api.CertsCasPemFile:      "CA Bundles",
 		}
 
 		for _, name := range certs {

@@ -7,6 +7,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -93,19 +94,19 @@ func loadTufKeysArchive(path string) ([]tuf.AtsKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to open keys archive: %w", err)
 	}
-	defer f.Close() // nolint:errcheck
+	defer f.Close() //nolint:errcheck
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open keys archive (expected a gzipped tarball): %w", err)
 	}
-	defer gz.Close() // nolint:errcheck
+	defer gz.Close() //nolint:errcheck
 
 	var keys []tuf.AtsKey
 	tr := tar.NewReader(gz)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
 			return nil, fmt.Errorf("unable to read keys archive: %w", err)
@@ -140,19 +141,19 @@ func loadTufRootsArchive(path string) ([][]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to open roots archive: %w", err)
 	}
-	defer f.Close() // nolint:errcheck
+	defer f.Close() //nolint:errcheck
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open roots archive (expected a gzipped tarball): %w", err)
 	}
-	defer gz.Close() // nolint:errcheck
+	defer gz.Close() //nolint:errcheck
 
 	var roots [][]byte
 	tr := tar.NewReader(gz)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
 			return nil, fmt.Errorf("unable to read roots archive: %w", err)

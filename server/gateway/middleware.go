@@ -31,19 +31,20 @@ func (h handlers) authDevice(next echo.HandlerFunc) echo.HandlerFunc {
 
 		device, err := h.storage.DeviceGet(uuid)
 
-		if err != nil {
+		switch {
+		case err != nil:
 			log.Error("Unable to query for device", "error", err)
 			return c.String(http.StatusBadGateway, err.Error())
-		} else if device == nil {
+		case device == nil:
 			device, err = h.storage.DeviceCreate(cert.Subject.CommonName, certPem)
 			if err != nil {
 				log.Error("Unable to create device", "error", err)
 				return c.String(http.StatusBadGateway, "Unable to create device")
 			}
 			log.Info("Created device")
-		} else if device.Deleted {
+		case device.Deleted:
 			return c.String(http.StatusForbidden, fmt.Sprintf("Device(%s) is on the denied list", uuid))
-		} else if certPem != device.Cert {
+		case certPem != device.Cert:
 			current, err := storage.PemBytesToObject([]byte(device.Cert), x509.ParseCertificate)
 			if err != nil {
 				log.Error("Unable to parse stored device certificate", "error", err)

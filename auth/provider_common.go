@@ -43,44 +43,44 @@ func (p *commonProvider) GetUser(c echo.Context) (*users.User, error) {
 	if len(authHeader) == 0 {
 		authToken = c.Request().Header.Get("OSF-TOKEN")
 	}
-	if len(authHeader) > 0 || len(authToken) > 0 {
-		if err := p.rateLimiter.allow(c.RealIP()); err != nil {
-			return nil, server.EchoError(c, err, http.StatusTooManyRequests, err.Error())
+	if len(authHeader) == 0 && len(authToken) == 0 {
+		session, err := p.GetSession(c)
+		if err != nil || session == nil {
+			return nil, err
 		}
-		if len(authHeader) > 0 {
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-				return nil, fmt.Errorf("invalid authorization header")
-			}
-			authToken = parts[1]
-
-			if c.Request().Method == http.MethodPost && c.Request().URL.Path == "/v1/devices" {
-				// lmp-device-register with oauth2-device-flow sends the token b64encoded
-				decoded, err := base64.StdEncoding.DecodeString(authToken)
-				if err != nil {
-					return nil, fmt.Errorf("invalid base64 token: %w", err)
-				}
-				authToken = string(decoded)
-			}
-		}
-
-		user, err := p.users.GetByToken(authToken)
-		if err != nil {
-			p.rateLimiter.FlagBadOperation(c)
-			slog.Warn("unable to get user by token", "error", err)
-			return nil, c.String(http.StatusInternalServerError, "Could not get user by token")
-		} else if user == nil {
-			p.rateLimiter.FlagBadOperation(c)
-			return nil, c.String(http.StatusUnauthorized, "Invalid token")
-		}
-		return user, nil
+		return session.User, nil
 	}
 
-	session, err := p.GetSession(c)
-	if err != nil || session == nil {
-		return nil, err
+	if err := p.rateLimiter.allow(c.RealIP()); err != nil {
+		return nil, server.EchoError(c, err, http.StatusTooManyRequests, err.Error())
 	}
-	return session.User, nil
+	if len(authHeader) > 0 {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			return nil, fmt.Errorf("invalid authorization header")
+		}
+		authToken = parts[1]
+
+		if c.Request().Method == http.MethodPost && c.Request().URL.Path == "/v1/devices" {
+			// lmp-device-register with oauth2-device-flow sends the token b64encoded
+			decoded, err := base64.StdEncoding.DecodeString(authToken)
+			if err != nil {
+				return nil, fmt.Errorf("invalid base64 token: %w", err)
+			}
+			authToken = string(decoded)
+		}
+	}
+
+	user, err := p.users.GetByToken(authToken)
+	if err != nil {
+		p.rateLimiter.FlagBadOperation(c)
+		slog.Warn("unable to get user by token", "error", err)
+		return nil, c.String(http.StatusInternalServerError, "Could not get user by token")
+	} else if user == nil {
+		p.rateLimiter.FlagBadOperation(c)
+		return nil, c.String(http.StatusUnauthorized, "Invalid token")
+	}
+	return user, nil
 }
 
 func (p *commonProvider) GetSession(c echo.Context) (*Session, error) {

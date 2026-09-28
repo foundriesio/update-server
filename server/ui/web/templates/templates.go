@@ -20,8 +20,7 @@ var Assets embed.FS
 var Templates *template.Template
 
 func init() {
-	// go:embed bakes in whatever bytes the checkout had; a clone without
-	// git-lfs leaves pointer stubs and an unstyled UI
+	// The go:embed bakes in whatever bytes the checkout had; a clone without git-lfs leaves pointer stubs and an unstyled UI.
 	entries, err := Assets.ReadDir(".")
 	if err != nil {
 		panic(err)

@@ -727,7 +727,6 @@ func TestEvents(t *testing.T) {
 		eventsBadJson = "here we go"
 	)
 
-	fmt.Println(eventsGood)
 	tc := NewTestClient(t)
 	_ = tc.POST("/events", 200, eventsGood)
 	_ = tc.POST("/events", 200, eventsBadData)

@@ -122,18 +122,19 @@ func showExpires(tuf api.UpdateTuf) {
 
 // tufExpires returns the "signed.expires" value for the given TUF role file.
 func tufExpires(tuf api.UpdateTuf, file string) string {
+	const unknown = "unknown"
 	role, ok := tuf[file]
 	if !ok {
-		return "unknown"
+		return unknown
 	}
 	signed, ok := role["signed"].(map[string]any)
 	if !ok {
-		return "unknown"
+		return unknown
 	}
 	if expires, ok := signed["expires"].(string); ok {
 		return expires
 	}
-	return "unknown"
+	return unknown
 }
 
 // firstTarget returns the name and metadata of the first target found in the
@@ -199,6 +200,7 @@ func targetSha256(target map[string]any) string {
 
 func printApps(custom map[string]any) {
 	apps := make(map[string]string)
+	//nolint:nestif // auto-generated AI code.
 	if custom != nil {
 		if dockerApps, ok := custom["docker_compose_apps"].(map[string]any); ok {
 			for name, val := range dockerApps {

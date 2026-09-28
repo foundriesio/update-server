@@ -5,6 +5,7 @@ package updates
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -77,7 +78,7 @@ func tailUpdate(cmd *cobra.Command, updates api.UpdatesApi, updateName, rollout 
 		// Ignore id and retry fields
 	}
 
-	if err := scanner.Err(); err != nil && err != io.EOF {
+	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("error reading stream: %w", err)
 	}
 

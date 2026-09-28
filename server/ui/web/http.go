@@ -26,7 +26,7 @@ func putJson(ctx context.Context, resource string, data, result any) error {
 
 func getJsonWithHeaders(ctx context.Context, resource string, result any) (http.Header, error) {
 	s := CtxGetSession(ctx)
-	req, err := http.NewRequest("GET", s.BaseUrl+resource, nil)
+	req, err := http.NewRequest(http.MethodGet, s.BaseUrl+resource, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func putJsonWithHeaders(ctx context.Context, resource string, data, result any) 
 	if err := json.NewEncoder(&body).Encode(data); err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("PUT", s.BaseUrl+resource, &body)
+	req, err := http.NewRequest(http.MethodPut, s.BaseUrl+resource, &body)
 	if err != nil {
 		return nil, err
 	}

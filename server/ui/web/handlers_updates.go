@@ -54,33 +54,34 @@ func findLatestTarget(tuf api.UpdateTufResp) *latestTarget {
 		if err != nil {
 			continue
 		}
-		if version > latestVersion {
-			latestVersion = version
+		if version <= latestVersion {
+			continue
+		}
+		latestVersion = version
 
-			sha256 := ""
-			if hashes, ok := t["hashes"].(map[string]any); ok {
-				if h, ok := hashes["sha256"].(string); ok {
-					sha256 = h
-				}
+		sha256 := ""
+		if hashes, ok := t["hashes"].(map[string]any); ok {
+			if h, ok := hashes["sha256"].(string); ok {
+				sha256 = h
 			}
+		}
 
-			apps := make(map[string]string)
-			if dockerApps, ok := custom["docker_compose_apps"].(map[string]any); ok {
-				for appName, appVal := range dockerApps {
-					if appMap, ok := appVal.(map[string]any); ok {
-						if uri, ok := appMap["uri"].(string); ok {
-							apps[appName] = uri
-						}
+		apps := make(map[string]string)
+		if dockerApps, ok := custom["docker_compose_apps"].(map[string]any); ok {
+			for appName, appVal := range dockerApps {
+				if appMap, ok := appVal.(map[string]any); ok {
+					if uri, ok := appMap["uri"].(string); ok {
+						apps[appName] = uri
 					}
 				}
 			}
+		}
 
-			latest = &latestTarget{
-				Name:    name,
-				Version: versionStr,
-				Sha256:  sha256,
-				Apps:    apps,
-			}
+		latest = &latestTarget{
+			Name:    name,
+			Version: versionStr,
+			Sha256:  sha256,
+			Apps:    apps,
 		}
 	}
 

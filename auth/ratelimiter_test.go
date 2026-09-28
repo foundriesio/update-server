@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -37,7 +38,8 @@ func testGet(t *testing.T, rl *authRateLimiter, flagBad bool) *httptest.Response
 	err := rl.Middleware(handler)(c)
 	if err != nil {
 		// echo middleware errors require some hackery to set the correct status code and response body
-		if httpErr, ok := err.(*echo.HTTPError); ok {
+		var httpErr *echo.HTTPError
+		if errors.As(err, &httpErr) {
 			rec.Code = httpErr.Code
 			fmt.Fprintf(rec.Body, "%v", httpErr.Message)
 		} else {

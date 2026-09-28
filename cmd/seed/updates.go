@@ -298,38 +298,8 @@ func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, gw *gateway.Stor
 			if i < len(rolloutGroups) {
 				targetGroup = rolloutGroups[i]
 			}
-			proposedGroups := []string{"alpha"}
-			if targetGroup != "" {
-				proposedGroups = []string{targetGroup}
-			}
-
-			if err := apiStorage.CreateRollout(tag, name, rolloutName, api.Rollout{
-				Groups: proposedGroups,
-			}); err != nil {
-				return fmt.Errorf("CreateRollout for %s/%s: %w", tag, name, err)
-			}
-
-			if targetGroup != "" {
-				if err := apiStorage.CommitRollout(tag, name, rolloutName, api.Rollout{
-					Groups: proposedGroups,
-				}); err != nil {
-					return fmt.Errorf("CommitRollout for %s/%s: %w", tag, name, err)
-				}
-				rollout, err := apiStorage.GetRollout(name, rolloutName)
-				if err != nil {
-					return fmt.Errorf("GetRollout for %s/%s: %w", tag, name, err)
-				}
-				if err := seedRolloutEvents(gw, name, rollout.Effect); err != nil {
-					return fmt.Errorf("seed rollout events for %s/%s: %w", tag, name, err)
-				}
-				// Override apps on the first device of the group so the Apps
-				// page's "override" branch (a subset of the target's apps)
-				// has an example instead of only the inherited-apps branch.
-				if len(rollout.Effect) > 0 {
-					if err := seedAppsOverride(apiStorage, rollout.Effect[0], "shellhttpd"); err != nil {
-						return fmt.Errorf("seed apps override for %s/%s: %w", tag, name, err)
-					}
-				}
+			if err := seedRollout(apiStorage, gw, tag, name, rolloutName, targetGroup); err != nil {
+				return err
 			}
 			log.Printf("create update %s/%s + rollout %s", tag, name, rolloutName)
 			created++
@@ -337,5 +307,43 @@ func seedUpdates(fs *storage.FsHandle, apiStorage *api.Storage, gw *gateway.Stor
 	}
 
 	fmt.Printf("updates seed complete: %d created, %d skipped (total requested: %d)\n", created, skipped, count)
+	return nil
+}
+
+func seedRollout(apiStorage *api.Storage, gw *gateway.Storage, tag, name, rolloutName, targetGroup string) error {
+	proposedGroups := []string{"alpha"}
+	if targetGroup != "" {
+		proposedGroups = []string{targetGroup}
+	}
+	if err := apiStorage.CreateRollout(tag, name, rolloutName, api.Rollout{
+		Groups: proposedGroups,
+	}); err != nil {
+		return fmt.Errorf("CreateRollout for %s/%s: %w", tag, name, err)
+	}
+	if len(targetGroup) == 0 {
+		// uncommitted rollout
+		return nil
+	}
+
+	if err := apiStorage.CommitRollout(tag, name, rolloutName, api.Rollout{
+		Groups: proposedGroups,
+	}); err != nil {
+		return fmt.Errorf("CommitRollout for %s/%s: %w", tag, name, err)
+	}
+	rollout, err := apiStorage.GetRollout(name, rolloutName)
+	if err != nil {
+		return fmt.Errorf("GetRollout for %s/%s: %w", tag, name, err)
+	}
+	if err := seedRolloutEvents(gw, name, rollout.Effect); err != nil {
+		return fmt.Errorf("seed rollout events for %s/%s: %w", tag, name, err)
+	}
+	// Override apps on the first device of the group so the Apps
+	// page's "override" branch (a subset of the target's apps)
+	// has an example instead of only the inherited-apps branch.
+	if len(rollout.Effect) > 0 {
+		if err := seedAppsOverride(apiStorage, rollout.Effect[0], "shellhttpd"); err != nil {
+			return fmt.Errorf("seed apps override for %s/%s: %w", tag, name, err)
+		}
+	}
 	return nil
 }

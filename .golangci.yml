@@ -3,18 +3,82 @@ run:
   timeout: 5m
   allow-parallel-runners: true
 
+issues:
+  max-issues-per-linter: 80
+  max-same-issues: 30
+
 linters:
   enable:
+    - asciicheck
+    - bidichk
+    - bodyclose
     - dupl
     - errcheck
+    - errorlint
+    - exptostd
+    - forbidigo
+    - gocheckcompilerdirectives
+    - gocognit
+    - goconst
     - gocyclo
+    - godoclint
+    - goheader
     - govet
+    - iface
     - ineffassign
-    - staticcheck
-    - unparam
-    - unused
+    - iotamixing
+    - lll
+    - loggercheck
     - misspell
+    - nestif
+    - nolintlint
+    - sqlclosecheck
+    - staticcheck
     - unconvert
+    - unparam
+    - unqueryvet
+    - unused
+    - usestdlibvars
+  settings:
+    forbidigo:
+      forbid:
+        - pattern: ^print(ln)?$
+          msg: Do not commit print statements.
+        - pattern: ^fmt\.Print.*$
+          msg: Do not commit print statements.
+        - pattern: ^TBD$
+          msg: Do not commit unfinished work.
+    gocognit:
+      min-complexity: 40
+    goconst:
+      ignore-tests: true
+    godoclint:
+      disable:
+        - pkg-doc  # We use copyright instead
+        - start-with-name  # Prevents many false-positives of regular comments
+    goheader:
+      template: |-
+        Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+        SPDX-License-Identifier: BSD-3-Clause-Clear
+    lll:
+      line-length: 200
+    loggercheck:
+      slog: true
+    nestif:
+      min-complexity: 6
+    nolintlint:
+      require-specific: true
+    unqueryvet:
+      # In addition to default checks
+      check-n1: true
+      check-tx-leaks: true
+  exclusions:
+    rules:
+      - path: cli/|cmd/|contrib/
+        linters:
+          - forbidigo
+        text: 'fmt.Print'
+
 formatters:
   enable:
     - gofmt
