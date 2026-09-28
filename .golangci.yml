@@ -16,6 +16,7 @@ linters:
     - errcheck
     - errorlint
     - exptostd
+    - forbidigo
     - gocheckcompilerdirectives
     - gocognit
     - goconst
@@ -39,6 +40,14 @@ linters:
     - unused
     - usestdlibvars
   settings:
+    forbidigo:
+      forbid:
+        - pattern: ^print(ln)?$
+          msg: Do not commit print statements.
+        - pattern: ^fmt\.Print.*$
+          msg: Do not commit print statements.
+        - pattern: ^TBD$
+          msg: Do not commit unfinished work.
     gocognit:
       min-complexity: 40
     goconst:
@@ -63,6 +72,13 @@ linters:
       # In addition to default checks
       check-n1: true
       check-tx-leaks: true
+  exclusions:
+    rules:
+      - path: cli/|cmd/|contrib/
+        linters:
+          - forbidigo
+        text: 'fmt.Print'
+
 formatters:
   enable:
     - gofmt
