@@ -110,7 +110,7 @@ func createTables(db *sql.DB) error {
 
 		CREATE TABLE old_certs (
 			expires INT NOT NULL,
-			sha1 BLOB(20) NOT NULL PRIMARY KEY CHECK(length(sha1) = 20)
+			hash BLOB(16) NOT NULL PRIMARY KEY CHECK(length(hash) = 16)
 		) WITHOUT ROWID;
 
 		CREATE TABLE device_labels (

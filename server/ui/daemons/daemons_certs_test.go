@@ -30,7 +30,7 @@ func TestCertGcDaemon(t *testing.T) {
 	require.NoError(t, err)
 
 	insert, err := db.Prepare("TestInsertOldCert", `
-		INSERT INTO old_certs(expires, sha1) VALUES (?, ?)`)
+		INSERT INTO old_certs(expires, hash) VALUES (?, ?)`)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, insert.Close())
@@ -42,9 +42,9 @@ func TestCertGcDaemon(t *testing.T) {
 	})
 
 	now := time.Now().Unix()
-	_, err = insert.Exec(now-1, bytes.Repeat([]byte{1}, 20))
+	_, err = insert.Exec(now-1, bytes.Repeat([]byte{1}, 16))
 	require.NoError(t, err)
-	_, err = insert.Exec(now+3600, bytes.Repeat([]byte{2}, 20))
+	_, err = insert.Exec(now+3600, bytes.Repeat([]byte{2}, 16))
 	require.NoError(t, err)
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -73,7 +73,7 @@ func TestCertGcDaemon(t *testing.T) {
 		return oldCertCount() == 1
 	}, time.Second, 10*time.Millisecond)
 
-	_, err = insert.Exec(now-1, bytes.Repeat([]byte{3}, 20))
+	_, err = insert.Exec(now-1, bytes.Repeat([]byte{3}, 16))
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
 		return oldCertCount() == 1

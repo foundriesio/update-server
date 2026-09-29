@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+const defaultTarItemSizeLimit int64 = 1 << 22 // 4 MB
+
+var ErrDecompressedSizeExceedsLimit = errors.New("decompressed size exceeds limit")
+
 type tarUnpackConfig struct {
 	createDest  bool
 	replaceDest bool
@@ -21,6 +25,7 @@ type tarUnpackConfig struct {
 	fileAccess  os.FileMode
 	tmpFile     string
 	tmpDir      string
+	maxItemSize int64
 	events      tarUnpackEvents
 }
 
@@ -93,6 +98,13 @@ func TarUnpackUseTmpFile(val string) TarUnpackOption {
 	}
 }
 
+func TarUnpackMaxItemFileSize(val int64) TarUnpackOption {
+	return func(cfg tarUnpackConfig) tarUnpackConfig {
+		cfg.maxItemSize = val
+		return cfg
+	}
+}
+
 func TarUnpackOnEvents(val tarUnpackEvents) TarUnpackOption {
 	return func(cfg tarUnpackConfig) tarUnpackConfig {
 		cfg.events = val
@@ -109,6 +121,7 @@ func (s tarFsHandle) unpackTar(srcReader io.Reader, destDir string, opts ...TarU
 		replaceDest: false,
 		dirAccess:   defaultDirAccess,
 		fileAccess:  defaultFileAccess,
+		maxItemSize: defaultTarItemSizeLimit,
 	}
 	for _, opt := range opts {
 		cfg = opt(cfg)
@@ -223,31 +236,20 @@ func (s tarFsHandle) _handleTmpDir(destDirPath string, cfg tarUnpackConfig, unpa
 
 func (s tarFsHandle) _handleTmpFile(srcReader io.Reader, cfg tarUnpackConfig) (io.ReadCloser, error) {
 	tmpFilePath := filepath.Join(s.root, cfg.tmpDir, cfg.tmpFile)
-	// Need a tarball to close before processing it; thus wrap this into a function.
-	if err := func() (err error) {
-		var file io.WriteCloser
-		if file, err = os.OpenFile(tmpFilePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, cfg.fileAccess); err != nil {
-			return
-		}
-		defer func() {
-			// Close error here mean that the write finalization failed (e.g. a failure flushing to disk)
-			if err2 := file.Close(); err2 != nil && err == nil {
-				err = err2
-			}
-		}()
-		if _, err = io.Copy(file, srcReader); err != nil {
-			err = fmt.Errorf("failed to save tarball to '%s': %w", cfg.tmpFile, err)
-		}
-		return
-	}(); err != nil {
-		return nil, err
+	// Write tarball to temporary file and close, so that it is flushed to disk.
+	file, err := os.OpenFile(tmpFilePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, cfg.fileAccess)
+	if err == nil {
+		err = _copyAndCloseOut(file, srcReader)
 	}
-
-	file, err := os.OpenFile(tmpFilePath, os.O_RDONLY, 0)
 	if err != nil {
-		err = fmt.Errorf("failed to read tarball from '%s': %w", cfg.tmpFile, err)
+		return nil, fmt.Errorf("failed to save tarball to '%s': %w", cfg.tmpFile, err)
 	}
-	return file, err
+	// Read tarball from that temporary file and return descriptor for processing.
+	file, err = os.OpenFile(tmpFilePath, os.O_RDONLY, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read tarball from '%s': %w", cfg.tmpFile, err)
+	}
+	return file, nil
 }
 
 func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tarUnpackConfig) error {
@@ -299,10 +301,24 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 		if err = os.MkdirAll(dirPath, cfg.dirAccess); err != nil {
 			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
 		}
-		if file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
+
+		if hdr.Size > cfg.maxItemSize {
+			// If header declares oversize - fail instantly; otherwise, try to read and let limit reader control oversize.
+			return fmt.Errorf("failed to unpack file '%s': %w %d", hdr.Name, ErrDecompressedSizeExceedsLimit, cfg.maxItemSize)
+		} else if file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
 			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-		} else if _, err = io.Copy(file, tarReader); err != nil {
-			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+		} else {
+			limitReader := &io.LimitedReader{
+				R: tarReader,
+				N: cfg.maxItemSize + 1,
+			}
+			if err = _copyAndCloseOut(file, limitReader); err != nil {
+				return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+			}
+			if limitReader.N <= 0 {
+				// We read at least over byte above limit - guaranteed oversize.
+				return fmt.Errorf("failed to unpack file '%s': %w %d", hdr.Name, ErrDecompressedSizeExceedsLimit, cfg.maxItemSize)
+			}
 		}
 	}
 	if cfg.events.onUnpackComplete != nil {
@@ -311,6 +327,17 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 		}
 	}
 	return nil
+}
+
+func _copyAndCloseOut(out io.WriteCloser, in io.Reader) (err error) {
+	defer func() {
+		// Close error here mean that the write finalization failed (e.g. a failure flushing to disk)
+		if err2 := out.Close(); err2 != nil && err == nil {
+			err = err2
+		}
+	}()
+	_, err = io.Copy(out, in)
+	return
 }
 
 func AbsPathNoEscape(root, path string) (absPath string, err error) {

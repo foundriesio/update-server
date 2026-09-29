@@ -74,7 +74,7 @@ func uploadConfigs(capi api.ConfigsApi, path string, isDir bool) error {
 			return fmt.Errorf("supported file types are '.tar, .tar.gz, .tgz', but '%s' given", ext)
 		}
 
-		fd, err := os.OpenFile(path, os.O_RDONLY, 0)
+		fd, err := os.OpenFile(path, os.O_RDONLY, 0) //gosec:disable G304 // We support file path inclusion for file upload.
 		if err != nil {
 			return fmt.Errorf("failed to read file '%s': %w", path, err)
 		}

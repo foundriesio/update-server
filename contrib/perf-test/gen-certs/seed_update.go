@@ -260,7 +260,8 @@ func writeFixtureAppBlob(datadir string, fs *storage.FsHandle, updateName string
 	// large it bloats the fixture data directory.
 	content := make([]byte, 64*1024)
 	for i := range content {
-		content[i] = byte(i ^ 0xa5)
+		// Mix entropy from high and low bits, and then add a mask to "look fairly random".
+		content[i] = byte(i) ^ byte(i>>8) ^ 0xa5
 	}
 	sum := sha256.Sum256(content)
 	hexHash = hex.EncodeToString(sum[:])

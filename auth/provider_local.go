@@ -172,19 +172,19 @@ func (p *localProvider) handleLogin(c echo.Context) error {
 		return server.EchoError(c, err, http.StatusInternalServerError, "Could not create user session")
 	}
 
-	samesite := http.SameSiteStrictMode
-	if p.authConfig.DevelopmentCookies {
-		samesite = http.SameSiteLaxMode
-	}
-	c.SetCookie(&http.Cookie{
+	cookie := http.Cookie{
 		Name:     AuthCookieName,
 		Value:    sessionId,
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   !p.authConfig.DevelopmentCookies,
-		SameSite: samesite,
-	})
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	if p.authConfig.DevelopmentCookies {
+		cookie = developmentCookie(cookie)
+	}
+	c.SetCookie(&cookie)
 	SetCsrfCookie(c, expires, !p.authConfig.DevelopmentCookies)
 
 	return c.Redirect(http.StatusSeeOther, "/")

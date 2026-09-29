@@ -16,6 +16,8 @@ import (
 	"strings"
 )
 
+const maxUpdateTarballItemFileSize int64 = 1 << 28 // 256 MB
+
 var ErrInvalidUpdate = errors.New("invalid update archive")
 
 type Update struct {
@@ -112,6 +114,7 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 		TarUnpackReplaceDest(true), // Replace updates with the same name - uniqueness is checked on the database level.
 		TarUnpackUseTmpFile("update.tar"),
 		TarUnpackUseTmpDir(txDir),
+		TarUnpackMaxItemFileSize(maxUpdateTarballItemFileSize),
 		TarUnpackOnEvents(tarUnpackEvents{
 			onTmpCleanupError: onCleanupFailure,
 			onTarHeaderSeen: func(hdr *TarHeader) (skip bool, err error) {

@@ -23,6 +23,7 @@ linters:
     - gocyclo
     - godoclint
     - goheader
+    - gosec
     - govet
     - iface
     - ineffassign
@@ -78,7 +79,19 @@ linters:
         linters:
           - forbidigo
         text: 'fmt.Print'
-
+      - path: _test\.go
+        linters:
+          - gosec
+      - path: contrib/perf-test
+        linters:
+          - gosec
+        text: 'G(301|304|306):'
+      # We should migrate our storage to use either os.OpenRoot or fs.FS kind of jails.
+      # For now, disable the gosec warning G304: Potential file inclusion via variable.
+      - path: storage/file.*\.go
+        linters:
+          - gosec
+        text: 'G304:'
 formatters:
   enable:
     - gofmt

@@ -6,7 +6,6 @@ package templates
 import (
 	"bytes"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"strings"
@@ -71,10 +70,6 @@ func init() {
 			return a - b
 		},
 		"contains": strings.Contains,
-		"json": func(v any) (template.JS, error) {
-			b, err := json.Marshal(v)
-			return template.JS(b), err
-		},
 	}
 
 	Templates = template.Must(template.New("").Funcs(funcMap).ParseFS(Assets, "*.html", "*.css"))

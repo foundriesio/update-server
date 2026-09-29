@@ -39,6 +39,7 @@ func (p *ghProvider) Configure(e *echo.Echo, users *users.Storage, cfg *storage.
 		ClientID:     cfgGithub.ClientID,
 		ClientSecret: cfgGithub.ClientSecret,
 		Scopes:       []string{"user:email", "read:org"},
+		//gosec:disable G101  // These are config URLs, not hardcoded credentials.
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://github.com/login/oauth/authorize",
 			TokenURL: "https://github.com/login/oauth/access_token",

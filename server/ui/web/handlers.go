@@ -5,8 +5,8 @@ package web
 
 import (
 	"bytes"
-	"crypto/md5"
 	"fmt"
+	"hash/crc64"
 	"html/template"
 	"io"
 	"log/slog"
@@ -48,7 +48,7 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	if err := h.templates.ExecuteTemplate(&rendered, "style.css", branding); err != nil {
 		slog.Error("failed to render style.css for etag", "error", err)
 	}
-	h.styleEtag = fmt.Sprintf("%x", md5.Sum(rendered.Bytes()))
+	h.styleEtag = fmt.Sprintf("%x", crc64.Checksum(rendered.Bytes(), crc64.MakeTable(crc64.ISO)))
 
 	e.Renderer = h
 
