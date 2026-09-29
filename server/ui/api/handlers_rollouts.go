@@ -220,6 +220,7 @@ func (h *handlers) rolloutPut(c echo.Context) error {
 		return c.String(http.StatusConflict, "Rollout with this name already exists")
 	}
 
+	rollout.CreatedAt = time.Now().Unix()
 	if err = h.storage.CreateRollout(update.Tag, updateName, rolloutName, rollout); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to save rollout to disk")
 	}

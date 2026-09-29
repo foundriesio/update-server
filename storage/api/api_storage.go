@@ -113,10 +113,11 @@ type Device struct {
 }
 
 type Rollout struct {
-	Uuids  []string `json:"uuids,omitempty"`
-	Groups []string `json:"groups,omitempty"`
-	Effect []string `json:"effective-uuids,omitempty"`
-	Commit bool     `json:"committed"`
+	CreatedAt int64    `json:"created-at"`
+	Uuids     []string `json:"uuids,omitempty"`
+	Groups    []string `json:"groups,omitempty"`
+	Effect    []string `json:"effective-uuids,omitempty"`
+	Commit    bool     `json:"committed"`
 }
 
 type Storage struct {

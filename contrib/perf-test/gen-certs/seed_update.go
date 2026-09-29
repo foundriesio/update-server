@@ -111,7 +111,7 @@ func seedUpdate(datadir, tag, updateName string, uuids []string, certs map[strin
 	// Assign by UUID, not group: real mTLS-registered devices always have
 	// group_name="" (never set at DeviceCreate time), so a rollout keyed by
 	// groups would never match them.
-	rollout := api.Rollout{Uuids: uuids}
+	rollout := api.Rollout{Uuids: uuids, CreatedAt: time.Now().Unix()}
 	if err := ap.CreateRollout(tag, updateName, "perf-test-rollout", rollout); err != nil {
 		return fmt.Errorf("CreateRollout: %w", err)
 	}
