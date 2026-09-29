@@ -223,31 +223,20 @@ func (s tarFsHandle) _handleTmpDir(destDirPath string, cfg tarUnpackConfig, unpa
 
 func (s tarFsHandle) _handleTmpFile(srcReader io.Reader, cfg tarUnpackConfig) (io.ReadCloser, error) {
 	tmpFilePath := filepath.Join(s.root, cfg.tmpDir, cfg.tmpFile)
-	// Need a tarball to close before processing it; thus wrap this into a function.
-	if err := func() (err error) {
-		var file io.WriteCloser
-		if file, err = os.OpenFile(tmpFilePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, cfg.fileAccess); err != nil {
-			return
-		}
-		defer func() {
-			// Close error here mean that the write finalization failed (e.g. a failure flushing to disk)
-			if err2 := file.Close(); err2 != nil && err == nil {
-				err = err2
-			}
-		}()
-		if _, err = io.Copy(file, srcReader); err != nil {
-			err = fmt.Errorf("failed to save tarball to '%s': %w", cfg.tmpFile, err)
-		}
-		return
-	}(); err != nil {
-		return nil, err
+	// Write tarball to temporary file and close, so that it is flushed to disk.
+	file, err := os.OpenFile(tmpFilePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, cfg.fileAccess)
+	if err == nil {
+		err = _copyAndCloseOut(file, srcReader)
 	}
-
-	file, err := os.OpenFile(tmpFilePath, os.O_RDONLY, 0)
 	if err != nil {
-		err = fmt.Errorf("failed to read tarball from '%s': %w", cfg.tmpFile, err)
+		return nil, fmt.Errorf("failed to save tarball to '%s': %w", cfg.tmpFile, err)
 	}
-	return file, err
+	// Read tarball from that temporary file and return descriptor for processing.
+	file, err = os.OpenFile(tmpFilePath, os.O_RDONLY, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read tarball from '%s': %w", cfg.tmpFile, err)
+	}
+	return file, nil
 }
 
 func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tarUnpackConfig) error {
@@ -301,7 +290,7 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 		}
 		if file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
 			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-		} else if _, err = io.Copy(file, tarReader); err != nil {
+		} else if err = _copyAndCloseOut(file, tarReader); err != nil {
 			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
 		}
 	}
@@ -311,6 +300,17 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 		}
 	}
 	return nil
+}
+
+func _copyAndCloseOut(out io.WriteCloser, in io.Reader) (err error) {
+	defer func() {
+		// Close error here mean that the write finalization failed (e.g. a failure flushing to disk)
+		if err2 := out.Close(); err2 != nil && err == nil {
+			err = err2
+		}
+	}()
+	_, err = io.Copy(out, in)
+	return
 }
 
 func AbsPathNoEscape(root, path string) (absPath string, err error) {
