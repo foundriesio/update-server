@@ -13,9 +13,28 @@ import (
 	"strings"
 )
 
-const defaultTarItemSizeLimit int64 = 1 << 22 // 4 MB
+const (
+	// Default limits to control an uncompressed tarball size on disk:
+	// - A maximum disk size for all uncompressed files and directories, including filesystem index: 256 MB (configurable).
+	// - A maximum disk size for a single uncompressed file entry: 32 MB (configurable).
+	// - A constant filesystem index block size, actual for the majority of filesystems: 4 KB (fixed).
+	// - A maximum number of file and directory entries to unpack: 262144 (fixed), that gives a total index size 1 GB.
+	// - A maximum file path length for a single uncompressed file or directory entry: 1 KB (fixed).
+	defaultUnpackedTarDiskSizeLimit  int64 = 1 << 28 // 256 MB
+	defaultUnpackedTarItemSizeLimit  int64 = 1 << 25 // 32 MB
+	defaultUnpackedTarDiskBlockSize  int64 = 1 << 12 // 4 KB
+	defaultUnpackedTarItemCountLimit int   = 1 << 18 // ~262K, gives 1 GB when multiplied by block size.
+	defaultUnpackedTarPathLenLimit   int   = 1 << 10 // 1 KB
+)
 
-var ErrDecompressedSizeExceedsLimit = errors.New("decompressed size exceeds limit")
+var (
+	ErrTarUnpackExceedsLimit           = errors.New("tar unpack exceeds limit")
+	ErrTarUnpackExceedsLimitRawSize    = fmt.Errorf("%w of total compressed disk size", ErrTarUnpackExceedsLimit)
+	ErrTarUnpackExceedsLimitDiskSize   = fmt.Errorf("%w of total decompressed disk size", ErrTarUnpackExceedsLimit)
+	ErrTarUnpackExceedsLimitFileSize   = fmt.Errorf("%w of single decompressed file size", ErrTarUnpackExceedsLimit)
+	ErrTarUnpackExceedsLimitFileCount  = fmt.Errorf("%w of total file count", ErrTarUnpackExceedsLimit)
+	ErrTarUnpackExceedsLimitPathLength = fmt.Errorf("%w of single file path length", ErrTarUnpackExceedsLimit)
+)
 
 type tarUnpackConfig struct {
 	createDest  bool
@@ -26,6 +45,10 @@ type tarUnpackConfig struct {
 	tmpFile     string
 	tmpDir      string
 	maxItemSize int64
+	maxDiskSize int64
+	maxNumItems int
+	maxPathLen  int
+	blockSize   int64
 	events      tarUnpackEvents
 }
 
@@ -105,6 +128,13 @@ func TarUnpackMaxItemFileSize(val int64) TarUnpackOption {
 	}
 }
 
+func TarUnpackMaxTotalDiskSize(val int64) TarUnpackOption {
+	return func(cfg tarUnpackConfig) tarUnpackConfig {
+		cfg.maxDiskSize = val
+		return cfg
+	}
+}
+
 func TarUnpackOnEvents(val tarUnpackEvents) TarUnpackOption {
 	return func(cfg tarUnpackConfig) tarUnpackConfig {
 		cfg.events = val
@@ -121,7 +151,11 @@ func (s tarFsHandle) unpackTar(srcReader io.Reader, destDir string, opts ...TarU
 		replaceDest: false,
 		dirAccess:   defaultDirAccess,
 		fileAccess:  defaultFileAccess,
-		maxItemSize: defaultTarItemSizeLimit,
+		maxItemSize: defaultUnpackedTarItemSizeLimit,
+		maxDiskSize: defaultUnpackedTarDiskSizeLimit,
+		maxNumItems: defaultUnpackedTarItemCountLimit,
+		maxPathLen:  defaultUnpackedTarPathLenLimit,
+		blockSize:   defaultUnpackedTarDiskBlockSize,
 	}
 	for _, opt := range opts {
 		cfg = opt(cfg)
@@ -235,11 +269,17 @@ func (s tarFsHandle) _handleTmpDir(destDirPath string, cfg tarUnpackConfig, unpa
 }
 
 func (s tarFsHandle) _handleTmpFile(srcReader io.Reader, cfg tarUnpackConfig) (io.ReadCloser, error) {
+	// Reuse uncompressed disk size limit, as a temporary pre-fetched tarball is removed after unpacking.
+	// Allow 1 byte overhead to check if the limit was hit.
+	limitReader := &io.LimitedReader{R: srcReader, N: 1 + cfg.maxDiskSize}
+	// Write tarball to a temporary file and close, so that it is flushed to disk.
 	tmpFilePath := filepath.Join(s.root, cfg.tmpDir, cfg.tmpFile)
-	// Write tarball to temporary file and close, so that it is flushed to disk.
 	file, err := os.OpenFile(tmpFilePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, cfg.fileAccess)
 	if err == nil {
-		err = _copyAndCloseOut(file, srcReader)
+		err = _copyAndCloseOut(file, limitReader)
+	}
+	if err == nil && limitReader.N <= 0 {
+		err = fmt.Errorf("%w: %d", ErrTarUnpackExceedsLimitRawSize, cfg.maxDiskSize)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to save tarball to '%s': %w", cfg.tmpFile, err)
@@ -260,6 +300,8 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 	}
 	// Unpack config upload tarball; if it fails - halt.
 	tarReader := tar.NewReader(srcReader)
+	checkDeclaredSize := _diskSizeLimiter(cfg)
+	checkRealSize := _diskSizeLimiter(cfg)
 	for {
 		hdr, err := tarReader.Next()
 		if err != nil {
@@ -275,14 +317,12 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 				continue
 			}
 		}
+
 		switch hdr.Typeflag {
 		case tar.TypeReg:
 			// Logic continues after the switch.
 		case tar.TypeDir:
-			dirPath, err := AbsPathNoEscape(destDirPath, hdr.Name)
-			if err == nil {
-				err = os.MkdirAll(dirPath, cfg.dirAccess)
-			}
+			_, _, _, err := _createDirForTarItem(destDirPath, hdr, cfg.dirAccess, checkDeclaredSize, checkRealSize)
 			if err != nil {
 				return fmt.Errorf("failed to unpack directory '%s': %w", hdr.Name, err)
 			}
@@ -290,34 +330,26 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 		default:
 			return fmt.Errorf("failed to unpack file '%s': unsupported file type %d", hdr.Name, hdr.Typeflag)
 		}
+
 		if len(hdr.Name) == 0 {
 			return errors.New("failed to unpack file with empty name")
 		}
-		filePath, err := AbsPathNoEscape(destDirPath, hdr.Name)
+		absFilePath, relFilePath, curDiskSize, err := _createDirForTarItem(destDirPath, hdr, cfg.dirAccess, checkDeclaredSize, checkRealSize)
 		if err != nil {
 			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
 		}
-		dirPath := filepath.Dir(filePath)
-		if err = os.MkdirAll(dirPath, cfg.dirAccess); err != nil {
-			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-		}
-
-		if hdr.Size > cfg.maxItemSize {
-			// If header declares oversize - fail instantly; otherwise, try to read and let limit reader control oversize.
-			return fmt.Errorf("failed to unpack file '%s': %w %d", hdr.Name, ErrDecompressedSizeExceedsLimit, cfg.maxItemSize)
-		} else if file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
+		if file, err := os.OpenFile(absFilePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
 			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
 		} else {
-			limitReader := &io.LimitedReader{
-				R: tarReader,
-				N: cfg.maxItemSize + 1,
+			// Allow to read exactly one byte too much to know if limit was exceeded.
+			limit := 1 + min(cfg.maxItemSize, cfg.maxDiskSize-curDiskSize)
+			limitReader := &io.LimitedReader{R: tarReader, N: limit}
+			err = _copyAndCloseOut(file, limitReader)
+			if err == nil {
+				_, err = checkRealSize(relFilePath, limit-limitReader.N)
 			}
-			if err = _copyAndCloseOut(file, limitReader); err != nil {
+			if err != nil {
 				return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-			}
-			if limitReader.N <= 0 {
-				// We read at least over byte above limit - guaranteed oversize.
-				return fmt.Errorf("failed to unpack file '%s': %w %d", hdr.Name, ErrDecompressedSizeExceedsLimit, cfg.maxItemSize)
 			}
 		}
 	}
@@ -338,6 +370,70 @@ func _copyAndCloseOut(out io.WriteCloser, in io.Reader) (err error) {
 	}()
 	_, err = io.Copy(out, in)
 	return
+}
+
+type _diskSizeLimiterFunc func(path string, size int64) (int64, error)
+
+func _createDirForTarItem(
+	destDirPath string, hdr *tar.Header, dirAccess os.FileMode, checkDeclaredSize, checkRealSize _diskSizeLimiterFunc,
+) (absPath, relPath string, diskSize int64, err error) {
+	absPath, err = AbsPathNoEscape(destDirPath, hdr.Name)
+	if err == nil {
+		relPath, err = filepath.Rel(destDirPath, absPath)
+	}
+	if err == nil {
+		_, err = checkDeclaredSize(relPath, hdr.Size)
+	}
+	if err == nil {
+		diskSize, err = checkRealSize(relPath, 0)
+	}
+	if err == nil {
+		dirPath := absPath
+		if hdr.Typeflag != tar.TypeDir {
+			dirPath = filepath.Dir(dirPath)
+		}
+		err = os.MkdirAll(dirPath, dirAccess)
+	}
+	return
+}
+
+func _diskSizeLimiter(cfg tarUnpackConfig) _diskSizeLimiterFunc {
+	// In Golang, map[string]struct{} uses zero bytes for each item, while it uses at least 16 bytes for any other type.
+	// For a code trying to prevent a decompression bomb this difference is critical for memory usage.
+	type void = struct{}
+	var totalSize int64
+	uniqueDirEntries := make(map[string]void, 1024) // Not full cfg.maxNumItems, which would use 9.5 MB instantly.
+	return func(path string, size int64) (int64, error) {
+		totalSize += size
+		switch {
+		case size > cfg.maxItemSize:
+			return totalSize, fmt.Errorf("%w: %d", ErrTarUnpackExceedsLimitFileSize, cfg.maxItemSize)
+		case totalSize > cfg.maxDiskSize:
+			return totalSize, fmt.Errorf("%w: %d", ErrTarUnpackExceedsLimitDiskSize, cfg.maxDiskSize)
+		case len(path) > cfg.maxPathLen:
+			return totalSize, fmt.Errorf("%w: %d", ErrTarUnpackExceedsLimitPathLength, cfg.maxPathLen)
+		}
+		base := path
+		for {
+			if _, ok := uniqueDirEntries[base]; ok {
+				break
+			}
+			uniqueDirEntries[base] = void{}
+			totalSize += cfg.blockSize
+			switch {
+			case totalSize > cfg.maxDiskSize:
+				return totalSize, fmt.Errorf("%w: %d", ErrTarUnpackExceedsLimitDiskSize, cfg.maxDiskSize)
+			case len(uniqueDirEntries) > cfg.maxNumItems:
+				return totalSize, fmt.Errorf("%w: %d", ErrTarUnpackExceedsLimitFileCount, cfg.maxNumItems)
+			}
+			parent := filepath.Dir(base)
+			if len(parent) == 0 || parent == "." || parent == base {
+				break
+			}
+			base = parent
+		}
+		return totalSize, nil
+	}
 }
 
 func AbsPathNoEscape(root, path string) (absPath string, err error) {

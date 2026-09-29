@@ -16,7 +16,12 @@ import (
 	"strings"
 )
 
-const maxUpdateTarballItemFileSize int64 = 1 << 28 // 256 MB
+const (
+	// The biggest docker layer we've seen so far is a bit above 1 GB.
+	// Regular customers' build is usually a few GB.
+	maxUpdateTarballItemFileSize  int64 = 1 << 31 // 2 GB
+	maxUpdateTarballTotalDiskSize int64 = 1 << 35 // 32 GB
+)
 
 var ErrInvalidUpdate = errors.New("invalid update archive")
 
@@ -115,6 +120,7 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 		TarUnpackUseTmpFile("update.tar"),
 		TarUnpackUseTmpDir(txDir),
 		TarUnpackMaxItemFileSize(maxUpdateTarballItemFileSize),
+		TarUnpackMaxTotalDiskSize(maxUpdateTarballTotalDiskSize),
 		TarUnpackOnEvents(tarUnpackEvents{
 			onTmpCleanupError: onCleanupFailure,
 			onTarHeaderSeen: func(hdr *TarHeader) (skip bool, err error) {
