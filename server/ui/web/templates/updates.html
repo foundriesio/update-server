@@ -63,8 +63,10 @@
             <small>Comma-separated list of docker compose apps as <code>name=sha256</code>.</small>
           </details>
           
-          <label for="upload-dir">Update directory</label>
-          <input type="file" id="upload-dir" webkitdirectory multiple required />
+          <label for="upload-dir-btn">Update directory</label>
+          <input type="file" id="upload-dir" webkitdirectory multiple hidden />
+          <button type="button" id="upload-dir-btn" class="secondary" aria-describedby="upload-dir-status">Choose directory</button>
+          <small id="upload-dir-status" role="status">No directory selected.</small>
 
           <div id="upload-progress" style="display:none;">
             <progress id="upload-bar" value="0" max="100"></progress>
@@ -73,12 +75,49 @@
 
           <div id="upload-result" style="display:none;"></div>
 
-          <button type="button" id="upload-btn" onclick="uploadUpdate()">Upload</button>
+          <button type="button" id="upload-btn" style="display:block;" onclick="uploadUpdate()" disabled>Upload</button>
         </form>
       </details>
     </section>
 
     <script>
+    const uploadDir = document.getElementById('upload-dir');
+    const uploadDirBtn = document.getElementById('upload-dir-btn');
+    const uploadDirStatus = document.getElementById('upload-dir-status');
+    const uploadBtn = document.getElementById('upload-btn');
+
+    uploadDirBtn.addEventListener('click', () => {
+      uploadBtn.disabled = true;
+      uploadDirBtn.disabled = true;
+      // The browser reports the selection only after enumerating the directory.
+      uploadDirStatus.textContent = 'Calculating update size. This may take a while...';
+      uploadDir.click();
+    });
+
+    async function summarizeDirectory() {
+      uploadBtn.disabled = true;
+      uploadDirBtn.disabled = true;
+      const files = uploadDir.files;
+      if (files.length) {
+        const directory = files[0].webkitRelativePath.split('/')[0];
+        uploadDirStatus.textContent = directory + ': calculating file count and size...';
+        let size = 0;
+        for (let i = 0; i < files.length; i++) {
+          // Yield so the pending status can paint even for large selections.
+          if (i % 1000 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+          size += files[i].size;
+        }
+        uploadDirStatus.textContent = directory + ': ' + files.length + ' files (' + formatBytes(size) + ').';
+      } else {
+        uploadDirStatus.textContent = 'No directory selected.';
+      }
+      uploadDirBtn.disabled = false;
+      uploadBtn.disabled = files.length === 0;
+    }
+
+    uploadDir.addEventListener('change', summarizeDirectory);
+    uploadDir.addEventListener('cancel', summarizeDirectory);
+
     // Build a tar archive as a composite Blob.
     // File objects are Blobs referencing disk - the browser reads them on demand
     // during upload, so only tar headers and padding live in RAM.
@@ -225,6 +264,7 @@
     }
 
     async function uploadUpdate() {
+      if (uploadBtn.disabled) return;
       const tagEl = document.getElementById('upload-tag');
       const nameEl = document.getElementById('upload-name');
       const dirEl = document.getElementById('upload-dir');
@@ -292,6 +332,7 @@
       }
 
       btn.disabled = true;
+      uploadDirBtn.disabled = true;
       btn.textContent = 'Uploading...';
       progressDiv.style.display = 'block';
       resultDiv.style.display = 'none';
@@ -346,6 +387,7 @@
 
         // Clear the form
         document.getElementById('upload-form').reset();
+        uploadDirStatus.textContent = 'No directory selected.';
         progressDiv.style.display = 'none';
 
         // Reload the page after a short delay to show the new update in the list
@@ -355,7 +397,8 @@
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = '<p style="color:red;"><strong>Error:</strong> ' + err.message + '</p>';
       } finally {
-        btn.disabled = false;
+        btn.disabled = dirEl.files.length === 0;
+        uploadDirBtn.disabled = false;
         btn.textContent = 'Upload';
       }
     }
