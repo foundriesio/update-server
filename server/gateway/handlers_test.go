@@ -104,7 +104,7 @@ func (c testClient) marshalBody(data any) io.Reader {
 		return bytes.NewReader(b)
 	} else {
 		b, err := json.Marshal(data)
-		require.Nil(c.t, err)
+		require.NoError(c.t, err)
 		return bytes.NewReader(b)
 	}
 }
@@ -112,14 +112,14 @@ func (c testClient) marshalBody(data any) io.Reader {
 func NewTestClient(t *testing.T) *testClient {
 	tmpDir := t.TempDir()
 	fsS, err := storage.NewFs(tmpDir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	db, err := storage.NewDb(fsS.Config.DbFile())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	gwS, err := storage.NewStorage(db, fsS)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	log, err := context.InitLogger("debug")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	e := server.NewEchoServer()
 	RegisterHandlers(e, gwS, "https://does-not-matter")
@@ -142,7 +142,7 @@ func NewTestClient(t *testing.T) *testClient {
 func newTestCert(t *testing.T, uuid string, notAfter time.Time) *x509.Certificate {
 	t.Helper()
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(notAfter.UnixNano()),
 		Subject:      pkix.Name{CommonName: uuid},
@@ -150,9 +150,9 @@ func newTestCert(t *testing.T, uuid string, notAfter time.Time) *x509.Certificat
 		NotAfter:     notAfter,
 	}
 	der, err := x509.CreateCertificate(rand.Reader, &template, &template, priv.Public(), priv)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cert, err := x509.ParseCertificate(der)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	return cert
 }
 
@@ -161,7 +161,7 @@ func TestApiDevice(t *testing.T) {
 	tc := NewTestClient(t)
 	deviceBytes := tc.GET("/device", 200)
 	var device storage.Device
-	require.Nil(t, json.Unmarshal(deviceBytes, &device))
+	require.NoError(t, json.Unmarshal(deviceBytes, &device))
 	assert.Equal(t, tc.cert.Subject.CommonName, device.Uuid)
 	assert.Less(t, lastSeen, device.LastSeen)
 }
@@ -172,28 +172,28 @@ func TestCertRotation(t *testing.T) {
 	_ = tc.GET("/device", 200)
 
 	d, err := tc.gw.DeviceGet(tc.uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, certPEM(tc.cert), d.Cert)
 
 	// Device re-authenticates with a rotated certificate for the same uuid.
 	tc.cert = newTestCert(t, tc.uuid, time.Now().Add(2*time.Hour))
 	deviceBytes := tc.GET("/device", 200)
 	var device storage.Device
-	require.Nil(t, json.Unmarshal(deviceBytes, &device))
+	require.NoError(t, json.Unmarshal(deviceBytes, &device))
 	assert.Equal(t, tc.uuid, device.Uuid)
 
 	d, err = tc.gw.DeviceGet(tc.uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, certPEM(tc.cert), d.Cert)
 
 	// Rotation records a CertRotationCompleted event.
 	eventsFiles, err := tc.fs.Devices.ListFiles(tc.uuid, storage.EventsPrefix, true)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 1, len(eventsFiles))
 	eventsSaved, err := tc.fs.Devices.ReadFile(tc.uuid, eventsFiles[0])
-	require.Nil(t, err)
+	require.NoError(t, err)
 	var evt storage.DeviceUpdateEvent
-	require.Nil(t, json.Unmarshal([]byte(strings.TrimSpace(eventsSaved)), &evt))
+	require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(eventsSaved)), &evt))
 	assert.Equal(t, "CertRotationCompleted", evt.EventType.Id)
 	require.NotNil(t, evt.Event.Success)
 	assert.True(t, *evt.Event.Success)
@@ -201,10 +201,10 @@ func TestCertRotation(t *testing.T) {
 	stmt, err := tc.db.Prepare(
 		"TestOldCert", "SELECT expires, hash FROM old_certs",
 	)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	var expires int64
 	var fingerprint []byte
-	require.Nil(t, stmt.QueryRow().Scan(&expires, &fingerprint))
+	require.NoError(t, stmt.QueryRow().Scan(&expires, &fingerprint))
 	assert.Equal(t, oldCert.NotAfter.Unix(), expires)
 	expectedFingerprint := storage.OldCertHash(oldCert.Raw)
 	assert.Equal(t, expectedFingerprint, fingerprint)
@@ -213,7 +213,7 @@ func TestCertRotation(t *testing.T) {
 	tc.cert = oldCert
 	_ = tc.GET("/device", 502)
 	d, err = tc.gw.DeviceGet(tc.uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotEqual(t, certPEM(tc.cert), d.Cert)
 }
 
@@ -228,9 +228,9 @@ func TestExpiredCertRotation(t *testing.T) {
 	after := time.Now().Unix()
 
 	stmt, err := tc.db.Prepare("TestOldCertExpiry", "SELECT expires FROM old_certs")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	var expires int64
-	require.Nil(t, stmt.QueryRow().Scan(&expires))
+	require.NoError(t, stmt.QueryRow().Scan(&expires))
 	assert.GreaterOrEqual(t, expires, before)
 	assert.LessOrEqual(t, expires, after)
 
@@ -238,9 +238,9 @@ func TestExpiredCertRotation(t *testing.T) {
 	tc.cert = newTestCert(t, tc.uuid, time.Now().Add(2*time.Hour))
 	_ = tc.GET("/device", 200)
 	stmt, err = tc.db.Prepare("TestOldCertCount", "SELECT COUNT(*) FROM old_certs")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	var count int
-	require.Nil(t, stmt.QueryRow().Scan(&count))
+	require.NoError(t, stmt.QueryRow().Scan(&count))
 	assert.Equal(t, 2, count)
 }
 
@@ -248,7 +248,7 @@ func TestApiProxy(t *testing.T) {
 	tc := NewTestClient(t)
 	resBytes := tc.POST("/app-proxy-url", 201, nil)
 	proxyUrl, err := url.Parse(string(resBytes))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	token := proxyUrl.Query().Get("token")
 
 	req := httptest.NewRequest(http.MethodHead, "/registry/v2/factory/repo/blobs/sha256:123", nil)
@@ -273,14 +273,14 @@ func TestCheckIn(t *testing.T) {
 		"/device", 200, "x-ats-dockerapps", apps, "x-ats-ostreehash", hash, "x-ats-tags", tag, "x-ats-target", target)
 
 	var d *storage.Device
-	require.Nil(t, json.Unmarshal(deviceBytes, &d))
+	require.NoError(t, json.Unmarshal(deviceBytes, &d))
 	assert.Equal(t, apps, d.Apps)
 	assert.Equal(t, hash, d.OstreeHash)
 	assert.Equal(t, tag, d.Tag)
 	assert.Equal(t, target, d.TargetName)
 
 	d, err := tc.gw.DeviceGet(tc.uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, apps, d.Apps)
 	assert.Equal(t, hash, d.OstreeHash)
 	assert.Equal(t, tag, d.Tag)
@@ -292,7 +292,7 @@ func TestCheckIn(t *testing.T) {
 	_ = tc.GET("/device", 200, "x-ats-dockerapps", apps, "x-ats-tags", tag)
 
 	d, err = tc.gw.DeviceGet(tc.uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, apps, d.Apps)
 	assert.Equal(t, hash, d.OstreeHash)
 	assert.Equal(t, tag, d.Tag)
@@ -319,10 +319,10 @@ func TestConfig(t *testing.T) {
 		require.Equal(t, status, rec.Code)
 		if status == 200 {
 			var err error
-			require.Nil(t, json.Unmarshal(rec.Body.Bytes(), &cfg))
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &cfg))
 			lastModifiedAt, err = time.Parse(time.RFC1123, rec.Header().Get("Date"))
 			lastModifiedAt = lastModifiedAt.UTC()
-			require.Nil(t, err)
+			require.NoError(t, err)
 		}
 		return
 	}
@@ -371,7 +371,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	// Added factory configs
-	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(
+	require.NoError(t, tc.fs.Configs.WriteFactoryConfig(
 		`{"foo":{"Value":"foo content"},"bar":{"Value":"bar content","OnChanged":["/bin/bar"]}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 2, len(cfg))
@@ -381,7 +381,7 @@ func TestConfig(t *testing.T) {
 	tick(true)
 
 	// Added device configs - override one factory config, adds one more
-	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid,
+	require.NoError(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid,
 		`{"bar":{"Value":"bar device"},"baz":{"Value":"baz device"}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 3, len(cfg))
@@ -392,9 +392,9 @@ func TestConfig(t *testing.T) {
 	tick(true)
 
 	// Added group configs, group not set
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("first",
+	require.NoError(t, tc.fs.Configs.WriteGroupConfig("first",
 		`{"baz":{"Value":"first baz"},"toe":{"Value":"first toe"}}`, "", ""))
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("second",
+	require.NoError(t, tc.fs.Configs.WriteGroupConfig("second",
 		`{"bar":{"Value":"second bar"},"baz":{"Value":"second baz"}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 3, len(cfg))
@@ -409,15 +409,15 @@ func TestConfig(t *testing.T) {
 	// A rudimentary test is to verify that the group_name_modified_at inside a table was set to some non-zero value.
 	setGroupStmt, err := tc.db.Prepare("TestUpdateGroup",
 		`UPDATE devices SET labels=jsonb_set(labels,'$.group',?) WHERE uuid=?`)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	setGroupModifiedStmt, err := tc.db.Prepare("TestUpdateGroupModified",
 		"UPDATE devices SET group_name_modified_at=? WHERE uuid=? AND group_name_modified_at != 0")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	setGroup := func(group string) {
 		_, err := setGroupStmt.Exec(group, tc.uuid)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		_, err = setGroupModifiedStmt.Exec(now.Unix(), tc.uuid)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}
 
 	// Set first group - adds two configs, one is overridden by device config
@@ -442,7 +442,7 @@ func TestConfig(t *testing.T) {
 	tick(true)
 
 	// Changed device config - remove one factory/group override, keep another group override, add one more config
-	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid,
+	require.NoError(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid,
 		`{"ooh":{"Value":"ooh device"},"baz":{"Value":"baz device"}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 4, len(cfg))
@@ -454,7 +454,7 @@ func TestConfig(t *testing.T) {
 	tick(true)
 
 	// Changed group config - remove factory override, add one more config
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("second",
+	require.NoError(t, tc.fs.Configs.WriteGroupConfig("second",
 		`{"tip":{"Value":"second tip","OnChanged":["/big/tip"]},"baz":{"Value":"second baz"}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 5, len(cfg))
@@ -467,7 +467,7 @@ func TestConfig(t *testing.T) {
 	tick(true)
 
 	// Changed factory config - remove one config
-	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(
+	require.NoError(t, tc.fs.Configs.WriteFactoryConfig(
 		`{"bar":{"Value":"bar content","OnChanged":["/bin/bar"]}}`, "", ""))
 	cfg = getConfig(200)
 	require.Equal(t, 4, len(cfg))
@@ -493,7 +493,7 @@ func TestConfigPatch(t *testing.T) {
 
 	getConfig := func() map[string]ConfigFile {
 		var cfg map[string]ConfigFile
-		require.Nil(t, json.Unmarshal(tc.GET("/config", 200), &cfg))
+		require.NoError(t, json.Unmarshal(tc.GET("/config", 200), &cfg))
 		return cfg
 	}
 
@@ -579,22 +579,22 @@ func TestConfigSota(t *testing.T) {
 
 	setGroupStmt, err := tc.db.Prepare("TestUpdateGroup",
 		`UPDATE devices SET labels=jsonb_set(labels,'$.group',?) WHERE uuid=?`)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = setGroupStmt.Exec("group", tc.uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	marshalSota := func(cfg string) string {
 		jsonCfg, e := json.Marshal(cfg)
-		require.Nil(t, e)
+		require.NoError(t, e)
 		return fmt.Sprintf(`{"%s":{"Value":%s}}`, storage.ConfigSotaOverride, string(jsonCfg))
 	}
 
 	cfg := marshalSota("[pacman]\ntags='factory'\napps='factory'\n[madman]\nfoo='bar'\n")
-	require.Nil(t, tc.fs.Configs.WriteFactoryConfig(cfg, "bob", ""))
+	require.NoError(t, tc.fs.Configs.WriteFactoryConfig(cfg, "bob", ""))
 	cfg = marshalSota("[pacman]\ntags='group'\n[madman]\nbar='baz'\n")
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("group", cfg, "alice", "No reason"))
+	require.NoError(t, tc.fs.Configs.WriteGroupConfig("group", cfg, "alice", "No reason"))
 	cfg = marshalSota("[pacman]\napps='device'\n[badman]\nfoo='bar'\n")
-	require.Nil(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid, cfg, "badman", "behind blue eyes"))
+	require.NoError(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid, cfg, "badman", "behind blue eyes"))
 
 	// TOML library uses double-quotes for values, sorts everything alphabetically, and puts spaces around equality.
 	mergedCfg := marshalSota(`[badman]
@@ -616,9 +616,9 @@ tags = "group"
 
 	// Verify that the applied config was persisted.
 	raw, err := tc.fs.Devices.ReadFile(tc.uuid, storage.ConfigAppliedFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	var applied baseStorage.AppliedConfigs
-	require.Nil(t, json.Unmarshal([]byte(raw), &applied))
+	require.NoError(t, json.Unmarshal([]byte(raw), &applied))
 	assert.GreaterOrEqual(t, applied.AppliedAt, beforeRequest)
 	assert.LessOrEqual(t, applied.AppliedAt, time.Now().Unix())
 	require.Contains(t, applied.Files, storage.ConfigSotaOverride)
@@ -627,7 +627,7 @@ tags = "group"
 		storage.ConfigSotaOverride,
 		func() string {
 			b, e := json.Marshal(applied.Files[storage.ConfigSotaOverride].Value)
-			require.Nil(t, e)
+			require.NoError(t, e)
 			return string(b)
 		}()),
 	)
@@ -669,22 +669,22 @@ func TestInfo(t *testing.T) {
 	_ = tc.PUT("/system_info/config", 413, aboveLimit)
 
 	data, err := tc.fs.Devices.ReadFile(tc.uuid, storage.AktomlFile)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, akInfo, data)
 	data, err = tc.fs.Devices.ReadFile(tc.uuid, storage.HwInfoFile)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, hwInfo, data)
 	data, err = tc.fs.Devices.ReadFile(tc.uuid, storage.NetInfoFile)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, nwInfo, data)
 
 	states, err := tc.fs.Devices.ListFiles(tc.uuid, storage.StatesPrefix, true)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 2, len(states))
 	exp := []string{stInfo, stInfo1}
 	for idx, name := range states {
 		data, err = tc.fs.Devices.ReadFile(tc.uuid, name)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, exp[idx], data)
 	}
 
@@ -693,11 +693,11 @@ func TestInfo(t *testing.T) {
 		_ = tc.POST("/apps-states", 200, stInfo1)
 	}
 	states, err = tc.fs.Devices.ListFiles(tc.uuid, storage.StatesPrefix, true)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 10, len(states))
 	for _, name := range states {
 		data, err = tc.fs.Devices.ReadFile(tc.uuid, name)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, stInfo1, data)
 	}
 }
@@ -732,10 +732,10 @@ func TestEvents(t *testing.T) {
 	_ = tc.POST("/events", 400, eventsBadJson)
 
 	eventsFiles, err := tc.fs.Devices.ListFiles(tc.uuid, storage.EventsPrefix, true)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(eventsFiles))
 	eventsSaved, err := tc.fs.Devices.ReadFile(tc.uuid, eventsFiles[0])
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s\n%s\n%s\n", eventSatus, eventFinis, eventFixedDate), eventsSaved)
 }
 
@@ -769,9 +769,9 @@ func TestTufMeta(t *testing.T) {
 			visited[ts.tc] = ts.update
 			_ = ts.tc.GET("/device", 200) // This creates the device via auto-register
 			stmt, err := ts.tc.db.Prepare("TestUpdateUpdate", "UPDATE devices SET update_name=? WHERE uuid=?")
-			require.Nil(t, err, ts.name)
+			require.NoError(t, err, ts.name)
 			_, err = stmt.Exec(ts.update, ts.tc.cert.Subject.CommonName)
-			require.Nil(t, err, ts.name)
+			require.NoError(t, err, ts.name)
 		}
 	}
 
@@ -779,7 +779,7 @@ func TestTufMeta(t *testing.T) {
 	var err error
 	for _, ts := range tests {
 		err = ts.tc.fs.Updates.Tuf.WriteFile(ts.update, ts.role, ts.name)
-		require.Nil(t, err, ts.name)
+		require.NoError(t, err, ts.name)
 	}
 
 	// Finally, run the test
@@ -810,8 +810,8 @@ func TestTufMetaNoUpdate(t *testing.T) {
 	// Without tuf-init there is no default metadata to serve.
 	_ = tc.GET("/repo/targets.json", 404, "x-ats-tags", "test")
 
-	require.Nil(t, tc.fs.Auth.InitHmacSecret())
-	require.Nil(t, tc.fs.Tuf.InitTuf())
+	require.NoError(t, tc.fs.Auth.InitHmacSecret())
+	require.NoError(t, tc.fs.Tuf.InitTuf())
 
 	for _, role := range []string{"1.root.json", "timestamp.json", "snapshot.json", "targets.json"} {
 		t.Run(role, func(t *testing.T) {
@@ -822,7 +822,7 @@ func TestTufMetaNoUpdate(t *testing.T) {
 	}
 
 	var targets tuf.AtsTufTargets
-	require.Nil(t, json.Unmarshal(tc.GET("/repo/targets.json", 200, "x-ats-tags", "test"), &targets))
+	require.NoError(t, json.Unmarshal(tc.GET("/repo/targets.json", 200, "x-ats-tags", "test"), &targets))
 	assert.Equal(t, 1, targets.Signed.Version)
 	assert.Empty(t, targets.Signed.Targets)
 
@@ -868,9 +868,9 @@ func TestOstree(t *testing.T) {
 			visited[ts.tc] = [2]string{ts.tag, ts.update}
 			_ = ts.tc.GET("/device", 200) // This creates the device via auto-register
 			stmt, err := ts.tc.db.Prepare("TestUpdateUpdate", "UPDATE devices SET update_name=?, tag=? WHERE uuid=?")
-			require.Nil(t, err, ts.name)
+			require.NoError(t, err, ts.name)
 			_, err = stmt.Exec(ts.update, ts.tag, ts.tc.cert.Subject.CommonName)
-			require.Nil(t, err, ts.name)
+			require.NoError(t, err, ts.name)
 		}
 	}
 
@@ -888,7 +888,7 @@ func TestOstree(t *testing.T) {
 	var err error
 	for _, ts := range tests {
 		err = writeFile(ts.tc.fs.Updates.Ostree, ts.update, ts.path, ts.name)
-		require.Nil(t, err, ts.name)
+		require.NoError(t, err, ts.name)
 	}
 
 	// Finally, run the test
@@ -917,7 +917,7 @@ func TestOstree(t *testing.T) {
 			DownloadUrl string `json:"download_url"`
 			AccessToken string `json:"access_token"`
 		}
-		require.Nil(t, json.Unmarshal(body, &urls))
+		require.NoError(t, json.Unmarshal(body, &urls))
 		require.Len(t, urls, 1)
 		assert.NotEmpty(t, urls[0].DownloadUrl)
 		assert.NotEmpty(t, urls[0].AccessToken)
@@ -973,14 +973,14 @@ func TestApiFiotest(t *testing.T) {
 		ContentType string `json:"content-type"`
 	}
 	var urls map[string]signedUrl
-	require.Nil(t, json.Unmarshal(out, &urls))
+	require.NoError(t, json.Unmarshal(out, &urls))
 	for name, signed := range urls {
 		tc.PUT(signed.Url, 200, []byte(name+"BLAH"))
 	}
 
 	prefix := baseStorage.TestArtifactsPrefix + "-" + testid + "_"
 	files, err := tc.fs.Devices.ListFiles(tc.cert.Subject.CommonName, prefix, true)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Len(t, files, 1)
 	require.Equal(t, prefix+"console.txt", files[0])
 }

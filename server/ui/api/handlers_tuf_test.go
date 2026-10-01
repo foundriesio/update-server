@@ -24,18 +24,18 @@ func TestApiTufRoot(t *testing.T) {
 	// Before TUF is initialized there is no root metadata.
 	tc.GET("/tuf/root.json", 404)
 
-	require.Nil(t, tc.fs.Tuf.InitTuf())
+	require.NoError(t, tc.fs.Tuf.InitTuf())
 
 	// The latest root.json is returned and is valid v1 root metadata.
 	var root tuf.AtsTufRoot
-	require.Nil(t, json.Unmarshal(tc.GET("/tuf/root.json", 200), &root))
+	require.NoError(t, json.Unmarshal(tc.GET("/tuf/root.json", 200), &root))
 	require.Equal(t, "Root", root.Signed.Type)
 	require.Equal(t, 1, root.Signed.Version)
 	require.Len(t, root.Signatures, 1)
 
 	// The explicit version returns the same document.
 	var byVersion tuf.AtsTufRoot
-	require.Nil(t, json.Unmarshal(tc.GET("/tuf/1.root.json", 200), &byVersion))
+	require.NoError(t, json.Unmarshal(tc.GET("/tuf/1.root.json", 200), &byVersion))
 	require.Equal(t, root.Signed.Version, byVersion.Signed.Version)
 	require.Equal(t, root.Signatures, byVersion.Signatures)
 

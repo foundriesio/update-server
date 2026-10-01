@@ -30,10 +30,10 @@ func TestCsr(t *testing.T) {
 	common := CommonArgs{
 		DataDir: tmpDir,
 	}
-	require.Nil(t, csr.Run(common))
+	require.NoError(t, csr.Run(common))
 
 	fs, err := storage.NewFs(common.DataDir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// Create a root CA
 	caKeyFile, caFile := createSelfSignedRoot(t, fs)
 
@@ -41,10 +41,10 @@ func TestCsr(t *testing.T) {
 		CaKey:  caKeyFile,
 		CaCert: caFile,
 	}
-	require.Nil(t, sign.Run(common))
+	require.NoError(t, sign.Run(common))
 
 	cert, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsPemFile), x509.ParseCertificate)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "example.com", cert.Subject.CommonName)
 
 	// fail second run because we require a new directory (so we don't accidentally overwrite a key)
@@ -56,7 +56,7 @@ func TestCsr(t *testing.T) {
 func createSelfSignedRoot(t *testing.T, fs *storage.FsHandle) (string, string) {
 	caKeyFile := fs.Certs.FilePath(storage.CertsTlsKeyFile) // reuse the key we already generated
 	key, err := storage.LoadPemFile(caKeyFile, x509.ParseECPrivateKey)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
@@ -70,7 +70,7 @@ func createSelfSignedRoot(t *testing.T, fs *storage.FsHandle) (string, string) {
 		BasicConstraintsValid: true,
 	}
 	caDer, err := x509.CreateCertificate(rand.Reader, ca, ca, &key.PublicKey, key)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	caPem := pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "CERTIFICATE",
@@ -78,6 +78,6 @@ func createSelfSignedRoot(t *testing.T, fs *storage.FsHandle) (string, string) {
 		},
 	)
 	caFile := fs.Certs.FilePath("ca.pem")
-	require.Nil(t, os.WriteFile(caFile, caPem, 0o640))
+	require.NoError(t, os.WriteFile(caFile, caPem, 0o640))
 	return caKeyFile, caFile
 }
