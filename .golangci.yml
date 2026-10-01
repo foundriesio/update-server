@@ -35,11 +35,14 @@ linters:
     - nolintlint
     - sqlclosecheck
     - staticcheck
+    - testifylint
+    - thelper
     - unconvert
     - unparam
     - unqueryvet
     - unused
     - usestdlibvars
+    - usetesting
   settings:
     forbidigo:
       forbid:
@@ -69,6 +72,9 @@ linters:
       min-complexity: 6
     nolintlint:
       require-specific: true
+    testifylint:
+      disable:
+        - require-error  # Using assert.NoError is quite normal when error is not breaking a test flow
     unqueryvet:
       # In addition to default checks
       check-n1: true
