@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"errors"
 	"math/big"
 	"os"
 	"testing"
@@ -49,11 +48,12 @@ func TestCsr(t *testing.T) {
 
 	// fail second run because we require a new directory (so we don't accidentally overwrite a key)
 	err = csr.Run(common)
-	require.NotNil(t, err)
-	require.True(t, errors.Is(err, os.ErrExist))
+	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrExist)
 }
 
 func createSelfSignedRoot(t *testing.T, fs *storage.FsHandle) (string, string) {
+	t.Helper()
 	caKeyFile := fs.Certs.FilePath(storage.CertsTlsKeyFile) // reuse the key we already generated
 	key, err := storage.LoadPemFile(caKeyFile, x509.ParseECPrivateKey)
 	require.NoError(t, err)

@@ -77,13 +77,13 @@ func TestServe(t *testing.T) {
 	require.NoError(t, err)
 	defer r.Body.Close() //nolint:errcheck
 	require.Equal(t, http.StatusNotFound, r.StatusCode)
-	require.Equal(t, 12, len(r.Header.Get("X-Request-Id")))
+	require.Len(t, r.Header.Get("X-Request-Id"), 12)
 
 	r, err = http.Get(fmt.Sprintf("https://%s/doesnotexist", gatewayAddress))
 	if err == nil {
 		defer r.Body.Close() //nolint:errcheck
 	}
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to verify certificate")
 
 	require.NoError(t, syscall.Kill(syscall.Getpid(), syscall.SIGINT))

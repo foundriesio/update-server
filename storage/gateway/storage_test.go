@@ -191,7 +191,7 @@ func Test_ProcessEvents(t *testing.T) {
 	}
 
 	validate := func(files []string, skip int) {
-		require.Equal(t, s.maxEvents, len(files))
+		require.Len(t, files, s.maxEvents)
 		for i, name := range files {
 			pack := fmt.Sprintf("test-%d", i+skip) // Some initial events must get stripped
 			content, err := fs.Devices.ReadFile(d.Uuid, name)
@@ -318,7 +318,6 @@ func Test_Fiotest(t *testing.T) {
 
 	require.NoError(t, d.TestCreate("intel-corei7-64-lmp-23", "test1", "test1-id"))
 	require.NoError(t, d.TestCreate("intel-corei7-64-lmp-23", "test1", "test2-id"))
-
 	require.NoError(t, d.TestComplete("test1-id", "PASSED", "details", nil))
 
 	results := []storage.TargetTestResult{
@@ -345,7 +344,7 @@ func Test_Fiotest(t *testing.T) {
 	require.Equal(t, "intel-corei7-64-lmp-23", tests[0].TargetName)
 	require.Equal(t, "PASSED", tests[0].Status)
 	require.NotNil(t, tests[0].CompletedOn)
-	require.Len(t, tests[0].Results, 0)
+	require.Empty(t, tests[0].Results)
 
 	require.Equal(t, "test2-id", tests[1].Uuid)
 	require.Equal(t, "test1", tests[1].Name)
@@ -355,8 +354,8 @@ func Test_Fiotest(t *testing.T) {
 	require.Len(t, tests[1].Results, 1)
 	require.Equal(t, "res1", tests[1].Results[0].Name)
 
-	require.NotNil(t, d.TestStoreArtifact("test1-id", "../artifact.txt", strings.NewReader("artifact content")))
-	require.NotNil(t, d.TestStoreArtifact("test1-id-doesnot-exist", "artifact.txt", strings.NewReader("artifact content")))
+	require.Error(t, d.TestStoreArtifact("test1-id", "../artifact.txt", strings.NewReader("artifact content")))
+	require.Error(t, d.TestStoreArtifact("test1-id-doesnot-exist", "artifact.txt", strings.NewReader("artifact content")))
 
 	require.NoError(t, d.TestStoreArtifact("test1-id", "artifact.txt", strings.NewReader("artifact content")))
 	fd, err := apiD.GetTestArtifact("test1-id", "artifact.txt")
