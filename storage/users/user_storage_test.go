@@ -52,7 +52,7 @@ func TestNewStorage(t *testing.T) {
 	require.False(t, u2.AllowedScopes.Has(ScopeDevicesD))
 	require.Equal(t, []string{"devices:read", "users:read-update"}, u2.AllowedScopes.ToSlice())
 
-	require.NotNil(t, users.Create(u2), "duplicate username should fail")
+	require.Error(t, users.Create(u2), "duplicate username should fail")
 
 	u3, err := users.Get("nonexistent")
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestTokens(t *testing.T) {
 	cfg.MaxTokenLifetimeDays = 1
 	expires = time.Now().Add(36 * time.Hour).Unix()
 	_, err = u.GenerateToken("desc", expires, ScopeDevicesR)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "requested expiration exceeds maximum allowed expiration 1 days")
 
 	expires = time.Now().Add(1 * time.Hour).Unix()
@@ -165,10 +165,10 @@ func TestTokens(t *testing.T) {
 	require.NoError(t, u.Delete())
 	tokens, err = u.ListTokens()
 	require.NoError(t, err)
-	require.Len(t, tokens, 0)
+	require.Empty(t, tokens)
 
 	_, err = u.GenerateToken("invalid scope", expires, ScopeUsersC)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	// Generate token with read-update
 	t1, err = u.GenerateToken("desc", expires, ScopeDevicesRU)
@@ -223,7 +223,7 @@ func TestGc(t *testing.T) {
 
 	tokens, err := u.ListTokens()
 	require.NoError(t, err)
-	require.Len(t, tokens, 0)
+	require.Empty(t, tokens)
 
 	u2, err := users.GetBySession(session)
 	require.NoError(t, err)

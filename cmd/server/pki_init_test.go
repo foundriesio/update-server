@@ -5,7 +5,6 @@ package main
 
 import (
 	"crypto/x509"
-	"errors"
 	"os"
 	"testing"
 
@@ -80,6 +79,5 @@ func TestPkiInit(t *testing.T) {
 
 	// Re-running refuses to overwrite the existing PKI.
 	err = cmd.Run(common)
-	require.NotNil(t, err)
-	require.True(t, errors.Is(err, os.ErrExist))
+	require.ErrorIs(t, err, os.ErrExist)
 }

@@ -165,7 +165,7 @@ func (c testClient) assertConfigsHistory(response []byte, reason string, files .
 	require.LessOrEqual(c.t, 1, len(files))
 	var history []configFileSet
 	require.NoError(c.t, json.Unmarshal(response, &history))
-	assert.Equal(c.t, len(files), len(history))
+	assert.Len(c.t, history, len(files))
 	for idx, cfg := range history {
 		if idx >= len(files) {
 			break
@@ -270,10 +270,12 @@ func (testAuthProvider) GetRateLimiterMiddleware() echo.MiddlewareFunc {
 }
 
 func NewTestClient(t *testing.T) *testClient {
+	t.Helper()
 	return NewTestClientWithCA(t, "")
 }
 
 func NewTestClientWithCA(t *testing.T, org string) *testClient {
+	t.Helper()
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	fsS, err := apiStorage.NewFs(tmpDir)
@@ -394,7 +396,7 @@ func TestApiDeviceList(t *testing.T) {
 	data := tc.GET("/devices", 200)
 	var devices []apiStorage.DeviceListItem
 	require.NoError(t, json.Unmarshal(data, &devices))
-	require.Len(t, devices, 0)
+	require.Empty(t, devices)
 
 	// two devices with different last seen times
 	_, err := tc.gw.DeviceCreate("test-device-1", "cert1")
@@ -561,7 +563,7 @@ func TestApiDeviceLabelsPatch(t *testing.T) {
 	device = apiStorage.Device{}
 	require.NoError(t, json.Unmarshal(tc.GET("/devices/test-device-1", 200), &device))
 	assert.Equal(t, "test", device.Labels["name"])
-	assert.Equal(t, "", device.Labels["foo"])
+	assert.Empty(t, device.Labels["foo"])
 	assert.Equal(t, "baz", device.Labels["bar"])
 
 	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
@@ -636,13 +638,13 @@ func TestApiDeviceLabelsPut(t *testing.T) {
 	device = apiStorage.Device{}
 	require.NoError(t, json.Unmarshal(tc.GET("/devices/test-device-2", 200), &device))
 	assert.Equal(t, "bar", device.Labels["foo"])
-	assert.Equal(t, "", device.Labels["name"])
+	assert.Empty(t, device.Labels["name"])
 
 	data = `{"name":"test2"}`
 	tc.PUT("/devices/test-device-2/labels", 200, data, headers...)
 	device = apiStorage.Device{}
 	require.NoError(t, json.Unmarshal(tc.GET("/devices/test-device-2", 200), &device))
-	assert.Equal(t, "", device.Labels["foo"])
+	assert.Empty(t, device.Labels["foo"])
 	assert.Equal(t, "test2", device.Labels["name"])
 }
 
@@ -692,7 +694,7 @@ func TestApiDeviceUpdateEvents(t *testing.T) {
 	data := tc.GET("/devices/test-device-1/updates", 200)
 	var updates []string
 	require.NoError(t, json.Unmarshal(data, &updates))
-	require.Len(t, updates, 0)
+	require.Empty(t, updates)
 
 	events := generateUpdateEvents("uuid-1", "first", 2)
 	require.NoError(t, d.ProcessEvents(events))
@@ -842,8 +844,8 @@ func TestApiRolloutGet(t *testing.T) {
 	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout2", `{"groups":["test","dev"]}`))
 	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update", "rollout", `{"uuids":["uh"],"groups":["oh"]}`))
 
-	data := tc.GET("/updates/update1/rollouts/rollout1", 200)
 	var r Rollout
+	data := tc.GET("/updates/update1/rollouts/rollout1", 200)
 	require.NoError(t, json.Unmarshal(data, &r))
 	assert.Equal(t, []string{"123", "xyz"}, r.Uuids)
 	assert.False(t, r.Commit)
@@ -930,8 +932,8 @@ func TestApiRolloutPut(t *testing.T) {
 	}
 	require.Eventually(t, committed, 10*time.Second, 20*time.Millisecond)
 
-	data := tc.GET("/updates/update1/rollouts/rocks", 200)
 	var r Rollout
+	data := tc.GET("/updates/update1/rollouts/rocks", 200)
 	require.NoError(t, json.Unmarshal(data, &r))
 	assert.NotZero(t, r.CreatedAt, string(data))
 	assert.Equal(t, []string{"ci1", "ci2", "ci3"}, r.Uuids)
@@ -953,7 +955,7 @@ func TestApiRolloutPut(t *testing.T) {
 	assert.Equal(t, "update1", dev.UpdateName)
 	dev, err = tc.api.DeviceGet("prod1")
 	require.NoError(t, err)
-	assert.Equal(t, "", dev.UpdateName)
+	assert.Empty(t, dev.UpdateName)
 	dev, err = tc.api.DeviceGet("prod2")
 	require.NoError(t, err)
 	assert.Equal(t, "update2", dev.UpdateName)
@@ -1003,17 +1005,17 @@ func TestApiRolloutDaemon(t *testing.T) {
 	// Before the watchdog daemon processing, rollouts are not yet committed.
 	data := tc.GET("/updates/update1/rollouts/roll1", 200)
 	assert.Equal(t, []string{"ci1"}, rollout(data).Uuids)
-	assert.Equal(t, false, rollout(data).Commit)
+	assert.False(t, rollout(data).Commit)
 	assert.NotZero(t, rollout(data).CreatedAt)
 	data = tc.GET("/updates/update2/rollouts/roll2", 200)
 	assert.Equal(t, []string{"prod1"}, rollout(data).Uuids)
-	assert.Equal(t, false, rollout(data).Commit)
+	assert.False(t, rollout(data).Commit)
 	dev, err := tc.api.DeviceGet("ci1")
 	require.NoError(t, err)
-	assert.Equal(t, "", dev.UpdateName)
+	assert.Empty(t, dev.UpdateName)
 	dev, err = tc.api.DeviceGet("prod1")
 	require.NoError(t, err)
-	assert.Equal(t, "", dev.UpdateName)
+	assert.Empty(t, dev.UpdateName)
 
 	daemons.Start()
 	// After the watchdog daemon processing, rollouts are committed.
@@ -1285,7 +1287,7 @@ func TestApiDeniedDevicesList(t *testing.T) {
 	data := tc.GET("/denied-devices", 200)
 	var uuids []string
 	require.NoError(t, json.Unmarshal(data, &uuids))
-	require.Len(t, uuids, 0)
+	require.Empty(t, uuids)
 
 	// Create two devices, delete only one of them.
 	_, err := tc.gw.DeviceCreate("live-device", "cert1")
@@ -1703,7 +1705,7 @@ func TestApiUpdateCreate(t *testing.T) {
 	updatesDir := tc.fs.Config.UpdatesDir()
 	root, err := os.ReadFile(filepath.Join(updatesDir, "v1.0", "tuf", "root.json"))
 	require.NoError(t, err)
-	assert.Equal(t, `{"signed":{}}`, string(root))
+	assert.JSONEq(t, `{"signed":{}}`, string(root))
 	config, err := os.ReadFile(filepath.Join(updatesDir, "v1.0", "ostree_repo", "config"))
 	require.NoError(t, err)
 	assert.Equal(t, "[core]\nrepo_version=1\n", string(config))
@@ -1718,7 +1720,7 @@ func TestApiUpdateCreate(t *testing.T) {
 		"Content-Type", "application/x-tar")
 	appData, err := os.ReadFile(filepath.Join(updatesDir, "v2.0", "apps", "myapp.json"))
 	require.NoError(t, err)
-	assert.Equal(t, `{"name":"myapp"}`, string(appData))
+	assert.JSONEq(t, `{"name":"myapp"}`, string(appData))
 
 	// Duplicate tag and name
 	tc.POST("/updates/main/v2.0", 409, bytes.NewReader(appsTar.Bytes()),

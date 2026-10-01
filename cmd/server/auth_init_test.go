@@ -24,6 +24,6 @@ func TestAuthInitLocal(t *testing.T) {
 	cfg, err := fs.Auth.GetAuthConfig()
 	require.NoError(t, err)
 	require.Equal(t, "local", cfg.Type)
-	require.Greater(t, len(cfg.NewUserDefaultScopes), 0)
-	require.Greater(t, len(cfg.Config), 0)
+	require.NotEmpty(t, cfg.NewUserDefaultScopes)
+	require.NotEmpty(t, cfg.Config)
 }

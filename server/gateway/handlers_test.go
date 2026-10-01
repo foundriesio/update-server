@@ -110,6 +110,7 @@ func (c testClient) marshalBody(data any) io.Reader {
 }
 
 func NewTestClient(t *testing.T) *testClient {
+	t.Helper()
 	tmpDir := t.TempDir()
 	fsS, err := storage.NewFs(tmpDir)
 	require.NoError(t, err)
@@ -189,7 +190,7 @@ func TestCertRotation(t *testing.T) {
 	// Rotation records a CertRotationCompleted event.
 	eventsFiles, err := tc.fs.Devices.ListFiles(tc.uuid, storage.EventsPrefix, true)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(eventsFiles))
+	require.Len(t, eventsFiles, 1)
 	eventsSaved, err := tc.fs.Devices.ReadFile(tc.uuid, eventsFiles[0])
 	require.NoError(t, err)
 	var evt storage.DeviceUpdateEvent
@@ -341,17 +342,17 @@ func TestConfig(t *testing.T) {
 
 	// No config
 	cfg := getConfig(204)
-	require.Equal(t, 0, len(cfg))
+	require.Empty(t, cfg)
 	require.True(t, lastModifiedAt.IsZero())
 	cfg = getConfigSince(204, checkpoint)
-	require.Equal(t, 0, len(cfg))
+	require.Empty(t, cfg)
 	tick(false) // This test changes no configs
 
 	checkConfig := func(name, content string, onChanged ...string) {
 		v, ok := cfg[name]
 		require.True(t, ok)
 		require.Equal(t, content, v.Value)
-		require.Equal(t, len(onChanged), len(v.OnChanged))
+		require.Len(t, v.OnChanged, len(onChanged))
 		for idx, item := range onChanged {
 			require.Equal(t, item, v.OnChanged[idx])
 		}
@@ -362,11 +363,11 @@ func TestConfig(t *testing.T) {
 			cfg1 := getConfigSince(200, checkpoint)
 			require.Equal(t, cfg, cfg1)
 			cfg1 = getConfigSince(304, now)
-			require.Equal(t, 0, len(cfg1))
+			require.Empty(t, cfg1)
 		} else {
 			require.Equal(t, checkpoint, lastModifiedAt)
 			cfg1 := getConfigSince(304, checkpoint)
-			require.Equal(t, 0, len(cfg1))
+			require.Empty(t, cfg1)
 		}
 	}
 
@@ -374,7 +375,7 @@ func TestConfig(t *testing.T) {
 	require.NoError(t, tc.fs.Configs.WriteFactoryConfig(
 		`{"foo":{"Value":"foo content"},"bar":{"Value":"bar content","OnChanged":["/bin/bar"]}}`, "", ""))
 	cfg = getConfig(200)
-	require.Equal(t, 2, len(cfg))
+	require.Len(t, cfg, 2)
 	checkConfig("foo", "foo content")
 	checkConfig("bar", "bar content", "/bin/bar")
 	checkTimestamp(true)
@@ -384,7 +385,7 @@ func TestConfig(t *testing.T) {
 	require.NoError(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid,
 		`{"bar":{"Value":"bar device"},"baz":{"Value":"baz device"}}`, "", ""))
 	cfg = getConfig(200)
-	require.Equal(t, 3, len(cfg))
+	require.Len(t, cfg, 3)
 	checkConfig("foo", "foo content")
 	checkConfig("bar", "bar device")
 	checkConfig("baz", "baz device")
@@ -397,7 +398,7 @@ func TestConfig(t *testing.T) {
 	require.NoError(t, tc.fs.Configs.WriteGroupConfig("second",
 		`{"bar":{"Value":"second bar"},"baz":{"Value":"second baz"}}`, "", ""))
 	cfg = getConfig(200)
-	require.Equal(t, 3, len(cfg))
+	require.Len(t, cfg, 3)
 	checkConfig("foo", "foo content")
 	checkConfig("bar", "bar device")
 	checkConfig("baz", "baz device")
@@ -423,7 +424,7 @@ func TestConfig(t *testing.T) {
 	// Set first group - adds two configs, one is overridden by device config
 	setGroup("first")
 	cfg = getConfig(200)
-	require.Equal(t, 4, len(cfg))
+	require.Len(t, cfg, 4)
 	checkConfig("foo", "foo content")
 	checkConfig("bar", "bar device")
 	checkConfig("baz", "baz device")
@@ -434,7 +435,7 @@ func TestConfig(t *testing.T) {
 	// Set second group - adds one config, overrides one factory config, both are overridden by device config
 	setGroup("second")
 	cfg = getConfig(200)
-	require.Equal(t, 3, len(cfg))
+	require.Len(t, cfg, 3)
 	checkConfig("foo", "foo content")
 	checkConfig("bar", "bar device")
 	checkConfig("baz", "baz device")
@@ -445,7 +446,7 @@ func TestConfig(t *testing.T) {
 	require.NoError(t, tc.fs.Configs.WriteDeviceConfig(tc.uuid,
 		`{"ooh":{"Value":"ooh device"},"baz":{"Value":"baz device"}}`, "", ""))
 	cfg = getConfig(200)
-	require.Equal(t, 4, len(cfg))
+	require.Len(t, cfg, 4)
 	checkConfig("foo", "foo content")
 	checkConfig("bar", "second bar")
 	checkConfig("baz", "baz device")
@@ -457,7 +458,7 @@ func TestConfig(t *testing.T) {
 	require.NoError(t, tc.fs.Configs.WriteGroupConfig("second",
 		`{"tip":{"Value":"second tip","OnChanged":["/big/tip"]},"baz":{"Value":"second baz"}}`, "", ""))
 	cfg = getConfig(200)
-	require.Equal(t, 5, len(cfg))
+	require.Len(t, cfg, 5)
 	checkConfig("foo", "foo content")
 	checkConfig("bar", "bar content", "/bin/bar")
 	checkConfig("baz", "baz device")
@@ -470,7 +471,7 @@ func TestConfig(t *testing.T) {
 	require.NoError(t, tc.fs.Configs.WriteFactoryConfig(
 		`{"bar":{"Value":"bar content","OnChanged":["/bin/bar"]}}`, "", ""))
 	cfg = getConfig(200)
-	require.Equal(t, 4, len(cfg))
+	require.Len(t, cfg, 4)
 	checkConfig("bar", "bar content", "/bin/bar")
 	checkConfig("baz", "baz device")
 	checkConfig("ooh", "ooh device")
@@ -481,7 +482,7 @@ func TestConfig(t *testing.T) {
 	// Set third group, no group config
 	setGroup("third")
 	cfg = getConfig(200)
-	require.Equal(t, 3, len(cfg))
+	require.Len(t, cfg, 3)
 	checkConfig("bar", "bar content", "/bin/bar")
 	checkConfig("baz", "baz device")
 	checkConfig("ooh", "ooh device")
@@ -529,7 +530,7 @@ func TestConfigPatch(t *testing.T) {
 		},
 	})
 	cfg := getConfig()
-	require.Equal(t, 1, len(cfg))
+	require.Len(t, cfg, 1)
 	require.Equal(t, "wg-config-1", cfg["wireguard-client"].Value)
 	require.Equal(t, []string{"/bin/wg-up"}, cfg["wireguard-client"].OnChanged)
 	require.False(t, cfg["wireguard-client"].Unencrypted)
@@ -543,7 +544,7 @@ func TestConfigPatch(t *testing.T) {
 		},
 	})
 	cfg = getConfig()
-	require.Equal(t, 2, len(cfg))
+	require.Len(t, cfg, 2)
 	require.Equal(t, "wg-config-1", cfg["wireguard-client"].Value)
 	require.Equal(t, "actions-1", cfg["fio-remote-actions"].Value)
 	require.True(t, cfg["fio-remote-actions"].Unencrypted)
@@ -556,9 +557,9 @@ func TestConfigPatch(t *testing.T) {
 		},
 	})
 	cfg = getConfig()
-	require.Equal(t, 2, len(cfg))
+	require.Len(t, cfg, 2)
 	require.Equal(t, "wg-config-2", cfg["wireguard-client"].Value)
-	require.Equal(t, 0, len(cfg["wireguard-client"].OnChanged))
+	require.Empty(t, cfg["wireguard-client"].OnChanged)
 	require.Equal(t, "actions-1", cfg["fio-remote-actions"].Value)
 
 	// A request with any unknown file name is rejected in full, even if it also contains valid entries
@@ -623,7 +624,7 @@ tags = "group"
 	assert.LessOrEqual(t, applied.AppliedAt, time.Now().Unix())
 	require.Contains(t, applied.Files, storage.ConfigSotaOverride)
 	// The merged TOML value stored in the envelope should match what the server sent.
-	assert.Equal(t, mergedCfg, fmt.Sprintf(`{"%s":{"Value":%s}}`,
+	assert.JSONEq(t, mergedCfg, fmt.Sprintf(`{"%s":{"Value":%s}}`,
 		storage.ConfigSotaOverride,
 		func() string {
 			b, e := json.Marshal(applied.Files[storage.ConfigSotaOverride].Value)
@@ -633,8 +634,8 @@ tags = "group"
 	)
 	assert.GreaterOrEqual(t, beforeRequest, applied.AuditTrail[0].CreatedAt)
 	assert.Equal(t, "bob", applied.AuditTrail[0].CreatedBy)
-	assert.Equal(t, "", applied.AuditTrail[0].Reason)
-	assert.Equal(t, "", applied.AuditTrail[0].Auxiliary)
+	assert.Empty(t, applied.AuditTrail[0].Reason)
+	assert.Empty(t, applied.AuditTrail[0].Auxiliary)
 	assert.GreaterOrEqual(t, beforeRequest, applied.AuditTrail[1].CreatedAt)
 	assert.Equal(t, "alice", applied.AuditTrail[1].CreatedBy)
 	assert.Equal(t, "No reason", applied.AuditTrail[1].Reason)
@@ -680,7 +681,7 @@ func TestInfo(t *testing.T) {
 
 	states, err := tc.fs.Devices.ListFiles(tc.uuid, storage.StatesPrefix, true)
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(states))
+	assert.Len(t, states, 2)
 	exp := []string{stInfo, stInfo1}
 	for idx, name := range states {
 		data, err = tc.fs.Devices.ReadFile(tc.uuid, name)
@@ -694,7 +695,7 @@ func TestInfo(t *testing.T) {
 	}
 	states, err = tc.fs.Devices.ListFiles(tc.uuid, storage.StatesPrefix, true)
 	require.NoError(t, err)
-	assert.Equal(t, 10, len(states))
+	assert.Len(t, states, 10)
 	for _, name := range states {
 		data, err = tc.fs.Devices.ReadFile(tc.uuid, name)
 		assert.NoError(t, err)
@@ -733,9 +734,9 @@ func TestEvents(t *testing.T) {
 
 	eventsFiles, err := tc.fs.Devices.ListFiles(tc.uuid, storage.EventsPrefix, true)
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(eventsFiles))
+	assert.Len(t, eventsFiles, 1)
 	eventsSaved, err := tc.fs.Devices.ReadFile(tc.uuid, eventsFiles[0])
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s\n%s\n%s\n", eventSatus, eventFinis, eventFixedDate), eventsSaved)
 }
 
@@ -876,7 +877,7 @@ func TestOstree(t *testing.T) {
 
 	writeFile := func(h baseStorage.UpdatesFsHandle, update, path, content string) error {
 		if parts := strings.Split(path, "/"); len(parts) > 1 {
-			require.Equal(t, 2, len(parts), content) // Only level 1 depth in tests
+			require.Len(t, parts, 2, content) // Only level 1 depth in tests
 			if err := os.MkdirAll(h.FilePath(update, parts[0]), 0o750); err != nil {
 				return err
 			}
