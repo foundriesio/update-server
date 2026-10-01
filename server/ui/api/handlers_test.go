@@ -350,7 +350,6 @@ func NewTestClientWithCA(t *testing.T, org string) *testClient {
 	ctx = CtxWithLog(ctx, log)
 
 	e := server.NewEchoServer()
-	require.NoError(t, err)
 	u := &users.User{
 		Username:      "root",
 		AllowedScopes: 0,
