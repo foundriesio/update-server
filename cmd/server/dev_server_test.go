@@ -21,19 +21,19 @@ func TestDevServerInit(t *testing.T) {
 		AdminPassword: "supersecret",
 	}
 	common := CommonArgs{DataDir: tmpDir}
-	require.Nil(t, cmd.Run(common))
+	require.NoError(t, cmd.Run(common))
 
 	fs, err := storage.NewFs(common.DataDir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// PKI was created.
 	rootCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsRootPemFile), x509.ParseCertificate)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, []string{"fio-update-server"}, rootCrt.Subject.OrganizationalUnit)
 
 	// Local auth was configured.
 	cfg, err := fs.Auth.GetAuthConfig()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "local", cfg.Type)
 
 	// TUF was initialized (re-initializing fails).
@@ -41,11 +41,11 @@ func TestDevServerInit(t *testing.T) {
 
 	// The admin user exists.
 	db, err := storage.NewDb(fs.Config.DbFile())
-	require.Nil(t, err)
+	require.NoError(t, err)
 	userStorage, err := users.NewStorage(db, fs, cfg)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	u, err := userStorage.Get("admin")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, u)
 
 	// Re-running against an already-initialized data dir fails.

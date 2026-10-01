@@ -77,49 +77,49 @@ func TestStorage(t *testing.T) {
 	tmpdir := t.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.Nil(t, db.Close())
+		require.NoError(t, db.Close())
 	})
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	s, err := NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	d, err := s.DeviceGet("does not exist")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Nil(t, d)
 
 	uuid := "1234-567-890"
 	d, err = s.DeviceCreate(uuid, "cert")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	d2, err := s.DeviceGet(uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, d.Cert, d2.Cert)
 
 	time.Sleep(time.Second)
-	require.Nil(t, d2.CheckIn("target", "tag", "hash", ""))
+	require.NoError(t, d2.CheckIn("target", "tag", "hash", ""))
 	d2, err = s.DeviceGet(uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Less(t, d.LastSeen, d2.LastSeen)
 
-	require.Nil(t, d2.PutFile(storage.AktomlFile, "test content"))
+	require.NoError(t, d2.PutFile(storage.AktomlFile, "test content"))
 	content, err := fs.Devices.ReadFile(d2.Uuid, storage.AktomlFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "test content", content)
 
-	require.Nil(t, fs.Configs.WriteFactoryConfig("factory config", "alice", "test"))
-	require.Nil(t, fs.Configs.WriteGroupConfig("grp", "group config", "bob", "save:it"))
-	require.Nil(t, fs.Configs.WriteDeviceConfig(d2.Uuid, "device config", "bob", "this thing"))
+	require.NoError(t, fs.Configs.WriteFactoryConfig("factory config", "alice", "test"))
+	require.NoError(t, fs.Configs.WriteGroupConfig("grp", "group config", "bob", "save:it"))
+	require.NoError(t, fs.Configs.WriteDeviceConfig(d2.Uuid, "device config", "bob", "this thing"))
 
 	time.Sleep(10 * time.Millisecond)
 	now := time.Now().Truncate(time.Second).Add(time.Second).Unix()
 
 	d3 := Device{Uuid: "fake", storage: *s}
 	cfgs, ts, err := d3.GetConfigs()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "factory config", cfgs[0].RawFiles)
 	require.Nil(t, cfgs[1])
 	require.Nil(t, cfgs[2])
@@ -127,7 +127,7 @@ func TestStorage(t *testing.T) {
 	require.Greater(t, ts, now-2)
 
 	cfgs, ts, err = d2.GetConfigs()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "factory config", cfgs[0].RawFiles)
 	require.Nil(t, cfgs[1])
 	require.Equal(t, "device config", cfgs[2].RawFiles)
@@ -136,7 +136,7 @@ func TestStorage(t *testing.T) {
 
 	d2.GroupName = "grp"
 	cfgs, ts, err = d2.GetConfigs()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "factory config", cfgs[0].RawFiles)
 	require.Equal(t, "group config", cfgs[1].RawFiles)
 	require.Equal(t, "device config", cfgs[2].RawFiles)
@@ -148,28 +148,28 @@ func Test_ProcessEvents(t *testing.T) {
 	tmpdir := t.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.Nil(t, db.Close())
+		require.NoError(t, db.Close())
 	})
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	s, err := NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Create fake device
 	id := rand.Text()
 	d, err := s.DeviceCreate(id, "cert")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	d.UpdateName = "update"
 	d.Tag = "tag"
 
 	stmt, err := db.Prepare("TestProcessEvents", "UPDATE devices SET update_name=?, tag=? WHERE uuid=?")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer stmt.Close() //nolint:errcheck
 	_, err = stmt.Exec(d.UpdateName, d.Tag, d.Uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	var events UpdateEvents
 	expectedStatusLog := ""
@@ -178,7 +178,7 @@ func Test_ProcessEvents(t *testing.T) {
 			st := ev.ParseStatus()
 			st.Uuid = d.Uuid
 			bytes, err := json.Marshal(st)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			expectedStatusLog += string(bytes) + "\n"
 		}
 	}
@@ -186,7 +186,7 @@ func Test_ProcessEvents(t *testing.T) {
 		pack := fmt.Sprintf("test-%d", i)
 		events = events.generate(pack, i%4+2)
 		appendExpectedStatusLog(events)
-		require.Nil(t, d.ProcessEvents(events))
+		require.NoError(t, d.ProcessEvents(events))
 		time.Sleep(4 * time.Millisecond)
 	}
 
@@ -195,23 +195,23 @@ func Test_ProcessEvents(t *testing.T) {
 		for i, name := range files {
 			pack := fmt.Sprintf("test-%d", i+skip) // Some initial events must get stripped
 			content, err := fs.Devices.ReadFile(d.Uuid, name)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			for _, line := range strings.Split(content, "\n") {
 				if len(line) == 0 {
 					continue
 				}
 				var evt storage.DeviceUpdateEvent
-				require.Nil(t, json.Unmarshal([]byte(line), &evt))
+				require.NoError(t, json.Unmarshal([]byte(line), &evt))
 				require.Equal(t, pack, evt.Event.Details)
 			}
 		}
 		actualStatusLog, err := fs.Updates.Logs.ReadFile(d.UpdateName, storage.LogRolloutsFile)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, expectedStatusLog, actualStatusLog)
 	}
 
 	files, err := fs.Devices.ListFiles(d.Uuid, storage.EventsPrefix, true)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	validate(files, 3)
 
 	// Special case - some events roll over to the next pack.
@@ -222,10 +222,10 @@ func Test_ProcessEvents(t *testing.T) {
 	events[0].Event.CorrelationId = lastEventCorrId
 	events[0].Event.Details = lastEventPack
 	appendExpectedStatusLog(events) // These statuses are quite screwed; but that's fine for a test.
-	require.Nil(t, d.ProcessEvents(events))
+	require.NoError(t, d.ProcessEvents(events))
 
 	files, err = fs.Devices.ListFiles(d.Uuid, storage.EventsPrefix, true)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	validate(files, 4)
 
 	// TODO: Add fine-grained unit tests for SaveAppsStates
@@ -235,32 +235,32 @@ func Benchmark_ProcessEvents(b *testing.B) {
 	tmpdir := b.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(b, err)
+	require.NoError(b, err)
 	b.Cleanup(func() {
-		require.Nil(b, db.Close())
+		require.NoError(b, db.Close())
 	})
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(b, err)
+	require.NoError(b, err)
 
 	s, err := NewStorage(db, fs)
-	require.Nil(b, err)
+	require.NoError(b, err)
 
 	// Create fake devices
 	var devices []*Device
 	for i := 0; i < 10; i++ {
 		id := rand.Text()
 		d, err := s.DeviceCreate(id, "cert")
-		require.Nil(b, err)
+		require.NoError(b, err)
 		devices = append(devices, d)
 	}
-	require.Nil(b, err)
+	require.NoError(b, err)
 
 	b.StartTimer()
 	var events UpdateEvents
 	for i := 0; i < 100000; i++ {
 		events = events.generate("test", 5)
 		deviceIdx := mrand.Intn(len(devices) - 1)
-		require.Nil(b, devices[deviceIdx].ProcessEvents(events))
+		require.NoError(b, devices[deviceIdx].ProcessEvents(events))
 	}
 	b.StopTimer()
 }
@@ -270,29 +270,29 @@ func Benchmark_CheckIn(b *testing.B) {
 	tmpdir := b.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(b, err)
+	require.NoError(b, err)
 	b.Cleanup(func() {
-		require.Nil(b, db.Close())
+		require.NoError(b, db.Close())
 	})
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(b, err)
+	require.NoError(b, err)
 
 	s, err := NewStorage(db, fs)
-	require.Nil(b, err)
+	require.NoError(b, err)
 
 	// Create fake devices
 	var devices []*Device
 	for range 100 {
 		id := rand.Text()
 		d, err := s.DeviceCreate(id, "cert"+id)
-		require.Nil(b, err)
+		require.NoError(b, err)
 		devices = append(devices, d)
 	}
 
 	b.StartTimer()
 	for range 100000 {
 		deviceIdx := mrand.Intn(len(devices) - 1)
-		require.Nil(b, devices[deviceIdx].CheckIn("target", "tag", "hash", ""))
+		require.NoError(b, devices[deviceIdx].CheckIn("target", "tag", "hash", ""))
 	}
 	b.StopTimer()
 }
@@ -301,25 +301,25 @@ func Test_Fiotest(t *testing.T) {
 	tmpdir := t.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.Nil(t, db.Close())
+		require.NoError(t, db.Close())
 	})
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	s, err := NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Create fake device
 	id := uuid.New().String()
 	d, err := s.DeviceCreate(id, "cert")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
-	require.Nil(t, d.TestCreate("intel-corei7-64-lmp-23", "test1", "test1-id"))
-	require.Nil(t, d.TestCreate("intel-corei7-64-lmp-23", "test1", "test2-id"))
+	require.NoError(t, d.TestCreate("intel-corei7-64-lmp-23", "test1", "test1-id"))
+	require.NoError(t, d.TestCreate("intel-corei7-64-lmp-23", "test1", "test2-id"))
 
-	require.Nil(t, d.TestComplete("test1-id", "PASSED", "details", nil))
+	require.NoError(t, d.TestComplete("test1-id", "PASSED", "details", nil))
 
 	results := []storage.TargetTestResult{
 		{
@@ -328,16 +328,16 @@ func Test_Fiotest(t *testing.T) {
 			Details: "details",
 		},
 	}
-	require.Nil(t, d.TestComplete("test2-id", "FAILED", "details", results))
+	require.NoError(t, d.TestComplete("test2-id", "FAILED", "details", results))
 
 	// A little lazy, but test the REST API code from here as well
 	api, err := api.NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	apiD, err := api.DeviceGet(d.Uuid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tests, err := apiD.GetTests()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Len(t, tests, 2)
 
 	require.Equal(t, "test1-id", tests[0].Uuid)
@@ -358,13 +358,13 @@ func Test_Fiotest(t *testing.T) {
 	require.NotNil(t, d.TestStoreArtifact("test1-id", "../artifact.txt", strings.NewReader("artifact content")))
 	require.NotNil(t, d.TestStoreArtifact("test1-id-doesnot-exist", "artifact.txt", strings.NewReader("artifact content")))
 
-	require.Nil(t, d.TestStoreArtifact("test1-id", "artifact.txt", strings.NewReader("artifact content")))
+	require.NoError(t, d.TestStoreArtifact("test1-id", "artifact.txt", strings.NewReader("artifact content")))
 	fd, err := apiD.GetTestArtifact("test1-id", "artifact.txt")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.Nil(t, fd.Close())
+		require.NoError(t, fd.Close())
 	})
 	content, err := io.ReadAll(fd)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "artifact content", string(content))
 }

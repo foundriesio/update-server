@@ -20,7 +20,7 @@ func TestPkiFiles(t *testing.T) {
 	tc := NewTestClientWithCA(t, "test-ou")
 
 	casPem := []byte("-----BEGIN CERTIFICATE-----\ncas-bundle\n-----END CERTIFICATE-----\n")
-	require.Nil(t, tc.fs.Certs.WriteFile(storage.CertsCasPemFile, casPem))
+	require.NoError(t, tc.fs.Certs.WriteFile(storage.CertsCasPemFile, casPem))
 
 	for _, tt := range []struct {
 		path string
@@ -57,7 +57,7 @@ func mustRead(t *testing.T, tc *testClient, name ...string) map[string]string {
 	resp := make(map[string]string, len(name))
 	for _, n := range name {
 		buf, err := tc.fs.Certs.ReadFile(n)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		resp[n] = string(buf)
 	}
 	return resp
