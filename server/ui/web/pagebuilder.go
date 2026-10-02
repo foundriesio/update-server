@@ -50,7 +50,7 @@ func (b PageBuilder) Base(c echo.Context, title, selected string) pagectx.Base {
 		LogoPath:  logoPath,
 		NavItems:  navItems,
 		CsrfToken: csrfToken,
-		Version:   version.Version,
+		Version:   version.AssetVersion(),
 	}
 }
 
