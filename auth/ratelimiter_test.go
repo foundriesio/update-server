@@ -19,6 +19,7 @@ import (
 )
 
 func testGet(t *testing.T, rl *authRateLimiter, flagBad bool) *httptest.ResponseRecorder {
+	t.Helper()
 	e := echo.New()
 	e.HideBanner = true
 

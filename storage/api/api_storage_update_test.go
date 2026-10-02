@@ -5,7 +5,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -186,7 +185,7 @@ func TestDeleteUpdate(t *testing.T) {
 
 	// The on-disk directory is gone.
 	_, err = s.fs.Updates.Tuf.ReadFile("v1.0", storage.TufTargetsFile)
-	require.True(t, errors.Is(err, os.ErrNotExist), "expected update files to be removed, got %v", err)
+	require.ErrorIs(t, err, os.ErrNotExist, "expected update files to be removed, got %v", err)
 
 	// Deleting an already-deleted update returns ErrNotExist.
 	err = s.DeleteUpdate("v1.0")

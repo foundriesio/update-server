@@ -154,7 +154,7 @@ func (c testClient) assertNotDone(done <-chan bool) {
 
 func (c testClient) assertConfigs(response []byte, reason, files string) {
 	var cfg configFileSet
-	require.Nil(c.t, json.Unmarshal(response, &cfg))
+	require.NoError(c.t, json.Unmarshal(response, &cfg))
 	assert.Equal(c.t, files, string(cfg.Files))
 	assert.Equal(c.t, reason, cfg.Reason)
 	assert.Equal(c.t, c.u.Username, cfg.CreatedBy)
@@ -164,8 +164,8 @@ func (c testClient) assertConfigs(response []byte, reason, files string) {
 func (c testClient) assertConfigsHistory(response []byte, reason string, files ...string) {
 	require.LessOrEqual(c.t, 1, len(files))
 	var history []configFileSet
-	require.Nil(c.t, json.Unmarshal(response, &history))
-	assert.Equal(c.t, len(files), len(history))
+	require.NoError(c.t, json.Unmarshal(response, &history))
+	assert.Len(c.t, history, len(files))
 	for idx, cfg := range history {
 		if idx >= len(files) {
 			break
@@ -235,7 +235,7 @@ func (c testClient) marshalBody(data any) io.Reader {
 		return r
 	} else {
 		b, err := json.Marshal(data)
-		require.Nil(c.t, err)
+		require.NoError(c.t, err)
 		return bytes.NewReader(b)
 	}
 }
@@ -270,30 +270,32 @@ func (testAuthProvider) GetRateLimiterMiddleware() echo.MiddlewareFunc {
 }
 
 func NewTestClient(t *testing.T) *testClient {
+	t.Helper()
 	return NewTestClientWithCA(t, "")
 }
 
 func NewTestClientWithCA(t *testing.T, org string) *testClient {
+	t.Helper()
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	fsS, err := apiStorage.NewFs(tmpDir)
-	require.Nil(t, err)
-	require.Nil(t, fsS.Auth.InitHmacSecret())
+	require.NoError(t, err)
+	require.NoError(t, fsS.Auth.InitHmacSecret())
 	db, err := apiStorage.NewDb(filepath.Join(tmpDir, apiStorage.DbFile))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	apiS, err := apiStorage.NewStorage(db, fsS)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	gwS, err := gatewayStorage.NewStorage(db, fsS)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	userS, err := users.NewStorage(db, fsS, &storage.AuthConfig{})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	var deviceCa *DeviceCa
 	if len(org) > 0 {
 		caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		caKeyDer, err := x509.MarshalECPrivateKey(caKey)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		caKeyPem := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: caKeyDer})
 
 		caTemplate := x509.Certificate{
@@ -309,14 +311,14 @@ func NewTestClientWithCA(t *testing.T, org string) *testClient {
 			IsCA:                  true,
 		}
 		caCertDer, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, &caKey.PublicKey, caKey)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		caCertPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertDer})
 		caCert, err := x509.ParseCertificate(caCertDer)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
-		require.Nil(t, fsS.Certs.WriteFile(storage.CertsDeviceCaKeyFile, caKeyPem))
-		require.Nil(t, fsS.Certs.WriteFile(storage.CertsDeviceCaPemFile, caCertPem))
-		require.Nil(t, fsS.Certs.WriteFile(storage.CertsRootPemFile, caCertPem)) // doesn't matter for tests, just needs to exist
+		require.NoError(t, fsS.Certs.WriteFile(storage.CertsDeviceCaKeyFile, caKeyPem))
+		require.NoError(t, fsS.Certs.WriteFile(storage.CertsDeviceCaPemFile, caCertPem))
+		require.NoError(t, fsS.Certs.WriteFile(storage.CertsRootPemFile, caCertPem)) // doesn't matter for tests, just needs to exist
 
 		// --- Create a tls.crt cert signed by the CA ---
 		tlsTemplate := x509.Certificate{
@@ -332,23 +334,22 @@ func NewTestClientWithCA(t *testing.T, org string) *testClient {
 			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		}
 		tlsKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		tlsCertDER, err := x509.CreateCertificate(rand.Reader, &tlsTemplate, caCert, &tlsKey.PublicKey, caKey)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		tlsCertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: tlsCertDER})
-		require.Nil(t, fsS.Certs.WriteFile(storage.CertsTlsPemFile, tlsCertPEM))
+		require.NoError(t, fsS.Certs.WriteFile(storage.CertsTlsPemFile, tlsCertPEM))
 
 		deviceCa, err = LoadDeviceCa(fsS, ":8443")
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.NotNil(t, deviceCa)
 	}
 
 	log, err := context.InitLogger("debug")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	ctx = CtxWithLog(ctx, log)
 
 	e := server.NewEchoServer()
-	require.Nil(t, err)
 	u := &users.User{
 		Username:      "root",
 		AllowedScopes: 0,
@@ -393,18 +394,18 @@ func TestApiDeviceList(t *testing.T) {
 	// No devices
 	data := tc.GET("/devices", 200)
 	var devices []apiStorage.DeviceListItem
-	require.Nil(t, json.Unmarshal(data, &devices))
-	require.Len(t, devices, 0)
+	require.NoError(t, json.Unmarshal(data, &devices))
+	require.Empty(t, devices)
 
 	// two devices with different last seen times
 	_, err := tc.gw.DeviceCreate("test-device-1", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	time.Sleep(1 * time.Second)
 	_, err = tc.gw.DeviceCreate("test-device-2", "cert2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	data = tc.GET("/devices", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	require.Len(t, devices, 2)
 	// default sort is name-asc (name, uuid)
 	assert.Equal(t, "test-device-1", devices[0].Uuid)
@@ -412,23 +413,23 @@ func TestApiDeviceList(t *testing.T) {
 
 	// test sorting
 	data = tc.GET("/devices?order-by=last-seen-asc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-1", devices[0].Uuid)
 	assert.Equal(t, "test-device-2", devices[1].Uuid)
 	data = tc.GET("/devices?order-by=last-seen-desc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-2", devices[0].Uuid)
 	assert.Equal(t, "test-device-1", devices[1].Uuid)
 	data = tc.GET("/devices?order-by=created-at-desc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-2", devices[0].Uuid)
 	assert.Equal(t, "test-device-1", devices[1].Uuid)
 	data = tc.GET("/devices?order-by=name-desc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-2", devices[0].Uuid)
 	assert.Equal(t, "test-device-1", devices[1].Uuid)
 	data = tc.GET("/devices?order-by=uuid-desc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-2", devices[0].Uuid)
 	assert.Equal(t, "test-device-1", devices[1].Uuid)
 
@@ -436,7 +437,7 @@ func TestApiDeviceList(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/devices?limit=1&order-by=name-asc", nil)
 	rec := tc.Do(req)
 	require.Equal(t, 200, rec.Code)
-	require.Nil(t, json.Unmarshal(rec.Body.Bytes(), &devices))
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &devices))
 	require.Len(t, devices, 1)
 	linkHeader := rec.Header().Get("Link")
 	assert.Contains(t, linkHeader, `rel="first"`)
@@ -448,7 +449,7 @@ func TestApiDeviceList(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/v1/devices?limit=1&offset=1&order-by=name-asc", nil)
 	rec = tc.Do(req)
 	require.Equal(t, 200, rec.Code)
-	require.Nil(t, json.Unmarshal(rec.Body.Bytes(), &devices))
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &devices))
 	require.Len(t, devices, 1)
 	linkHeader = rec.Header().Get("Link")
 	assert.Contains(t, linkHeader, `rel="first"`)
@@ -461,16 +462,16 @@ func TestApiDeviceList(t *testing.T) {
 		`{"upserts":{"name":"test-device-3"}}`, "content-type", "application/json")
 	// Device with name before device without name.
 	data = tc.GET("/devices?order-by=name-asc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-2", devices[0].Uuid)
 	assert.Equal(t, "test-device-1", devices[1].Uuid)
 	data = tc.GET("/devices?order-by=name-desc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-2", devices[0].Uuid)
 	assert.Equal(t, "test-device-1", devices[1].Uuid)
 	// Order by UUID is not affected
 	data = tc.GET("/devices?order-by=uuid-asc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-1", devices[0].Uuid)
 	assert.Equal(t, "test-device-2", devices[1].Uuid)
 
@@ -478,11 +479,11 @@ func TestApiDeviceList(t *testing.T) {
 		`{"upserts":{"name":"test-device-1"}}`, "content-type", "application/json")
 	// Both devices have a name - order restored.
 	data = tc.GET("/devices?order-by=name-asc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-1", devices[0].Uuid)
 	assert.Equal(t, "test-device-2", devices[1].Uuid)
 	data = tc.GET("/devices?order-by=name-desc", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	assert.Equal(t, "test-device-2", devices[0].Uuid)
 	assert.Equal(t, "test-device-1", devices[1].Uuid)
 
@@ -496,27 +497,27 @@ func TestApiDeviceGet(t *testing.T) {
 	_ = tc.GET("/devices/does-not-exist", 404)
 
 	_, err := tc.gw.DeviceCreate("test-device-1", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = tc.gw.DeviceCreate("test-device-2", "cert2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	data := tc.GET("/devices/test-device-1", 200)
 	var device apiStorage.Device
-	require.Nil(t, json.Unmarshal(data, &device))
+	require.NoError(t, json.Unmarshal(data, &device))
 	assert.Equal(t, "test-device-1", device.Uuid)
 	assert.Equal(t, "cert1", device.Cert)
 
 	data = tc.GET("/devices/test-device-2", 200)
-	require.Nil(t, json.Unmarshal(data, &device))
+	require.NoError(t, json.Unmarshal(data, &device))
 	assert.Equal(t, "test-device-2", device.Uuid)
 	assert.Equal(t, "cert2", device.Cert)
 
 	// Test sys-info files
-	require.Nil(t, tc.fs.Devices.WriteFile("test-device-1", storage.AktomlFile, "test-aktoml"))
-	require.Nil(t, tc.fs.Devices.WriteFile("test-device-1", storage.NetInfoFile, "netinfo"))
-	require.Nil(t, tc.fs.Devices.WriteFile("test-device-1", storage.HwInfoFile, "lshw"))
+	require.NoError(t, tc.fs.Devices.WriteFile("test-device-1", storage.AktomlFile, "test-aktoml"))
+	require.NoError(t, tc.fs.Devices.WriteFile("test-device-1", storage.NetInfoFile, "netinfo"))
+	require.NoError(t, tc.fs.Devices.WriteFile("test-device-1", storage.HwInfoFile, "lshw"))
 	data = tc.GET("/devices/test-device-1", 200)
-	require.Nil(t, json.Unmarshal(data, &device))
+	require.NoError(t, json.Unmarshal(data, &device))
 	require.Equal(t, "test-aktoml", device.Aktoml)
 	require.Equal(t, "netinfo", device.NetInfo)
 	require.Equal(t, "lshw", device.HwInfo)
@@ -526,9 +527,9 @@ func TestApiDeviceGet(t *testing.T) {
 func TestApiDeviceLabelsPatch(t *testing.T) {
 	tc := NewTestClient(t)
 	_, err := tc.gw.DeviceCreate("test-device-1", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = tc.gw.DeviceCreate("test-device-2", "cert2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	headers := []string{"content-type", "application/json"}
 	data := `{"upserts":{"name":"test","foo":"bar"}}`
@@ -539,34 +540,34 @@ func TestApiDeviceLabelsPatch(t *testing.T) {
 	tc.PATCH("/devices/test-device-1/labels", 403, data, headers...)
 
 	var labels, groups []string
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
 	assert.Equal(t, []string{"name", "group"}, labels)
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
 	assert.Equal(t, []string{}, groups)
 
 	tc.u.AllowedScopes = users.ScopeDevicesRU
 	tc.PATCH("/devices/test-device-1/labels", 200, data, headers...)
 
 	var device apiStorage.Device
-	require.Nil(t, json.Unmarshal(tc.GET("/devices/test-device-1", 200), &device))
+	require.NoError(t, json.Unmarshal(tc.GET("/devices/test-device-1", 200), &device))
 	assert.Equal(t, "test", device.Labels["name"])
 	assert.Equal(t, "bar", device.Labels["foo"])
 
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
 	assert.Equal(t, []string{"name", "group", "foo"}, labels)
 
 	data = `{"upserts":{"bar":"baz","group":"test"},"deletes":["foo"]}}`
 	tc.PATCH("/devices/test-device-1/labels", 200, data, headers...)
 
 	device = apiStorage.Device{}
-	require.Nil(t, json.Unmarshal(tc.GET("/devices/test-device-1", 200), &device))
+	require.NoError(t, json.Unmarshal(tc.GET("/devices/test-device-1", 200), &device))
 	assert.Equal(t, "test", device.Labels["name"])
-	assert.Equal(t, "", device.Labels["foo"])
+	assert.Empty(t, device.Labels["foo"])
 	assert.Equal(t, "baz", device.Labels["bar"])
 
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
 	assert.Equal(t, []string{"name", "group", "bar", "foo"}, labels)
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
 	assert.Equal(t, []string{"test"}, groups)
 
 	data = `Bad JSON`
@@ -589,32 +590,32 @@ func TestApiDeviceLabelsPatch(t *testing.T) {
 	data = `{"upserts":{"name":"test-2","group":"other"}}`
 	tc.PATCH("/devices/test-device-2/labels", 200, data, headers...)
 
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/devices", 200), &labels))
 	assert.Equal(t, []string{"name", "group", "bar", "foo"}, labels)
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
 	assert.Equal(t, []string{"other", "test"}, groups)
 
 	// Unlike label names which are remembered forever, group names are forgotten when no device belong to them.
 	data = `{"upserts":{"group":"new"}}`
 	tc.PATCH("/devices/test-device-2/labels", 200, data, headers...)
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
 	assert.Equal(t, []string{"new", "test"}, groups)
 
 	// Group names can also go from the group configs stored in the file system.
 	// These are always returned, even if the underlying config was effectively zeroed, as we still keep config history.
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("test", "anything", "", ""))
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("cfg", "anything", "bob", "regular reason"))
-	require.Nil(t, tc.fs.Configs.WriteGroupConfig("ok", "", "alice", "test:colon:in:reason"))
-	require.Nil(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
+	require.NoError(t, tc.fs.Configs.WriteGroupConfig("test", "anything", "", ""))
+	require.NoError(t, tc.fs.Configs.WriteGroupConfig("cfg", "anything", "bob", "regular reason"))
+	require.NoError(t, tc.fs.Configs.WriteGroupConfig("ok", "", "alice", "test:colon:in:reason"))
+	require.NoError(t, json.Unmarshal(tc.GET("/known-labels/device-groups", 200), &groups))
 	assert.Equal(t, []string{"cfg", "new", "ok", "test"}, groups)
 }
 
 func TestApiDeviceLabelsPut(t *testing.T) {
 	tc := NewTestClient(t)
 	_, err := tc.gw.DeviceCreate("test-device-1", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = tc.gw.DeviceCreate("test-device-2", "cert2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	headers := []string{"content-type", "application/json"}
 	data := `{"foo":"bar", "name":"test"}`
@@ -625,7 +626,7 @@ func TestApiDeviceLabelsPut(t *testing.T) {
 	tc.PUT("/devices/test-device-1/labels", 200, data, headers...)
 
 	var device apiStorage.Device
-	require.Nil(t, json.Unmarshal(tc.GET("/devices/test-device-1", 200), &device))
+	require.NoError(t, json.Unmarshal(tc.GET("/devices/test-device-1", 200), &device))
 	assert.Equal(t, "bar", device.Labels["foo"])
 	assert.Equal(t, "test", device.Labels["name"])
 
@@ -634,15 +635,15 @@ func TestApiDeviceLabelsPut(t *testing.T) {
 	data = `{"foo":"bar"}`
 	tc.PUT("/devices/test-device-2/labels", 200, data, headers...)
 	device = apiStorage.Device{}
-	require.Nil(t, json.Unmarshal(tc.GET("/devices/test-device-2", 200), &device))
+	require.NoError(t, json.Unmarshal(tc.GET("/devices/test-device-2", 200), &device))
 	assert.Equal(t, "bar", device.Labels["foo"])
-	assert.Equal(t, "", device.Labels["name"])
+	assert.Empty(t, device.Labels["name"])
 
 	data = `{"name":"test2"}`
 	tc.PUT("/devices/test-device-2/labels", 200, data, headers...)
 	device = apiStorage.Device{}
-	require.Nil(t, json.Unmarshal(tc.GET("/devices/test-device-2", 200), &device))
-	assert.Equal(t, "", device.Labels["foo"])
+	require.NoError(t, json.Unmarshal(tc.GET("/devices/test-device-2", 200), &device))
+	assert.Empty(t, device.Labels["foo"])
 	assert.Equal(t, "test2", device.Labels["name"])
 }
 
@@ -654,25 +655,25 @@ func TestApiAppsStates(t *testing.T) {
 	_ = tc.GET("/devices/test-device-1/apps-states", 404)
 
 	d, err := tc.gw.DeviceCreate("test-device-1", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	state1 := storage.AppsStates{
 		DeviceTime: "1",
 	}
 	stateBytes, err := json.Marshal(state1)
-	require.Nil(t, err)
-	require.Nil(t, d.SaveAppsStates(string(stateBytes)))
+	require.NoError(t, err)
+	require.NoError(t, d.SaveAppsStates(string(stateBytes)))
 
 	state2 := storage.AppsStates{
 		DeviceTime: "2",
 	}
 	stateBytes, err = json.Marshal(state2)
-	require.Nil(t, err)
-	require.Nil(t, d.SaveAppsStates(string(stateBytes)))
+	require.NoError(t, err)
+	require.NoError(t, d.SaveAppsStates(string(stateBytes)))
 
 	res := tc.GET("/devices/test-device-1/apps-states", 200)
 	var statesResp AppsStatesResp
-	require.Nil(t, json.Unmarshal(res, &statesResp))
+	require.NoError(t, json.Unmarshal(res, &statesResp))
 	require.Len(t, statesResp.AppsStates, 2)
 
 	require.Equal(t, "1", statesResp.AppsStates[1].DeviceTime)
@@ -687,28 +688,28 @@ func TestApiDeviceUpdateEvents(t *testing.T) {
 	_ = tc.GET("/devices/updates/does-not-exist", 404)
 
 	d, err := tc.gw.DeviceCreate("test-device-1", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	data := tc.GET("/devices/test-device-1/updates", 200)
 	var updates []string
-	require.Nil(t, json.Unmarshal(data, &updates))
-	require.Len(t, updates, 0)
+	require.NoError(t, json.Unmarshal(data, &updates))
+	require.Empty(t, updates)
 
 	events := generateUpdateEvents("uuid-1", "first", 2)
-	require.Nil(t, d.ProcessEvents(events))
+	require.NoError(t, d.ProcessEvents(events))
 	events = generateUpdateEvents("uuid-2", "second", 3)
-	require.Nil(t, d.ProcessEvents(events))
+	require.NoError(t, d.ProcessEvents(events))
 
 	data = tc.GET("/devices/test-device-1/updates", 200)
-	require.Nil(t, json.Unmarshal(data, &updates))
+	require.NoError(t, json.Unmarshal(data, &updates))
 	require.Len(t, updates, 2)
 
 	data = tc.GET("/devices/test-device-1/updates/"+updates[0], 200)
-	require.Nil(t, json.Unmarshal(data, &events))
+	require.NoError(t, json.Unmarshal(data, &events))
 	assert.Equal(t, "second", events[0].Event.Details)
 
 	data = tc.GET("/devices/test-device-1/updates/"+updates[1], 200)
-	require.Nil(t, json.Unmarshal(data, &events))
+	require.NoError(t, json.Unmarshal(data, &events))
 	assert.Equal(t, "first", events[1].Event.Details)
 
 	_ = tc.GET("/devices/test-device-1/updates/doesnoexist", 404)
@@ -721,7 +722,7 @@ func TestApiUpdateList(t *testing.T) {
 
 	updateNames := func(data []byte) []string {
 		var updates []apiStorage.Update
-		require.Nil(t, json.Unmarshal(data, &updates))
+		require.NoError(t, json.Unmarshal(data, &updates))
 		names := make([]string, len(updates))
 		for i, u := range updates {
 			require.NotZero(t, u.UploadedAt)
@@ -730,15 +731,15 @@ func TestApiUpdateList(t *testing.T) {
 		return names
 	}
 
-	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
+	require.NoError(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
 
-	require.Nil(t, tc.api.InsertUpdate("tag1", "update2", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout1", "foo"))
+	require.NoError(t, tc.api.InsertUpdate("tag1", "update2", "user1"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout1", "foo"))
 
-	require.Nil(t, tc.api.InsertUpdate("tag2", "update1-2", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1-2", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update3-2", "rollout1", "foo"))
+	require.NoError(t, tc.api.InsertUpdate("tag2", "update1-2", "user1"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update1-2", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update3-2", "rollout1", "foo"))
 
 	data := tc.GET("/updates", 200)
 	assert.Equal(t, []string{"update1", "update2", "update1-2"}, updateNames(data))
@@ -751,7 +752,7 @@ func TestApiUpdateList(t *testing.T) {
 	assert.Equal(t, []string{}, updateNames(data))
 
 	// Synthetic tag validation - create a bad tag on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
 	tc.GET("/updates?tag=bad^tag", 404)
 }
 
@@ -759,8 +760,8 @@ func TestApiUpdateDelete(t *testing.T) {
 	tc := NewTestClient(t)
 
 	// Seed an update with an on-disk directory.
-	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
+	require.NoError(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
 
 	// No permission / wrong scope.
 	tc.DELETE("/updates/update1", 403)
@@ -780,25 +781,25 @@ func TestApiUpdateDelete(t *testing.T) {
 	// Successful delete removes both the DB row and the on-disk directory.
 	tc.DELETE("/updates/update1", 204)
 	updates, err := tc.api.ListUpdates("tag1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, updates)
 	_, err = os.Stat(filepath.Join(updatesDir, "update1"))
 	assert.True(t, os.IsNotExist(err))
 
 	// Deleting an update that a device is assigned to is a conflict.
-	require.Nil(t, tc.api.InsertUpdate("tag2", "update2", "user1"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout1", "foo"))
+	require.NoError(t, tc.api.InsertUpdate("tag2", "update2", "user1"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout1", "foo"))
 	d, err := tc.gw.DeviceCreate("dev1", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag2", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag2", "", ""))
 	_, err = tc.api.SetUpdateName("tag2", "update2", []string{"dev1"}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tc.DELETE("/updates/update2", 409)
 
 	// The update and its directory survive the rejected delete.
 	updates, err = tc.api.ListUpdates("tag2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Len(t, updates, 1)
 	_, err = os.Stat(filepath.Join(updatesDir, "update2"))
 	require.NoError(t, err)
@@ -813,10 +814,10 @@ func TestApiRolloutList(t *testing.T) {
 		return strings.TrimSpace(string(data))
 	}
 
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout2", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1b", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout4", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout2", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update1b", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout4", "foo"))
 
 	data := tc.GET("/updates/update1/rollouts", 200)
 	assert.Equal(t, `["rollout1","rollout2"]`, s(data))
@@ -826,8 +827,8 @@ func TestApiRolloutList(t *testing.T) {
 	assert.Equal(t, `["rollout4"]`, s(data))
 
 	// Synthetic tag/update validation - create a bad tag/update on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
 	tc.GET("/updates/update=bad/rollouts", 404)
 }
 
@@ -838,33 +839,33 @@ func TestApiRolloutGet(t *testing.T) {
 
 	tc.GET("/updates/update/rollouts/rocks", 404)
 
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", `{"uuids":["123","xyz"]}`))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout2", `{"groups":["test","dev"]}`))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "rollout", `{"uuids":["uh"],"groups":["oh"]}`))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update1", "rollout1", `{"uuids":["123","xyz"]}`))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update2", "rollout2", `{"groups":["test","dev"]}`))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update", "rollout", `{"uuids":["uh"],"groups":["oh"]}`))
 
-	data := tc.GET("/updates/update1/rollouts/rollout1", 200)
 	var r Rollout
-	require.Nil(t, json.Unmarshal(data, &r))
+	data := tc.GET("/updates/update1/rollouts/rollout1", 200)
+	require.NoError(t, json.Unmarshal(data, &r))
 	assert.Equal(t, []string{"123", "xyz"}, r.Uuids)
 	assert.False(t, r.Commit)
 
 	data = tc.GET("/updates/update2/rollouts/rollout2", 200)
-	require.Nil(t, json.Unmarshal(data, &r))
+	require.NoError(t, json.Unmarshal(data, &r))
 	assert.Equal(t, []string{"test", "dev"}, r.Groups)
 	assert.False(t, r.Commit)
 
 	tc.GET("/updates/update2/rollouts/rollout3", 404) // rollout not exists
 	tc.GET("/updates/update3/rollouts/rollout1", 404) // update not exists
 	data = tc.GET("/updates/update/rollouts/rollout", 200)
-	require.Nil(t, json.Unmarshal(data, &r))
+	require.NoError(t, json.Unmarshal(data, &r))
 	assert.Equal(t, []string{"uh"}, r.Uuids)
 	assert.Equal(t, []string{"oh"}, r.Groups)
 	assert.False(t, r.Commit)
 
 	// Synthetic tag/update/rollout validation - create a bad tag/update/rollout on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "omg+", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update", "omg+", "foo"))
 	tc.GET("/updates/update=bad/rollouts/rollout1", 404)
 	tc.GET("/updates/update/rollouts/omg+", 404)
 }
@@ -877,37 +878,37 @@ func TestApiRolloutPut(t *testing.T) {
 	tc.PUT("/updates/update/rollouts/rocks", 400, "{")
 	tc.PUT("/updates/update/rollouts/rocks", 400, "{}")
 
-	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update1", "foo", "bar"))
-	require.Nil(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
-	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update2", "foo", "bar"))
-	require.Nil(t, tc.api.InsertUpdate("tag2", "update2", "user1"))
+	require.NoError(t, tc.fs.Updates.Ostree.WriteFile("update1", "foo", "bar"))
+	require.NoError(t, tc.api.InsertUpdate("tag1", "update1", "user1"))
+	require.NoError(t, tc.fs.Updates.Ostree.WriteFile("update2", "foo", "bar"))
+	require.NoError(t, tc.api.InsertUpdate("tag2", "update2", "user1"))
 	d, err := tc.gw.DeviceCreate("ci1", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag1", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag1", "", ""))
 	d, err = tc.gw.DeviceCreate("ci2", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag1", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag1", "", ""))
 	d, err = tc.gw.DeviceCreate("ci3", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag2", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag2", "", ""))
 	d, err = tc.gw.DeviceCreate("ci4", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag2", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag2", "", ""))
 	d, err = tc.gw.DeviceCreate("prod1", "cert2")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag2", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag2", "", ""))
 	d, err = tc.gw.DeviceCreate("prod2", "cert2")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag2", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag2", "", ""))
 	d, err = tc.gw.DeviceCreate("prod3", "cert2")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag2", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag2", "", ""))
 	d, err = tc.gw.DeviceCreate("prod4", "cert2")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag3", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag3", "", ""))
 
 	grp1 := "grp1"
-	require.Nil(t, tc.api.PatchDeviceLabels(map[string]*string{"group": &grp1}, []string{"prod3", "prod4", "ci4"}))
+	require.NoError(t, tc.api.PatchDeviceLabels(map[string]*string{"group": &grp1}, []string{"prod3", "prod4", "ci4"}))
 
 	tc.PUT("/updates/update1/rollouts/rocks", 202,
 		`{"uuids":["ci1","ci2","ci3"]}`, "content-type", "application/json")
@@ -930,15 +931,15 @@ func TestApiRolloutPut(t *testing.T) {
 	}
 	require.Eventually(t, committed, 10*time.Second, 20*time.Millisecond)
 
-	data := tc.GET("/updates/update1/rollouts/rocks", 200)
 	var r Rollout
-	require.Nil(t, json.Unmarshal(data, &r))
+	data := tc.GET("/updates/update1/rollouts/rocks", 200)
+	require.NoError(t, json.Unmarshal(data, &r))
 	assert.NotZero(t, r.CreatedAt, string(data))
 	assert.Equal(t, []string{"ci1", "ci2", "ci3"}, r.Uuids)
 	assert.True(t, r.Commit)
 
 	data = tc.GET("/updates/update2/rollouts/rocks", 200)
-	require.Nil(t, json.Unmarshal(data, &r))
+	require.NoError(t, json.Unmarshal(data, &r))
 	assert.NotZero(t, r.CreatedAt, string(data))
 	assert.Equal(t, []string{"prod2"}, r.Uuids)
 	assert.Equal(t, []string{"grp1"}, r.Groups)
@@ -946,25 +947,25 @@ func TestApiRolloutPut(t *testing.T) {
 	assert.True(t, r.Commit)
 
 	dev, err := tc.api.DeviceGet("ci1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "update1", dev.UpdateName)
 	dev, err = tc.api.DeviceGet("ci2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "update1", dev.UpdateName)
 	dev, err = tc.api.DeviceGet("prod1")
-	require.Nil(t, err)
-	assert.Equal(t, "", dev.UpdateName)
+	require.NoError(t, err)
+	assert.Empty(t, dev.UpdateName)
 	dev, err = tc.api.DeviceGet("prod2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "update2", dev.UpdateName)
 	dev, err = tc.api.DeviceGet("prod3")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "update2", dev.UpdateName)
 
 	// Synthetic tag/update/rollout validation - create a bad tag/update/rollout on disk - request must still return 404
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
-	require.Nil(t, tc.fs.Updates.Rollouts.WriteFile("update", "omg+", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update42", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update=bad", "rollout1", "foo"))
+	require.NoError(t, tc.fs.Updates.Rollouts.WriteFile("update", "omg+", "foo"))
 	tc.PUT("/updates/update=bad/rollouts/gogogo", 404, "foo")
 	tc.PUT("/updates/update/rollouts/omg+", 404, "foo")
 }
@@ -973,47 +974,47 @@ func TestApiRolloutDaemon(t *testing.T) {
 	tc := NewTestClient(t)
 
 	db, err := apiStorage.NewDb(filepath.Join(t.TempDir(), apiStorage.DbFile))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	usersS, err := users.NewStorage(db, tc.fs, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	daemons := daemons.New(tc.ctx, tc.api, usersS, daemons.WithRolloverInterval(20*time.Millisecond))
 
 	defer daemons.Shutdown()
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
-	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update1", "foo", "bar"))
-	require.Nil(t, tc.fs.Updates.Ostree.WriteFile("update2", "foo", "bar"))
+	require.NoError(t, tc.fs.Updates.Ostree.WriteFile("update1", "foo", "bar"))
+	require.NoError(t, tc.fs.Updates.Ostree.WriteFile("update2", "foo", "bar"))
 	d, err := tc.gw.DeviceCreate("ci1", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag1", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag1", "", ""))
 	d, err = tc.gw.DeviceCreate("prod1", "cert2")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag2", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag2", "", ""))
 
 	rollout := func(data []byte) Rollout {
 		var r Rollout
-		require.Nil(t, json.Unmarshal(data, &r))
+		require.NoError(t, json.Unmarshal(data, &r))
 		return r
 	}
 
 	// Emulate a non-committed rollout (file present, database not updated).
-	require.Nil(t, tc.api.CreateRollout("tag1", "update1", "roll1", Rollout{Uuids: []string{"ci1"}, CreatedAt: time.Now().Unix()}))
-	require.Nil(t, tc.api.CreateRollout("tag2", "update2", "roll2", Rollout{Uuids: []string{"prod1"}, CreatedAt: time.Now().Unix()}))
+	require.NoError(t, tc.api.CreateRollout("tag1", "update1", "roll1", Rollout{Uuids: []string{"ci1"}, CreatedAt: time.Now().Unix()}))
+	require.NoError(t, tc.api.CreateRollout("tag2", "update2", "roll2", Rollout{Uuids: []string{"prod1"}, CreatedAt: time.Now().Unix()}))
 
 	// Before the watchdog daemon processing, rollouts are not yet committed.
 	data := tc.GET("/updates/update1/rollouts/roll1", 200)
 	assert.Equal(t, []string{"ci1"}, rollout(data).Uuids)
-	assert.Equal(t, false, rollout(data).Commit)
+	assert.False(t, rollout(data).Commit)
 	assert.NotZero(t, rollout(data).CreatedAt)
 	data = tc.GET("/updates/update2/rollouts/roll2", 200)
 	assert.Equal(t, []string{"prod1"}, rollout(data).Uuids)
-	assert.Equal(t, false, rollout(data).Commit)
+	assert.False(t, rollout(data).Commit)
 	dev, err := tc.api.DeviceGet("ci1")
-	require.Nil(t, err)
-	assert.Equal(t, "", dev.UpdateName)
+	require.NoError(t, err)
+	assert.Empty(t, dev.UpdateName)
 	dev, err = tc.api.DeviceGet("prod1")
-	require.Nil(t, err)
-	assert.Equal(t, "", dev.UpdateName)
+	require.NoError(t, err)
+	assert.Empty(t, dev.UpdateName)
 
 	daemons.Start()
 	// After the watchdog daemon processing, rollouts are committed.
@@ -1037,23 +1038,23 @@ func TestApiUpdateTail(t *testing.T) {
 	tc.u.AllowedScopes = users.ScopeUpdatesR
 
 	d, err := tc.gw.DeviceCreate("test-device-1", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag1", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag1", "", ""))
 	d, err = tc.gw.DeviceCreate("test-device-2", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag1", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag1", "", ""))
 	d, err = tc.gw.DeviceCreate("test-device-3", "cert1")
-	require.Nil(t, err)
-	require.Nil(t, d.CheckIn("", "tag1", "", ""))
+	require.NoError(t, err)
+	require.NoError(t, d.CheckIn("", "tag1", "", ""))
 	_, err = tc.api.SetUpdateName("tag1", "update1", []string{"test-device-1", "test-device-2"}, nil)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	d1, err := tc.gw.DeviceGet("test-device-1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	d2, err := tc.gw.DeviceGet("test-device-2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	d3, err := tc.gw.DeviceGet("test-device-3")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Emulate a real HTTP client holding connection - something a test client apparently does not do.
 	ctx, cancel := context.WithCancel(tc.ctx)
@@ -1074,11 +1075,11 @@ data: No rollout logs for this update yet.
 	require.Equal(t, expectedStream, rec.BodyString())
 
 	events := generateUpdateEvents("uuid-1", "first", 1)
-	require.Nil(t, d1.ProcessEvents(events))
+	require.NoError(t, d1.ProcessEvents(events))
 	events = generateUpdateEvents("uuid-2", "second", 1)
-	require.Nil(t, d2.ProcessEvents(events))
+	require.NoError(t, d2.ProcessEvents(events))
 	events = generateUpdateEvents("uuid-3", "third", 1)
-	require.Nil(t, d3.ProcessEvents(events))
+	require.NoError(t, d3.ProcessEvents(events))
 
 	// Check that the original response did not change, meaning that it was closed by server.
 	require.Equal(t, expectedStream, rec.BodyString())
@@ -1115,7 +1116,7 @@ data: {"uuid":"test-device-2","correlationId":"uuid-2","target-name":"intel-core
 
 	// Write to the file and check the new response bytes within the same connections.
 	events = generateUpdateEvents("uuid-1", "forth", 1)
-	require.Nil(t, d1.ProcessEvents(events))
+	require.NoError(t, d1.ProcessEvents(events))
 	expectedStreamX := `event: log
 id: 3
 data: {"uuid":"test-device-1","correlationId":"uuid-1","target-name":"intel-corei7-64-lmp-23","status":"Download started","deviceTime":"2023-12-12T12:00:00"}
@@ -1137,7 +1138,7 @@ data: {"uuid":"test-device-1","correlationId":"uuid-1","target-name":"intel-core
 	expectedStream3 := expectedStream1 + keepaliveResponseText + keepaliveResponseText
 	requireBody(rec3, expectedStream3)
 	require.Equal(t, 200, rec3.Code())
-	require.Nil(t, d1.ProcessEvents(events))
+	require.NoError(t, d1.ProcessEvents(events))
 	expectedStreamY := strings.Replace(expectedStreamX, "id: 3", "id: 4", 1)
 	require.Eventually(t, func() bool {
 		return strings.Contains(rec3.BodyString(), expectedStreamY+keepaliveResponseText)
@@ -1158,7 +1159,7 @@ func TestApiDeviceCreate(t *testing.T) {
 
 	// Generate device key and CSR
 	devKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	devCsrTemplate := x509.CertificateRequest{
 		Subject: pkix.Name{
 			CommonName:         "test-uuid-1",
@@ -1166,7 +1167,7 @@ func TestApiDeviceCreate(t *testing.T) {
 		},
 	}
 	devCsrDER, err := x509.CreateCertificateRequest(rand.Reader, &devCsrTemplate, devKey)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	devCsrPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: devCsrDER})
 
 	// Create device via API
@@ -1178,13 +1179,13 @@ func TestApiDeviceCreate(t *testing.T) {
 		Csr:        string(devCsrPEM),
 	}
 	body, err := json.Marshal(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	resp := tc.POST("/devices", http.StatusCreated, bytes.NewReader(body), "content-type", "application/json")
 	tc.POST("/devices", http.StatusConflict, bytes.NewReader(body), "content-type", "application/json")
 
 	time.Sleep(500 * time.Millisecond) // Ensure any previous rate limit buckets are reset
 	var devResp DeviceCreateResponse
-	require.Nil(t, json.Unmarshal(resp, &devResp))
+	require.NoError(t, json.Unmarshal(resp, &devResp))
 	assert.Contains(t, devResp.RootCrt, "BEGIN CERTIFICATE")
 	assert.Contains(t, devResp.ClientPem, "BEGIN CERTIFICATE")
 	assert.Contains(t, devResp.SotaToml, "compose_apps_proxy = \"")
@@ -1197,7 +1198,7 @@ func TestApiDeviceCreate(t *testing.T) {
 		},
 	}
 	devCsrDER, err = x509.CreateCertificateRequest(rand.Reader, &devCsrTemplate, devKey)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	devCsrPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: devCsrDER})
 	req = DeviceCreateRequest{
 		Uuid:       "test-uuid-2",
@@ -1207,7 +1208,7 @@ func TestApiDeviceCreate(t *testing.T) {
 		Csr:        string(devCsrPEM),
 	}
 	body, err = json.Marshal(req)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tc.POST("/devices", http.StatusCreated, bytes.NewReader(body), "content-type", "application/json")
 
 	// Test rate limiting by sending rapid requests: 1st should conflict (duplicate), next should be rate limited
@@ -1221,7 +1222,7 @@ func TestApiDeviceDelete(t *testing.T) {
 
 	// Create a device
 	_, err := tc.gw.DeviceCreate("del-device", "cert")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// No permission
 	tc.DELETE("/devices/del-device", 403)
@@ -1249,7 +1250,7 @@ func TestApiDeviceUndeny(t *testing.T) {
 
 	// Create and delete a device.
 	_, err := tc.gw.DeviceCreate("restore-device", "cert")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tc.u.AllowedScopes = users.ScopeDevicesD
 	tc.DELETE("/devices/restore-device", 204)
 
@@ -1265,7 +1266,7 @@ func TestApiDeviceUndeny(t *testing.T) {
 
 	// Removing an already-active device is also a 404.
 	_, err = tc.gw.DeviceCreate("active-device", "cert2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tc.DELETE("/denied-devices/active-device", 404)
 
 	// Successful removal from denied list.
@@ -1284,28 +1285,28 @@ func TestApiDeniedDevicesList(t *testing.T) {
 	// No denied devices.
 	data := tc.GET("/denied-devices", 200)
 	var uuids []string
-	require.Nil(t, json.Unmarshal(data, &uuids))
-	require.Len(t, uuids, 0)
+	require.NoError(t, json.Unmarshal(data, &uuids))
+	require.Empty(t, uuids)
 
 	// Create two devices, delete only one of them.
 	_, err := tc.gw.DeviceCreate("live-device", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = tc.gw.DeviceCreate("gone-device", "cert2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tc.u.AllowedScopes = users.ScopeDevicesD
 	tc.DELETE("/devices/gone-device", 204)
 
 	// Only the denied device shows up in the denied list.
 	tc.u.AllowedScopes = users.ScopeDevicesR
 	data = tc.GET("/denied-devices", 200)
-	require.Nil(t, json.Unmarshal(data, &uuids))
+	require.NoError(t, json.Unmarshal(data, &uuids))
 	require.Len(t, uuids, 1)
 	assert.Equal(t, "gone-device", uuids[0])
 
 	// ...and it is absent from the active list (which has only the live one).
 	var devices []apiStorage.DeviceListItem
 	data = tc.GET("/devices", 200)
-	require.Nil(t, json.Unmarshal(data, &devices))
+	require.NoError(t, json.Unmarshal(data, &devices))
 	require.Len(t, devices, 1)
 	assert.Equal(t, "live-device", devices[0].Uuid)
 }
@@ -1503,9 +1504,9 @@ func TestApiConfigsDevice(t *testing.T) {
 	}
 
 	_, err := tc.gw.DeviceCreate("foo", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	_, err = tc.gw.DeviceCreate("bar", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	t.Run("Default user scopes", func(t *testing.T) {
 		tc.GET("/configs/device/foo", 403)
@@ -1589,7 +1590,7 @@ func TestApiConfigsDeviceApplied(t *testing.T) {
 	tc := NewTestClient(t)
 
 	_, err := tc.gw.DeviceCreate("foo", "cert1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tc.u.AllowedScopes = users.ScopeDevicesR
 
@@ -1609,7 +1610,7 @@ func TestApiConfigsDeviceApplied(t *testing.T) {
 
 	// Write an applied config as the gateway would after delivering config to a device.
 	device, err := tc.gw.DeviceGet("foo")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cfg := storage.AppliedConfigs{
 		Files:     map[string]storage.ConfigFile{"test": {Value: "hello"}},
 		AppliedAt: time.Now().Unix(),
@@ -1617,12 +1618,12 @@ func TestApiConfigsDeviceApplied(t *testing.T) {
 	audit := &cfg.AuditTrail[1]
 	audit.CreatedAt = time.Now().Add(-time.Minute).Unix()
 	audit.CreatedBy = "bob"
-	require.Nil(t, device.SaveAppliedConfigs(cfg))
+	require.NoError(t, device.SaveAppliedConfigs(cfg))
 
 	t.Run("Returns applied config envelope", func(t *testing.T) {
 		body := tc.GET("/configs/device/foo/applied", 200)
 		var applied storage.AppliedConfigs
-		require.Nil(t, json.Unmarshal(body, &applied))
+		require.NoError(t, json.Unmarshal(body, &applied))
 		assert.Equal(t, cfg.AppliedAt, applied.AppliedAt)
 		assert.Equal(t, cfg.Files, applied.Files)
 		assert.Equal(t, cfg.AuditTrail, applied.AuditTrail)
@@ -1703,7 +1704,7 @@ func TestApiUpdateCreate(t *testing.T) {
 	updatesDir := tc.fs.Config.UpdatesDir()
 	root, err := os.ReadFile(filepath.Join(updatesDir, "v1.0", "tuf", "root.json"))
 	require.NoError(t, err)
-	assert.Equal(t, `{"signed":{}}`, string(root))
+	assert.JSONEq(t, `{"signed":{}}`, string(root))
 	config, err := os.ReadFile(filepath.Join(updatesDir, "v1.0", "ostree_repo", "config"))
 	require.NoError(t, err)
 	assert.Equal(t, "[core]\nrepo_version=1\n", string(config))
@@ -1718,7 +1719,7 @@ func TestApiUpdateCreate(t *testing.T) {
 		"Content-Type", "application/x-tar")
 	appData, err := os.ReadFile(filepath.Join(updatesDir, "v2.0", "apps", "myapp.json"))
 	require.NoError(t, err)
-	assert.Equal(t, `{"name":"myapp"}`, string(appData))
+	assert.JSONEq(t, `{"name":"myapp"}`, string(appData))
 
 	// Duplicate tag and name
 	tc.POST("/updates/main/v2.0", 409, bytes.NewReader(appsTar.Bytes()),

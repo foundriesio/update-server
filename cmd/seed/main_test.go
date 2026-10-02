@@ -50,7 +50,7 @@ func TestSeed(t *testing.T) {
 	applied, err := ap.ReadAppliedConfigs("seed-device-00001")
 	require.NoError(t, err)
 	require.NotNil(t, applied, "expected applied configs to be seeded")
-	require.Greater(t, applied.AppliedAt, int64(0), "expected AppliedAt to be set")
+	require.Positive(t, applied.AppliedAt, "expected AppliedAt to be set")
 
 	tests, err := apiDevice.GetTests()
 	require.NoError(t, err)

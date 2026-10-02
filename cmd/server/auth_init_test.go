@@ -16,14 +16,14 @@ func TestAuthInitLocal(t *testing.T) {
 
 	cmd := AuthInitCmd{Local: true}
 	common := CommonArgs{DataDir: tmpDir}
-	require.Nil(t, cmd.Run(common))
+	require.NoError(t, cmd.Run(common))
 
 	fs, err := storage.NewFs(tmpDir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	cfg, err := fs.Auth.GetAuthConfig()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "local", cfg.Type)
-	require.Greater(t, len(cfg.NewUserDefaultScopes), 0)
-	require.Greater(t, len(cfg.Config), 0)
+	require.NotEmpty(t, cfg.NewUserDefaultScopes)
+	require.NotEmpty(t, cfg.Config)
 }
