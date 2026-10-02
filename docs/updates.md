@@ -116,7 +116,7 @@ Create a rollout named "first-try"
     -H 'Content-type: application/json' \
     -X PUT \
     -d '{"uuids": ["uuid1", "uuid2",...]}' \
-    http://<your server>/v1/updates/ci/main/148/rollouts/first-try
+    http://<your server>/v1/updates/148/rollouts/first-try
 ```
 
 ### CLI
