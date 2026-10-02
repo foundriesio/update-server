@@ -118,10 +118,10 @@ has been reached.
 
 These values can be configured via `Config.RateLimits`:
 
-* `AttemptsPerSecond` — Set to globally rate-limit authentication operations (login, password change/reset) allowed per IP/second. The default is 2. Requests will then be blocked for `AttemptsBlockDurationSec` for the given IP.
-* `AttemptsBlockDurationSec` — Set how long to block an IP that has been rate-limited by `AttemptsPerSecond`. The default will reject an IP for 30 seconds if it exceeds 2 authentication attempts per second.
-* `BadAuthLimit` — Track how many bad password operations are made from a given account. The default is 5. If this value is exceeded, the given IP will be blocked for `BadAuthBlockDurationSec` from performing password related operations.
-* `BadAuthBlockDurationSec` — Set how long to block an IP from performing authentication operations after exceeding `BadAuthLimit`. The default is 300 (5 minutes).
+* `AttemptsPerSecond` — Set to globally rate-limit API operations allowed per IP/second. The default is 20. Requests will then be blocked for `AttemptsBlockDurationSec` for the given IP.
+* `AttemptsBlockDurationSec` — Set how long to block an IP that has been rate-limited by `AttemptsPerSecond`. The default will reject an IP for 30 seconds if it exceeds `AttemptsPerSecond` threshold.
+* `BadAuthLimit` — Track how many bad password operations are made from a given IP. The default is 5. If this value is exceeded, the IP will be blocked for `BadAuthBlockDurationSec` from performing password related operations.
+* `BadAuthBlockDurationSec` — Set how long to block an IP after exceeding `BadAuthLimit`. The default is 300 (5 minutes).
 
 ## Advanced Settings
 * `SessionTimeoutHours` - Set to how long a web session should be valid. The default is 48 hours.

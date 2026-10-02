@@ -26,7 +26,7 @@ const badAuthRate = rate.Limit(1.0 / 60)
 
 func NewRateLimiter(cfg storage.RateLimitConfig) *authRateLimiter {
 	if cfg.AttemptsPerSecond <= 0 {
-		cfg.AttemptsPerSecond = 2
+		cfg.AttemptsPerSecond = 20
 	}
 	if cfg.AttemptsBlockDurationSec <= 0 {
 		cfg.AttemptsBlockDurationSec = 30
