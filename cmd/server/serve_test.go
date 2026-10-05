@@ -20,13 +20,13 @@ func TestServe(t *testing.T) {
 	tmpDir := t.TempDir()
 	common := CommonArgs{DataDir: tmpDir}
 	fs, err := storage.NewFs(common.DataDir)
-	require.Nil(t, err)
-	require.Nil(t, fs.Auth.InitHmacSecret())
-	require.Nil(t, fs.Tuf.InitTuf())
+	require.NoError(t, err)
+	require.NoError(t, fs.Auth.InitHmacSecret())
+	require.NoError(t, fs.Tuf.InitTuf())
 	authConfig := storage.AuthConfig{
 		Type: "noauth",
 	}
-	require.Nil(t, fs.Auth.SaveAuthConfig(authConfig))
+	require.NoError(t, fs.Auth.SaveAuthConfig(authConfig))
 	apiAddress := ""
 	gatewayAddress := ""
 	wait := make(chan bool)
@@ -41,7 +41,7 @@ func TestServe(t *testing.T) {
 	}
 
 	log, err := context.InitLogger("debug")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	common.ctx = context.CtxWithLog(context.Background(), log)
 
 	csr := CsrCmd{
@@ -50,16 +50,16 @@ func TestServe(t *testing.T) {
 	}
 
 	err = csr.Run(common)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	caKeyFile, caFile := createSelfSignedRoot(t, fs)
 	sign := CsrSignCmd{
 		CaKey:      caKeyFile,
 		CaCert:     caFile,
 		ExpiryDays: 10,
 	}
-	require.Nil(t, sign.Run(common))
+	require.NoError(t, sign.Run(common))
 	// create an empty ca file to make the server happy. no client will be able to handshake with it
-	require.Nil(t, fs.Certs.WriteFile(storage.CertsCasPemFile, []byte{}))
+	require.NoError(t, fs.Certs.WriteFile(storage.CertsCasPemFile, []byte{}))
 
 	// Use an atomic for serveErr so errors from server.Run() can be saved while the test goroutine is reading it.
 	var serveErr atomic.Value
@@ -74,17 +74,17 @@ func TestServe(t *testing.T) {
 	require.Nil(t, serveErr.Load())
 
 	r, err := http.Get(fmt.Sprintf("http://%s/doesnotexist", apiAddress))
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer r.Body.Close() //nolint:errcheck
 	require.Equal(t, http.StatusNotFound, r.StatusCode)
-	require.Equal(t, 12, len(r.Header.Get("X-Request-Id")))
+	require.Len(t, r.Header.Get("X-Request-Id"), 12)
 
 	r, err = http.Get(fmt.Sprintf("https://%s/doesnotexist", gatewayAddress))
 	if err == nil {
 		defer r.Body.Close() //nolint:errcheck
 	}
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to verify certificate")
 
-	require.Nil(t, syscall.Kill(syscall.Getpid(), syscall.SIGINT))
+	require.NoError(t, syscall.Kill(syscall.Getpid(), syscall.SIGINT))
 }

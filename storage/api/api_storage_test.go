@@ -23,60 +23,60 @@ func TestStorage(t *testing.T) {
 	tmpdir := t.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	s, err := NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	dg, err := gateway.NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Test 404 type operation
 	d, err := s.DeviceGet("does not exist")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Nil(t, d)
 
 	// Test we can list when there are no devices
 	opts := DeviceListOpts{}
 	devices, count, err := s.DevicesList(opts)
-	require.Nil(t, err)
-	require.Equal(t, 0, len(devices))
+	require.NoError(t, err)
+	require.Empty(t, devices)
 	require.Equal(t, 0, count)
 
 	// Create two devices to list/get on
 	d2, err := dg.DeviceCreate("uuid-1", "cert-value-1")
-	require.Nil(t, err)
-	require.Nil(t, d2.PutFile(storage.AktomlFile, "aktoml content"))
-	require.Nil(t, d2.CheckIn("target", "tag", "hash", ""))
+	require.NoError(t, err)
+	require.NoError(t, d2.PutFile(storage.AktomlFile, "aktoml content"))
+	require.NoError(t, d2.CheckIn("target", "tag", "hash", ""))
 	time.Sleep(time.Second)
 	_, err = dg.DeviceCreate("uuid-2", "cert-value-2")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	uuids, err := s.SetUpdateName("tag", "update42", []string{"uuid-1", "uuid-2"}, nil)
-	require.Nil(t, err)
-	require.Equal(t, 1, len(uuids))
+	require.NoError(t, err)
+	require.Len(t, uuids, 1)
 	assert.Equal(t, "uuid-1", uuids[0])
 
 	opts.Limit = 2
 	opts.OrderBy = OrderByDeviceCreatedAsc
 	devices, count, err = s.DevicesList(opts)
-	require.Nil(t, err)
-	require.Equal(t, 2, len(devices))
+	require.NoError(t, err)
+	require.Len(t, devices, 2)
 	require.Equal(t, 2, count)
 	assert.Equal(t, "uuid-1", devices[0].Uuid)
 	assert.Equal(t, "uuid-2", devices[1].Uuid)
 
 	opts.OrderBy = OrderByDeviceCreatedDsc
 	devices, count, err = s.DevicesList(opts)
-	require.Nil(t, err)
-	require.Equal(t, 2, len(devices))
+	require.NoError(t, err)
+	require.Len(t, devices, 2)
 	require.Equal(t, 2, count)
 	assert.Equal(t, "uuid-2", devices[0].Uuid)
 
 	d, err = s.DeviceGet("uuid-1")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "hash", d.OstreeHash)
 	assert.Equal(t, "tag", d.Tag)
 	assert.Equal(t, "cert-value-1", d.Cert)
@@ -88,19 +88,19 @@ func TestDeviceDelete(t *testing.T) {
 	tmpdir := t.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	s, err := NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	dg, err := gateway.NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Create a device
 	_, err = dg.DeviceCreate("uuid-del", "cert-del")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	name := "device-name"
 	group := "device-group"
 	require.NoError(t, s.PatchDeviceLabels(map[string]*string{
@@ -110,11 +110,11 @@ func TestDeviceDelete(t *testing.T) {
 
 	// Verify it exists
 	d, err := s.DeviceGet("uuid-del")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, d)
 
 	// Delete it
-	require.Nil(t, d.Delete())
+	require.NoError(t, d.Delete())
 
 	stmt, err := db.Prepare("testDeviceLabelsAfterDelete", `
 		SELECT json(labels) FROM devices WHERE uuid=?`)
@@ -122,15 +122,15 @@ func TestDeviceDelete(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, stmt.Close()) })
 	var labelsJSON []byte
 	require.NoError(t, stmt.QueryRow("uuid-del").Scan(&labelsJSON))
-	assert.Equal(t, "{}", string(labelsJSON))
+	assert.JSONEq(t, "{}", string(labelsJSON))
 
 	// Verify it no longer shows up in Get or List
 	d, err = s.DeviceGet("uuid-del")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Nil(t, d, "deleted device should not be returned by DeviceGet")
 
 	devices, count, err := s.DevicesList(DeviceListOpts{Limit: 100})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, count, "deleted device should not appear in DevicesList")
 	for _, dev := range devices {
 		assert.NotEqual(t, "uuid-del", dev.Uuid, "deleted device should not appear in DevicesList")
@@ -141,61 +141,61 @@ func TestDeviceRestore(t *testing.T) {
 	tmpdir := t.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	s, err := NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	dg, err := gateway.NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Removing a device that does not exist reports "not found".
 	undenied, err := s.UndenyDevice("no-such-device")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, undenied, "removing an unknown device from denied list should report false")
 
 	// Create and delete a device.
 	_, err = dg.DeviceCreate("uuid-restore", "cert-restore")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	d, err := s.DeviceGet("uuid-restore")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, d)
-	require.Nil(t, d.Delete())
+	require.NoError(t, d.Delete())
 
 	// The denied device shows up in the denied list, not the active list.
 	uuids, err := s.DeniedDevicesList()
-	require.Nil(t, err)
-	assert.Equal(t, 1, len(uuids), "deleted device should appear in DeniedDevicesList")
+	require.NoError(t, err)
+	assert.Len(t, uuids, 1, "deleted device should appear in DeniedDevicesList")
 	assert.Equal(t, "uuid-restore", uuids[0])
 
 	devices, count, err := s.DevicesList(DeviceListOpts{Limit: 100})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, count, "deleted device should not appear in DevicesList")
-	assert.Equal(t, 0, len(devices))
+	assert.Empty(t, devices)
 
 	// Remove from denied list.
 	undenied, err = s.UndenyDevice("uuid-restore")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, undenied, "removing a denied device should report true")
 
 	// It is back in the active list/get and gone from the denied list.
 	d, err = s.DeviceGet("uuid-restore")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, d, "un-denied device should be returned by DeviceGet")
 
 	_, count, err = s.DevicesList(DeviceListOpts{Limit: 100})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, count, "un-denied device should appear in DevicesList")
 
 	uuids, err = s.DeniedDevicesList()
-	require.Nil(t, err)
-	assert.Equal(t, 0, len(uuids), "un-denied device should not appear in DeniedDevicesList")
+	require.NoError(t, err)
+	assert.Empty(t, uuids, "un-denied device should not appear in DeniedDevicesList")
 
 	// Calling UndenyDevice on an already-active device returns false (not on denied list).
 	undenied, err = s.UndenyDevice("uuid-restore")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, undenied, "removing an already-active device from denied list should report false")
 }
 
@@ -203,11 +203,11 @@ func TestUploadConfigs(t *testing.T) {
 	tmpdir := t.TempDir()
 	dbFile := filepath.Join(tmpdir, "sql.db")
 	db, err := storage.NewDb(dbFile)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	fs, err := storage.NewFs(tmpdir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	s, err := NewStorage(db, fs)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	createTar := storageTesting.CreateTarBuffer
 
@@ -225,16 +225,16 @@ func TestUploadConfigs(t *testing.T) {
 
 		history, err := s.fs.Configs.ReadFactoryConfigHistory(5, true)
 		require.NoError(t, err)
-		require.Equal(t, 2, len(history))
-		assert.Equal(t, `{"test":{"Value":"test factory config latest version"}}`, history[0].RawFiles)
-		assert.Equal(t, `{"test":{"Value":"test factory config"}}`, history[1].RawFiles)
+		require.Len(t, history, 2)
+		assert.JSONEq(t, `{"test":{"Value":"test factory config latest version"}}`, history[0].RawFiles)
+		assert.JSONEq(t, `{"test":{"Value":"test factory config"}}`, history[1].RawFiles)
 		history, err = s.fs.Configs.ReadGroupConfigHistory("beta", 5, true)
 		require.NoError(t, err)
-		require.Equal(t, 1, len(history))
-		assert.Equal(t, `{"samurai":{"Value":"test group config"}}`, history[0].RawFiles)
+		require.Len(t, history, 1)
+		assert.JSONEq(t, `{"samurai":{"Value":"test group config"}}`, history[0].RawFiles)
 		history, err = s.fs.Configs.ReadDeviceConfigHistory("uuid", 5, true)
 		require.NoError(t, err)
-		require.Equal(t, 0, len(history))
+		require.Empty(t, history)
 	})
 
 	t.Run("Successful upload overwrites existing configs", func(t *testing.T) {
@@ -249,18 +249,18 @@ func TestUploadConfigs(t *testing.T) {
 
 		history, err := s.fs.Configs.ReadFactoryConfigHistory(5, true)
 		require.NoError(t, err)
-		require.Equal(t, 1, len(history))
-		assert.Equal(t, `{"test":{"Value":"overwritten"}}`, history[0].RawFiles)
+		require.Len(t, history, 1)
+		assert.JSONEq(t, `{"test":{"Value":"overwritten"}}`, history[0].RawFiles)
 		history, err = s.fs.Configs.ReadGroupConfigHistory("beta", 5, true)
 		require.NoError(t, err)
-		require.Equal(t, 0, len(history))
+		require.Empty(t, history)
 		history, err = s.fs.Configs.ReadGroupConfigHistory("alpha", 5, true)
 		require.NoError(t, err)
-		require.Equal(t, 1, len(history))
-		assert.Equal(t, `{"omega":{"Value":"contra spem spero"}}`, history[0].RawFiles)
+		require.Len(t, history, 1)
+		assert.JSONEq(t, `{"omega":{"Value":"contra spem spero"}}`, history[0].RawFiles)
 		history, err = s.fs.Configs.ReadDeviceConfigHistory("uuid", 5, true)
 		require.NoError(t, err)
-		require.Equal(t, 0, len(history))
+		require.Empty(t, history)
 	})
 
 	t.Run("Failure on input read error", func(t *testing.T) {

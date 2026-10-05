@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -172,7 +171,7 @@ func TestRootMetaJSONFormat(t *testing.T) {
 		_, ok := generic.Signed.Roles[role]
 		require.True(t, ok, "missing role %s", role)
 	}
-	require.True(t, strings.Contains(string(content), "\"keytype\": \"ED25519\""))
+	require.Contains(t, string(content), "\"keytype\": \"ED25519\"")
 }
 
 // requireValidDefaultMeta asserts the default metadata is signed by the
@@ -191,7 +190,7 @@ func requireValidDefaultMeta(t *testing.T, fs *FsHandle) {
 	}
 	verify := func(role tuf.RoleName, sigs []tuf.Signature, signed any) {
 		require.Len(t, sigs, 1, role)
-		require.Equal(t, root.Signed.Roles[role].KeyIDs, []string{sigs[0].KeyID}, role)
+		require.Equal(t, []string{sigs[0].KeyID}, root.Signed.Roles[role].KeyIDs, role)
 		pub, err := hex.DecodeString(root.Signed.Keys[sigs[0].KeyID].KeyValue.Public)
 		require.NoError(t, err)
 		msg, err := cjson.EncodeCanonical(signed)
