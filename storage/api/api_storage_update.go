@@ -4,7 +4,6 @@
 package api
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -184,15 +183,14 @@ func (s Storage) generateUpdateTuf(updateDir, tag string, overrides TargetOption
 		opts.Apps = overrides.Apps
 	}
 	if opts.OstreeHash == "" {
-		// Default to the sha256 of empty content when no ostree image is present.
-		opts.OstreeHash = fmt.Sprintf("%x", sha256.Sum256(nil))
+		return errors.New("unable to determine ostree hash from upload")
 	}
 	if len(opts.Name) == 0 {
 		opts.Name = "default"
 	}
 
 	if len(opts.HardwareId) == 0 {
-		return fmt.Errorf("unable to determine hardware id from upload")
+		return errors.New("unable to determine hardware id from upload")
 	}
 
 	slog.Info("Adding TUF target", "tag", tag, "update", updateDir, "opts", opts)
