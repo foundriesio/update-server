@@ -1,160 +1,153 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+    <section class="rollout-detail">
+      <div class="rollout-detail__inner">
 
-      <div class="grid">
-        <div>
-          <fieldset>
-            <legend><strong>Tag</strong></legend>
-            <p>{{.Tag}}</p>
-          </fieldset>
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/updates">Updates</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/updates/{{.Name}}">{{.Name}}</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current" aria-current="page">{{.Rollout}}</span>
+        </nav>
 
-          <fieldset>
-            <legend><strong>Name</strong></legend>
-            <p>{{.Name}}</p>
-          </fieldset>
-          
-          <fieldset>
-            <legend><strong>Rollout</strong></legend>
-            <p>{{.Rollout}}</p>
-          </fieldset>
+        <div class="page-head">
+          <div>
+            <div class="entity-header">
+              <h1>{{.Rollout}}</h1>
+              <span class="badge {{ if .Details.Commit }}badge-good{{ else }}badge-neutral{{ end }}">
+                {{ if .Details.Commit }}Scheduled{{ else }}Preparing{{ end }}
+              </span>
+            </div>
+            <p class="page-subtitle">Update {{.Name}} on the {{.Tag}} tag</p>
+          </div>
+          <a class="btn-ghost rollout-detail__progress" href="/updates/{{.Name}}/rollouts/{{.Rollout}}/tail">Follow progress</a>
         </div>
 
-        <div>
-         <fieldset>
-            <legend><strong>Rollout summary</strong></legend>
-            <ul>
-            {{ if len .Summary.Status }}
-              {{ range $status, $count := .Summary.Status }}
-                <li><strong>{{ $status }}:</strong> <a href="#" onclick="showDevicesModal('{{ $status }}', this); return false;">{{ $count }} devices</a></li>
-              {{ end }}
-            {{ else }}
-              <li>No rollout summary available.</li>
-            {{ end }}
-            </ul>
-          </fieldset> 
-        </div>
-      </div>
-      <button onclick='location.href="/updates/{{$.Name}}/rollouts/{{.Rollout}}/tail";'>Follow progress</button>
-    </section>
+        <section class="summary-grid" aria-label="Rollout overview">
+          <div class="summary-card">
+            <span class="summary-card__label">Requested</span>
+            <span class="summary-card__value">{{ len .Details.Groups }} group{{ if ne (len .Details.Groups) 1 }}s{{ end }}</span>
+            <span class="summary-card__note">{{ len .Details.Uuids }} direct UUID{{ if ne (len .Details.Uuids) 1 }}s{{ end }}</span>
+          </div>
+          <div class="summary-card">
+            <span class="summary-card__label">Resolved</span>
+            <span class="summary-card__value">{{ len .Details.Effect }} device{{ if ne (len .Details.Effect) 1 }}s{{ end }}</span>
+            <span class="summary-card__note">{{ if .Details.Commit }}qualified for rollout{{ else }}resolution in progress{{ end }}</span>
+          </div>
+          <div class="summary-card">
+            <span class="summary-card__label">Scheduling state</span>
+            <span class="summary-card__value">{{ if .Details.Commit }}Scheduled{{ else }}Preparing{{ end }}</span>
+            <span class="summary-card__note">{{ if .Details.Commit }}rollout committed{{ else }}recipients are being resolved{{ end }}</span>
+          </div>
+        </section>
 
-    <section class="content-section">
-      <h2>User provided UUIDs and Groups</h2>
-      <p><i><small>Rollouts are created asynchronously. 
-        This section shows the UUIDs and Groups that were requested to be part of the rollout.
-      </small></i></p>
-      <h3>UUIDs</h3>
-      <table>
-        <tbody>
-          {{ range .Details.Uuids }}
-          <tr>
-            <td><a href="/devices/{{ . }}">{{ . }}</a></td>
-          </tr>
+        {{ if len .Summary.Status }}
+        <section class="meta-section" aria-labelledby="rollout-summary-title">
+          <h2 class="meta-section__title" id="rollout-summary-title">Rollout summary</h2>
+          <div class="history-list">
+          {{ range $status, $count := .Summary.Status }}
+            <div class="history-entry">
+              <span class="history-entry__target">{{$status}}</span>
+              <span class="history-entry__meta">{{$count}} device{{ if ne $count 1 }}s{{ end }}</span>
+            </div>
           {{ end }}
-        </tbody>
-      </table>
-    
-      <h3>Groups</h3>
-      <ul>
-        {{ range .Details.Groups }}
-        <li>{{.}}</li>
+          </div>
+        </section>
         {{ end }}
-      </ul>
-    </section>
 
-    <section class="content-section">
-      <h2>Scheduled UUIDs</h2>
-      {{ if not .Details.Effect }}
-        Devices are scheduled for the Rollout asynchronously. 
-        They will appear here when the scheduling process is finished.
-      {{ else }}
-      <p><i><small>This section shows the UUIDs scheduled to receive the update based on the input above.
-        If a UUID is missing from this list, it means it did not qualify for the update (e.g., wrong Tag).
-      </small></i></p>
-      <table>
-        <tbody>
-          {{ range .Details.Effect}}
-          <tr>
-            <td><a href="/devices/{{ . }}">{{ . }}</a></td>
-          </tr>
+        <section class="meta-section" aria-labelledby="rollout-definition-title">
+          <h2 class="meta-section__title" id="rollout-definition-title">Request and resolution</h2>
+          <dl class="rollout-ledger">
+            <div class="rollout-ledger__row">
+              <dt>Update</dt>
+              <dd><a class="rollout-detail__mono" href="/updates/{{.Name}}">{{.Name}}</a></dd>
+            </div>
+            <div class="rollout-ledger__row">
+              <dt>Tag</dt>
+              <dd class="rollout-detail__mono">{{.Tag}}</dd>
+            </div>
+            <div class="rollout-ledger__row">
+              <dt>Requested groups</dt>
+              <dd>
+                {{ if .Details.Groups }}
+                <span class="tag-cloud">
+                  {{ range .Details.Groups }}<span class="dd-chip dd-chip--tag">{{.}}</span>{{ end }}
+                </span>
+                {{ else }}
+                <span class="cell-empty">None provided</span>
+                {{ end }}
+              </dd>
+            </div>
+            <div class="rollout-ledger__row">
+              <dt>Requested UUIDs</dt>
+              <dd>
+                {{ if .Details.Uuids }}
+                <ul class="rollout-detail__value-list">
+                  {{ range .Details.Uuids }}<li><a class="rollout-detail__mono" href="/devices/{{.}}">{{.}}</a></li>{{ end }}
+                </ul>
+                {{ else }}
+                <span class="cell-empty">None provided</span>
+                {{ end }}
+              </dd>
+            </div>
+            <div class="rollout-ledger__row">
+              <dt>Resolved devices</dt>
+              <dd>
+                {{ if .Details.Commit }}
+                  {{ len .Details.Effect }} device{{ if ne (len .Details.Effect) 1 }}s{{ end }} qualified for this rollout.
+                {{ else }}
+                  Recipients are still being resolved.
+                {{ end }}
+              </dd>
+            </div>
+            <div class="rollout-ledger__row">
+              <dt>Scheduling state</dt>
+              <dd>
+                <span class="status-indicator is-static">
+                  <span class="status-indicator__dot {{ if not .Details.Commit }}is-warning{{ end }}" aria-hidden="true"></span>
+                  {{ if .Details.Commit }}Scheduled{{ else }}Preparing{{ end }}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="meta-section" aria-labelledby="scheduled-devices-title">
+          <h2 class="meta-section__title" id="scheduled-devices-title">Scheduled devices</h2>
+          {{ if not .Details.Commit }}
+          <p class="empty-state rollout-detail__empty">Recipients are still being resolved.</p>
+          {{ else if .Details.Effect }}
+          <ul class="recipient-list">
+            {{ range .Details.Effect }}
+            <li>
+              <dl class="recipient-record">
+                <div>
+                  <dt>Device</dt>
+                  <dd><a class="rollout-detail__mono" href="/devices/{{.}}">{{.}}</a></dd>
+                </div>
+                <div>
+                  <dt>Resolution</dt>
+                  <dd>Qualified by rollout criteria</dd>
+                </div>
+                <div>
+                  <dt>Scheduling state</dt>
+                  <dd>
+                    <span class="status-indicator is-static">
+                      <span class="status-indicator__dot" aria-hidden="true"></span>
+                      Scheduled
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+            </li>
+            {{ end }}
+          </ul>
+          {{ else }}
+          <p class="empty-state rollout-detail__empty">No devices qualified for this rollout.</p>
           {{ end }}
-        </tbody>
-      </table>
-      {{ end }}
+        </section>
+
+      </div>
     </section>
-
-    <dialog id="devicesModal" aria-labelledby="devices-dlg-title">
-      <article>
-        <header>
-          <button id="devices-dlg-close-btn" type="button" aria-label="Close dialog" rel="prev"></button>
-          <h3 id="devices-dlg-title" tabindex="-1">Devices - <span id="devicesStatus"></span></h3>
-        </header>
-        <div id="devicesContent">
-          <ul id="devicesList"></ul>
-        </div>
-        <footer>
-          <button id="devices-dlg-footer-close-btn" type="button">Close</button>
-        </footer>
-      </article>
-    </dialog>
-
-    <script>
-      const devicesDialog = document.getElementById('devicesModal');
-      const devicesDialogTitle = document.getElementById('devices-dlg-title');
-      const devicesDialogClose = document.getElementById('devices-dlg-close-btn');
-      const devicesDialogFooterClose = document.getElementById('devices-dlg-footer-close-btn');
-      let devicesDialogTrigger = null;
-
-      function showDevicesModal(status, trigger) {
-        devicesDialogTrigger = trigger;
-        document.getElementById('devicesStatus').textContent = status;
-        const list = document.getElementById('devicesList');
-        list.innerHTML = '<li>Loading...</li>';
-        devicesDialog.showModal();
-        devicesDialogTitle.focus();
-        fetch('/v1/updates/{{.Name}}/rollouts/{{.Rollout}}/query?status=' + encodeURIComponent(status))
-          .then(response => response.json())
-          .then(data => {
-            const devicesList = data || [];
-            list.innerHTML = '';
-            devicesList.forEach(uuid => {
-              const li = document.createElement('li');
-              const a = document.createElement('a');
-              a.href = '/devices/' + uuid;
-              a.textContent = uuid;
-              li.appendChild(a);
-              list.appendChild(li);
-            });
-          })
-          .catch(error => {
-            console.error('Error fetching devices:', error);
-            list.innerHTML = '';
-            const li = document.createElement('li');
-            li.textContent = 'Error loading devices';
-            list.appendChild(li);
-          });
-      }
-
-      devicesDialogClose.addEventListener('click', function () {
-        devicesDialog.close();
-      });
-
-      devicesDialogFooterClose.addEventListener('click', function () {
-        devicesDialog.close();
-      });
-
-      devicesDialog.addEventListener('click', function (e) {
-        if (e.target === devicesDialog) {
-          devicesDialog.close();
-        }
-      });
-
-      devicesDialog.addEventListener('close', function () {
-        if (devicesDialogTrigger) {
-          devicesDialogTrigger.focus();
-          devicesDialogTrigger = null;
-        }
-      });
-    </script>
 
 {{ template "footer" .}}

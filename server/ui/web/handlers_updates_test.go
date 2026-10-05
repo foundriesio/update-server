@@ -194,14 +194,117 @@ func TestUpdateTemplateDevicesDialogUsesModalFocus(t *testing.T) {
 	assert.Contains(t, devicesDialog, `class="dlg-btn dlg-btn-cancel"`)
 }
 
-func TestUpdateRolloutTemplateDevicesDialogUsesModalFocus(t *testing.T) {
+func TestUpdateRolloutTemplateRendersScanFirstLedger(t *testing.T) {
+	ctx := updateRolloutDetailCtx{
+		Tag:     "main",
+		Name:    "148",
+		Rollout: "production",
+		Details: api.Rollout{
+			Uuids:  []string{"device-direct"},
+			Groups: []string{"factory", "beta"},
+			Effect: []string{"device-direct", "device-group"},
+			Commit: true,
+		},
+	}
+
+	html := renderUpdateRolloutHTML(t, ctx)
+
+	assert.Contains(t, html, `class="rollout-detail"`)
+	assert.Contains(t, html, `href="/updates/148"`)
+	assert.Contains(t, html, `aria-current="page">production</span>`)
+	assert.Contains(t, html, `class="btn-ghost rollout-detail__progress" href="/updates/148/rollouts/production/tail"`)
+	assert.NotContains(t, html, `class="btn-solid rollout-detail__progress"`)
+	assert.Contains(t, html, `>2 groups<`)
+	assert.Contains(t, html, `>1 direct UUID<`)
+	assert.Contains(t, html, `>2 devices<`)
+	assert.Contains(t, html, `>Scheduled<`)
+	assert.Contains(t, html, `>main<`)
+	assert.Contains(t, html, `href="/devices/device-direct"`)
+	assert.Contains(t, html, `href="/devices/device-group"`)
+	assert.NotContains(t, html, `id="devicesModal"`)
+	assert.NotContains(t, html, `showDevicesModal`)
+}
+
+func TestUpdateRolloutTemplateRendersSummaryCountsAsText(t *testing.T) {
 	ctx := updateRolloutDetailCtx{
 		Name:    "148",
 		Rollout: "production",
-		Summary: api.UpdateSummary{Status: map[string]int{"in-sync": 2}},
+		Details: api.Rollout{Commit: true},
+		Summary: api.UpdateSummary{Status: map[string]int{
+			"in-sync": 1,
+			"pending": 2,
+		}},
 	}
 
-	assertDevicesDialogUsesModalFocus(t, renderUpdateRolloutHTML(t, ctx))
+	html := renderUpdateRolloutHTML(t, ctx)
+
+	assert.Contains(t, html, `>Rollout summary<`)
+	assert.Contains(t, html, `>in-sync<`)
+	assert.Contains(t, html, `>1 device</span>`)
+	assert.Contains(t, html, `>pending<`)
+	assert.Contains(t, html, `>2 devices</span>`)
+	assert.NotContains(t, html, `href="#scheduled-devices"`)
+	assert.Less(t, strings.Index(html, ">Rollout summary<"), strings.Index(html, ">Request and resolution<"))
+}
+
+func TestUpdateRolloutTemplatePreparingState(t *testing.T) {
+	ctx := updateRolloutDetailCtx{
+		Tag:     "main",
+		Name:    "148",
+		Rollout: "production",
+		Details: api.Rollout{
+			Groups: []string{"factory"},
+			Effect: []string{"device-pending"},
+		},
+	}
+
+	html := renderUpdateRolloutHTML(t, ctx)
+
+	assert.Contains(t, html, `>Preparing<`)
+	assert.Contains(t, html, "Recipients are still being resolved.")
+	assert.NotContains(t, html, `class="recipient-list"`)
+	assert.NotContains(t, html, `href="/devices/device-pending"`)
+}
+
+func TestUpdateRolloutTemplateCommittedWithoutRecipients(t *testing.T) {
+	ctx := updateRolloutDetailCtx{
+		Tag:     "main",
+		Name:    "148",
+		Rollout: "production",
+		Details: api.Rollout{Commit: true},
+	}
+
+	html := renderUpdateRolloutHTML(t, ctx)
+
+	assert.Contains(t, html, `>Scheduled<`)
+	assert.Contains(t, html, "None provided")
+	assert.Contains(t, html, "No devices qualified for this rollout.")
+}
+
+func TestUpdateRolloutTemplatePreservesLongValues(t *testing.T) {
+	longTag := strings.Repeat("tag-", 40)
+	longName := strings.Repeat("update-", 30)
+	longRollout := strings.Repeat("rollout-", 30)
+	longUuid := strings.Repeat("uuid-", 40)
+	longGroup := strings.Repeat("group-", 35)
+	longEffect := strings.Repeat("device-", 30)
+	ctx := updateRolloutDetailCtx{
+		Tag:     longTag,
+		Name:    longName,
+		Rollout: longRollout,
+		Details: api.Rollout{
+			Uuids:  []string{longUuid},
+			Groups: []string{longGroup},
+			Effect: []string{longEffect},
+			Commit: true,
+		},
+	}
+
+	html := renderUpdateRolloutHTML(t, ctx)
+
+	for _, value := range []string{longTag, longName, longRollout, longUuid, longGroup, longEffect} {
+		assert.Contains(t, html, value)
+	}
 }
 
 func TestUpdateTemplateNoApplications(t *testing.T) {

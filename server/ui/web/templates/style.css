@@ -3406,4 +3406,168 @@ pre.code-block {
     }
 }
 
+/* Rollout detail (scan-first ledger) page — reuses .breadcrumb/.page-head/
+   .entity-header/.page-subtitle/.meta-section/.meta-section__title/.badge*,
+   .tag-cloud/.dd-chip/.cell-empty/.empty-state/.status-indicator and the
+   existing token set. */
+.rollout-detail__inner {
+    max-width: 900px;
+}
+.rollout-detail__inner h1 {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.rollout-detail__inner .page-subtitle {
+    margin-bottom: 0;
+    overflow-wrap: anywhere;
+}
+.rollout-detail__progress {
+    flex-shrink: 0;
+    text-decoration: none;
+}
+.rollout-detail__progress:hover {
+    text-decoration: none;
+}
+.rollout-detail__progress:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.rollout-detail .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+}
+.rollout-detail .summary-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 12px 14px;
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+    background: var(--surface-2);
+}
+.rollout-detail .summary-card__label,
+.rollout-detail .recipient-record dt {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.rollout-detail .summary-card__value {
+    margin-top: 4px;
+    color: var(--text-1);
+    font-size: 1rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.rollout-detail .summary-card__note {
+    margin-top: 2px;
+    color: var(--text-3);
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+.rollout-detail .rollout-ledger {
+    margin: 0;
+}
+.rollout-detail .rollout-ledger__row {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.rollout-detail .rollout-ledger dt {
+    color: var(--text-3);
+    font-size: 0.8rem;
+}
+.rollout-detail .rollout-ledger dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--text-1);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+.rollout-detail__mono {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+.rollout-detail__value-list,
+.rollout-detail .recipient-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.rollout-detail__value-list {
+    display: grid;
+    gap: 4px;
+}
+.rollout-detail__value-list > li,
+.rollout-detail .recipient-list > li {
+    list-style: none;
+}
+
+.rollout-detail .recipient-list {
+    display: grid;
+    gap: 8px;
+    max-width: 900px;
+}
+.rollout-detail .recipient-record {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 16px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+    background: var(--surface-2);
+}
+.rollout-detail .recipient-record > div {
+    min-width: 0;
+}
+.rollout-detail .recipient-record dt {
+    margin-bottom: 3px;
+}
+.rollout-detail .recipient-record dd {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+.rollout-detail .status-indicator__dot.is-warning {
+    background: var(--warning);
+}
+.rollout-detail .rollout-detail__empty {
+    max-width: 900px;
+    padding: 14px;
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+    background: var(--surface-2);
+    text-align: left;
+}
+
+@media (max-width: 900px) {
+    .rollout-detail__inner {
+        max-width: none;
+    }
+}
+@media (max-width: 640px) {
+    .rollout-detail .summary-grid,
+    .rollout-detail .recipient-record {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .rollout-detail .rollout-ledger__row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+    }
+    .rollout-detail__progress {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
 } /* end @layer update-detail */
