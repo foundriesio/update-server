@@ -101,9 +101,9 @@ func createUpdate(updates api.UpdatesApi, tag, updateName, path string, opts api
 		return fmt.Errorf("a '%s' is neither a directory nor a symlink to a directory", path)
 	}
 
-	if opts.HardwareId == "" {
+	if opts.HardwareId == "" || opts.OstreeHash == "" {
 		if _, err := os.Stat(filepath.Join(path, "ostree_repo")); err != nil {
-			return errors.New("hardware-id must be specified when uploading an update without an `ostree_repo` directory")
+			return errors.New("hardware-id and ostree-hash must be specified when uploading an update without an `ostree_repo` directory")
 		}
 	}
 
