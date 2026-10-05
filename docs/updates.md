@@ -62,8 +62,7 @@ with flags, which is also useful when uploading content that has no
 For an apps-only update, `--ostree-hash` is required and must match the
 currently installed OSTree commit on the device receiving the update. If
 devices have different installed commits, create a separate update for each
-commit. Without this override, the server uses the hash of empty content,
-which the device may try to fetch as an OSTree commit.
+commit. Without this override, the server will reject an update.
 
 ```
   fiocli updates upload main 148 ./148 \
