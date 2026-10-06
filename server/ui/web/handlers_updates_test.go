@@ -5,12 +5,16 @@ package web
 
 import (
 	"bytes"
+	"html/template"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/foundriesio/update-server/server/ui/api"
 	"github.com/foundriesio/update-server/server/ui/web/templates"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,6 +60,102 @@ func renderUpdateRolloutHTML(t *testing.T, ctx updateRolloutDetailCtx) string {
 		t.Fatalf("ExecuteTemplate() error = %v", err)
 	}
 	return buf.String()
+}
+
+func renderUpdateTailHTML(t *testing.T, ctx tailStreamCtx) string {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := templates.Templates.ExecuteTemplate(&buf, "update_tail.html", ctx); err != nil {
+		t.Fatalf("ExecuteTemplate() error = %v", err)
+	}
+	return buf.String()
+}
+
+func renderRolloutTailHTML(t *testing.T, ctx tailStreamCtx) string {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := templates.Templates.ExecuteTemplate(&buf, "rollout_tail.html", ctx); err != nil {
+		t.Fatalf("ExecuteTemplate() error = %v", err)
+	}
+	return buf.String()
+}
+
+func TestUpdateTailTemplateRendersUpdateStream(t *testing.T) {
+	html := renderUpdateTailHTML(t, tailStreamCtx{Name: "148", TailUrl: "/v1/updates/148/tail"})
+	assert.Contains(t, html, `href="/updates/148">148</a>`)
+	assert.Contains(t, html, `aria-current="page">Progress</span>`)
+	assert.Contains(t, html, `<h1>148 Stream</h1>`)
+	assert.Contains(t, html, `class="btn-ghost rollout-stream__back" href="/updates/148">Back to Update</a>`)
+	assert.Contains(t, html, `<dt>Update</dt>`)
+	assert.Contains(t, html, `class="rollout-stream__mono" translate="no">148</dd>`)
+	assert.Contains(t, html, `Raw update records in arrival order.`)
+	assert.NotContains(t, html, `<dt>Rollout</dt>`)
+	assert.NotContains(t, html, `/rollouts/`)
+}
+
+func TestRolloutTailTemplateRendersRolloutStream(t *testing.T) {
+	html := renderRolloutTailHTML(t, tailStreamCtx{
+		Name:    "148",
+		Rollout: "production",
+		TailUrl: "/v1/updates/148/rollouts/production/tail",
+	})
+	assert.Contains(t, html, `href="/updates/148">148</a>`)
+	assert.Contains(t, html, `href="/updates/148/rollouts/production">production</a>`)
+	assert.Contains(t, html, `aria-current="page">Progress</span>`)
+	assert.Contains(t, html, `<h1>production Stream</h1>`)
+	assert.Contains(t, html, `class="btn-ghost rollout-stream__back" href="/updates/148/rollouts/production">Back to Rollout</a>`)
+	assert.Contains(t, html, `<dt>Rollout</dt>`)
+	assert.Contains(t, html, `Raw rollout records in arrival order.`)
+}
+
+func TestTailHandlersUseRouteSpecificTemplates(t *testing.T) {
+	tailTemplates := template.Must(template.New("").Parse(`
+		{{ define "update_tail.html" }}update:{{.Name}}:{{.Rollout}}:{{.TailUrl}}{{ end }}
+		{{ define "rollout_tail.html" }}rollout:{{.Name}}:{{.Rollout}}:{{.TailUrl}}{{ end }}
+	`))
+	h := handlers{templates: tailTemplates, pages: NewPageBuilder(Branding{})}
+
+	tests := []struct {
+		name        string
+		path        string
+		paramNames  []string
+		paramValues []string
+		handler     echo.HandlerFunc
+		want        string
+	}{
+		{
+			name:        "update tail",
+			path:        "/updates/148/tail",
+			paramNames:  []string{"name"},
+			paramValues: []string{"148"},
+			handler:     h.updatesTail,
+			want:        "update:148::/v1/updates/148/tail",
+		},
+		{
+			name:        "rollout tail",
+			path:        "/updates/148/rollouts/production/tail",
+			paramNames:  []string{"name", "rollout"},
+			paramValues: []string{"148", "production"},
+			handler:     h.updatesRolloutTail,
+			want:        "rollout:148:production:/v1/updates/148/rollouts/production/tail",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := echo.New()
+			recorder := httptest.NewRecorder()
+			ctx := e.NewContext(httptest.NewRequest(http.MethodGet, tt.path, nil), recorder)
+			ctx.SetPath(tt.path)
+			ctx.SetParamNames(tt.paramNames...)
+			ctx.SetParamValues(tt.paramValues...)
+
+			if err := tt.handler(ctx); err != nil {
+				t.Fatalf("handler() error = %v", err)
+			}
+			assert.Equal(t, tt.want, recorder.Body.String())
+		})
+	}
 }
 
 func assertDevicesDialogUsesModalFocus(t *testing.T, html string) {

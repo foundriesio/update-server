@@ -1,0 +1,121 @@
+{{ define "tail-stream-content" }}
+        <section class="meta-section rollout-stream__metadata" aria-labelledby="connection-title">
+          <h2 class="meta-section__title" id="connection-title">Connection Metadata</h2>
+          <dl class="stream-metadata">
+            <div class="stream-metadata__row">
+              <dt>Endpoint</dt>
+              <dd class="rollout-stream__mono" translate="no">{{.TailUrl}}</dd>
+            </div>
+            {{ if .Rollout }}
+            <div class="stream-metadata__row">
+              <dt>Rollout</dt>
+              <dd class="rollout-stream__mono" translate="no">{{.Rollout}}</dd>
+            </div>
+            {{ else }}
+            <div class="stream-metadata__row">
+              <dt>Update</dt>
+              <dd class="rollout-stream__mono" translate="no">{{.Name}}</dd>
+            </div>
+            {{ end }}
+            <div class="stream-metadata__row">
+              <dt>Received</dt>
+              <dd id="received-count">0 stream records</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="meta-section" aria-labelledby="event-stream-title">
+          <h2 class="meta-section__title" id="event-stream-title">Event Stream</h2>
+          <p class="rollout-stream__help" id="event-stream-help">Raw {{ if .Rollout }}rollout{{ else }}update{{ end }} records in arrival order.</p>
+          <div class="stream-output">
+            <pre id="tail-logs" class="stream-output__log" role="log" tabindex="0" aria-labelledby="event-stream-title" aria-describedby="event-stream-help" translate="no" data-endpoint="{{.TailUrl}}" data-waiting-label="{{ if .Rollout }}Waiting for rollout{{ else }}Waiting for stream{{ end }}">[Connecting to log stream: {{.TailUrl}}]
+</pre>
+          </div>
+        </section>
+
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            const tailLogs = document.getElementById('tail-logs');
+            const connectionStatus = document.getElementById('connection-status');
+            const connectionStatusDot = document.getElementById('connection-status-dot');
+            const receivedCount = document.getElementById('received-count');
+            const url = tailLogs.dataset.endpoint;
+            let received = 0;
+            let hasConnected = false;
+            let serverErrorReceived = false;
+            let transportStatus = '';
+
+            function appendLine(line) {
+              const shouldFollow = tailLogs.scrollHeight - tailLogs.scrollTop - tailLogs.clientHeight <= 24;
+              tailLogs.append(document.createTextNode(line + '\n'));
+              if (shouldFollow) {
+                tailLogs.scrollTop = tailLogs.scrollHeight;
+              }
+            }
+
+            function setConnectionStatus(label, state) {
+              connectionStatus.textContent = label;
+              connectionStatusDot.classList.toggle('is-warning', state === 'warning');
+              connectionStatusDot.classList.toggle('is-danger', state === 'danger');
+            }
+
+            function recordNamedEvent() {
+              received += 1;
+              receivedCount.textContent = received + ' stream record' + (received === 1 ? '' : 's');
+            }
+
+            const eventSource = new EventSource(url);
+
+            eventSource.onopen = function() {
+              serverErrorReceived = false;
+              transportStatus = '';
+              setConnectionStatus('Connected', 'success');
+              appendLine(hasConnected ? '[Connection re-established]' : '[Connection established]');
+              hasConnected = true;
+            };
+
+            eventSource.onmessage = function(event) {
+              appendLine(event.data);
+            };
+
+            eventSource.addEventListener('log', function(event) {
+              try {
+                const data = JSON.parse(event.data);
+                appendLine(data.deviceTime + ' ' + data.uuid + ': ' + data.status);
+              } catch {
+                appendLine(event.data);
+              }
+              recordNamedEvent();
+            });
+
+            eventSource.addEventListener('error', function(event) {
+              if (typeof event.data !== 'string' || event.data.length === 0) {
+                return;
+              }
+              serverErrorReceived = true;
+              setConnectionStatus(tailLogs.dataset.waitingLabel, 'warning');
+              appendLine(event.data);
+            });
+
+            eventSource.onerror = function() {
+              if (serverErrorReceived) {
+                return;
+              }
+
+              const isClosed = eventSource.readyState === EventSource.CLOSED;
+              const label = isClosed ? 'Connection closed' : 'Reconnecting…';
+              if (transportStatus === label) {
+                return;
+              }
+
+              transportStatus = label;
+              setConnectionStatus(label, isClosed ? 'danger' : 'warning');
+              appendLine(isClosed ? '[Connection closed]' : '[Connection interrupted; reconnecting…]');
+            };
+
+            window.addEventListener('beforeunload', function() {
+              eventSource.close();
+            });
+          });
+        </script>
+{{ end }}

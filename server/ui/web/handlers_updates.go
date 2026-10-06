@@ -294,12 +294,17 @@ func (h handlers) updatesRollout(c echo.Context) error {
 	return h.templates.ExecuteTemplate(c.Response(), "update_rollout.html", ctx)
 }
 
+type tailStreamCtx struct {
+	baseCtx
+	Name    string
+	Rollout string
+	TailUrl string
+}
+
 func (h handlers) updatesTail(c echo.Context) error {
-	ctx := struct {
-		baseCtx
-		TailUrl string
-	}{
-		baseCtx: h.baseCtx(c, "Rollout Progress", "updates"),
+	ctx := tailStreamCtx{
+		baseCtx: h.baseCtx(c, "Update Progress", "updates"),
+		Name:    c.Param("name"),
 		TailUrl: fmt.Sprintf("/v1/updates/%s/tail", c.Param("name")),
 	}
 
@@ -307,13 +312,12 @@ func (h handlers) updatesTail(c echo.Context) error {
 }
 
 func (h handlers) updatesRolloutTail(c echo.Context) error {
-	ctx := struct {
-		baseCtx
-		TailUrl string
-	}{
+	ctx := tailStreamCtx{
 		baseCtx: h.baseCtx(c, "Rollout Progress", "updates"),
+		Name:    c.Param("name"),
+		Rollout: c.Param("rollout"),
 		TailUrl: fmt.Sprintf("/v1/updates/%s/rollouts/%s/tail", c.Param("name"), c.Param("rollout")),
 	}
 
-	return h.templates.ExecuteTemplate(c.Response(), "update_tail.html", ctx)
+	return h.templates.ExecuteTemplate(c.Response(), "rollout_tail.html", ctx)
 }

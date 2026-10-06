@@ -6,18 +6,20 @@
           <span class="breadcrumb__sep">/</span>
           <a href="/updates/{{.Name}}">{{.Name}}</a>
           <span class="breadcrumb__sep">/</span>
+          <a href="/updates/{{.Name}}/rollouts/{{.Rollout}}">{{.Rollout}}</a>
+          <span class="breadcrumb__sep">/</span>
           <span class="breadcrumb__current" aria-current="page">Progress</span>
         </nav>
 
         <div class="page-head">
           <div>
-            <h1>{{.Name}} Stream</h1>
+            <h1>{{.Rollout}} Stream</h1>
             <p class="page-subtitle connection-status">
               <span id="connection-status-dot" class="status-indicator__dot is-warning" aria-hidden="true"></span>
               <span id="connection-status" role="status" aria-live="polite" aria-atomic="true">Connecting&hellip;</span>
             </p>
           </div>
-          <a class="btn-ghost rollout-stream__back" href="/updates/{{.Name}}">Back to Update</a>
+          <a class="btn-ghost rollout-stream__back" href="/updates/{{.Name}}/rollouts/{{.Rollout}}">Back to Rollout</a>
         </div>
 
         {{ template "tail-stream-content" .}}
