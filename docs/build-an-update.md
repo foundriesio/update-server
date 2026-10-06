@@ -86,15 +86,15 @@ with `composectl publish` produces the sha256 for the app itself:
 
 ```
   composectl publish -d app.hash \
-    --pinned-images <registry>/<image-name>@sha256:<image-digest> \
+    [--pinned-images <registry>/<image-name>@sha256:<image-digest>] \
     <registry>/<app-name>-app:<tag> amd64,arm64
 ```
 
 * `-d app.hash` writes the app's own digest to the file `app.hash`.
-* `--pinned-images` takes a comma-separated list of image digest URIs and
+* `--pinned-images` optional, takes a comma-separated list of image digest URIs and
   rewrites `docker-compose.yml`'s image references to match, so you do not
   need to hand-edit digests into the compose file yourself. Omit it if
-  your compose file already pins images directly.
+  your compose file already tags or pins images directly.
 * The trailing argument is the comma-separated list of architectures to
   publish for.
 
