@@ -213,7 +213,7 @@ func TestUpdateTemplatePopulated(t *testing.T) {
 
 	assert.Contains(t, html, `class="update-detail"`)
 	assert.Contains(t, html, `href="/updates/148/tail"`)
-	assert.Contains(t, html, `onclick="rolloutModal.showModal()"`)
+	assert.Contains(t, html, `id="show-rollout-btn"`)
 	assert.Contains(t, html, `id="rolloutModal"`)
 	assert.Contains(t, html, `aria-live="polite"`)
 	assert.Contains(t, html, `aria-label="Copy nginx image URI"`)
@@ -278,6 +278,37 @@ func TestUpdateTemplateRolloutDialogFocusesName(t *testing.T) {
 
 	assert.Contains(t, rolloutDialog, `id="rollout-name" name="name" autofocus`)
 	assert.Equal(t, 1, strings.Count(rolloutDialog, "autofocus"))
+}
+
+func TestUpdateTemplateRolloutDialogSupportsRequestCancellation(t *testing.T) {
+	ctx := updateDetailCtx{Name: "148", TufMetadata: releaseTufMetadata(api.UpdateTufResp{})}
+	html := renderUpdateHTML(t, ctx)
+
+	assert.Contains(t, html, `id="show-rollout-btn"`)
+	assert.Contains(t, html, `id="rollout-dlg-close-btn"`)
+	assert.Contains(t, html, `id="rollout-cancel-btn"`)
+	assert.Contains(t, html, `id="rollout-btn"`)
+	assert.Contains(t, html, `id="rollout-result" aria-live="polite" role="status"></div>`)
+	assert.Contains(t, html, `let creatingRollout = false;`)
+	assert.Contains(t, html, `let rolloutAbortController = null;`)
+	assert.Contains(t, html, `rolloutAbortController = new AbortController();`)
+	assert.Contains(t, html, `signal: rolloutAbortController.signal`)
+	assert.Contains(t, html, `rolloutAbortController.abort();`)
+	assert.Contains(t, html, `Rollout creation request cancelled.`)
+	assert.Contains(t, html, `rolloutDialog.addEventListener('cancel'`)
+	assert.Contains(t, html, `rolloutDialog.addEventListener('click'`)
+	assert.Contains(t, html, `rolloutDialog.addEventListener('close'`)
+
+	start := strings.Index(html, `<dialog id="rolloutModal"`)
+	if start == -1 {
+		t.Fatal("rendered page does not contain the rollout dialog")
+	}
+	end := strings.Index(html[start:], "</dialog>")
+	if end == -1 {
+		t.Fatal("rendered rollout dialog is not closed")
+	}
+	rolloutDialog := html[start : start+end]
+	assert.NotContains(t, rolloutDialog, `onclick="rolloutModal.close()"`)
 }
 
 func TestUpdateTemplateDevicesDialogUsesModalFocus(t *testing.T) {
