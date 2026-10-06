@@ -105,27 +105,26 @@ You can also refer to the [example GitHub Workflow](./gh-workflow-example.yml).
 
 ### Get the App to the Update Server
 
-> [!NOTE]
-> the update server never needs access to the registry your apps
-> or containers were pushed to. It only needs the resulting app name and
-> sha256.
-
-Pass your app directly at upload time with `--apps <name>=<sha256>` (see
-[Combine](#combine) below) — the simplest option when you already have the
-app's sha256 (the contents of `app.hash` from step 2) sitting in CI.
-
-Alternatively, lay it out in an `apps` directory by pulling the published app with
-`composectl pull`:
+Download the published app and its container images into the update
+directory:
 
 ```
   composectl pull -i ./148/apps -s ./148/apps \
     <registry>/<app-name>-app@sha256:<contents of app.hash>
 ```
 
-This produces the `apps/apps/<app-name>/<sha256>/` layout that
-`fiocli updates upload` probes automatically — the same layout
-`fioctl targets offline-update` produces for apps built through
-FoundriesFactory.
+This produces the `apps/apps/<app-name>/<sha256>/` layout.
+`fiocli updates upload` uploads that content and automatically discovers
+the app name and digest.
+
+You can override the discovered app metadata with
+`--apps <name>=<sha256>`. This flag does not download app content or
+replace the requirement to include it in the upload directory.
+
+> [!NOTE]
+> The update server does not need access to your registry because the
+> app and container content is downloaded before upload and included
+> in the update directory.
 
 ## Combine
 
