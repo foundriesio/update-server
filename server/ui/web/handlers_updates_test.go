@@ -164,7 +164,8 @@ func assertDevicesDialogUsesModalFocus(t *testing.T, html string) {
 	assert.Contains(t, html, `aria-labelledby="devices-dlg-title"`)
 	assert.Contains(t, html, `id="devices-dlg-title" tabindex="-1"`)
 	assert.Contains(t, html, `showDevicesModal(`)
-	assert.Contains(t, html, `, this); return false;`)
+	assert.Contains(t, html, `, this)"`)
+	assert.NotContains(t, html, `return false;`)
 	assert.Contains(t, html, `devicesDialog.showModal();`)
 	assert.Contains(t, html, `devicesDialogTitle.focus();`)
 	assert.Contains(t, html, `id="devices-dlg-close-btn"`)
@@ -246,6 +247,20 @@ func TestUpdateTemplateNoRollouts(t *testing.T) {
 	ctx := updateDetailCtx{Name: "148", TufMetadata: releaseTufMetadata(api.UpdateTufResp{})}
 	html := renderUpdateHTML(t, ctx)
 	assert.Contains(t, html, "No rollouts yet.")
+}
+
+func TestUpdateTemplateUsesNativeNavigationAndDialogControls(t *testing.T) {
+	ctx := updateDetailCtx{
+		Name:        "148",
+		Summary:     api.UpdateSummary{Status: map[string]int{"in-sync": 2}},
+		TufMetadata: releaseTufMetadata(api.UpdateTufResp{}),
+	}
+	html := renderUpdateHTML(t, ctx)
+
+	assert.Contains(t, html, `class="btn-ghost update-detail__progress" href="/updates/148/tail"`)
+	assert.NotContains(t, html, `onclick='location.href="/updates/148/tail";'`)
+	assert.Contains(t, html, `type="button" class="history-entry__target history-entry__action" onclick="showDevicesModal('in-sync', this)"`)
+	assert.NotContains(t, html, `href="#" class="history-entry__target"`)
 }
 
 func TestUpdateTemplateRolloutDialogFocusesName(t *testing.T) {
