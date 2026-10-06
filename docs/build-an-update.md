@@ -72,8 +72,13 @@ Build each container image and push it to a registry, capturing the
 digest of the pushed image so it can be pinned into the compose app:
 
 ```
-  docker buildx build --push -t <registry>/<image-name>:<tag> .
+  docker buildx build --platform linux/amd64,linux/arm64 \
+    --push -t <registry>/<image-name>:<tag> .
 ```
+
+Set `--platform` to the target device platforms. This example builds for
+both AMD64 and ARM64; use `--platform linux/arm64` for ARM64 only. Ensure
+your [builder supports the target platforms](https://docs.docker.com/build/building/multi-platform/).
 
 The push output (or `docker/build-push-action`'s `digest` output, if
 you're doing this via CI) gives you a `sha256` for the image — you will pin
@@ -109,9 +114,13 @@ Download the published app and its container images into the update
 directory:
 
 ```
-  composectl pull -i ./148/apps -s ./148/apps \
+  composectl pull --arch arm64 -i ./148/apps -s ./148/apps \
     <registry>/<app-name>-app@sha256:<contents of app.hash>
 ```
+
+Set `--arch` to the target device architecture, regardless of the host
+architecture. It must be included in both the container build platforms
+and the architectures passed to `composectl publish`.
 
 This produces the `apps/apps/<app-name>/<sha256>/` layout.
 `fiocli updates upload` uploads that content and automatically discovers
