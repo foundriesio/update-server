@@ -24,7 +24,7 @@
             </p>
           </div>
           <div class="update-detail__actions">
-            <button type="button" class="btn-ghost" onclick='location.href="/updates/{{$.Name}}/tail";'>Follow progress</button>
+            <a class="btn-ghost update-detail__progress" href="/updates/{{$.Name}}/tail">Follow progress</a>
             <button type="button" class="btn-solid" onclick="rolloutModal.showModal()">Create rollout</button>
           </div>
         </div>
@@ -50,7 +50,7 @@
           <div class="history-list">
           {{ range $status, $count := .Summary.Status }}
             <div class="history-entry">
-              <a href="#" class="history-entry__target" onclick="showDevicesModal('{{$status}}', this); return false;">{{$status}}</a>
+              <button type="button" class="history-entry__target history-entry__action" onclick="showDevicesModal('{{$status}}', this)">{{$status}}</button>
               <span class="history-entry__meta">{{$count}} device{{ if ne $count 1 }}s{{ end }}</span>
             </div>
           {{ end }}

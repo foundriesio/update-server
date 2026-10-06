@@ -1133,7 +1133,7 @@ summary.user-badge::after {
        preference only applies to the push mechanism. */
     #app,
     #app.nav-collapsed {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         grid-template-areas: "topbar" "main";
         transition: none;
     }
@@ -3077,7 +3077,7 @@ pre.code-block {
         flex-direction: column;
         align-items: stretch;
     }
-    .page-head .update-detail__actions button {
+    .page-head .update-detail__actions > * {
         flex: 1;
     }
 }
@@ -3284,6 +3284,35 @@ pre.code-block {
     display: flex;
     gap: 10px;
     flex-shrink: 0;
+}
+.update-detail__progress {
+    flex-shrink: 0;
+    text-decoration: none;
+}
+.update-detail__progress:hover {
+    text-decoration: none;
+}
+.update-detail .history-entry__action {
+    display: inline;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--interactive);
+    line-height: inherit;
+    text-align: left;
+}
+.update-detail .history-entry__action:hover {
+    background: transparent;
+    color: var(--interactive);
+    text-decoration: underline;
+}
+.update-detail .history-entry__action:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
 }
 
 .update-detail__inner .artifact-row {
