@@ -68,17 +68,27 @@ configured with `FIO_DEVICE_API` the same way.
 
 ### Build and Push Container Images
 
-Build each container image and push it to a registry, capturing the
-digest of the pushed image so it can be pinned into the compose app:
+Build each container image, push it to a registry, and export it into the
+update directory as an OCI image layout. Capture the pushed image's digest
+so it can be pinned into the compose app:
 
 ```
   docker buildx build --platform linux/amd64,linux/arm64 \
-    --push -t <registry>/<image-name>:<tag> .
+    -t <registry>/<image-name>:<tag> \
+    --output type=registry \
+    --output type=oci,dest=./148/apps,tar=false .
 ```
 
 Set `--platform` to the target device platforms. This example builds for
 both AMD64 and ARM64; use `--platform linux/arm64` for ARM64 only. Ensure
 your [builder supports the target platforms](https://docs.docker.com/build/building/multi-platform/).
+
+The OCI export saves container layers in `./148/apps` for reuse by
+`composectl pull`. `tar=false` writes a directory layout; the default is a
+tar archive. [Multiple outputs](https://docs.docker.com/build/exporters/#multiple-exporters)
+require Buildx and BuildKit 0.13.0 or later. The selected builder must
+support [OCI export](https://docs.docker.com/build/exporters/oci-docker/),
+for example through the `docker-container` driver.
 
 The push output (or `docker/build-push-action`'s `digest` output, if
 you're doing this via CI) gives you a `sha256` for the image — you will pin
@@ -110,13 +120,16 @@ You can also refer to the [example GitHub Workflow](./gh-workflow-example.yml).
 
 ### Get the App to the Update Server
 
-Download the published app and its container images into the update
-directory:
+Complete the update directory by pulling the published app:
 
 ```
   composectl pull --arch arm64 -i ./148/apps -s ./148/apps \
     <registry>/<app-name>-app@sha256:<contents of app.hash>
 ```
+
+Use the same `./148/apps` directory as the OCI export above.
+`composectl pull` reuses the exported container layers and downloads only
+missing app content.
 
 Set `--arch` to the target device architecture, regardless of the host
 architecture. It must be included in both the container build platforms
