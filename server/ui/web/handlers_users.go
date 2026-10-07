@@ -7,36 +7,185 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
 )
 
+type usersDirectoryCtx struct {
+	baseCtx
+	Entries       []userDirectoryEntry
+	ScopesList    []string
+	CanCreateUser bool
+	IsLocalAuth   bool
+	AuthProvider  string
+}
+
+type directoryPermissions struct {
+	IsLocalAuth     bool
+	CanCreateUser   bool
+	CanManageScopes bool
+	CanDelete       bool
+}
+
+type scopeGroup struct {
+	Resource     string
+	Capabilities []string
+}
+
+type userDirectoryEntry struct {
+	Username         string
+	Email            string
+	CreatedAt        int64
+	Scopes           []string
+	ScopeGroups      []scopeGroup
+	ResourceCount    int
+	IsCurrent        bool
+	CanManageScopes  bool
+	CanResetPassword bool
+	CanDelete        bool
+}
+
 func (h handlers) usersList(c echo.Context) error {
-	user, err := h.users.List()
+	userList, err := h.users.List()
 	if err != nil {
 		return h.handleUnexpected(c, err)
 	}
-	ctx := struct {
-		baseCtx
-		Users      []users.User
-		ScopesList []string
-		CanDelete  bool
-		CanUpdate  bool
-		CanCreate  bool
-		LocalAuth  bool
-	}{
-		baseCtx:    h.baseCtx(c, "Users", "users"),
-		Users:      user,
-		ScopesList: users.ScopesAvailable(),
-		CanDelete:  CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeUsersD),
-		CanUpdate:  CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeUsersRU),
-		CanCreate:  CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeUsersC),
-		LocalAuth:  h.provider.Name() == "local",
+	session := CtxGetSession(c.Request().Context())
+	viewerScopes := session.User.AllowedScopes
+	providerName := h.provider.Name()
+	permissions := directoryPermissionsFor(providerName, viewerScopes)
+	ctx := usersDirectoryCtx{
+		baseCtx:       h.baseCtx(c, "Users", "users"),
+		Entries:       buildUserDirectoryEntries(userList, session.User.Username, permissions),
+		ScopesList:    users.ScopesAvailable(),
+		CanCreateUser: permissions.CanCreateUser,
+		IsLocalAuth:   permissions.IsLocalAuth,
+		AuthProvider:  providerName,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "users.html", ctx)
+}
+
+func directoryPermissionsFor(providerName string, sessionScopes users.Scopes) directoryPermissions {
+	isLocalAuth := providerName == "local"
+	return directoryPermissions{
+		IsLocalAuth:     isLocalAuth,
+		CanCreateUser:   isLocalAuth && sessionScopes.Has(users.ScopeUsersC),
+		CanManageScopes: sessionScopes.Has(users.ScopeUsersRU),
+		CanDelete:       sessionScopes.Has(users.ScopeUsersD),
+	}
+}
+
+func buildUserDirectoryEntries(list []users.User, currentUsername string, permissions directoryPermissions) []userDirectoryEntry {
+	entries := make([]userDirectoryEntry, 0, len(list))
+	for _, user := range list {
+		scopes := user.AllowedScopes.ToSlice()
+		groups := groupScopes(scopes)
+		isCurrent := user.Username == currentUsername
+		entries = append(entries, userDirectoryEntry{
+			Username:         user.Username,
+			Email:            user.Email,
+			CreatedAt:        user.CreatedAt,
+			Scopes:           scopes,
+			ScopeGroups:      groups,
+			ResourceCount:    len(groups),
+			IsCurrent:        isCurrent,
+			CanManageScopes:  permissions.CanManageScopes,
+			CanResetPassword: permissions.IsLocalAuth && permissions.CanManageScopes && !isCurrent,
+			CanDelete:        permissions.CanDelete && !isCurrent,
+		})
+	}
+	return entries
+}
+
+var scopeResourceOrder = map[string]int{
+	"Devices": 0,
+	"Updates": 1,
+	"Users":   2,
+}
+
+var scopeCapabilityOrder = map[string]int{
+	"Read + update": 0,
+	"Read":          1,
+	"Create":        2,
+	"Delete":        3,
+}
+
+func groupScopes(scopes []string) []scopeGroup {
+	grouped := make(map[string][]string)
+	for _, scope := range scopes {
+		resource, capability, ok := strings.Cut(scope, ":")
+		if !ok || resource == "" || capability == "" {
+			continue
+		}
+
+		resource = scopeResourceLabel(resource)
+		grouped[resource] = append(grouped[resource], scopeCapabilityLabel(capability))
+	}
+
+	groups := make([]scopeGroup, 0, len(grouped))
+	for resource, capabilities := range grouped {
+		sort.SliceStable(capabilities, func(i, j int) bool {
+			leftOrder, leftKnown := scopeCapabilityOrder[capabilities[i]]
+			rightOrder, rightKnown := scopeCapabilityOrder[capabilities[j]]
+			if leftKnown != rightKnown {
+				return leftKnown
+			}
+			if leftKnown {
+				return leftOrder < rightOrder
+			}
+			return capabilities[i] < capabilities[j]
+		})
+		groups = append(groups, scopeGroup{Resource: resource, Capabilities: capabilities})
+	}
+
+	sort.SliceStable(groups, func(i, j int) bool {
+		leftOrder, leftKnown := scopeResourceOrder[groups[i].Resource]
+		rightOrder, rightKnown := scopeResourceOrder[groups[j].Resource]
+		if leftKnown != rightKnown {
+			return leftKnown
+		}
+		if leftKnown {
+			return leftOrder < rightOrder
+		}
+		return groups[i].Resource < groups[j].Resource
+	})
+	return groups
+}
+
+func scopeResourceLabel(resource string) string {
+	switch resource {
+	case "devices":
+		return "Devices"
+	case "updates":
+		return "Updates"
+	case "users":
+		return "Users"
+	default:
+		first, size := utf8.DecodeRuneInString(resource)
+		return string(unicode.ToUpper(first)) + resource[size:]
+	}
+}
+
+func scopeCapabilityLabel(capability string) string {
+	switch capability {
+	case "read":
+		return "Read"
+	case "read-update":
+		return "Read + update"
+	case "create":
+		return "Create"
+	case "delete":
+		return "Delete"
+	default:
+		return capability
+	}
 }
 
 func (h handlers) userDelete(c echo.Context) error {
