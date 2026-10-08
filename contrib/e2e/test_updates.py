@@ -6,7 +6,7 @@
 
 def test_update_upload(fiocli, sample_update):
     """Upload the cached update artifact and verify it appears in the updates list."""
-    fiocli("updates", "upload", "main", "--hardware-id=amd64-linux", "fixture-update", str(sample_update))
+    fiocli("updates", "upload", "main", "--hardware-id=amd64-linux", "--ostree-hash=DEADBEEF", "fixture-update", str(sample_update))
 
     out = fiocli("updates", "list")
     assert "fixture-update  main" in out, f"Uploaded update not found in 'updates list':\n{out}"
