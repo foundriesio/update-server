@@ -12,7 +12,7 @@ def test_full_update_flow(fiocli, fiocli_tail, sample_update, registered_device,
     uuid = registered_device["uuid"]
 
     # Upload the update artifact
-    fiocli("updates", "upload", "--hardware-id=intel-corei7-64", "main", UPDATE_NAME, str(sample_update))
+    fiocli("updates", "upload", "--hardware-id=intel-corei7-64", "--ostree-hash=DEADBEEF", "main", UPDATE_NAME, str(sample_update))
 
     # Create a rollout targeting this specific device
     fiocli(
