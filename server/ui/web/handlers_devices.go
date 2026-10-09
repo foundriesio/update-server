@@ -53,7 +53,7 @@ func (h handlers) devicesList(c echo.Context) error {
 		HasPrev    bool
 		Sort       string
 	}{
-		baseCtx:    h.baseCtx(c, "Devices", "devices"),
+		baseCtx:    h.baseCtx(c, devicesLabel, "devices"),
 		Devices:    devices,
 		CanDelete:  CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeDevicesD),
 		Page:       page,

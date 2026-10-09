@@ -1,348 +1,525 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
-      <table class="striped">
-        <thead>
-            <tr>
-            <th>Username</th>
-            <th>Created at</th>
-            <th>Email</th>
-            <th>Allowed scopes</th>
-            <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{ range .Users}}
-            <tr>
-            <td>{{.Username}}</td>
-            <td>{{tsToString .CreatedAt}}</td>
-            <td>{{.Email}}</td>
-            <td>{{.AllowedScopes}}</td>
-            <td>
-              <a href="/users/{{.Username}}/audit-log"><i title="View audit log" class="history"></i></a>
-              {{ if and $.CanUpdate }}
-              <i title="Change scopes" class="edit" onclick="showScopesModal('{{.Username}}', '{{.AllowedScopes}}')"></i>
-              {{ if and $.LocalAuth (ne .Username $.User.Username) }}
-              <i title="Reset password" class="password-reset" onclick="showResetPasswordModal('{{.Username}}')"></i>
-              {{ end }}
-              {{ end }}
-              {{ if and $.CanDelete (ne .Username $.User.Username) }}
-              <i title="Delete user" class="trash" onclick="deleteUser('{{.Username}}')"></i>
-              {{ end }}
-            </td>
-            </tr>
-            {{ end }}
-        </tbody>
-      </table>
-      <dialog id="scopesModal">
+<section class="users-directory">
+  <h1>{{.Title}}</h1>
+  {{if .CanCreateUser}}
+  <button class="btn-solid" type="button" data-dialog-open="user-create-dialog">Create user</button>
+  {{end}}
+
+  <section class="meta-section" aria-label="Users overview">
+    <div class="meta-grid">
+      <div class="meta-row">
+        <span class="meta-label">Total users</span>
+        <span class="meta-value is-mono">{{len .Entries}}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Authentication provider</span>
+        <span class="meta-value is-mono">{{.AuthProvider}}</span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="directory-title">
+    <h2 class="meta-section__title" id="directory-title">Account directory</h2>
+
+    {{if .Entries}}
+    <ol class="account-directory">
+      {{range .Entries}}
+      <li class="account-record{{if .IsCurrent}} account-record--current{{end}}">
         <article>
-          <header>
-            <button aria-label="Close" rel="prev" onclick="scopesModal.close()"></button>
-            <h3>Update user scopes</h3>
-            <p><i>The user will need to log out and log in for permission changes to take effect.</i></p>
-          </header>
-          <form method="dialog">
-            <label for="scopes">Scopes:</label>
-            {{range .ScopesList}}
-            <input type="checkbox" id="scope-{{.}}" name="scopes" value="{{.}}">
-            <label for="scope-{{.}}">{{.}}</label><br>
-            {{end}}
-          </form>
-          <footer>
-            <button role="button" onclick="scopesModal.close()">Cancel</button>
-            <button autofocus="" role="button" onclick="updateScopes()">Confirm</button>
-          </footer>
+            <header class="account-record__header">
+              <div class="identity-avatar" aria-hidden="true">{{initials .Username}}</div>
+              <div class="account-record__identity">
+                <h3 class="entity-name users-directory__mono">
+                  {{.Username}}
+                  {{if .IsCurrent}}<span class="current-account">Current account</span>{{end}}
+                </h3>
+                <p>{{if .Email}}{{.Email}}{{else}}Email not available{{end}}</p>
+              </div>
+              <dl class="account-record__facts">
+                <div>
+                  <dt>Created</dt>
+                  <dd><time datetime="{{tsToString .CreatedAt}}" data-timestamp="{{.CreatedAt}}">{{tsToString .CreatedAt}}</time></dd>
+                </div>
+                <div>
+                  <dt>Access</dt>
+                  <dd>{{.ResourceCount}} resource{{if ne .ResourceCount 1}}s{{end}}</dd>
+                </div>
+              </dl>
+            </header>
+
+            <details class="access-disclosure">
+              <summary>
+                <span class="access-disclosure__title">View access</span>
+                <span class="collapsible-toggle access-disclosure__toggle" aria-hidden="true">
+                  <span class="toggle-show">Show</span>
+                  <span class="toggle-hide">Hide</span>
+                </span>
+              </summary>
+              {{if .ScopeGroups}}
+              <div class="scope-groups">
+                {{range .ScopeGroups}}
+                <div class="scope-group">
+                  <span class="scope-group__resource">{{.Resource}}</span>
+                  <span class="scope-group__capabilities">
+                    {{range .Capabilities}}<span class="scope-chip">{{.}}</span>{{end}}
+                  </span>
+                </div>
+                {{end}}
+              </div>
+              {{else}}
+              <p class="scope-groups__empty">No scopes assigned</p>
+              {{end}}
+            </details>
+
+            <footer class="account-record__actions">
+              <div class="account-record__primary-actions">
+                <a href="/users/{{.Username}}/audit-log" aria-label="Audit history for {{.Username}}">Audit history</a>
+                {{if .CanManageScopes}}
+                <button type="button" data-action="manage-scopes" data-user="{{.Username}}" data-scopes="{{range $index, $scope := .Scopes}}{{if $index}},{{end}}{{$scope}}{{end}}" aria-label="Manage access for {{.Username}}">Manage access</button>
+                {{end}}
+                {{if and $.IsLocalAuth .CanResetPassword (not .IsCurrent)}}
+                <button type="button" data-action="reset-password" data-user="{{.Username}}" aria-label="Reset password for {{.Username}}">Reset password</button>
+                {{end}}
+              </div>
+              {{if and .CanDelete (not .IsCurrent)}}
+              <button class="btn-delete" type="button" data-action="delete-user" data-user="{{.Username}}" aria-label="Delete user {{.Username}}" title="Delete user">
+                <i class="trash" aria-hidden="true"></i>
+              </button>
+              {{end}}
+              {{if .IsCurrent}}
+              <p class="self-protection">Current accounts cannot reset their own password or be deleted here.</p>
+              {{end}}
+            </footer>
         </article>
-      </dialog>
-      {{ if and .LocalAuth .CanUpdate }}
-      <dialog id="resetPasswordModal">
-        <article>
-          <header>
-            <button aria-label="Close" rel="prev" onclick="resetPasswordModal.close()"></button>
-            <h3>Reset Password</h3>
-          </header>
-          <form method="dialog">
-            <p>Reset password for user: <strong id="resetPasswordUser"></strong></p>
-            <label for="resetNewPassword">New Password:</label>
-            <input type="password" id="resetNewPassword" name="resetNewPassword" required>
-            <label for="resetConfirmPassword">Confirm New Password:</label>
-            <input type="password" id="resetConfirmPassword" name="resetConfirmPassword" required>
-            <span id="resetPasswordError" style="color: red; display: none;">Passwords do not match</span>
-          </form>
-          <footer>
-            <button role="button" onclick="resetPasswordModal.close()">Cancel</button>
-            <button autofocus="" role="button" onclick="resetPassword()">Reset Password</button>
-          </footer>
-        </article>
-      </dialog>
-      {{ end }}
+      </li>
+      {{end}}
+    </ol>
+    {{else}}
+    <section class="users-directory__empty" aria-labelledby="directory-empty-title">
+      <h2 id="directory-empty-title">No users in this directory</h2>
+      <p>{{if .CanCreateUser}}Create the first local account and assign its permissions.{{else}}Accounts will appear here when they are available from the configured authentication provider.{{end}}</p>
+      {{if .CanCreateUser}}
+      <button class="btn-solid" type="button" data-dialog-open="user-create-dialog">Create user</button>
+      {{end}}
     </section>
-    
-    {{ if and .LocalAuth .CanCreate }}
-    <section class="content-section">
-      <h3>Actions</h3>
-      <button onclick="showCreateUserModal()">Create new user</button>
-    </section>
-    <dialog id="createUserModal">
-      <article>
-        <header>
-          <button aria-label="Close" rel="prev" onclick="createUserModal.close()"></button>
-          <h3>Create New User</h3>
-        </header>
-        <form method="dialog">
-          <label for="createUsername">Username:</label>
-          <input type="text" id="createUsername" name="createUsername" required>
-          <label for="createPassword">Password:</label>
-          <input type="password" id="createPassword" name="createPassword" required>
-          <label for="createConfirmPassword">Confirm Password:</label>
-          <input type="password" id="createConfirmPassword" name="createConfirmPassword" required>
-          <span id="createPasswordError" style="color: red; display: none;">Passwords do not match</span>
-          <label>Scopes:</label>
-          {{range $.ScopesList}}
-          <input type="checkbox" id="create-scope-{{.}}" name="createScopes" value="{{.}}">
-          <label for="create-scope-{{.}}">{{.}}</label><br>
-          {{end}}
-        </form>
-        <footer>
-          <button role="button" onclick="createUserModal.close()">Cancel</button>
-          <button autofocus="" role="button" onclick="createUser()">Create</button>
-        </footer>
-      </article>
-    </dialog>
-    {{ end }}
+    {{end}}
+  </section>
+  <p class="sr-only" id="users-directory-status" aria-live="polite"></p>
 
-    <script>
-      let currentUser = null;
+  <dialog id="user-scopes-dialog" class="rollout-dialog users-directory-dialog" aria-labelledby="user-scopes-title">
+    <article>
+      <div class="dlg-header">
+        <h2 id="user-scopes-title" tabindex="-1">Manage access</h2>
+        <button class="dlg-close" id="user-scopes-close" type="button" data-dialog-close aria-label="Close dialog">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <form id="user-scopes-form">
+        <div class="dlg-body">
+          <p class="upload-intro">Choose the access levels for <strong data-dialog-user></strong>. The user must sign in again before changes take effect.</p>
+          <fieldset class="field-row users-directory-dialog__access-group" aria-describedby="user-scopes-description">
+            <legend class="field-row__key">Access levels</legend>
+            <p class="field-row__caption" id="user-scopes-description">Select one or more permissions for this account.</p>
+            <div class="group-grid">
+              {{range $index, $scope := .ScopesList}}
+              <label class="group-check" for="user-scope-{{$index}}">
+                <input type="checkbox" id="user-scope-{{$index}}" name="scopes" value="{{$scope}}">
+                <span class="users-directory__mono">{{$scope}}</span>
+              </label>
+              {{end}}
+            </div>
+          </fieldset>
+        </div>
+      </form>
+      <div class="dlg-footer">
+        <p class="users-directory-dialog__status" data-dialog-status aria-live="polite" role="status" tabindex="-1"></p>
+        <button class="dlg-btn dlg-btn-cancel" id="user-scopes-cancel" type="button" data-dialog-close>Cancel</button>
+        <button class="dlg-btn dlg-btn-rollout" type="submit" form="user-scopes-form">Save access</button>
+      </div>
+    </article>
+  </dialog>
 
-      function showScopesModal(username, currentScopes) {
-        currentUser = username;
+  {{if .IsLocalAuth}}
+  <dialog id="user-reset-password-dialog" class="upload-dialog users-directory-dialog users-directory-dialog--compact" aria-labelledby="user-reset-password-title">
+    <article>
+      <div class="dlg-header">
+        <h2 id="user-reset-password-title" tabindex="-1">Reset password</h2>
+        <button class="dlg-close" type="button" data-dialog-close aria-label="Close dialog">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <form id="user-reset-password-form">
+        <div class="dlg-body">
+          <p class="upload-intro">Set a new password for <strong data-dialog-user></strong>.</p>
+          <div class="field-grid">
+            <div class="field-row">
+              <label class="field-row__key" for="user-reset-password">New password</label>
+              <input class="field-input" id="user-reset-password" name="newPassword" type="password" autocomplete="new-password" required>
+            </div>
+            <div class="field-row">
+              <label class="field-row__key" for="user-reset-password-confirm">Confirm new password</label>
+              <input class="field-input" id="user-reset-password-confirm" type="password" autocomplete="new-password" required>
+            </div>
+          </div>
+          <p class="users-directory-dialog__status" data-dialog-status aria-live="polite" role="status"></p>
+        </div>
+      </form>
+      <div class="dlg-footer">
+        <button class="dlg-btn dlg-btn-cancel" type="button" data-dialog-close>Cancel</button>
+        <button class="dlg-btn dlg-btn-upload" type="submit" form="user-reset-password-form">Reset password</button>
+      </div>
+    </article>
+  </dialog>
+  {{end}}
 
-        const checkboxes = document.getElementsByName('scopes');
-        Array.from(checkboxes).forEach(checkbox => {
-          checkbox.checked = false;
-        });
+  {{if .CanCreateUser}}
+  <dialog id="user-create-dialog" class="upload-dialog users-directory-dialog" aria-labelledby="user-create-title">
+    <article>
+      <div class="dlg-header">
+        <h2 id="user-create-title" tabindex="-1">Create user</h2>
+        <button class="dlg-close" type="button" data-dialog-close aria-label="Close dialog">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <form id="user-create-form">
+        <div class="dlg-body">
+          <p class="upload-intro">Create a local account. If no access levels are selected, the configured defaults are used.</p>
+          <div class="field-grid">
+            <div class="field-row users-directory-dialog__field--full">
+              <label class="field-row__key" for="user-create-username">Username</label>
+              <input class="field-input" id="user-create-username" name="username" type="text" autocomplete="username" spellcheck="false" required>
+            </div>
+            <div class="field-row">
+              <label class="field-row__key" for="user-create-password">Password</label>
+              <input class="field-input" id="user-create-password" name="password" type="password" autocomplete="new-password" required>
+            </div>
+            <div class="field-row">
+              <label class="field-row__key" for="user-create-password-confirm">Confirm password</label>
+              <input class="field-input" id="user-create-password-confirm" type="password" autocomplete="new-password" required>
+            </div>
+          </div>
+          <fieldset class="field-row users-directory-dialog__access-group" aria-describedby="user-create-scopes-description">
+            <legend class="field-row__key">Initial access</legend>
+            <p class="field-row__caption" id="user-create-scopes-description">Select the permissions assigned when the account is created.</p>
+            <div class="group-grid">
+              {{range $index, $scope := .ScopesList}}
+              <label class="group-check" for="user-create-scope-{{$index}}">
+                <input type="checkbox" id="user-create-scope-{{$index}}" name="scopes" value="{{$scope}}">
+                <span class="users-directory__mono">{{$scope}}</span>
+              </label>
+              {{end}}
+            </div>
+          </fieldset>
+          <p class="users-directory-dialog__status" data-dialog-status aria-live="polite" role="status"></p>
+        </div>
+      </form>
+      <div class="dlg-footer">
+        <button class="dlg-btn dlg-btn-cancel" type="button" data-dialog-close>Cancel</button>
+        <button class="dlg-btn dlg-btn-upload" type="submit" form="user-create-form">Create user</button>
+      </div>
+    </article>
+  </dialog>
+  {{end}}
 
-        if (currentScopes) {
-          const scopesArray = currentScopes.split(',').map(s => s.trim());
-          scopesArray.forEach(scope => {
-            const checkbox = document.getElementById('scope-' + scope);
-            if (checkbox) {
-              checkbox.checked = true;
-            }
-          });
-        }
+  <dialog id="user-delete-dialog" class="upload-dialog users-directory-dialog users-directory-dialog--compact" aria-labelledby="user-delete-title">
+    <article>
+      <div class="dlg-header">
+        <h2 id="user-delete-title" tabindex="-1">Delete user</h2>
+        <button class="dlg-close" type="button" data-dialog-close aria-label="Close dialog">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <form id="user-delete-form">
+        <div class="dlg-body">
+          <p class="upload-intro">Delete <strong data-dialog-user></strong>? This action cannot be undone.</p>
+          <label class="users-directory-dialog__acknowledgement" for="user-delete-confirm">
+            <input id="user-delete-confirm" type="checkbox" required>
+            <span>I understand this user will lose access immediately.</span>
+          </label>
+          <p class="users-directory-dialog__status" data-dialog-status aria-live="polite" role="status"></p>
+        </div>
+      </form>
+      <div class="dlg-footer">
+        <button class="dlg-btn dlg-btn-cancel" type="button" data-dialog-close>Cancel</button>
+        <button class="dlg-btn dlg-btn-delete" type="submit" form="user-delete-form" disabled>Delete user</button>
+      </div>
+    </article>
+  </dialog>
+</section>
 
-        scopesModal.show();
-      }
+<script>
+(function () {
+  var root = document.querySelector('.users-directory');
+  if (!root) return;
 
-      function deleteUser(username) {
-        if (!confirm('Are you sure you want to delete user "' + username + '"? This action cannot be undone.')) {
-          return;
-        }
+  var activeTrigger = null;
+  var selectedUser = '';
+  var pageStatus = document.getElementById('users-directory-status');
 
-        fetch('/users/' + username, {
-          method: 'DELETE',
-        })
-        .then(async response => {
-          if (response.ok) {
-            window.location.reload(); // Refresh to show updated user list
-          } else {
-            const errorText = await response.text();
-            alert('Error deleting user: ' + errorText);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error deleting user: ' + error.message);
-        });
-      }
+  function dialogFocusableElements(dialog) {
+    return Array.from(dialog.querySelectorAll(
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter(function (element) {
+      return element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true';
+    });
+  }
 
-      let resetUser = null;
+  function trapDialogFocus(dialog, event) {
+    if (event.key !== 'Tab') return;
 
-      function showResetPasswordModal(username) {
-        resetUser = username;
-        document.getElementById('resetPasswordUser').textContent = username;
-        document.getElementById('resetNewPassword').value = '';
-        document.getElementById('resetConfirmPassword').value = '';
-        document.getElementById('resetPasswordError').style.display = 'none';
-        resetPasswordModal.show();
-        document.getElementById('resetNewPassword').focus();
-      }
+    var focusableElements = dialogFocusableElements(dialog);
+    if (!focusableElements.length) return;
 
-      function resetPassword() {
-        if (!resetUser) {
-          alert('No user selected.');
-          return;
-        }
+    var firstElement = focusableElements[0];
+    var lastElement = focusableElements[focusableElements.length - 1];
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  }
 
-        const newPassword = document.getElementById('resetNewPassword').value;
-        const confirmPassword = document.getElementById('resetConfirmPassword').value;
+  function setStatus(dialog, message, state) {
+    var status = dialog.querySelector('[data-dialog-status]');
+    if (!status) return;
+    status.dataset.state = state || '';
+    status.setAttribute('role', state === 'error' ? 'alert' : 'status');
+    status.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');
+    status.textContent = message || '';
+    if ((state === 'error' || state === 'saving') && status.hasAttribute('tabindex')) status.focus();
+  }
 
-        if (!newPassword) {
-          alert('New password is required.');
-          return;
-        }
+  function submitButton(form) {
+    return form.querySelector('button[type="submit"]') || root.querySelector('button[form="' + form.id + '"]');
+  }
 
-        if (newPassword !== confirmPassword) {
-          document.getElementById('resetPasswordError').style.display = 'inline';
-          return;
-        }
+  function setSubmitting(form, submitting) {
+    var submit = submitButton(form);
+    if (submit) submit.disabled = submitting;
+    form.setAttribute('aria-busy', submitting ? 'true' : 'false');
+  }
 
-        const formData = new FormData();
-        formData.append('newPassword', newPassword);
+  function openDialog(dialog, trigger) {
+    activeTrigger = trigger;
+    setStatus(dialog, '');
+    dialog.showModal();
+    var dialogTitle = dialog.querySelector('.dlg-header h2');
+    if (dialogTitle) dialogTitle.focus();
+  }
 
-        fetch('/users/' + resetUser + '/reset-password', {
-          method: 'POST',
-          body: formData
-        })
-        .then(async response => {
-          if (response.ok) {
-            resetPasswordModal.close();
-          } else {
-            const errorText = await response.text();
-            alert('Error resetting password: ' + errorText);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error resetting password: ' + error.message);
-        });
-      }
+  function responseError(response, fallback) {
+    return response.text().then(function (message) {
+      try {
+        var payload = JSON.parse(message);
+        if (payload && payload.message) message = payload.message;
+      } catch (_) {}
+      throw new Error(message || fallback);
+    });
+  }
 
-      // Set up password match validation for reset dialog
-      document.addEventListener('DOMContentLoaded', function() {
-        const resetConfirm = document.getElementById('resetConfirmPassword');
-        const resetNew = document.getElementById('resetNewPassword');
-        const resetError = document.getElementById('resetPasswordError');
-        if (resetConfirm && resetNew) {
-          function checkResetMatch() {
-            if (resetConfirm.value && resetNew.value !== resetConfirm.value) {
-              resetError.style.display = 'inline';
-            } else {
-              resetError.style.display = 'none';
-            }
-          }
-          resetConfirm.addEventListener('input', checkResetMatch);
-          resetNew.addEventListener('input', checkResetMatch);
-        }
+  root.addEventListener('click', function (event) {
+    var trigger = event.target.closest('[data-dialog-open], [data-action]');
+    if (!trigger) return;
+
+    var dialogID = trigger.dataset.dialogOpen;
+    var action = trigger.dataset.action;
+    selectedUser = trigger.dataset.user || '';
+
+    if (action === 'manage-scopes') {
+      dialogID = 'user-scopes-dialog';
+      var selectedScopes = (trigger.dataset.scopes || '').split(',').filter(Boolean);
+      var scopeDialog = document.getElementById(dialogID);
+      scopeDialog.querySelectorAll('input[name="scopes"]').forEach(function (input) {
+        input.checked = selectedScopes.indexOf(input.value) !== -1;
       });
+      scopeDialog.querySelector('[data-dialog-user]').textContent = selectedUser;
+    } else if (action === 'reset-password') {
+      dialogID = 'user-reset-password-dialog';
+      var resetDialog = document.getElementById(dialogID);
+      resetDialog.querySelector('form').reset();
+      resetDialog.querySelector('[data-dialog-user]').textContent = selectedUser;
+    } else if (action === 'delete-user') {
+      dialogID = 'user-delete-dialog';
+      var deleteDialog = document.getElementById(dialogID);
+      deleteDialog.querySelector('form').reset();
+      deleteDialog.querySelector('button[type="submit"]').disabled = true;
+      deleteDialog.querySelector('[data-dialog-user]').textContent = selectedUser;
+    } else if (dialogID === 'user-create-dialog') {
+      document.getElementById('user-create-form').reset();
+    }
 
-      {{ if and .LocalAuth .CanCreate }}
-      function showCreateUserModal() {
-        document.getElementById('createUsername').value = '';
-        document.getElementById('createPassword').value = '';
-        document.getElementById('createConfirmPassword').value = '';
-        document.getElementById('createPasswordError').style.display = 'none';
-        const createScopeBoxes = document.getElementsByName('createScopes');
-        Array.from(createScopeBoxes).forEach(cb => cb.checked = false);
-        createUserModal.show();
-        document.getElementById('createUsername').focus();
-      }
+    var dialog = document.getElementById(dialogID);
+    if (dialog) openDialog(dialog, trigger);
+  });
 
-      function createUser() {
-        const username = document.getElementById('createUsername').value.trim();
-        const password = document.getElementById('createPassword').value;
-        const confirmPassword = document.getElementById('createConfirmPassword').value;
+  root.querySelectorAll('[data-dialog-close]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      button.closest('dialog').close();
+    });
+  });
 
-        if (!username) {
-          alert('Username is required.');
-          return;
-        }
-        if (!password) {
-          alert('Password is required.');
-          return;
-        }
-        if (password !== confirmPassword) {
-          document.getElementById('createPasswordError').style.display = 'inline';
-          return;
-        }
+  root.querySelectorAll('dialog').forEach(function (dialog) {
+    dialog.addEventListener('keydown', function (event) {
+      trapDialogFocus(dialog, event);
+    });
+    dialog.addEventListener('close', function () {
+      setStatus(dialog, '');
+      if (activeTrigger && document.contains(activeTrigger)) activeTrigger.focus();
+      activeTrigger = null;
+    });
+  });
 
-        const scopeCheckboxes = document.getElementsByName('createScopes');
-        const scopes = Array.from(scopeCheckboxes)
-          .filter(checkbox => checkbox.checked)
-          .map(checkbox => checkbox.value);
+  var scopesForm = document.getElementById('user-scopes-form');
+  var scopeDialog = document.getElementById('user-scopes-dialog');
+  var scopesClose = document.getElementById('user-scopes-close');
+  var scopesCancel = document.getElementById('user-scopes-cancel');
+  var scopesSubmit = submitButton(scopesForm);
 
-        fetch('/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            username: username,
-            password: password,
-            scopes: scopes
-          })
-        })
-        .then(async response => {
-          if (response.ok) {
-            createUserModal.close();
-            window.location.reload();
-          } else {
-            const errorText = await response.text();
-            alert('Error creating user: ' + errorText);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error creating user: ' + error.message);
-        });
-      }
+  function setScopesSubmitting(submitting) {
+    setSubmitting(scopesForm, submitting);
+    scopesClose.disabled = submitting;
+    scopesCancel.disabled = submitting;
+    scopesSubmit.textContent = submitting ? 'Saving access…' : 'Save access';
+    scopesForm.querySelectorAll('input[name="scopes"]').forEach(function (input) {
+      input.disabled = submitting;
+    });
+  }
 
-      // Set up password match validation for create user dialog
-      document.addEventListener('DOMContentLoaded', function() {
-        const createConfirm = document.getElementById('createConfirmPassword');
-        const createNew = document.getElementById('createPassword');
-        const createError = document.getElementById('createPasswordError');
-        if (createConfirm && createNew) {
-          function checkCreateMatch() {
-            if (createConfirm.value && createNew.value !== createConfirm.value) {
-              createError.style.display = 'inline';
-            } else {
-              createError.style.display = 'none';
-            }
-          }
-          createConfirm.addEventListener('input', checkCreateMatch);
-          createNew.addEventListener('input', checkCreateMatch);
-        }
+  scopeDialog.addEventListener('cancel', function (event) {
+    if (scopesForm.getAttribute('aria-busy') === 'true') event.preventDefault();
+  });
+
+  scopeDialog.addEventListener('click', function (event) {
+    if (scopesForm.getAttribute('aria-busy') === 'true') return;
+    if (event.target === scopeDialog) scopeDialog.close();
+  });
+
+  scopesForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    var dialog = scopesForm.closest('dialog');
+    var scopes = Array.from(scopesForm.querySelectorAll('input[name="scopes"]:checked')).map(function (input) {
+      return input.value;
+    });
+    if (scopes.length === 0) {
+      setStatus(dialog, 'Select at least one permission before saving access.', 'error');
+      return;
+    }
+    setScopesSubmitting(true);
+    setStatus(dialog, 'Saving access…', 'saving');
+    fetch('/users/' + encodeURIComponent(selectedUser) + '/scopes', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({scopes: scopes})
+    }).then(function (response) {
+      if (!response.ok) return responseError(response, 'Unable to update scopes.');
+      window.location.reload();
+    }).catch(function (error) {
+      setStatus(dialog, error.message, 'error');
+      setScopesSubmitting(false);
+    });
+  });
+
+  var resetForm = document.getElementById('user-reset-password-form');
+  if (resetForm) {
+    resetForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var dialog = resetForm.closest('dialog');
+      var password = document.getElementById('user-reset-password');
+      var confirmation = document.getElementById('user-reset-password-confirm');
+      confirmation.setCustomValidity(password.value === confirmation.value ? '' : 'Passwords do not match.');
+      if (!resetForm.reportValidity()) return;
+
+      var formData = new FormData();
+      formData.append('newPassword', password.value);
+      setSubmitting(resetForm, true);
+      setStatus(dialog, '');
+      fetch('/users/' + encodeURIComponent(selectedUser) + '/reset-password', {
+        method: 'POST',
+        body: formData
+      }).then(function (response) {
+        if (!response.ok) return responseError(response, 'Unable to reset the password.');
+        dialog.close();
+        pageStatus.textContent = 'Password reset for ' + selectedUser + '.';
+      }).catch(function (error) {
+        setStatus(dialog, error.message, 'error');
+      }).finally(function () {
+        setSubmitting(resetForm, false);
       });
-      {{ end }}
+    });
+  }
 
-      function updateScopes() {
-        if (!currentUser) {
-          alert('No user selected.');
-          return;
-        }
+  var createForm = document.getElementById('user-create-form');
+  if (createForm) {
+    createForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var dialog = createForm.closest('dialog');
+      var username = document.getElementById('user-create-username');
+      var password = document.getElementById('user-create-password');
+      var confirmation = document.getElementById('user-create-password-confirm');
+      confirmation.setCustomValidity(password.value === confirmation.value ? '' : 'Passwords do not match.');
+      if (!createForm.reportValidity()) return;
 
-        const scopeCheckboxes = document.getElementsByName('scopes');
-        const scopes = Array.from(scopeCheckboxes)
-          .filter(checkbox => checkbox.checked)
-          .map(checkbox => checkbox.value);
+      var scopes = Array.from(createForm.querySelectorAll('input[name="scopes"]:checked')).map(function (input) {
+        return input.value;
+      });
+      setSubmitting(createForm, true);
+      setStatus(dialog, '');
+      fetch('/users', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: username.value.trim(), password: password.value, scopes: scopes})
+      }).then(function (response) {
+        if (!response.ok) return responseError(response, 'Unable to create the user.');
+        window.location.reload();
+      }).catch(function (error) {
+        setStatus(dialog, error.message, 'error');
+        setSubmitting(createForm, false);
+      });
+    });
+  }
 
-        const updateData = {
-          scopes: scopes
-        };
+  var deleteForm = document.getElementById('user-delete-form');
+  var deleteAcknowledgement = document.getElementById('user-delete-confirm');
+  deleteAcknowledgement.addEventListener('change', function () {
+    submitButton(deleteForm).disabled = !deleteAcknowledgement.checked;
+  });
+  deleteForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (!deleteForm.reportValidity()) return;
+    var dialog = deleteForm.closest('dialog');
+    setSubmitting(deleteForm, true);
+    setStatus(dialog, '');
+    fetch('/users/' + encodeURIComponent(selectedUser), {
+      method: 'DELETE'
+    }).then(function (response) {
+      if (!response.ok) return responseError(response, 'Unable to delete the user.');
+      window.location.reload();
+    }).catch(function (error) {
+      setStatus(dialog, error.message, 'error');
+      setSubmitting(deleteForm, false);
+    });
+  });
 
-        fetch('/users/' + currentUser + '/scopes', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updateData)
-        })
-        .then(async response => {
-          if (response.ok) {
-            scopesModal.close();
-            window.location.reload(); // Refresh to show updated scopes
-          } else {
-            const errorText = await response.text();
-            alert('Error updating scopes: ' + errorText);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error updating scopes: ' + error.message);
-        });
-      }
-    </script>
+  root.querySelectorAll('time[data-timestamp]').forEach(function (timeElement) {
+    var timestamp = Number(timeElement.dataset.timestamp);
+    if (!Number.isFinite(timestamp) || timestamp <= 0) return;
+    timeElement.textContent = new Intl.DateTimeFormat(navigator.languages, {dateStyle: 'medium'}).format(new Date(timestamp * 1000));
+  });
+}());
+</script>
 
 {{ template "footer" .}}

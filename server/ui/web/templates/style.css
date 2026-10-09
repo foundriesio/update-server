@@ -5,7 +5,7 @@
    standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
 @import url('/css/pico_min_211.css') layer(pico);
 
-@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream;
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream, users-directory;
 
 @layer tokens {
 
@@ -1169,6 +1169,76 @@ summary.user-badge::after {
     #sidenav-scrim.is-visible {
         opacity: 1;
         pointer-events: auto;
+    }
+}
+
+@media (pointer: coarse) {
+    #topbar {
+        gap: 8px;
+    }
+    #nav-toggle,
+    #theme-toggle {
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
+    }
+    .topbar-right {
+        gap: 12px;
+    }
+    .topbar-brand {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .topbar-right > a {
+        display: inline-flex;
+        min-width: 44px;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+    }
+    summary.user-badge {
+        width: 44px !important;
+        height: 44px !important;
+    }
+    .topbar-right details.dropdown > summary + ul a,
+    #sidenav nav ul li a {
+        display: flex;
+        min-height: 44px;
+        align-items: center;
+    }
+}
+
+@media (max-width: 480px) {
+    #app,
+    #app.nav-collapsed {
+        grid-template-rows: auto 1fr;
+    }
+    #topbar {
+        min-height: var(--topbar-h);
+        padding: 6px 8px;
+        flex-wrap: wrap;
+        align-content: center;
+        gap: 4px 8px;
+    }
+    .topbar-brand {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+        font-size: 1rem;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .topbar-right {
+        width: 100%;
+        flex: 1 0 100%;
+        justify-content: flex-end;
+        gap: 16px;
+        margin-left: 0;
     }
 }
 
@@ -3700,3 +3770,492 @@ pre.code-block {
 }
 
 } /* end @layer update-stream */
+
+@layer users-directory {
+
+.users-directory {
+    width: 100%;
+    max-width: 900px;
+    min-width: 0;
+    color: var(--text-1);
+}
+.users-directory .account-directory {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.users-directory .account-record {
+    min-width: 0;
+    margin: 0;
+}
+.users-directory .account-record > article {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-1);
+    border-radius: 4px;
+    background: var(--surface-2);
+    box-shadow: none;
+}
+.users-directory .account-record--current > article {
+    border-color: color-mix(in srgb, var(--interactive) 45%, var(--border-1));
+}
+.users-directory .account-record__header {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    margin: 0;
+    padding: 15px 16px;
+    border-bottom: 0;
+}
+.users-directory .identity-avatar {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--chip-group-bg);
+    color: var(--interactive);
+    font: 700 0.7rem/1 var(--mono);
+}
+.users-directory .account-record__identity {
+    min-width: 0;
+}
+.users-directory .account-record__identity .entity-name {
+    overflow-wrap: anywhere;
+}
+.users-directory .account-record__identity p {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.76rem;
+    overflow-wrap: anywhere;
+}
+.users-directory .users-directory__mono {
+    font-family: var(--mono);
+}
+.users-directory .current-account {
+    display: inline-flex;
+    margin-left: 5px;
+    padding: 2px 5px;
+    border: 1px solid var(--border-2);
+    border-radius: 3px;
+    color: var(--text-2);
+    font-size: 0.56rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+.users-directory .account-record__facts {
+    display: flex;
+    gap: 20px;
+    min-width: 0;
+    margin: 0;
+}
+.users-directory .account-record__facts div {
+    min-width: 84px;
+}
+.users-directory .account-record__facts dt {
+    color: var(--text-3);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+.users-directory .account-record__facts dd {
+    margin: 3px 0 0;
+    color: var(--text-1);
+    font: 0.72rem/1.4 var(--mono);
+    white-space: nowrap;
+}
+.users-directory .access-disclosure {
+    margin: 0;
+    border-top: 1px solid var(--border-1);
+    border-bottom: 0;
+}
+.users-directory .access-disclosure > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 40px;
+    margin: 0;
+    padding: 9px 16px;
+    color: var(--interactive);
+    font-size: 0.75rem;
+    font-weight: 600;
+    list-style: none;
+}
+.users-directory .access-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+.users-directory .access-disclosure > summary::marker {
+    content: none;
+}
+.users-directory .access-disclosure > summary::after {
+    display: none;
+    content: none;
+}
+.users-directory .access-disclosure__title,
+.users-directory .access-disclosure__toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+}
+.users-directory .access-disclosure__toggle {
+    flex-shrink: 0;
+}
+.users-directory .access-disclosure__toggle .toggle-hide {
+    display: none;
+}
+.users-directory .access-disclosure[open] .toggle-show {
+    display: none;
+}
+.users-directory .access-disclosure[open] .toggle-hide {
+    display: inline;
+}
+.users-directory .access-disclosure > summary:hover {
+    background: var(--surface-hover);
+}
+.users-directory .access-disclosure > summary:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+.users-directory .scope-groups {
+    display: grid;
+    gap: 8px;
+    padding: 8px 16px 14px;
+}
+.users-directory .scope-group {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 10px;
+    color: var(--text-2);
+    font-size: 0.75rem;
+}
+.users-directory .scope-group__resource {
+    flex: 0 0 62px;
+    padding-top: 3px;
+    font-weight: 600;
+}
+.users-directory .scope-group__capabilities {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.users-directory .scope-chip {
+    display: inline-flex;
+    max-width: 100%;
+    padding: 3px 6px;
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    background: var(--surface-1);
+    color: var(--text-2);
+    font: 0.68rem/1.3 var(--mono);
+    overflow-wrap: anywhere;
+}
+.users-directory .scope-groups__empty {
+    margin: 0;
+    padding: 8px 16px 14px;
+    color: var(--text-3);
+    font-size: 0.75rem;
+}
+.users-directory .account-record__actions {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin: 0;
+    padding: 9px 16px;
+    border-top: 1px solid var(--border-1);
+    background: var(--surface-1);
+}
+.users-directory .account-record__primary-actions {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 14px;
+}
+.users-directory .account-record__actions a,
+.users-directory .account-record__actions button:not(.btn-delete) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    width: auto;
+    margin: 0;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--interactive);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+}
+.users-directory .account-record__actions a:hover,
+.users-directory .account-record__actions button:not(.btn-delete):hover {
+    color: var(--interactive);
+    text-decoration: underline;
+}
+.users-directory .account-record__actions a:focus-visible,
+.users-directory .account-record__actions button:not(.btn-delete):focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.users-directory .account-record__actions .btn-delete {
+    margin-left: auto;
+}
+.users-directory .self-protection {
+    flex: 1 1 260px;
+    margin: 0 0 0 auto;
+    color: var(--text-3);
+    font-size: 0.7rem;
+    text-align: right;
+}
+.users-directory .users-directory__empty {
+    max-width: 560px;
+    padding: 24px;
+    border: 1px dashed var(--border-2);
+    border-radius: 4px;
+    background: var(--surface-1);
+}
+.users-directory .users-directory__empty p {
+    margin: 0 0 18px;
+    color: var(--text-2);
+    font-size: 0.8rem;
+}
+
+.users-directory-dialog {
+    max-width: none;
+    overscroll-behavior: contain;
+}
+.users-directory-dialog > article {
+    max-height: min(760px, calc(100vh - 32px));
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    box-shadow: none;
+}
+.users-directory-dialog--compact > article {
+    width: min(560px, calc(100vw - 32px));
+    max-width: 560px;
+}
+.users-directory-dialog .dlg-header,
+.users-directory-dialog .dlg-footer {
+    margin: 0;
+}
+.users-directory-dialog .dlg-close {
+    min-width: 24px;
+    min-height: 24px;
+}
+.users-directory-dialog .dlg-btn {
+    width: auto;
+}
+.users-directory-dialog form {
+    margin: 0;
+}
+.users-directory-dialog .dlg-body {
+    padding-bottom: 8px;
+}
+.users-directory-dialog .users-directory-dialog__field--full {
+    grid-column: 1 / -1;
+}
+.users-directory-dialog .users-directory-dialog__access-group {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.users-directory-dialog .users-directory-dialog__access-group > legend {
+    float: none;
+    width: auto;
+    padding: 0;
+}
+.users-directory-dialog .group-check {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+#user-scopes-dialog > article {
+    width: min(680px, calc(100vw - 32px));
+    max-width: 680px;
+}
+#user-scopes-dialog .group-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+#user-scopes-dialog .group-check {
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    background: var(--surface-2);
+    line-height: 1.35;
+    transition: background 0.1s, border-color 0.1s;
+}
+#user-scopes-dialog .group-check:hover {
+    border-color: var(--border-2);
+    background: var(--surface-hover);
+}
+#user-scopes-dialog .group-check:has(input:checked) {
+    border-color: var(--interactive);
+    background: color-mix(in srgb, var(--interactive) 7%, var(--surface-2));
+}
+#user-scopes-dialog .group-check:has(input:checked):hover {
+    background: color-mix(in srgb, var(--interactive) 11%, var(--surface-2));
+}
+#user-scopes-dialog .group-check input {
+    accent-color: var(--interactive);
+}
+.users-directory-dialog .group-check input:focus-visible,
+.users-directory-dialog .users-directory-dialog__acknowledgement input:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.users-directory-dialog .users-directory-dialog__status {
+    min-height: 1.25rem;
+    margin: 12px 0 0;
+    color: var(--text-2);
+    font-size: 0.76rem;
+}
+.users-directory-dialog .users-directory-dialog__status[data-state="error"] {
+    color: var(--danger);
+}
+.users-directory-dialog .users-directory-dialog__status:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+#user-scopes-dialog .dlg-footer {
+    align-items: center;
+}
+#user-scopes-dialog .users-directory-dialog__status {
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    margin: 0;
+}
+.users-directory-dialog .users-directory-dialog__acknowledgement {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+.users-directory-dialog .users-directory-dialog__acknowledgement input {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+    margin: 2px 0 0;
+    accent-color: var(--danger);
+}
+.users-directory-dialog .dlg-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+@media (max-width: 640px) {
+    #user-scopes-dialog .group-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 760px) {
+    .users-directory .account-record__header {
+        grid-template-columns: 40px minmax(0, 1fr);
+    }
+    .users-directory .account-record__facts {
+        grid-column: 1 / -1;
+        padding-left: 52px;
+    }
+}
+
+@media (max-width: 480px) {
+    #user-scopes-dialog > article {
+        width: calc(100vw - 16px);
+    }
+    .users-directory .account-record__header {
+        padding: 13px 12px;
+    }
+    .users-directory .account-record__facts {
+        gap: 14px;
+        padding-left: 0;
+    }
+    .users-directory .account-record__facts div {
+        min-width: 0;
+    }
+    .users-directory .account-record__facts dd {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    .users-directory .access-disclosure > summary,
+    .users-directory .scope-groups,
+    .users-directory .scope-groups__empty,
+    .users-directory .account-record__actions {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+    .users-directory .scope-group {
+        display: block;
+    }
+    .users-directory .scope-group__resource {
+        display: block;
+        margin-bottom: 5px;
+        padding-top: 0;
+    }
+    .users-directory .self-protection {
+        flex-basis: 100%;
+        margin-left: 0;
+        text-align: left;
+    }
+    .users-directory-dialog > article {
+        width: calc(100vw - 16px);
+        max-height: calc(100vh - 16px);
+    }
+}
+
+@media (pointer: coarse) {
+    .users-directory .access-disclosure > summary,
+    .users-directory .account-record__actions a,
+    .users-directory .account-record__actions button:not(.btn-delete),
+    .users-directory .account-record__actions .btn-delete,
+    .users-directory > .btn-solid,
+    .users-directory .users-directory__empty .btn-solid,
+    .users-directory-dialog .dlg-close,
+    .users-directory-dialog .dlg-btn,
+    .users-directory-dialog .group-check {
+        min-height: 44px;
+    }
+    .users-directory .account-record__actions .btn-delete,
+    .users-directory-dialog .dlg-close {
+        min-width: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .users-directory *,
+    .users-directory-dialog * {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+} /* end @layer users-directory */
