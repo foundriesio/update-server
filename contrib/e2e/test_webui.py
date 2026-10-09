@@ -20,7 +20,7 @@ def test_root_redirects_to_devices(page, update_server):
 def test_nav_links(page, update_server):
     """Sub-navigation contains all expected section links."""
     page.goto(f"{SERVER_URL}/devices")
-    subnav = page.locator("#subnav")
+    subnav = page.locator("#sidenav")
     for label in ("Devices", "Configs", "Updates", "Users"):
         assert subnav.get_by_role("link", name=label).is_visible()
 
