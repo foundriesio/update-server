@@ -38,6 +38,19 @@ def test_updates_page_loads(page, update_server):
     assert page.get_by_role("heading", name="Updates").is_visible()
 
 
+def test_upload_dialog_opens_and_closes(page, update_server):
+    """Upload dialog opens when button is clicked and closes via close button."""
+    page.goto(f"{SERVER_URL}/updates")
+    dialog = page.locator("#upload-dialog")
+    assert not dialog.is_visible()
+
+    page.click("#show-upload-btn")
+    assert dialog.is_visible()
+
+    page.click("#dlg-close-btn")
+    assert not dialog.is_visible()
+
+
 # ── Device-dependent tests (require a registered device) ────────────────────
 
 

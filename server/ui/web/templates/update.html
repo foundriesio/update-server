@@ -1,204 +1,261 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+    <section class="update-detail">
+      <div class="update-detail__inner">
 
-      <div class="grid">
-        <div>
-          <fieldset>
-            <legend><strong>Tag</strong></legend>
-            <p>{{.Tag}}</p>
-          </fieldset>
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/updates">Updates</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current">{{.Name}}</span>
+        </nav>
 
-          <fieldset>
-            <legend><strong>Name</strong></legend>
-            <p>{{.Name}}</p>
-          </fieldset>
-        </div> 
-
-        <div>
-         <fieldset>
-            <legend><strong>Rollout summary</strong></legend>
-            <ul>
-            {{ if len .Summary.Status }}
-              {{ range $status, $count := .Summary.Status }}
-                <li><strong>{{ $status }}:</strong> <a href="#" onclick="showDevicesModal('{{ $status }}'); return false;">{{ $count }} devices</a></li>
-              {{ end }}
-            {{ else }}
-              <li>No rollout summary available.</li>
-            {{ end }}
-            </ul>
-          </fieldset> 
-        </div> 
-      </div>
-
-      <button onclick='location.href="/updates/{{$.Name}}/tail";'>Follow progress</button>
-      <button onclick="rolloutModal.show()">Create rollout</button>
-    </section>
-
-    <section class="content-section">
-      <h2>Rollout history</h3>
-      <ul>
-      {{ range .Rollouts }}
-        <li><a href="/updates/{{$.Name}}/rollouts/{{.}}">{{.}}</a></li>
-      {{ end }}
-      </ul>
-
-      <dialog id="rolloutModal">
-        <article>
-          <header>
-            <button aria-label="Close" rel="prev" onclick="rolloutModal.close()"></button>
-            <h3>Create new rollout</h3>
-          </header>
-          <form method="dialog">
-            <label for="name">Rollout name:</label>
-            <input type="text" id="name" name="name">
-
-            <label for="uuids">Uuids:</label>
-            <input type="text" id="uuids" name="uuids", placeholder="comma,separated,values">
-
-            <label for="deviceGroups">Device groups:</label>
-            <select id="deviceGroups" name="deviceGroups" multiple>
-              {{ range .Groups }}
-              <option value="{{.}}">{{.}}</option>
-              {{ end }}
-            </select>
-          </form>
-          <footer>
-            <button role="button" onclick="rolloutModal.close()">Cancel</button>
-            <button autofocus="" role="button" onclick="createRollout()">Confirm</button>
-          </footer>
-        </article>
-      </dialog>
-
-      <dialog id="devicesModal">
-        <article>
-          <header>
-            <button aria-label="Close" rel="prev" onclick="devicesModal.close()"></button>
-            <h3>Devices - <span id="devicesStatus"></span></h3>
-          </header>
-          <div id="devicesContent">
-            <ul id="devicesList"></ul>
-          </div>
-          <footer>
-            <button role="button" onclick="devicesModal.close()">Close</button>
-          </footer>
-        </article>
-      </dialog>
-    </section>
-
-    <section class="content-section">
-      <h2>TUF Metadata</h2>
-      {{ if .TufError }}
-        <div class="error-message" style="color: red; font-weight: bold;">{{ .TufError }}</div>
-      {{ else }}
-        <div class="grid">
+        <div class="page-head">
           <div>
-            <fieldset>
-              <legend><strong>Root expiration</strong></legend>
-              {{ $expires := index .Tuf "root.json" "signed" "expires" }}
-              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
-            </fieldset>
-          </div>
-          <div>
-            <fieldset>
-              <legend><strong>Timestamp expiration</strong></legend>
-              {{ $expires := index .Tuf "timestamp.json" "signed" "expires" }}
-              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
-            </fieldset>
-          </div>
-          <div>
-            <fieldset>
-              <legend><strong>Snapshot expiration</strong></legend>
-              {{ $expires := index .Tuf "snapshot.json" "signed" "expires" }}
-              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
-            </fieldset>
-          </div>
-          <div>
-            <fieldset>
-              <legend><strong>Targets expiration</strong></legend>
-              {{ $expires := index .Tuf "targets.json" "signed" "expires" }}
-              <p>{{ if isExpired $expires }}<del>{{ $expires }}</del>{{ else }}{{ $expires }}{{ end }}</p>
-            </fieldset>
-          </div>
-        </div>
-        {{ if .LatestTarget }}
-        <div class="grid">
-          <div>
-            <fieldset>
-              <legend><strong>Latest target name</strong></legend>
-              <p>{{ .LatestTarget.Name }}</p>
-            </fieldset>
-          </div>
-          <div>
-            <fieldset>
-              <legend><strong>Version</strong></legend>
-              <p>{{ .LatestTarget.Version }}</p>
-            </fieldset>
-          </div>
-          <div>
-            <fieldset>
-              <legend><strong>Hardware IDs</strong></legend>
-              {{ if .HardwareIds }}
-              <ul>
-              {{ range .HardwareIds }}
-                <li>{{ . }}</li>
-              {{ end }}
-              </ul>
+            <div class="entity-header">
+              <h1>{{.Name}}</h1>
+              {{ if .LatestTarget }}<span class="badge badge-good">Available</span>{{ end }}
+            </div>
+            <p class="page-subtitle">
+              {{ if .LatestRollout }}
+                Latest rollout {{ if eq .LatestRollout.State "Scheduled" }}scheduled{{ else }}preparing{{ end }} &mdash;
+                {{.LatestRollout.DeviceCount}} targeted device{{ if ne .LatestRollout.DeviceCount 1 }}s{{ end }}
               {{ else }}
-              <p>None</p>
+                No rollouts yet.
               {{ end }}
-            </fieldset>
+            </p>
           </div>
-          <div>
-            <fieldset>
-              <legend><strong>Tags</strong></legend>
-              {{ if .Tags }}
-              <ul>
-              {{ range .Tags }}
-                <li>{{ . }}</li>
-              {{ end }}
-              </ul>
-              {{ else }}
-              <p>None</p>
-              {{ end }}
-            </fieldset>
+          <div class="update-detail__actions">
+            <a class="btn-ghost update-detail__progress" href="/updates/{{$.Name}}/tail">Follow progress</a>
+            <button type="button" class="btn-solid" id="show-rollout-btn">Create rollout</button>
           </div>
         </div>
-        <div class="grid">
-          <div>
-            <fieldset>
-              <legend><strong>OSTree hash</strong></legend>
-              <p>{{ .LatestTarget.Sha256}}</p>
-            </fieldset>
+
+        <div class="meta-section">
+          <h2 class="meta-section__title">Rollout history</h2>
+          <div class="history-list">
+          {{ range .Rollouts }}
+            <div class="history-entry">
+              <a href="/updates/{{$.Name}}/rollouts/{{.Name}}" class="history-entry__target">{{.Name}}</a>
+              <span class="badge {{ if eq .State "Scheduled" }}badge-good{{ else }}badge-neutral{{ end }}">{{.State}}</span>
+              <span class="history-entry__meta">{{.DeviceCount}} targeted device{{ if ne .DeviceCount 1 }}s{{ end }}</span>
+            </div>
+          {{ else }}
+            <p class="empty-state">No rollouts yet.</p>
+          {{ end }}
           </div>
         </div>
-        <div class="grid">
-          <div>
-            <fieldset>
-              <legend><strong>Apps</strong></legend>
-              <dl>
-              {{ range $name, $uri := .LatestTarget.Apps }}
-                <dt>{{ $name }}</dt>
-                <dd><code>{{ $uri }}</code></dd>
-              {{ end }}
-              </dl>
-            </fieldset>
+
+        {{ if len .Summary.Status }}
+        <div class="meta-section">
+          <h2 class="meta-section__title">Rollout summary</h2>
+          <div class="history-list">
+          {{ range $status, $count := .Summary.Status }}
+            <div class="history-entry">
+              <button type="button" class="history-entry__target history-entry__action" onclick="showDevicesModal('{{$status}}', this)">{{$status}}</button>
+              <span class="history-entry__meta">{{$count}} device{{ if ne $count 1 }}s{{ end }}</span>
+            </div>
+          {{ end }}
           </div>
         </div>
         {{ end }}
-        <details>
-          <summary role="button">Raw data</summary>
-          <pre>{{ .TufJson }}</pre>
-        </details>
-      {{ end }}
+
+        <div class="meta-section">
+          <h2 class="meta-section__title">Release manifest</h2>
+          {{ if .LatestTarget }}
+          <div class="meta-grid">
+            <div class="meta-row">
+              <span class="meta-label">Target</span>
+              <span class="meta-value is-mono">{{.LatestTarget.Name}}</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Architecture</span>
+              <span class="meta-value">{{ if .LatestTarget.Architecture }}{{.LatestTarget.Architecture}}{{ else }}<span class="cell-empty">&mdash;</span>{{ end }}</span>
+            </div>
+            <div class="meta-row meta-row--full">
+              <span class="meta-label">OSTree hash</span>
+              <span class="meta-value is-mono">{{.LatestTarget.Sha256}}</span>
+            </div>
+            <div class="meta-row meta-row--full">
+              <span class="meta-label">Hardware IDs</span>
+              <span class="meta-value">
+                {{ if .LatestTarget.HardwareIDs }}
+                <span class="tag-cloud">{{ range .LatestTarget.HardwareIDs }}<span class="dd-chip dd-chip--tag">{{.}}</span>{{ end }}</span>
+                {{ else }}<span class="cell-empty">None</span>{{ end }}
+              </span>
+            </div>
+            <div class="meta-row meta-row--full">
+              <span class="meta-label">Tags</span>
+              <span class="meta-value">
+                {{ if .LatestTarget.Tags }}
+                <span class="tag-cloud">{{ range .LatestTarget.Tags }}<span class="dd-chip dd-chip--tag">{{.}}</span>{{ end }}</span>
+                {{ else }}<span class="cell-empty">None</span>{{ end }}
+              </span>
+            </div>
+          </div>
+          {{ else }}
+          <p class="empty-state">No release information available yet.</p>
+          {{ end }}
+        </div>
+
+        {{ if .LatestTarget }}
+        <div class="meta-section">
+          <h2 class="meta-section__title">Applications</h2>
+          {{ if .LatestTarget.Apps }}
+          <div class="artifact-list">
+          {{ range .LatestTarget.Apps }}
+            <div class="artifact-row">
+              <span class="artifact-name">{{.Name}}</span>
+              <div class="artifact-meta">
+                <code class="artifact-uri" title="{{.URI}}">{{.URI}}</code>
+                <button type="button" class="btn-ghost btn-sm btn-copy" data-hash="{{.URI}}" aria-label="Copy {{.Name}} image URI">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <rect x="4" y="0.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                    <rect x="0.5" y="3.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1" fill="var(--surface-2)"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          {{ end }}
+          </div>
+          {{ else }}
+          <p class="empty-state">No applications included in this release.</p>
+          {{ end }}
+          <span id="update-copy-status" class="sr-only" role="status" aria-live="polite"></span>
+        </div>
+        {{ end }}
+
+        <div class="meta-section">
+          <h2 class="meta-section__title">TUF metadata</h2>
+          {{ if .TufError }}
+          <p class="empty-state">{{.TufError}}</p>
+          {{ else }}
+          <div class="trust-grid">
+          {{ range .TufMetadata }}
+            <div class="trust-item">
+              <div class="trust-item__top">
+                <span class="trust-item__name">{{.Name}}</span>
+                {{ if .Expires }}
+                {{ if isExpired .Expires }}<span class="badge badge-bad">Expired</span>{{ else }}<span class="badge badge-good">Valid</span>{{ end }}
+                {{ end }}
+              </div>
+              {{ if .Expires }}
+              <span class="trust-item__expiry">{{ rfc3339ToDate .Expires }}</span>
+              {{ else }}
+              <span class="cell-empty">No expiration reported</span>
+              {{ end }}
+            </div>
+          {{ end }}
+          </div>
+          <details class="collapsible-section">
+            <summary>
+              <div class="summary-row">
+                <span class="collapsible-title">Raw TUF Metadata</span>
+                <span class="collapsible-toggle">
+                  <span class="toggle-show">Show</span>
+                  <span class="toggle-hide">Hide</span>
+                </span>
+              </div>
+            </summary>
+            <div class="collapsible-body">
+              <pre class="code-block">{{.TufJson}}</pre>
+            </div>
+          </details>
+          {{ end }}
+        </div>
+
+      </div>
     </section>
 
+    <dialog id="rolloutModal" aria-labelledby="rollout-dlg-title" class="rollout-dialog">
+      <article>
+        <div class="dlg-header">
+          <h2 id="rollout-dlg-title">Create Rollout</h2>
+          <button class="dlg-close" id="rollout-dlg-close-btn" type="button" aria-label="Close dialog">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="dlg-body">
+          <p class="upload-intro">Choose the devices and groups that should receive update {{.Name}}. A rollout can target individual UUIDs, device groups, or both.</p>
+          <div class="field-grid">
+            <div class="field-row">
+              <label class="field-row__key" for="rollout-name">Rollout Name</label>
+              <input class="field-input" type="text" id="rollout-name" name="name" autofocus
+                placeholder="e.g. staged-rollout" aria-describedby="rollout-name-hint" autocomplete="off" spellcheck="false">
+              <p class="field-row__caption" id="rollout-name-hint">A unique name operators can identify later.</p>
+            </div>
+            <div class="field-row">
+              <label class="field-row__key" for="rollout-uuids">Device UUIDs</label>
+              <input class="field-input" type="text" id="rollout-uuids" name="uuids"
+                placeholder="e.g. 7f2c&hellip;, 9a41&hellip;" aria-describedby="rollout-uuids-hint" autocomplete="off" spellcheck="false">
+              <p class="field-row__caption" id="rollout-uuids-hint">Separate individual device UUIDs with commas.</p>
+            </div>
+          </div>
+          <div class="field-row">
+            <span class="field-row__key">Device Groups</span>
+            <p class="field-row__caption">Select one or more groups to include in this rollout.</p>
+            <div class="group-grid">
+              {{ range .Groups }}
+              <label class="group-check">
+                <input type="checkbox" name="deviceGroups" value="{{.}}">
+                {{.}}
+              </label>
+              {{ end }}
+            </div>
+          </div>
+          <div id="rollout-result" aria-live="polite" role="status"></div>
+        </div>
+        <div class="dlg-footer">
+          <button class="dlg-btn dlg-btn-cancel" id="rollout-cancel-btn" type="button">Cancel</button>
+          <button class="dlg-btn dlg-btn-rollout" id="rollout-btn" type="button">Create Rollout</button>
+        </div>
+      </article>
+    </dialog>
+
+    <dialog id="devicesModal" aria-labelledby="devices-dlg-title" class="rollout-dialog">
+      <article>
+        <div class="dlg-header">
+          <h2 id="devices-dlg-title" tabindex="-1">Devices - <span id="devicesStatus"></span></h2>
+          <button id="devices-dlg-close-btn" class="dlg-close" type="button" aria-label="Close dialog">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="dlg-body" id="devicesContent">
+          <ul id="devicesList"></ul>
+        </div>
+        <div class="dlg-footer">
+          <button id="devices-dlg-footer-close-btn" class="dlg-btn dlg-btn-cancel" type="button">Close</button>
+        </div>
+      </article>
+    </dialog>
+
     <script>
-      function showDevicesModal(status) {
+      const rolloutDialog = document.getElementById('rolloutModal');
+      const showRolloutBtn = document.getElementById('show-rollout-btn');
+      const rolloutCloseBtn = document.getElementById('rollout-dlg-close-btn');
+      const rolloutCancelBtn = document.getElementById('rollout-cancel-btn');
+      const rolloutBtn = document.getElementById('rollout-btn');
+      const rolloutResult = document.getElementById('rollout-result');
+      let creatingRollout = false;
+      let rolloutAbortController = null;
+
+      const devicesDialog = document.getElementById('devicesModal');
+      const devicesDialogTitle = document.getElementById('devices-dlg-title');
+      const devicesDialogClose = document.getElementById('devices-dlg-close-btn');
+      const devicesDialogFooterClose = document.getElementById('devices-dlg-footer-close-btn');
+      let devicesDialogTrigger = null;
+
+      function showDevicesModal(status, trigger) {
+        devicesDialogTrigger = trigger;
         document.getElementById('devicesStatus').textContent = status;
         const list = document.getElementById('devicesList');
         list.innerHTML = '<li>Loading...</li>';
-        devicesModal.show();
+        devicesDialog.showModal();
+        devicesDialogTitle.focus();
         fetch('/v1/updates/{{.Name}}/query?status=' + encodeURIComponent(status))
           .then(response => response.json())
           .then(data => {
@@ -222,13 +279,91 @@
           });
       }
 
-      function createRollout() {
-        // Get form values
-        const uuids = document.getElementById('uuids').value;
-        const deviceGroupsSelect = document.getElementById('deviceGroups');
-        const selectedGroups = Array.from(deviceGroupsSelect.selectedOptions).map(option => option.value);
+      devicesDialogClose.addEventListener('click', function () {
+        devicesDialog.close();
+      });
 
-        // Validate that at least one field is filled
+      devicesDialogFooterClose.addEventListener('click', function () {
+        devicesDialog.close();
+      });
+
+      devicesDialog.addEventListener('click', function (e) {
+        if (e.target === devicesDialog) {
+          devicesDialog.close();
+        }
+      });
+
+      devicesDialog.addEventListener('close', function () {
+        if (devicesDialogTrigger) {
+          devicesDialogTrigger.focus();
+          devicesDialogTrigger = null;
+        }
+      });
+
+      function setRolloutCreating(isCreating) {
+        creatingRollout = isCreating;
+        rolloutBtn.disabled = isCreating;
+        rolloutBtn.textContent = isCreating ? 'Creating…' : 'Create Rollout';
+        rolloutCancelBtn.textContent = isCreating ? 'Stop creation' : 'Cancel';
+        rolloutCloseBtn.disabled = isCreating;
+      }
+
+      function showRolloutResult(message) {
+        rolloutResult.textContent = message;
+      }
+
+      function clearRolloutResult() {
+        rolloutResult.textContent = '';
+      }
+
+      showRolloutBtn.addEventListener('click', function () {
+        clearRolloutResult();
+        rolloutDialog.showModal();
+      });
+
+      rolloutCloseBtn.addEventListener('click', function () {
+        if (!creatingRollout) {
+          rolloutDialog.close();
+        }
+      });
+
+      rolloutCancelBtn.addEventListener('click', function () {
+        if (creatingRollout) {
+          if (rolloutAbortController) {
+            rolloutAbortController.abort();
+          }
+          return;
+        }
+        rolloutDialog.close();
+      });
+
+      rolloutDialog.addEventListener('cancel', function (event) {
+        if (creatingRollout) {
+          event.preventDefault();
+        }
+      });
+
+      rolloutDialog.addEventListener('click', function (event) {
+        if (creatingRollout) {
+          return;
+        }
+        if (event.target === rolloutDialog) {
+          rolloutDialog.close();
+        }
+      });
+
+      rolloutDialog.addEventListener('close', function () {
+        showRolloutBtn.focus();
+      });
+
+      async function createRollout() {
+        if (creatingRollout) {
+          return;
+        }
+
+        const uuids = document.getElementById('rollout-uuids').value;
+        const selectedGroups = Array.from(document.querySelectorAll('input[name="deviceGroups"]:checked')).map(cb => cb.value);
+
         if (!uuids && selectedGroups.length === 0) {
           alert('Please provide either UUIDs or device groups.');
           return;
@@ -239,27 +374,66 @@
           groups: selectedGroups
         };
 
-        fetch('/v1/updates/{{.Name}}/rollouts/' + document.getElementById('name').value, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(rolloutData)
-        })
-        .then(async response => {
+        clearRolloutResult();
+        rolloutAbortController = new AbortController();
+        setRolloutCreating(true);
+
+        try {
+          const response = await fetch('/v1/updates/{{.Name}}/rollouts/' + document.getElementById('rollout-name').value, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(rolloutData),
+            signal: rolloutAbortController.signal
+          });
+
           if (response.ok) {
-            rolloutModal.close();
-            window.location.reload(); // Refresh to show new rollout
+            rolloutDialog.close();
+            window.location.reload();
           } else {
             const errorText = await response.text();
-            alert('Error creating rollout: ' + errorText);
+            throw new Error(errorText);
           }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error creating rollout: ' + error.message);
-        });
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            showRolloutResult('Rollout creation request cancelled.');
+          } else {
+            console.error('Error:', error);
+            alert('Error creating rollout: ' + error.message);
+          }
+        } finally {
+          rolloutAbortController = null;
+          setRolloutCreating(false);
+        }
       }
+
+      rolloutBtn.addEventListener('click', createRollout);
+
+      document.querySelectorAll('.artifact-list').forEach(function (list) {
+        list.addEventListener('click', function (e) {
+          var btn = e.target.closest('.btn-copy');
+          if (!btn) return;
+          var hash = btn.getAttribute('data-hash');
+          var status = document.getElementById('update-copy-status');
+          var showCopied = function () {
+            if (status) status.textContent = 'Copied to clipboard.';
+          };
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(hash).then(showCopied);
+            return;
+          }
+          var ta = document.createElement('textarea');
+          ta.value = hash;
+          ta.style.position = 'fixed';
+          ta.style.top = '-9999px';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          try { document.execCommand('copy'); showCopied(); } catch (err) { /* clipboard unavailable */ }
+          document.body.removeChild(ta);
+        });
+      });
     </script>
 
 {{ template "footer" .}}

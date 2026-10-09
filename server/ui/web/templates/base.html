@@ -10,7 +10,7 @@
     <title>{{.Title}} - {{.BrandName}}</title>
     <link rel="icon" href="/favicon">
 
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v={{.Version}}">
     {{/* Runs before first paint so there's no flash of the wrong theme.
          Reads an explicit user preference from localStorage; if none exists
          yet, seeds from the OS preference for this first render only — after
