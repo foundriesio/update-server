@@ -12,6 +12,12 @@ import (
 	"github.com/foundriesio/update-server/version"
 )
 
+const (
+	devicesLabel = "Devices"
+	updatesLabel = "Updates"
+	usersLabel   = "Users"
+)
+
 // PageBuilder assembles the shared base.html page context (branding, nav,
 // version, current user, csrf). It is the single place base page context is
 // constructed, used by the web handlers as well as the auth providers' login
@@ -56,10 +62,10 @@ func (b PageBuilder) Base(c echo.Context, title, selected string) pagectx.Base {
 
 func (b PageBuilder) genNavItems(selected string) []navItem {
 	navItems := []navItem{
-		{Title: "Devices", Href: "/devices", Selected: selected == "devices"},
+		{Title: devicesLabel, Href: "/devices", Selected: selected == "devices"},
 		{Title: "Configs", Href: "/configs", Selected: selected == "configs"},
-		{Title: "Updates", Href: "/updates", Selected: selected == "updates"},
-		{Title: "Users", Href: "/users", Selected: selected == "users"},
+		{Title: updatesLabel, Href: "/updates", Selected: selected == "updates"},
+		{Title: usersLabel, Href: "/users", Selected: selected == "users"},
 		{Title: "PKI", Href: "/pki", Selected: selected == "pki"},
 	}
 	return navItems
