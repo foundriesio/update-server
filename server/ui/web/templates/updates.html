@@ -80,12 +80,12 @@
             <div class="directory-picker">
               <input class="visually-hidden" type="file" id="upload-dir" name="directory"
                 aria-describedby="upload-file-summary" webkitdirectory multiple required />
-              <label class="directory-picker__button" for="upload-dir">
+              <button class="directory-picker__button" id="upload-dir-btn" type="button">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M1.75 4.25h4l1.5 1.5h7v6.5H1.75v-8Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
                 </svg>
                 Choose directory
-              </label>
+              </button>
               <span class="directory-picker__status" id="upload-file-summary"
                 aria-live="polite">No directory selected</span>
             </div>
@@ -144,7 +144,7 @@
       </div>
       <div class="dlg-footer">
         <button class="dlg-btn dlg-btn-cancel" id="upload-cancel-btn" type="button">Cancel</button>
-        <button class="dlg-btn dlg-btn-upload" id="upload-btn" type="button" onclick="uploadUpdate()">Upload</button>
+        <button class="dlg-btn dlg-btn-upload" id="upload-btn" type="button" onclick="uploadUpdate()" disabled>Upload</button>
       </div>
     </article>
   </dialog>
@@ -154,7 +154,7 @@
     <script>
     const uploadDir = document.getElementById('upload-dir');
     const uploadDirBtn = document.getElementById('upload-dir-btn');
-    const uploadDirStatus = document.getElementById('upload-dir-status');
+    const uploadDirStatus = document.getElementById('upload-file-summary');
     const uploadBtn = document.getElementById('upload-btn');
 
     uploadDirBtn.addEventListener('click', () => {
@@ -499,7 +499,8 @@
       } finally {
         uploading = false;
         uploadXhr = null;
-        btn.disabled = false;
+        btn.disabled = dirEl.files.length === 0;
+        uploadDirBtn.disabled = false;
         btn.textContent = 'Upload';
         cancelBtn.textContent = 'Cancel';
         closeBtn.disabled = false;
@@ -520,12 +521,13 @@
       const showBtn = document.getElementById('show-upload-btn');
       const closeBtn = document.getElementById('dlg-close-btn');
       const cancelBtn = document.getElementById('upload-cancel-btn');
-      const dirInput = document.getElementById('upload-dir');
       const fileSummary = document.getElementById('upload-file-summary');
 
       function openDialog() {
         document.getElementById('upload-form').reset();
         fileSummary.textContent = 'No directory selected';
+        uploadBtn.disabled = true;
+        uploadDirBtn.disabled = false;
         document.getElementById('upload-progress').style.display = 'none';
         document.getElementById('upload-result').style.display = 'none';
         dialog.showModal();
@@ -560,17 +562,6 @@
 
       dialog.addEventListener('close', function () {
         showBtn.focus();
-      });
-
-      dirInput.addEventListener('change', function () {
-        const files = dirInput.files;
-        if (!files || files.length === 0) {
-          fileSummary.textContent = 'No directory selected';
-          return;
-        }
-        let totalBytes = 0;
-        for (const file of files) { totalBytes += file.size; }
-        fileSummary.textContent = files.length + ' file' + (files.length === 1 ? '' : 's') + ' selected (' + formatBytes(totalBytes) + ')';
       });
     })();
     </script>
