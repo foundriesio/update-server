@@ -1,45 +1,118 @@
 {{ template "header" .}}
-  <section class="content-section">
-    <h2>{{.Title}}</h2>
-    {{ with .Configs }}
-    {{ if gt .AppliedAt 0 }}
-    <p><b>Applied at:</b> {{ tsToString .AppliedAt }}</p>
-    <p><b>Generated From:</b><p>
-    <ul>
-    {{ with (index .AuditTrail 0) }}
-    {{ if gt .CreatedAt 0 }}
-      <li>
-        <a href="/configs">Global config</a>
-        created {{ if gt (len .CreatedBy) 0 }}by <b>{{ .CreatedBy }}</b>{{ end }}
-        at <b>{{ tsToString .CreatedAt }}</b>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}
-      </li>
-    {{ end }}
-    {{ end }}
-    {{ with (index .AuditTrail 1) }}
-    {{ if gt .CreatedAt 0 }}
-      <li>
-        {{/* When device group changes, applied config group can differ until device fetches new config */}}
-        <a href="/configs/group/{{ .Auxiliary }}">Group config</a>
-        from {{ .Auxiliary }} created {{ if gt (len .CreatedBy) 0 }}by <b>{{ .CreatedBy }}</b>{{ end }}
-        at <b>{{ tsToString .CreatedAt }}</b>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}
-      </li>
-    {{ end }}
-    {{ end }}
-    {{ with (index .AuditTrail 2) }}
-    {{ if gt .CreatedAt 0 }}
-      <li>
-        {{/* Device UUID remains unmodified, so we don't need to show it here */}}
-        <a href="/configs/device/{{ .Auxiliary }}">Device config</a>
-        created {{ if gt (len .CreatedBy) 0 }}by <b>{{ .CreatedBy }}</b>{{ end }}
-        at <b>{{ tsToString .CreatedAt }}</b>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}
-      </li>
-    {{ end }}
-    {{ end }}
-    </ul>
-    {{ template "configs-item-files" (map "Configs" . "CanEdit" false) }}
-    {{ else }}
-    <p><em>No configuration has been applied to this device yet.</em></p>
-    {{ end }}
-    {{ end }}
-  </section>
+    <section class="device-overview">
+
+      <div class="device-page-inner">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/devices">Devices</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/devices/{{.Device.Uuid}}">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current">Applied Configs</span>
+        </nav>
+
+        <div class="device-identity">
+          <div class="device-identity__name-row">
+            <h1 class="device-identity__name">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
+            {{ if .Device.Status }}
+            <a href="/devices/{{.Device.Uuid}}/updates/{{.Device.Status.CorrelationId}}"
+               title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}"
+               class="status-indicator">
+              <span class="status-indicator__dot{{if contains .Device.Status.Status "failed"}} is-danger{{end}}"></span>
+              {{.Device.Status.Status}}
+            </a>
+            {{ end }}
+          </div>
+          <div class="device-identity__uuid">{{.Device.Uuid}}</div>
+        </div>
+      </div>
+
+      <nav class="device-tabs" aria-label="Device views">
+        <a href="/devices/{{.Device.Uuid}}" class="device-tab">Overview</a>
+        <a href="/devices/{{.Device.Uuid}}/apps-states" class="device-tab">App States</a>
+        <a href="/devices/{{.Device.Uuid}}/configs" class="device-tab">Configs</a>
+        <span class="device-tab is-active" aria-current="page">Applied Configs</span>
+        <a href="/devices/{{.Device.Uuid}}/tests" class="device-tab">Tests</a>
+      </nav>
+
+      <div class="device-page-inner">
+        {{ with .Configs }}
+        <div class="meta-section">
+          <h2 class="meta-section__title">Applied Configuration</h2>
+          {{ if gt .AppliedAt 0 }}
+          <div class="meta-grid">
+            <div class="meta-row">
+              <span class="meta-label">Applied at</span>
+              <span class="meta-value is-mono">{{ tsToString .AppliedAt }}</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Files</span>
+              <span class="meta-value">{{ len .Files }}</span>
+            </div>
+          </div>
+          {{ else }}
+          <p class="empty-state">No configuration has been applied to this device yet.</p>
+          {{ end }}
+        </div>
+
+        {{ if gt .AppliedAt 0 }}
+        <div class="meta-section">
+          <h2 class="meta-section__title">Generated From</h2>
+          <div class="layer-grid">
+            {{ with (index .AuditTrail 0) }}
+            {{ $set := or (gt .CreatedAt 0) (gt (len .CreatedBy) 0) (gt (len .Reason) 0) }}
+            <div class="layer-card{{ if not $set }} is-unset{{ end }}">
+              <div class="layer-card__head">
+                <span class="layer-card__name">Global</span>
+                <span class="badge {{ if $set }}badge-good{{ else }}badge-neutral{{ end }}">{{ if $set }}Contributed{{ else }}Not set{{ end }}</span>
+              </div>
+              {{ if $set }}
+              <div class="layer-card__detail"><a href="/configs">Global config</a>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}</div>
+              <div class="layer-card__meta">{{ if gt (len .CreatedBy) 0 }}by {{ .CreatedBy }}{{ end }}{{ if gt .CreatedAt 0 }} &middot; {{ tsToDate .CreatedAt }}{{ else }} &middot; <span class="no-timestamp">timestamp not recorded</span>{{ end }}</div>
+              {{ else }}
+              <div class="layer-card__detail">No changes at this layer.</div>
+              {{ end }}
+            </div>
+            {{ end }}
+
+            {{ with (index .AuditTrail 1) }}
+            {{ $set := or (gt .CreatedAt 0) (gt (len .CreatedBy) 0) (gt (len .Reason) 0) }}
+            <div class="layer-card{{ if not $set }} is-unset{{ end }}">
+              <div class="layer-card__head">
+                <span class="layer-card__name">Group</span>
+                <span class="badge {{ if $set }}badge-good{{ else }}badge-neutral{{ end }}">{{ if $set }}Contributed{{ else }}Not set{{ end }}</span>
+              </div>
+              {{ if $set }}
+              {{/* When device group changes, applied config group can differ until device fetches new config */}}
+              <div class="layer-card__detail"><a href="/configs/group/{{ .Auxiliary }}">Group config</a> from {{ .Auxiliary }}{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}</div>
+              <div class="layer-card__meta">{{ if gt (len .CreatedBy) 0 }}by {{ .CreatedBy }}{{ end }}{{ if gt .CreatedAt 0 }} &middot; {{ tsToDate .CreatedAt }}{{ else }} &middot; <span class="no-timestamp">timestamp not recorded</span>{{ end }}</div>
+              {{ else }}
+              <div class="layer-card__detail">No changes at this layer.</div>
+              {{ end }}
+            </div>
+            {{ end }}
+
+            {{ with (index .AuditTrail 2) }}
+            {{ $set := or (gt .CreatedAt 0) (gt (len .CreatedBy) 0) (gt (len .Reason) 0) }}
+            <div class="layer-card{{ if not $set }} is-unset{{ end }}">
+              <div class="layer-card__head">
+                <span class="layer-card__name">Device</span>
+                <span class="badge {{ if $set }}badge-good{{ else }}badge-neutral{{ end }}">{{ if $set }}Contributed{{ else }}Not set{{ end }}</span>
+              </div>
+              {{ if $set }}
+              <div class="layer-card__detail"><a href="/devices/{{ $.Device.Uuid }}/configs">Device config</a>{{ if gt (len .Reason) 0 }}: {{ .Reason }}{{ end }}</div>
+              <div class="layer-card__meta">{{ if gt (len .CreatedBy) 0 }}by {{ .CreatedBy }}{{ end }}{{ if gt .CreatedAt 0 }} &middot; {{ tsToDate .CreatedAt }}{{ end }}</div>
+              {{ else }}
+              <div class="layer-card__detail">No changes at this layer.</div>
+              {{ end }}
+            </div>
+            {{ end }}
+          </div>
+        </div>
+
+        {{ template "configs-item-files" (map "Configs" . "CanEdit" false) }}
+        {{ end }}
+        {{ end }}
+      </div>
+
+    </section>
 {{ template "footer" .}}

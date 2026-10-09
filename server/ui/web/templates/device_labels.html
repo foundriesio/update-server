@@ -1,129 +1,297 @@
+{{ define "label-reserved-caption" }}"name"/"group" are reserved — edit it in Standard labels above.{{ end }}
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+    <section class="device-labels">
 
-      <section>
-	There are two standard labels:
-	<ul>
-	  <li><b>name</b> - a unique device name;</li>
-	  <li><b>group</b> - a device group, used to rollout device updates.</li>
-	</ul>
-	<p>Arbitrary label names are also supported.</p>
-      </section>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/devices">Devices</a>
+        <span class="breadcrumb__sep">/</span>
+        <a href="/devices/{{.Device.Uuid}}">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</a>
+        <span class="breadcrumb__sep">/</span>
+        <span class="breadcrumb__current">Labels</span>
+      </nav>
 
-      <form>
-        <fieldset class="grid">
-          <label style="font-weight: bold;">Key</label>
-          <label style="font-weight: bold;">Value</label>
-        </fieldset>
+      <div class="page-header">
+        <h1 class="page-header__title">Manage labels</h1>
+        <div class="page-header__device">{{.Device.Uuid}}</div>
+      </div>
 
-        <div id="labelsContainer">
-          {{ range $key, $value := .Device.Labels }}
-          <fieldset class="grid">
-	    <input list="label-keys" value="{{$key}}" onblur="onKeyBlur(this)"/>
-            <input value="{{$value}}" {{ if eq $key "group" }} list="group-values" {{ end }} />
-            <i class="trash" title="Remove label"></i>
-          </fieldset>
-          {{ end }}
+      <form id="labels-form">
+
+        <div class="zone">
+          <div class="section-label">Standard labels</div>
+
+          <div class="field-row" data-field-row="name">
+            <div class="field-row__main">
+              <span class="field-row__key">name</span>
+              <label class="visually-hidden" for="field-name">Name</label>
+              <input class="field-input" type="text" id="field-name" name="label-name" value="{{.Device.Labels.name}}" autocomplete="off">
+              <p class="field-row__caption">Unique device name. Cannot be removed.</p>
+            </div>
+          </div>
+
+          <div class="field-row is-group" data-field-row="group">
+            <div class="field-row__main">
+              <span class="field-row__key">group</span>
+              <label class="visually-hidden" for="field-group">Group</label>
+              <input class="field-input" type="text" id="field-group" name="label-group" list="group-values" value="{{.Device.Labels.group}}" autocomplete="off">
+              <p class="field-row__caption">Device group, used to roll out device updates.</p>
+            </div>
+            <button type="button" class="btn-icon" id="btn-clear-group" aria-label="Clear group value" title="Clear group value">
+              <i class="trash" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
 
-        <button type="button" onclick="addNewLabel()">Add new label</button>
+        <div class="zone">
+          {{ $customLabels := otherLabels .Device.Labels }}
+          <div class="zone-header">
+            <div class="section-label">Custom labels</div>
+            <button type="button" class="btn-ghost btn-sm" id="add-label-btn">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                <line x1="5.5" y1="1" x2="5.5" y2="10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <line x1="1" y1="5.5" x2="10" y2="5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              Add label
+            </button>
+          </div>
+          <p class="zone-caption">Arbitrary label names are also supported.</p>
 
-	<datalist id="label-keys">
-		{{ range $_, $key := .KnownLabels }}
-		<option value="{{$key}}"/>
-		{{ end }}
-	</datalist>
-	<datalist id="group-values">
-		{{ range $_, $group := .KnownGroups }}
-		<option value="{{$group}}"/>
-		{{ end }}
-	</datalist>
+          <p class="empty-state" id="labels-empty" {{ if $customLabels }}style="display:none"{{ end }}>
+            No custom labels. Use <strong>Add label</strong> to create one.
+          </p>
+
+          <div class="token-list" id="labels-table" aria-label="Custom labels" {{ if not $customLabels }}style="display:none"{{ end }}>
+            <div class="token-list__head" aria-hidden="true">
+              <span class="token-list__col-key">Key</span>
+              <span class="token-list__col-value">Value</span>
+              <span class="token-list__col-actions">Actions</span>
+            </div>
+            <ul class="token-list__body" id="labels-tbody">
+              {{ range $i, $label := $customLabels }}
+              <li class="token-row" data-persisted="true" data-key="{{$label.Key}}">
+                <div class="token-row__fields">
+                  <div class="token-row__key">
+                    <label class="visually-hidden" for="key-{{$i}}">Key</label>
+                    <input id="key-{{$i}}" name="custom-key[]" type="text" list="label-keys" value="{{$label.Key}}" autocomplete="off" class="cell-input">
+                  </div>
+                  <div class="token-row__value">
+                    <label class="visually-hidden" for="val-{{$i}}">Value</label>
+                    <input id="val-{{$i}}" name="custom-value[]" type="text" value="{{$label.Value}}" autocomplete="off" class="cell-input">
+                  </div>
+                  <div class="token-row__actions">
+                    <button type="button" class="btn-delete" data-role="delete-existing" aria-label="Remove {{$label.Key}} label">
+                      <i class="trash" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="token-row__caption">
+                  <p class="cell-caption" aria-live="polite" id="key-{{$i}}-caption">{{ template "label-reserved-caption" }}</p>
+                </div>
+              </li>
+              {{ end }}
+            </ul>
+          </div>
+
+          <template id="label-row-template">
+            <li class="token-row">
+              <div class="token-row__fields">
+                <div class="token-row__key">
+                  <label class="visually-hidden">Key</label>
+                  <input name="custom-key[]" type="text" list="label-keys" autocomplete="off" class="cell-input" placeholder="key">
+                </div>
+                <div class="token-row__value">
+                  <label class="visually-hidden">Value</label>
+                  <input name="custom-value[]" type="text" autocomplete="off" class="cell-input" placeholder="value">
+                </div>
+                <div class="token-row__actions">
+                  <button type="button" class="btn-delete" data-role="delete-new" aria-label="Remove new label row">
+                    <i class="trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="token-row__caption">
+                <p class="cell-caption" aria-live="polite">{{ template "label-reserved-caption" }}</p>
+              </div>
+            </li>
+          </template>
+        </div>
+
+        <datalist id="label-keys">
+          {{ range .KnownLabels }}{{ if and (ne . "name") (ne . "group") }}<option value="{{.}}"></option>{{ end }}{{ end }}
+        </datalist>
+        <datalist id="group-values">
+          {{ range .KnownGroups }}<option value="{{.}}"></option>{{ end }}
+        </datalist>
+
+        <div class="actions-bar">
+          <span class="save-status" id="save-status" role="status" aria-live="polite"></span>
+          <button type="button" class="btn-ghost" onclick="location.href='/devices/{{.Device.Uuid}}';">Cancel</button>
+          <button type="submit" class="btn-solid" id="btn-save">Save changes</button>
+        </div>
+
       </form>
+
     </section>
-    
-    <section class="content-section">
-      <button onclick="location.href='/devices/{{.Device.Uuid}}';">Cancel</button>
-      <button onclick="saveLabels()">Save changes</button>
-    </section>
-    
+
     <script>
-      function addNewLabel() {
-        const container = document.getElementById('labelsContainer');
-        const newFieldset = document.createElement('fieldset');
-        newFieldset.className = 'grid';
-        newFieldset.innerHTML = `
-          <input list="label-keys" placeholder="Type to select or enter key" onblur="onKeyBlur(this)"/>
-          <input placeholder="Enter value"/>
-          <i class="trash" title="Remove label" onclick="removeLabel(this)"></i>
-        `;
-        container.appendChild(newFieldset);
-      }
+      (function () {
+        const RESERVED = ['name', 'group'];
 
-      function removeLabel(element) {
-        const fieldset = element.parentElement;
-        fieldset.remove();
-      }
-
-      function saveLabels() {
-        const container = document.getElementById('labelsContainer');
-        const fieldsets = container.querySelectorAll('fieldset');
-        const labels = {};
-        
-        fieldsets.forEach(fieldset => {
-          const inputs = fieldset.querySelectorAll('input');
-          if (inputs.length >= 2) {
-            const key = inputs[0].value.trim();
-            const value = inputs[1].value.trim();
-            
-            // Only include non-empty keys
-            if (key) {
-              labels[key] = value;
-            }
-          }
-        });
-
-        fetch('/v1/devices/{{.Device.Uuid}}/labels', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(labels)
-        })
-        .then(async response => {
-          if (response.ok) {
-            location.href = '/devices/{{.Device.Uuid}}';
+        // ---- group clear / undo (deferred to Save) ----
+        const groupInput = document.getElementById('field-group');
+        const clearGroupBtn = document.getElementById('btn-clear-group');
+        clearGroupBtn.addEventListener('click', () => {
+          if (clearGroupBtn.dataset.role === 'undo') {
+            groupInput.value = groupInput.dataset.prevValue || '';
+            groupInput.disabled = false;
+            groupInput.placeholder = '';
+            clearGroupBtn.dataset.role = '';
+            clearGroupBtn.setAttribute('aria-label', 'Clear group value');
+            clearGroupBtn.setAttribute('title', 'Clear group value');
           } else {
-            const errorText = await response.text();
-            alert('Error saving labels: ' + errorText);
+            groupInput.dataset.prevValue = groupInput.value;
+            groupInput.value = '';
+            groupInput.disabled = true;
+            groupInput.placeholder = '(cleared — click Save to apply)';
+            clearGroupBtn.dataset.role = 'undo';
+            clearGroupBtn.setAttribute('aria-label', 'Undo clear group value');
+            clearGroupBtn.setAttribute('title', 'Undo clear group value');
           }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error saving labels: ' + error.message);
         });
-      }
 
-      function onKeyBlur(element) {
-        if (element.value.trim() != 'group') {
-          return;
-        }
-        const fieldset = element.parentElement;
-        const inputs = fieldset.querySelectorAll('input');
-        if (inputs.length >= 2) {
-          inputs[1].setAttribute('list', 'group-values')
-        }
-      }
+        // ---- custom labels table ----
+        const table = document.getElementById('labels-table');
+        const tbody = document.getElementById('labels-tbody');
+        const emptyState = document.getElementById('labels-empty');
+        const rowTemplate = document.getElementById('label-row-template');
+        const addLabelBtn = document.getElementById('add-label-btn');
+        let newRowId = 0;
 
-      // Add click handlers to existing trash icons
-      document.addEventListener('DOMContentLoaded', function() {
-        const trashIcons = document.querySelectorAll('.trash');
-        trashIcons.forEach(icon => {
-          icon.addEventListener('click', function() {
-            removeLabel(this);
+        function showTable() {
+          table.style.display = '';
+          emptyState.style.display = 'none';
+        }
+        function maybeShowEmpty() {
+          if (!tbody.querySelector('.token-row')) {
+            table.style.display = 'none';
+            emptyState.style.display = '';
+          }
+        }
+
+        addLabelBtn.addEventListener('click', () => {
+          newRowId += 1;
+          const li = rowTemplate.content.firstElementChild.cloneNode(true);
+          const keyInput = li.querySelector('input[name="custom-key[]"]');
+          const valInput = li.querySelector('input[name="custom-value[]"]');
+          keyInput.id = 'new-key-' + newRowId;
+          valInput.id = 'new-val-' + newRowId;
+          li.querySelector('.token-row__key label').setAttribute('for', keyInput.id);
+          li.querySelector('.token-row__value label').setAttribute('for', valInput.id);
+          li.querySelector('.cell-caption').id = keyInput.id + '-caption';
+          tbody.appendChild(li);
+          showTable();
+          keyInput.focus();
+        });
+
+        tbody.addEventListener('click', (e) => {
+          const btn = e.target.closest('.btn-delete');
+          if (!btn) { return; }
+          const row = btn.closest('.token-row');
+
+          if (btn.dataset.role === 'delete-new') {
+            addLabelBtn.focus();
+            row.remove();
+            maybeShowEmpty();
+            return;
+          }
+
+          const keyName = row.dataset.key || 'label';
+          const removed = row.classList.toggle('is-removed');
+          row.querySelectorAll('input').forEach((input) => { input.disabled = removed; });
+          if (removed) {
+            btn.dataset.role = 'undo';
+            btn.setAttribute('aria-label', 'Restore ' + keyName + ' label');
+          } else {
+            btn.dataset.role = 'delete-existing';
+            btn.setAttribute('aria-label', 'Remove ' + keyName + ' label');
+          }
+        });
+
+        // ---- reserved-key validation (blur + defensive re-check at Save) ----
+        function validateKeyInput(input) {
+          const caption = input.closest('.token-row').querySelector('.cell-caption');
+          const isReserved = RESERVED.includes(input.value.trim().toLowerCase());
+          input.classList.toggle('is-invalid', isReserved);
+          caption.classList.toggle('is-visible', isReserved);
+          if (isReserved) {
+            input.setAttribute('aria-invalid', 'true');
+            input.setAttribute('aria-describedby', caption.id);
+          } else {
+            input.removeAttribute('aria-invalid');
+            input.removeAttribute('aria-describedby');
+          }
+          return !isReserved;
+        }
+
+        tbody.addEventListener('focusout', (e) => {
+          if (e.target.matches('input[name="custom-key[]"]')) {
+            validateKeyInput(e.target);
+          }
+        });
+
+        // ---- save ----
+        document.getElementById('labels-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+
+          const status = document.getElementById('save-status');
+          const labels = {};
+          const nameVal = document.getElementById('field-name').value.trim();
+          if (nameVal) { labels['name'] = nameVal; }
+          const groupVal = groupInput.value.trim();
+          if (groupVal) { labels['group'] = groupVal; }
+
+          let firstInvalid = null;
+          tbody.querySelectorAll('.token-row').forEach((row) => {
+            if (row.classList.contains('is-removed')) { return; }
+            const keyInput = row.querySelector('input[name="custom-key[]"]');
+            const valInput = row.querySelector('input[name="custom-value[]"]');
+            if (!validateKeyInput(keyInput) && !firstInvalid) {
+              firstInvalid = keyInput;
+            }
+            const key = keyInput.value.trim();
+            const val = valInput.value.trim();
+            if (key && val) {
+              labels[key] = val;
+            }
           });
+
+          if (firstInvalid) {
+            firstInvalid.focus();
+            status.textContent = 'Fix label key conflicts before saving.';
+            status.classList.add('is-visible');
+            return;
+          }
+
+          fetch('/v1/devices/{{.Device.Uuid}}/labels', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(labels),
+          })
+            .then(async (response) => {
+              if (response.ok) {
+                location.href = '/devices/{{.Device.Uuid}}';
+              } else {
+                const errorText = await response.text();
+                status.textContent = 'Error saving labels: ' + errorText;
+                status.classList.add('is-visible');
+              }
+            })
+            .catch((error) => {
+              status.textContent = 'Error saving labels: ' + error.message;
+              status.classList.add('is-visible');
+            });
         });
-      });
+      })();
     </script>
 
 {{ template "footer" .}}
