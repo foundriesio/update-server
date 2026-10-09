@@ -12,10 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSeedDeviceUpdateHistory verifies that update history is seeded for
-// only a subset of devices, and that seeded devices get 10-15 entries.
-// Uses enough devices that both outcomes (some, none) are virtually certain
-// to occur, given the ~1/3 selection chance in seedDeviceUpdateHistory.
+// TestSeedDeviceUpdateHistory verifies that every third device gets 10-15
+// update history entries and the remaining devices get none.
 func TestSeedDeviceUpdateHistory(t *testing.T) {
 	datadir := t.TempDir()
 	const numDevices = 30
@@ -49,6 +47,6 @@ func TestSeedDeviceUpdateHistory(t *testing.T) {
 		}
 	}
 
-	require.Greater(t, withHistory, 0, "expected at least one device with seeded update history")
-	require.Greater(t, withoutHistory, 0, "expected at least one device without seeded update history")
+	require.Equal(t, numDevices/3, withHistory)
+	require.Equal(t, numDevices-withHistory, withoutHistory)
 }

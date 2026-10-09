@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/foundriesio/update-server/storage"
@@ -165,18 +164,18 @@ var updateHistoryStages = []string{
 	"EcuInstallationCompleted",
 }
 
-// seedDeviceUpdateHistory randomly gives about a third of devices a long
-// (10-15 entry) update history, so the device's "Update History" page isn't
-// always sparse, without making every seeded device look identical. Roughly
-// one in five entries is seeded as a failed update for visual variety.
+// seedDeviceUpdateHistory gives every third device a long (10-15 entry)
+// update history, so the device's "Update History" page isn't always sparse,
+// without making every seeded device look identical. One in five entries is
+// seeded as a failed update for visual variety.
 func seedDeviceUpdateHistory(d *gateway.Device, i int) error {
-	if rand.Intn(3) != 0 {
+	if i%3 != 0 {
 		return nil
 	}
 
-	count := 10 + rand.Intn(6) // 10-15 entries
+	count := 10 + (i/3)%6
 	for j := 0; j < count; j++ {
-		failed := rand.Intn(5) == 0
+		failed := (i+j)%5 == 0
 		stages := updateHistoryStages
 		if failed {
 			stages = updateHistoryStages[:4]
