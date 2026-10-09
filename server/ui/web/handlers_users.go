@@ -62,7 +62,7 @@ func (h handlers) usersList(c echo.Context) error {
 	providerName := h.provider.Name()
 	permissions := directoryPermissionsFor(providerName, viewerScopes)
 	ctx := usersDirectoryCtx{
-		baseCtx:       h.baseCtx(c, "Users", "users"),
+		baseCtx:       h.baseCtx(c, usersLabel, "users"),
 		Entries:       buildUserDirectoryEntries(userList, session.User.Username, permissions),
 		ScopesList:    users.ScopesAvailable(),
 		CanCreateUser: permissions.CanCreateUser,
@@ -105,9 +105,9 @@ func buildUserDirectoryEntries(list []users.User, currentUsername string, permis
 }
 
 var scopeResourceOrder = map[string]int{
-	"Devices": 0,
-	"Updates": 1,
-	"Users":   2,
+	devicesLabel: 0,
+	updatesLabel: 1,
+	usersLabel:   2,
 }
 
 var scopeCapabilityOrder = map[string]int{
@@ -162,11 +162,11 @@ func groupScopes(scopes []string) []scopeGroup {
 func scopeResourceLabel(resource string) string {
 	switch resource {
 	case "devices":
-		return "Devices"
+		return devicesLabel
 	case "updates":
-		return "Updates"
+		return updatesLabel
 	case "users":
-		return "Users"
+		return usersLabel
 	default:
 		first, size := utf8.DecodeRuneInString(resource)
 		return string(unicode.ToUpper(first)) + resource[size:]
