@@ -4,9 +4,34 @@
 package templates
 
 import (
+	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 )
+
+func TestJSONEscapesScriptEndTag(t *testing.T) {
+	tmpl, err := Templates.Clone()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl, err = tmpl.New("json-xss").Parse(`<script>const data = {{json .}};</script>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got bytes.Buffer
+	data := map[string]string{"value": `</script><script>alert("xss")</script>`}
+	if err := tmpl.ExecuteTemplate(&got, "json-xss", data); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(got.String(), "</script>") != 1 {
+		t.Fatalf("rendered template contains an injected script end tag: %s", got.String())
+	}
+	if !strings.Contains(got.String(), `\u003c/script\u003e`) {
+		t.Fatalf("rendered template does not escape the script end tag: %s", got.String())
+	}
+}
 
 func TestOtherLabels(t *testing.T) {
 	got := OtherLabels(map[string]string{
