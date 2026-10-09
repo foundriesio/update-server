@@ -110,9 +110,9 @@ func init() {
 		"contains":    strings.Contains,
 		"otherLabels": OtherLabels,
 		"initials":    Initials,
-		"json": func(v any) (template.JS, error) {
+		"json": func(v any) (json.RawMessage, error) {
 			b, err := json.Marshal(v)
-			return template.JS(b), err
+			return json.RawMessage(b), err
 		},
 	}
 
