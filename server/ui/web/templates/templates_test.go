@@ -178,3 +178,42 @@ func TestCoarsePointerShellControlsUseTouchSizedTargets(t *testing.T) {
 		t.Error("style.css missing coarse-pointer shell touch targets")
 	}
 }
+
+func TestPkiRegistryStylesAreScopedAndResponsive(t *testing.T) {
+	cssBytes, err := Assets.ReadFile("style.css")
+	if err != nil {
+		t.Fatalf("ReadFile(style.css) error = %v", err)
+	}
+
+	css := string(cssBytes)
+	for _, want := range []string{
+		"@layer pki-registry {",
+		`.pki-registry {
+    width: 100%;
+    max-width: 900px;`,
+		".pki-registry .pki-registry__summary",
+		".pki-registry .pki-registry__record > article {",
+		`.pki-registry .pki-registry__record-header {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr) 150px;
+    gap: 16px;
+    align-items: start;
+    margin: 0;
+    padding: 14px;
+    border: 0;
+    background: transparent;`,
+		"grid-template-columns: repeat(4, minmax(0, 1fr))",
+		"grid-template-columns: 280px minmax(0, 1fr) 150px",
+		"grid-template-columns: 220px minmax(0, 1fr) 150px",
+		"@media (max-width: 360px)",
+		".pki-registry__raw[open] .pki-registry__toggle-show",
+		".pki-registry__raw[open] .pki-registry__toggle-hide",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("style.css does not contain %q", want)
+		}
+	}
+	if strings.Contains(css, ".pki-registry__raw > summary:hover") {
+		t.Error("style.css must not add a hover effect to the raw certificate summary")
+	}
+}
