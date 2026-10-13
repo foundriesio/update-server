@@ -1,39 +1,80 @@
 {{ template "header" .}}
-    {{range .Sections}}
-    <section class="content-section">
-      <h3>{{.Title}}</h3>
-        {{if .Certs}}
-        {{range .Certs}}
-        <dl class="certificate-info">
-          <dt>Serial:</dt> <dd>{{.Serial}}</dd>
-          <dt>Issuer:</dt> <dd>{{.Issuer}}</dd>
-          <dt>Subject:</dt> <dd>{{.Subject}}</dd>
-          <dt>Expires:</dt> <dd>{{if isExpired .Expires}}<del>{{.Expires}}</del>{{else}}{{.Expires}}{{end}}</dd>
-        </dl>
-        {{end}}
-        <details>
-          <summary role="button" class="secondary">Details</summary>
-          <pre>{{.Raw}}</pre>
-        </details>
-        {{else}}
-        <p><em>Not configured</em></p>
-        {{end}}
-    </section>
-    {{end}}
+<section class="pki-registry">
+  <h1>{{.Title}}</h1>
 
-<style>
-.certificate-info {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-}
+  <dl class="pki-registry__summary" aria-label="PKI summary">
+    <div class="pki-registry__summary-card">
+      <dt>Trust items</dt>
+      <dd>{{.Summary.TrustItems}}</dd>
+    </div>
+    <div class="pki-registry__summary-card">
+      <dt>Configured</dt>
+      <dd>{{.Summary.Configured}}</dd>
+    </div>
+    <div class="pki-registry__summary-card">
+      <dt>Not configured</dt>
+      <dd>{{.Summary.NotConfigured}}</dd>
+    </div>
+    <div class="pki-registry__summary-card">
+      <dt>Earliest expiry</dt>
+      <dd>{{if ne .Summary.EarliestExpiry "—"}}<time datetime="{{.Summary.EarliestExpiry}}">{{.Summary.EarliestExpiry}}</time>{{else}}—{{end}}</dd>
+    </div>
+  </dl>
 
-.certificate-info dt {
-  font-weight: 600;
-}
+  <section class="pki-registry__section" aria-labelledby="certificate-registry-title">
+    <h2 class="meta-section__title" id="certificate-registry-title">Certificate Registry</h2>
 
-.certificate-info dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-</style>
+    <ol class="pki-registry__records">
+      {{range .Records}}
+      <li class="pki-registry__record{{if .Configured}} pki-registry__record--configured{{end}}">
+        <article>
+          <header class="pki-registry__record-header">
+            <div class="pki-registry__identity">
+              <h3 class="entity-name">{{.Title}}</h3>
+              <p>{{.Description}}</p>
+            </div>
+
+            <dl class="pki-registry__facts">
+              <div>
+                <dt>Subject</dt>
+                <dd>{{if .Configured}}<span translate="no">{{.Subject}}</span>{{else}}<span role="img" aria-label="Subject not configured">—</span>{{end}}</dd>
+              </div>
+              <div>
+                <dt>Issuer</dt>
+                <dd>{{if .Configured}}<span translate="no">{{.Issuer}}</span>{{else}}<span role="img" aria-label="Issuer not configured">—</span>{{end}}</dd>
+              </div>
+              <div>
+                <dt>Expires</dt>
+                <dd>{{if .Configured}}<time datetime="{{.Expires}}">{{.Expires}}</time>{{else}}<span role="img" aria-label="Expires not configured">—</span>{{end}}</dd>
+              </div>
+              <div class="pki-registry__serial">
+                <dt>Serial</dt>
+                <dd>{{if .Configured}}<span translate="no">{{.Serial}}</span>{{else}}<span role="img" aria-label="Serial number not configured">—</span>{{end}}</dd>
+              </div>
+            </dl>
+
+            <p class="pki-registry__status">
+              <span class="pki-registry__status-dot" aria-hidden="true"></span>
+              {{if .Configured}}Configured{{else}}Not configured{{end}}
+            </p>
+          </header>
+
+          {{if .Configured}}
+          <details class="pki-registry__raw">
+            <summary>
+              <span class="pki-registry__raw-label">RAW CERTIFICATE</span>
+              <span class="pki-registry__raw-toggle">
+                <span class="pki-registry__toggle-show">Show</span>
+                <span class="pki-registry__toggle-hide">Hide</span>
+              </span>
+            </summary>
+            <pre translate="no">{{.Raw}}</pre>
+          </details>
+          {{end}}
+        </article>
+      </li>
+      {{end}}
+    </ol>
+  </section>
+</section>
 {{ template "footer"}}

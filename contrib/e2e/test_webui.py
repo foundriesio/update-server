@@ -21,7 +21,7 @@ def test_nav_links(page, update_server):
     """Sub-navigation contains all expected section links."""
     page.goto(f"{SERVER_URL}/devices")
     subnav = page.locator("#sidenav")
-    for label in ("Devices", "Configs", "Updates", "Users"):
+    for label in ("Devices", "Configs", "Updates", "Users", "PKI"):
         assert subnav.get_by_role("link", name=label).is_visible()
 
 
@@ -36,6 +36,16 @@ def test_updates_page_loads(page, update_server):
     page.goto(f"{SERVER_URL}/updates")
     assert page.title() == "Updates - Foundries Update Server"
     assert page.get_by_role("heading", name="Updates").is_visible()
+
+
+def test_pki_page_loads(page, update_server):
+    page.goto(f"{SERVER_URL}/pki")
+    assert page.title() == "PKI - Foundries Update Server"
+    assert page.get_by_role("heading", name="PKI", level=1).is_visible()
+    assert page.get_by_role("heading", name="Certificate Registry", level=2).is_visible()
+    assert page.locator(".pki-registry__summary > div").count() == 4
+    assert page.locator(".pki-registry__record").count() == 4
+    assert page.locator(".pki-registry__raw").count() == 4
 
 
 def test_upload_dialog_opens_and_closes(page, update_server):

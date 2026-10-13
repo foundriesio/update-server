@@ -5,7 +5,7 @@
    standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
 @import url('/css/pico_min_211.css') layer(pico);
 
-@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream, users-directory;
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream, users-directory, pki-registry;
 
 @layer tokens {
 
@@ -4259,3 +4259,269 @@ pre.code-block {
 }
 
 } /* end @layer users-directory */
+
+@layer pki-registry {
+
+.pki-registry {
+    width: 100%;
+    max-width: 900px;
+    min-width: 0;
+    color: var(--text-1);
+}
+
+.pki-registry .pki-registry__summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0 0 28px;
+}
+.pki-registry .pki-registry__summary-card {
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border-1);
+    border-radius: 4px;
+    background: var(--surface-2);
+    box-shadow: none;
+}
+.pki-registry .pki-registry__summary-card dt,
+.pki-registry .pki-registry__facts dt,
+.pki-registry .pki-registry__raw-label {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.pki-registry .pki-registry__summary-card dd {
+    margin: 4px 0 0;
+    color: var(--text-1);
+    font-size: 1rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.pki-registry .pki-registry__summary-card time {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+}
+
+.pki-registry .pki-registry__section > h2 {
+    margin: 0 0 12px;
+    overflow-wrap: anywhere;
+}
+.pki-registry .pki-registry__records {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.pki-registry .pki-registry__record {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-1);
+    border-radius: 4px;
+    background: var(--surface-2);
+    box-shadow: none;
+}
+.pki-registry .pki-registry__record > article {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.pki-registry .pki-registry__record-header {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr) 150px;
+    gap: 16px;
+    align-items: start;
+    margin: 0;
+    padding: 14px;
+    border: 0;
+    background: transparent;
+}
+.pki-registry .pki-registry__identity {
+    min-width: 0;
+}
+.pki-registry .pki-registry__identity h3 {
+    margin: 0;
+    font-size: 0.94rem;
+    overflow-wrap: anywhere;
+}
+.pki-registry .pki-registry__identity p {
+    margin: 3px 0 0;
+    color: var(--text-2);
+    font-size: 0.76rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.pki-registry .pki-registry__facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 18px;
+    min-width: 0;
+    margin: 0;
+}
+.pki-registry .pki-registry__facts > div {
+    min-width: 0;
+}
+.pki-registry .pki-registry__facts .pki-registry__serial {
+    grid-column: 1 / -1;
+}
+.pki-registry .pki-registry__facts dd {
+    min-width: 0;
+    margin: 3px 0 0;
+    color: var(--text-1);
+    font: 0.76rem/1.45 var(--mono);
+    overflow-wrap: anywhere;
+}
+.pki-registry .pki-registry__status {
+    display: inline-flex;
+    justify-self: end;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+.pki-registry .pki-registry__status-dot {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: var(--dot-inactive);
+}
+.pki-registry .pki-registry__record--configured .pki-registry__status-dot {
+    background: var(--success);
+}
+
+.pki-registry .pki-registry__raw {
+    margin: 0;
+    border: 0;
+}
+.pki-registry .pki-registry__raw > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 40px;
+    margin: 0;
+    padding: 9px 14px;
+    border: 0;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    list-style: none;
+}
+.pki-registry .pki-registry__raw > summary::-webkit-details-marker {
+    display: none;
+}
+.pki-registry .pki-registry__raw > summary::marker,
+.pki-registry .pki-registry__raw > summary::after {
+    display: none;
+    content: none;
+}
+.pki-registry .pki-registry__raw > summary:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+.pki-registry .pki-registry__raw-toggle {
+    flex-shrink: 0;
+    color: var(--interactive);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.pki-registry .pki-registry__toggle-hide {
+    display: none;
+}
+.pki-registry .pki-registry__raw[open] .pki-registry__toggle-show {
+    display: none;
+}
+.pki-registry .pki-registry__raw[open] .pki-registry__toggle-hide {
+    display: inline;
+}
+.pki-registry .pki-registry__raw pre {
+    max-width: none;
+    margin: 0 14px 14px;
+    padding: 14px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--border-1);
+    border-radius: 4px;
+    background: var(--surface-1);
+    color: var(--text-1);
+    font: 0.76rem/1.55 var(--mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1060px) {
+    .pki-registry .pki-registry__record-header {
+        grid-template-columns: 220px minmax(0, 1fr) 150px;
+    }
+}
+
+@media (max-width: 700px) {
+    .pki-registry .pki-registry__summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .pki-registry .pki-registry__record-header {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .pki-registry .pki-registry__facts {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 480px) {
+    .pki-registry .pki-registry__record-header {
+        gap: 12px;
+        padding: 13px 12px;
+    }
+    .pki-registry .pki-registry__facts {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .pki-registry .pki-registry__facts .pki-registry__serial {
+        grid-column: auto;
+    }
+    .pki-registry .pki-registry__raw > summary {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+    .pki-registry .pki-registry__raw pre {
+        margin-right: 12px;
+        margin-left: 12px;
+    }
+}
+
+@media (max-width: 360px) {
+    .pki-registry .pki-registry__summary {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (pointer: coarse) {
+    .pki-registry .pki-registry__raw > summary {
+        min-height: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pki-registry *,
+    .pki-registry *::before,
+    .pki-registry *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+} /* end @layer pki-registry */
