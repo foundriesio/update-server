@@ -9,13 +9,14 @@ SERVER_URL = "http://localhost:8080"
 # --dnsname update-server, so these strings must show up in the root CA,
 # device CA, and gateway TLS certificate subjects respectively.
 EXPECTED_SUBJECTS = ("fio-update-server-root", "fio-update-server-device-ca", "update-server")
-EXPECTED_SECTIONS = ("Root CA", "Gateway TLS Certificate", "Device CA", "CA Bundles")
+EXPECTED_CLI_SECTIONS = ("Root CA", "Gateway TLS Certificate", "Device CA", "CA Bundles")
+EXPECTED_PAGE_SECTIONS = ("Root CA", "Gateway TLS Certificate", "Device CA", "CA Bundle")
 
 
 def test_fiocli_pki_show(fiocli, update_server):
     out = fiocli("pki", "show")
 
-    for section in EXPECTED_SECTIONS:
+    for section in EXPECTED_CLI_SECTIONS:
         assert f"{section}:" in out, f"Missing section {section!r} in 'pki show' output:\n{out}"
 
     for field in ("Serial:", "Issuer:", "Subject:", "Expires:"):
@@ -29,7 +30,7 @@ def test_pki_page(page, update_server):
     page.goto(f"{SERVER_URL}/pki")
     assert page.title() == "PKI - Foundries Update Server"
 
-    for section in EXPECTED_SECTIONS:
+    for section in EXPECTED_PAGE_SECTIONS:
         assert page.get_by_role("heading", name=section).is_visible()
 
     content = page.content()
