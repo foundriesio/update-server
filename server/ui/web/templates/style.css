@@ -4639,6 +4639,8 @@ pre.code-block {
 .settings-ledger .settings-ledger__token-scroll {
     width: 100%;
     max-width: 100%;
+    min-width: 0;
+    contain: paint;
     overflow-x: auto;
 }
 .settings-ledger__scope-table,

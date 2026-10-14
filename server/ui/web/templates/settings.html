@@ -98,9 +98,9 @@
           <form id="tokenForm">
             <div class="settings-ledger__dialog-body">
               <label for="description">Description</label>
-              <input type="text" id="description" name="description" maxlength="80" required>
+              <input type="text" id="description" name="description" maxlength="80" autocomplete="off" required>
               <label for="expires">Expires on</label>
-              <input type="date" id="expires" name="expires" required>
+              <input type="date" id="expires" name="expires" autocomplete="off" required>
               <fieldset class="settings-ledger__scope-options">
                 <legend>Scopes</legend>
                 {{range .ScopesList}}
