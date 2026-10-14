@@ -5,7 +5,7 @@
    standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
 @import url('/css/pico_min_211.css') layer(pico);
 
-@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream, users-directory, pki-registry;
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream, users-directory, pki-registry, settings-ledger;
 
 @layer tokens {
 
@@ -4525,3 +4525,459 @@ pre.code-block {
 }
 
 } /* end @layer pki-registry */
+
+@layer settings-ledger {
+
+.settings-ledger {
+    width: 100%;
+    max-width: 940px;
+    min-width: 0;
+    color: var(--text-1);
+}
+.settings-ledger h1 {
+    margin: 0 0 30px;
+}
+.settings-ledger__section {
+    min-width: 0;
+    padding: 24px 0;
+}
+.settings-ledger__section:first-of-type {
+    padding-top: 0;
+}
+.settings-ledger__section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 12px;
+}
+.settings-ledger__section-title {
+    margin: 0;
+    color: var(--text-3);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+.settings-ledger__note,
+.settings-ledger__empty {
+    color: var(--text-3);
+}
+.settings-ledger__note {
+    margin: 0;
+    font-size: 0.75rem;
+}
+.settings-ledger__empty {
+    font-style: italic;
+}
+.settings-ledger__mono,
+.settings-ledger code,
+.settings-ledger__scope-list,
+.settings-ledger__token-value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+}
+.settings-ledger__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    width: auto;
+    margin: 0;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--interactive);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+}
+.settings-ledger__link:hover {
+    color: var(--interactive);
+    text-decoration: underline;
+}
+.settings-ledger__link:focus-visible,
+.settings-ledger__copy:focus-visible,
+.settings-ledger__button:focus-visible,
+.settings-ledger__dialog-close:focus-visible,
+.settings-ledger__scope-scroll:focus-visible,
+.settings-ledger__token-scroll:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.settings-ledger__rows {
+    margin: 0;
+    border-top: 1px solid var(--border-1);
+}
+.settings-ledger__rows > div {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 18px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.settings-ledger__rows dt,
+.settings-ledger__endpoints dt,
+.settings-ledger__token-details dt {
+    color: var(--text-3);
+}
+.settings-ledger__rows dd,
+.settings-ledger__endpoints dd,
+.settings-ledger__token-details dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.settings-ledger__account-actions {
+    display: flex;
+    gap: 12px;
+    padding-top: 10px;
+}
+.settings-ledger .settings-ledger__scope-scroll,
+.settings-ledger .settings-ledger__token-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+.settings-ledger__scope-table,
+.settings-ledger__token-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    text-align: left;
+}
+.settings-ledger__scope-table th,
+.settings-ledger__token-table th {
+    padding: 0 14px 8px 0;
+    border-bottom: 1px solid var(--border-2);
+    color: var(--text-3);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+.settings-ledger__scope-table td,
+.settings-ledger__token-table td {
+    padding: 10px 14px 10px 0;
+    border-bottom: 1px solid var(--border-1);
+    vertical-align: top;
+}
+.settings-ledger__scope-table th:last-child,
+.settings-ledger__scope-table td:last-child,
+.settings-ledger__token-table th:last-child,
+.settings-ledger__token-table td:last-child {
+    padding-right: 0;
+}
+.settings-ledger__scope-table td:last-child {
+    color: var(--text-2);
+}
+.settings-ledger__scope-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: 0;
+    padding: 0;
+    color: var(--text-2);
+    font-size: 0.72rem;
+    list-style: none;
+}
+.settings-ledger__token-table time {
+    color: var(--text-2);
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+.settings-ledger__token-empty {
+    margin: 0;
+    padding: 10px 0;
+}
+.settings-ledger__endpoints {
+    margin: 0;
+}
+.settings-ledger__endpoints > div {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.settings-ledger__endpoints code {
+    display: block;
+    overflow-wrap: anywhere;
+    color: var(--text-1);
+    font-size: 0.78rem;
+}
+.settings-ledger__copy,
+.settings-ledger__button {
+    display: inline-flex;
+    min-height: 34px;
+    width: auto;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--interactive);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+}
+.settings-ledger__copy {
+    min-height: 30px;
+    padding: 4px 9px;
+    font-size: 0.72rem;
+}
+.settings-ledger__copy:hover,
+.settings-ledger__button:hover {
+    border-color: var(--border-2);
+    background: var(--surface-hover);
+}
+.settings-ledger__button--primary {
+    border-color: var(--brand-primary);
+    background: var(--brand-primary);
+    color: #fff;
+}
+:root[data-theme="dark"] .settings-ledger__button--primary {
+    border-color: var(--brand-accent);
+    background: var(--brand-accent);
+    color: var(--brand-primary);
+}
+.settings-ledger__button--danger {
+    color: var(--danger);
+}
+.settings-ledger .settings-ledger__dialog {
+    width: auto;
+    max-width: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-1);
+}
+.settings-ledger__dialog::backdrop {
+    background: rgba(0, 0, 0, 0.48);
+}
+.settings-ledger__dialog > article {
+    width: min(560px, calc(100vw - 32px));
+    max-width: 560px;
+    max-height: min(760px, calc(100vh - 32px));
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    box-shadow: none;
+}
+.settings-ledger__dialog form {
+    margin: 0;
+}
+.settings-ledger__dialog-head,
+.settings-ledger__dialog-foot {
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+.settings-ledger__dialog-head {
+    gap: 16px;
+    padding: 18px 24px 16px;
+}
+.settings-ledger__dialog-head h2 {
+    margin: 0;
+    color: var(--text-1);
+    font-size: 0.94rem;
+}
+.settings-ledger__dialog-close {
+    display: inline-flex;
+    min-width: 24px;
+    min-height: 24px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0 0 auto;
+    padding: 4px;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.settings-ledger__dialog-close:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
+}
+.settings-ledger__dialog-body {
+    display: grid;
+    gap: 7px;
+    padding: 0 24px 20px;
+}
+.settings-ledger__dialog-body > p {
+    margin: 0 0 8px;
+    color: var(--text-2);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+.settings-ledger__dialog-body > label {
+    color: var(--text-2);
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+.settings-ledger__dialog-body input:not([type="checkbox"]),
+.settings-ledger__token-value {
+    width: 100%;
+    min-height: 40px;
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-2);
+    border-radius: 3px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    font: inherit;
+    font-size: 0.85rem;
+}
+.settings-ledger__token-value {
+    min-height: 80px;
+    resize: vertical;
+}
+.settings-ledger__scope-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 4px 0 0;
+    padding: 0;
+    border: 0;
+}
+.settings-ledger__scope-options legend {
+    margin-bottom: 8px;
+    color: var(--text-2);
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+.settings-ledger__scope-options label {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 7px 9px;
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    color: var(--text-2);
+    font-size: 0.72rem;
+    overflow-wrap: anywhere;
+}
+.settings-ledger__scope-options input {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+    margin: 0;
+    accent-color: var(--interactive);
+}
+.settings-ledger__dialog-status {
+    min-height: 1.25rem;
+    margin: 4px 0 0;
+    color: var(--danger);
+    font-size: 0.76rem;
+}
+.settings-ledger__password-error {
+    margin: 0;
+    color: var(--danger);
+    font-size: 0.76rem;
+}
+.settings-ledger__dialog-foot {
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 24px;
+}
+.settings-ledger__token-details {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    background: var(--surface-1);
+}
+.settings-ledger__token-details > div {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 10px;
+}
+.settings-ledger__token-details dd {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+}
+
+@media (max-width: 620px) {
+    .settings-ledger__section-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .settings-ledger__rows > div {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+    }
+    .settings-ledger__endpoints > div {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 5px 12px;
+    }
+    .settings-ledger__endpoints dt {
+        grid-column: 1 / -1;
+    }
+    .settings-ledger__token-table {
+        min-width: 680px;
+    }
+    .settings-ledger__scope-options {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .settings-ledger__dialog > article {
+        width: calc(100vw - 16px);
+        max-height: calc(100vh - 16px);
+    }
+    .settings-ledger__dialog-head,
+    .settings-ledger__dialog-foot {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+    .settings-ledger__dialog-body {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+}
+
+@media (pointer: coarse) {
+    .settings-ledger__link,
+    .settings-ledger__copy,
+    .settings-ledger__button,
+    .settings-ledger__dialog-close,
+    .settings-ledger__scope-options label {
+        min-height: 44px;
+    }
+    .settings-ledger__dialog-close {
+        min-width: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-ledger *,
+    .settings-ledger *::before,
+    .settings-ledger *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+} /* end @layer settings-ledger */
