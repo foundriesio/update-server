@@ -175,11 +175,6 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
     font-size: 14px;
     line-height: 1.5;
 }`,
-		`.settings-ledger > h1 {
-    margin: 0 0 30px;
-    font-size: 22px;
-    line-height: 1.2;
-}`,
 		`.settings-ledger__section {
     min-width: 0;
     padding: 24px 0;
@@ -271,4 +266,5 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
 			t.Errorf("style.css does not contain %q", want)
 		}
 	}
+	assert.NotContains(t, css, ".settings-ledger > h1 {")
 }
