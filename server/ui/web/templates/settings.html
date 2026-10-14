@@ -5,7 +5,7 @@
       <section class="settings-ledger__section" aria-labelledby="settings-account-title">
         <div class="settings-ledger__section-head">
           <h2 class="settings-ledger__section-title" id="settings-account-title">Account</h2>
-          <a class="settings-ledger__link" href="/users/{{.User.Username}}/audit-log">View audit log</a>
+          <a class="settings-ledger__link" href="/users/{{.User.Username}}/audit-log">Audit log</a>
         </div>
         <dl class="settings-ledger__rows">
           <div>
@@ -31,12 +31,12 @@
         </div>
         <div class="settings-ledger__scope-scroll" role="region" aria-label="Allowed scopes" tabindex="0">
           <table class="settings-ledger__scope-table">
-            <thead><tr><th scope="col">Scope</th><th scope="col">Access</th></tr></thead>
+            <thead><tr><th scope="col">Resource</th><th scope="col">Operations</th><th scope="col">Scope names</th></tr></thead>
             <tbody>
-              {{range .ScopesList}}
-              <tr><td><code>{{.}}</code></td><td>Allowed</td></tr>
+              {{range .ScopeGroups}}
+              <tr><td class="settings-ledger__scope-resource">{{.Resource}}</td><td>{{.Operations}}</td><td><ul class="settings-ledger__scope-names">{{range .ScopeNames}}<li><code>{{.}}</code></li>{{end}}</ul></td></tr>
               {{else}}
-              <tr><td class="settings-ledger__empty" colspan="2">No scopes assigned</td></tr>
+              <tr><td class="settings-ledger__empty" colspan="3">No scopes assigned</td></tr>
               {{end}}
             </tbody>
           </table>
@@ -65,7 +65,7 @@
       <section class="settings-ledger__section" aria-labelledby="settings-tokens-title">
         <div class="settings-ledger__section-head">
           <h2 class="settings-ledger__section-title" id="settings-tokens-title">API tokens</h2>
-          <button class="settings-ledger__button settings-ledger__button--primary" type="button" data-action="open-token">New token</button>
+          <button class="settings-ledger__button" type="button" data-action="open-token">New token</button>
         </div>
         {{if .Tokens}}
         <div class="settings-ledger__token-scroll" role="region" aria-label="API tokens" tabindex="0">
@@ -85,7 +85,7 @@
           </table>
         </div>
         {{else}}
-        <p class="settings-ledger__empty settings-ledger__token-empty">No API tokens. Create one for a service that needs API access.</p>
+        <p class="settings-ledger__empty settings-ledger__token-empty">No API tokens. Use the New token button to create one.</p>
         {{end}}
       </section>
 

@@ -4533,9 +4533,13 @@ pre.code-block {
     max-width: 940px;
     min-width: 0;
     color: var(--text-1);
+    font-size: 14px;
+    line-height: 1.5;
 }
-.settings-ledger h1 {
+.settings-ledger > h1 {
     margin: 0 0 30px;
+    font-size: 22px;
+    line-height: 1.2;
 }
 .settings-ledger__section {
     min-width: 0;
@@ -4554,9 +4558,10 @@ pre.code-block {
 .settings-ledger__section-title {
     margin: 0;
     color: var(--text-3);
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.07em;
+    line-height: 1.4;
     text-transform: uppercase;
 }
 .settings-ledger__note,
@@ -4609,7 +4614,6 @@ pre.code-block {
 }
 .settings-ledger__rows {
     margin: 0;
-    border-top: 1px solid var(--border-1);
 }
 .settings-ledger__rows > div {
     display: grid;
@@ -4675,6 +4679,26 @@ pre.code-block {
 .settings-ledger__scope-table td:last-child {
     color: var(--text-2);
 }
+.settings-ledger__scope-table th:first-child {
+    width: 140px;
+}
+.settings-ledger__scope-table th:nth-child(2),
+.settings-ledger__scope-table td:nth-child(2) {
+    width: 220px;
+}
+.settings-ledger__scope-table th,
+.settings-ledger__scope-table td {
+    background: transparent;
+}
+.settings-ledger__scope-resource {
+    width: 140px;
+    font: 650 0.81rem var(--mono);
+}
+.settings-ledger code {
+    padding: 0;
+    background: transparent;
+}
+.settings-ledger__scope-names,
 .settings-ledger__scope-list {
     display: flex;
     flex-wrap: wrap;
@@ -4682,7 +4706,12 @@ pre.code-block {
     margin: 0;
     padding: 0;
     color: var(--text-2);
-    font-size: 0.72rem;
+    font-size: 12px;
+    list-style: none;
+}
+.settings-ledger__scope-names > li,
+.settings-ledger__scope-list > li {
+    margin: 0;
     list-style: none;
 }
 .settings-ledger__token-table time {
@@ -4938,6 +4967,9 @@ pre.code-block {
     }
     .settings-ledger__token-table {
         min-width: 680px;
+    }
+    .settings-ledger__scope-table {
+        min-width: 640px;
     }
     .settings-ledger__scope-options {
         grid-template-columns: minmax(0, 1fr);
