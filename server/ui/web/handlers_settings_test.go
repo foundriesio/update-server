@@ -71,6 +71,8 @@ func TestSettingsTemplateRendersLedgerAndPreservesActions(t *testing.T) {
 	assert.Contains(t, html, `data-token-id="17"`)
 	assert.Contains(t, html, `data-action="revoke-token"`)
 	assert.Contains(t, html, `id="tokenModal"`)
+	assert.Contains(t, html, `id="description" name="description" maxlength="80" autocomplete="off" required`)
+	assert.Contains(t, html, `id="expires" name="expires" autocomplete="off" required`)
 	assert.Contains(t, html, `id="revokeModal"`)
 	assert.Contains(t, html, `id="passwordModal"`)
 	assert.Contains(t, html, `/users/operator/tokens`)
@@ -101,7 +103,13 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
 	for _, want := range []string{
 		"@layer settings-ledger {",
 		".settings-ledger {",
-		".settings-ledger .settings-ledger__scope-scroll",
+		`.settings-ledger .settings-ledger__scope-scroll,
+.settings-ledger .settings-ledger__token-scroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    contain: paint;
+    overflow-x: auto;`,
 		".settings-ledger .settings-ledger__dialog",
 		"@media (max-width: 620px)",
 		"@media (pointer: coarse)",
