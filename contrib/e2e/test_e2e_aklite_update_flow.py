@@ -45,7 +45,7 @@ def _verify_update(fiocli, fiocli_tail, aklite_device, aklite_docker,
     """Create rollout, and drive check/update/reboot/run for one version."""
     fiocli(
         "updates", "create-rollout",
-        TAG, update_name, rollout_name,
+        update_name, rollout_name,
         "--uuids", uuid,
     )
 
@@ -54,7 +54,7 @@ def _verify_update(fiocli, fiocli_tail, aklite_device, aklite_docker,
         f"check rc={rc} (expected {RC_CHECKIN_UPDATE_NEW_VERSION})\n{out}\n{err}"
     )
 
-    stop_tail = fiocli_tail("updates", "tail", TAG, update_name)
+    stop_tail = fiocli_tail("updates", "tail", update_name)
 
     rc, out, err = _rc(aklite_device, f"aktualizr-lite update {version}")
     assert rc == RC_INSTALL_NEEDS_REBOOT, (
