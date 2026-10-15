@@ -1,14 +1,132 @@
-{{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
-      <p>Please login with your SSO provider. {{if .LoginTip}}{{.LoginTip}}{{end}}</p>
+{{/* Used by the auth package's oauth2BaseProvider implementation, shared by GitHub and Google */}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    {{ if .CsrfToken }}<meta name="csrf-token" content="{{.CsrfToken}}">{{ end }}
 
-      <a href="/auth/login">{{.Name}}</a>
-      {{ if .Reason }}
-      <section>
-        <i><small>Reason: {{.Reason}}</small></i>
+    <title>{{.Title}} - {{.BrandName}}</title>
+    <link rel="icon" href="/favicon">
+
+    <link rel="stylesheet" href="/css/pico_min_211.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/login.css">
+    {{ template "csrf-fetch-script" . }}
+  </head>
+
+  <body>
+    <div class="login-split">
+      <section class="login-brand" aria-label="{{.BrandName}}">
+        {{ if .LogoPath }}<img src="{{.LogoPath}}" alt="{{.BrandName}}" class="login-brand-logo">{{ end }}
+        <span class="login-brand-lockup">{{.BrandName}}</span>
+        <div class="login-panel-body">
+          <h1>Fleet updates,<br>under control.</h1>
+          <p class="login-tagline">The management console for over-the-air updates across your embedded and IoT device fleet.</p>
+        </div>
+        <span class="login-panel-footer">{{.Version}}</span>
       </section>
-      {{ end }}
-    </section>
 
-{{ template "footer"}}
+      <main id="login" class="login-form-panel">
+        <button id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+          <svg class="icon-light" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.3"/>
+            <g stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+              <line x1="8" y1="0.8" x2="8" y2="2.6"/>
+              <line x1="8" y1="13.4" x2="8" y2="15.2"/>
+              <line x1="0.8" y1="8" x2="2.6" y2="8"/>
+              <line x1="13.4" y1="8" x2="15.2" y2="8"/>
+              <line x1="2.7" y1="2.7" x2="4" y2="4"/>
+              <line x1="12" y1="12" x2="13.3" y2="13.3"/>
+              <line x1="2.7" y1="13.3" x2="4" y2="12"/>
+              <line x1="12" y1="4" x2="13.3" y2="2.7"/>
+            </g>
+          </svg>
+          <svg class="icon-dark" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M13.5 9.3A6 6 0 1 1 6.7 2.5a5 5 0 0 0 6.8 6.8Z" fill="currentColor"/>
+          </svg>
+        </button>
+
+        <div class="login-form-wrap">
+          <p class="login-eyebrow">Single sign-on</p>
+          <h2 class="login-title">Sign in</h2>
+          <p class="login-sub">Authenticate with your {{.Name}} account.</p>
+
+          {{ if .Reason }}
+          <div class="login-error" role="alert">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/>
+              <line x1="8" y1="4.6" x2="8" y2="8.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              <circle cx="8" cy="11" r="0.9" fill="currentColor"/>
+            </svg>
+            <span>{{.Reason}}</span>
+          </div>
+          {{ end }}
+
+          <a href="/auth/login" role="button" class="login-oauth-btn">
+            {{/* Add an else-if branch here for each new ProviderKey's icon. */}}
+            {{ if eq .ProviderKey "github" }}
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+            </svg>
+            {{ else if eq .ProviderKey "google" }}
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62Z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.96v2.33A9 9 0 0 0 9 18Z"/>
+              <path fill="#FBBC05" d="M3.98 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.02-2.33Z"/>
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58Z"/>
+            </svg>
+            {{ end }}
+            Continue with {{.Name}}
+          </a>
+
+          {{ if .LoginTip }}
+          <p class="login-restriction">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1.2 2 3.6v3.9c0 3.4 2.4 5.7 6 7.3 3.6-1.6 6-3.9 6-7.3V3.6L8 1.2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+            </svg>
+            <span>{{.LoginTip}}</span>
+          </p>
+          {{ end }}
+        </div>
+      </main>
+    </div>
+
+    <script>
+    (function () {
+      var THEME_STORAGE_KEY = 'login-theme';
+      var themeToggle = document.getElementById('theme-toggle');
+      var html = document.documentElement;
+
+      function setTheme(theme) {
+        if (theme === 'dark') {
+          html.setAttribute('data-theme', 'dark');
+          themeToggle.setAttribute('aria-label', 'Switch to light mode');
+          themeToggle.setAttribute('title', 'Switch to light mode');
+        } else {
+          html.removeAttribute('data-theme');
+          themeToggle.setAttribute('aria-label', 'Switch to dark mode');
+          themeToggle.setAttribute('title', 'Switch to dark mode');
+        }
+      }
+
+      var savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        setTheme(savedTheme);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setTheme('dark');
+      } else {
+        setTheme('light');
+      }
+
+      themeToggle.addEventListener('click', function () {
+        var isDark = html.getAttribute('data-theme') === 'dark';
+        var next = isDark ? 'light' : 'dark';
+        setTheme(next);
+        localStorage.setItem(THEME_STORAGE_KEY, next);
+      });
+    })();
+    </script>
+  </body>
+</html>
