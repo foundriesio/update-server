@@ -8,7 +8,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.40"
+      version = "~> 6.25"
     }
   }
 }
@@ -144,6 +144,29 @@ resource "aws_cloudwatch_log_group" "fioserver" {
   tags              = local.tags
 }
 
+# The agent's journald collector wraps each entry as {"body": {"MESSAGE":
+# ..., <journal fields>}}, with fioserver's JSON line as an escaped string.
+# Lift that line's fields to the top level and drop the journal metadata.
+resource "aws_cloudwatch_log_transformer" "fioserver" {
+  count = var.enable_cloudwatch_logs ? 1 : 0
+
+  log_group_arn = aws_cloudwatch_log_group.fioserver[0].arn
+
+  transformer_config {
+    parse_json {}
+  }
+  transformer_config {
+    parse_json {
+      source = "body.MESSAGE"
+    }
+  }
+  transformer_config {
+    delete_keys {
+      with_keys = ["body"]
+    }
+  }
+}
+
 data "aws_iam_policy_document" "cloudwatch_logs" {
   count = var.enable_cloudwatch_logs ? 1 : 0
 
@@ -195,7 +218,7 @@ resource "aws_instance" "server" {
           FIOSERVER_SECRET_PREFIX=${local.secret_prefix}
           FIOSERVER_UI_ADDR=${local.ui_addr}
           FIOSERVER_GATEWAY_ADDR=0.0.0.0:${var.gateway_port}
-          AWS_REGION=${data.aws_region.current.name}
+          AWS_REGION=${data.aws_region.current.region}
 %{if var.enable_cloudwatch_logs~}
       - path: /etc/fioserver/cloudwatch-agent.json
         permissions: '0644'
