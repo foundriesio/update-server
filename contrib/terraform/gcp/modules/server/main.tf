@@ -28,6 +28,16 @@ locals {
   # The load balancer connects over the network, so loopback is insufficient.
   ui_addr = "0.0.0.0:8080"
 
+  # journald metadata that is either constant or already in the log entry's
+  # resource labels. _SYSTEMD_UNIT is kept as the key for filtering by service.
+  journald_dropped_fields = [
+    "PRIORITY", "SYSLOG_FACILITY", "SYSLOG_IDENTIFIER",
+    "_BOOT_ID", "_CAP_EFFECTIVE", "_CMDLINE", "_COMM", "_EXE", "_GID",
+    "_HOSTNAME", "_MACHINE_ID", "_PID", "_RUNTIME_SCOPE", "_SELINUX_CONTEXT",
+    "_STREAM_ID", "_SYSTEMD_CGROUP", "_SYSTEMD_INVOCATION_ID",
+    "_SYSTEMD_SLICE", "_TRANSPORT", "_UID",
+  ]
+
   # Configuration only -- never secrets. The instance fetches those from
   # Secret Manager using its service account token, so nothing sensitive
   # lands in user_data (which is readable via the metadata server) or in
@@ -50,10 +60,35 @@ locals {
             receivers:
               fioserver_journald:
                 type: systemd_journald
+            processors:
+              fioserver_json:
+                type: parse_json
+                field: MESSAGE
+              fioserver_fields:
+                type: modify_fields
+                fields:
+                  severity:
+                    move_from: jsonPayload.level
+                    map_values:
+                      DEBUG: DEBUG
+                      INFO: INFO
+                      WARN: WARNING
+                      ERROR: ERROR
+                  jsonPayload.message:
+                    move_from: jsonPayload.msg
+%{for f in local.journald_dropped_fields~}
+                  jsonPayload.${f}:
+                    omit_if: 'jsonPayload.${f} =~ ".*"'
+%{endfor~}
             service:
               pipelines:
+                # The built-in pipeline tails /var/log/syslog, which duplicates
+                # the journal as unparsed text.
+                default_pipeline:
+                  receivers: []
                 fioserver:
                   receivers: [fioserver_journald]
+                  processors: [fioserver_json, fioserver_fields]
 %{endif~}
     runcmd:
       - [systemctl, enable, --now, fioserver-volume-init.service]
