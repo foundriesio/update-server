@@ -1,229 +1,358 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+    <section class="settings-ledger device-page-inner">
+      <h1>{{.Title}}</h1>
 
-      <fieldset>
-        <legend><strong>Username</strong></legend>
-        <p>{{.User.Username}}</p>
-      </fieldset>
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-account-title">
+        <div class="settings-ledger__section-head">
+          <h2 class="meta-section__title" id="settings-account-title">Account</h2>
+          <a class="meta-row-action" href="/users/{{.User.Username}}/audit-log">Audit log →</a>
+        </div>
+        <dl class="settings-ledger__rows">
+          <div>
+            <dt>Username</dt>
+            <dd class="settings-ledger__mono">{{.User.Username}}</dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>{{if .User.Email}}{{.User.Email}}{{else}}<span class="settings-ledger__empty">Not configured</span>{{end}}</dd>
+          </div>
+        </dl>
+        {{if .LocalAuth}}
+        <div class="settings-ledger__account-actions">
+          <button class="settings-ledger__link" type="button" data-action="change-password">Change password</button>
+        </div>
+        {{end}}
+      </section>
 
-      <fieldset>
-        <legend><strong>Email</strong></legend>
-        <p>{{if .User.Email}}{{.User.Email}}{{else}}<em>Not configured</em>{{end}}</p>
-      </fieldset>
-
-      <fieldset>
-        <legend><strong>Allowed scopes</strong></legend>
-        <ul>
-          {{range .User.AllowedScopes.ToSlice}}
-          <li>{{.}}</li>
-          {{end}}
-        </ul>
-      </fieldset>
-      <fieldset>
-        <legend><strong>Device API</strong> <i>(for fio-device-register)</i></legend>
-        <p>{{.DeviceApiUrl}}</p>
-      </fieldset>
-      <fieldset>
-        <legend><strong>OAuth2 API</strong> <i>(for fio-device-register)</i></legend>
-        <p>{{.Oauth2ApiUrl}}</p>
-      </fieldset>
-
-    </section>
-
-    <section class="content-section">
-      <h3>Actions</h3>
-      <button onclick="location.href='/users/{{.User.Username}}/audit-log';">View audit log</button>
-      {{ if .LocalAuth }}
-      <button onclick="passwordModal.show(); document.getElementById('currentPassword').focus();" >Change Password</button>
-      {{ end }}
-    </section>
-
-    <section class="content-section">
-      <h3>API Tokens</h3>
-      <button onclick="tokenModal.show();">New Token</button>
-      <table>
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th>Created</th>
-            <th>Expires</th>
-            <th>Scopes</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{range .Tokens}}
-          <tr>
-            <td>{{.Description}}</td>
-            <td>{{tsToString .CreatedAt}}</td>
-            <td>{{tsToString .ExpiresAt}}</td>
-            <td>
-              {{range .Scopes.ToSlice}}
-              {{.}}
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-scopes-title">
+        <div class="settings-ledger__section-head">
+          <h2 class="meta-section__title" id="settings-scopes-title">Allowed scopes</h2>
+          <p class="settings-ledger__note">{{len .ScopesList}} effective scopes</p>
+        </div>
+        <div class="settings-ledger__scope-scroll" role="region" aria-label="Allowed scopes" tabindex="0">
+          <table class="settings-ledger__scope-table">
+            <thead><tr><th scope="col">Resource</th><th scope="col">Operations</th><th scope="col">Scope names</th></tr></thead>
+            <tbody>
+              {{range .ScopeGroups}}
+              <tr><td class="settings-ledger__scope-resource">{{.Resource}}</td><td>{{.Operations}}</td><td><ul class="settings-ledger__scope-names">{{range .ScopeNames}}<li><code>{{.}}</code></li>{{end}}</ul></td></tr>
+              {{else}}
+              <tr><td class="settings-ledger__empty" colspan="3">No scopes assigned</td></tr>
               {{end}}
-            </td>
-            <td>
-              <i title="Revoke" id="{{.PublicID}}" class="trash"></i>
-            </td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-      <dialog id="tokenModal">
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-endpoints-title">
+        <div class="settings-ledger__section-head">
+          <h2 class="meta-section__title" id="settings-endpoints-title">Service endpoints</h2>
+          <p class="settings-ledger__note">For fio-device-register</p>
+        </div>
+        <dl class="settings-ledger__endpoints">
+          <div>
+            <dt>Device API</dt>
+            <dd><code>{{.DeviceApiUrl}}</code></dd>
+            <dd>
+              <button class="btn-ghost btn-sm btn-copy settings-ledger__copy" type="button" data-copy="{{.DeviceApiUrl}}" aria-label="Copy Device API endpoint" title="Copy Device API endpoint">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <rect x="4" y="0.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                  <rect x="0.5" y="3.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1" fill="var(--surface-2)"/>
+                </svg>
+                <span class="sr-only">Copy</span>
+              </button>
+            </dd>
+          </div>
+          <div>
+            <dt>OAuth2 API</dt>
+            <dd><code>{{.Oauth2ApiUrl}}</code></dd>
+            <dd>
+              <button class="btn-ghost btn-sm btn-copy settings-ledger__copy" type="button" data-copy="{{.Oauth2ApiUrl}}" aria-label="Copy OAuth2 API endpoint" title="Copy OAuth2 API endpoint">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <rect x="4" y="0.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                  <rect x="0.5" y="3.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1" fill="var(--surface-2)"/>
+                </svg>
+                <span class="sr-only">Copy</span>
+              </button>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-tokens-title">
+        <div class="settings-ledger__section-head">
+          <h2 class="meta-section__title" id="settings-tokens-title">API tokens</h2>
+          <button class="settings-ledger__button" type="button" data-action="open-token">New token</button>
+        </div>
+        {{if .Tokens}}
+        <div class="settings-ledger__token-scroll" role="region" aria-label="API tokens" tabindex="0">
+          <table class="settings-ledger__token-table">
+            <thead><tr><th scope="col">Description</th><th scope="col">Created <span data-token-timezone></span></th><th scope="col">Expires <span data-token-timezone></span></th><th scope="col">Scopes</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              {{range .Tokens}}
+              <tr>
+                <td>{{.Description}}</td>
+                <td><time datetime="{{tsToString .CreatedAt}}" title="{{tsToString .CreatedAt}}" aria-label="{{tsToString .CreatedAt}}" data-token-time>{{tsToString .CreatedAt}}</time></td>
+                <td><time datetime="{{tsToString .ExpiresAt}}" title="{{tsToString .ExpiresAt}}" aria-label="{{tsToString .ExpiresAt}}" data-token-time>{{tsToString .ExpiresAt}}</time>{{if isExpired (tsToString .ExpiresAt)}}<span class="settings-ledger__token-expired">Expired</span>{{end}}</td>
+                <td><ul class="settings-ledger__scope-list" translate="no">{{$scopes := .Scopes.ToSlice}}{{range $index, $scope := $scopes}}<li>{{$scope}}{{if lt (add $index 1) (len $scopes)}}, {{end}}</li>{{end}}</ul></td>
+                <td><button class="btn-delete settings-ledger__revoke" type="button" data-action="revoke-token" data-token-id="{{.PublicID}}" aria-label="Revoke token {{.Description}}" title="Revoke token"><i class="trash" aria-hidden="true"></i></button></td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+        <p class="settings-ledger__empty settings-ledger__token-empty">No API tokens. Use the New token button to create one.</p>
+        {{end}}
+      </section>
+
+      <dialog class="upload-dialog" id="tokenModal" aria-labelledby="token-modal-title">
         <article>
-          <header>
-            <button aria-label="Close" rel="prev" onclick="tokenModal.close()"></button>
-            <h3>Create new API token</h3>
-          </header>
-          <form method="dialog">
-            <label for="description">Description:</label>
-            <input type="text" id="description" name="description" maxlength="80" required>
-            <label for="expires">Expires on:</label>
-            <input type="date" id="expires" name="expires" required>
-            <label for="scopes">Scopes:</label>
-            {{range .ScopesList}}
-            <input type="checkbox" id="scope-{{.}}" name="scopes" value="{{.}}">
-            <label for="scope-{{.}}">{{.}}</label><br>
-            {{end}}
+          <div class="dlg-header">
+            <h2 id="token-modal-title">Create API token</h2>
+            <button class="dlg-close" type="button" data-action="close-token" aria-label="Close token dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <form id="tokenForm">
+            <div class="dlg-body">
+              <div class="field-grid">
+                <div class="field-row">
+                  <label class="field-row__key" for="description">Description</label>
+                  <input class="field-input" type="text" id="description" name="description" maxlength="80" autocomplete="off" required>
+                </div>
+                <div class="field-row">
+                  <label class="field-row__key" for="expires">Expires on</label>
+                  <input class="field-input" type="date" id="expires" name="expires" autocomplete="off" required>
+                </div>
+              </div>
+              <fieldset class="field-row settings-ledger__scope-options" aria-describedby="token-scopes-description">
+                <legend class="field-row__key">Scopes</legend>
+                <p class="field-row__caption" id="token-scopes-description">Select one or more permissions for this token.</p>
+                <div class="group-grid">
+                  {{range .ScopesList}}
+                  <label class="group-check" for="scope-{{.}}">
+                    <input type="checkbox" id="scope-{{.}}" name="scopes" value="{{.}}">
+                    <span class="settings-ledger__mono">{{.}}</span>
+                  </label>
+                  {{end}}
+                </div>
+              </fieldset>
+              <p class="settings-ledger__dialog-status" id="tokenStatus" role="status" aria-live="polite"></p>
+            </div>
           </form>
-          <footer>
-            <button role="button" onclick="tokenModal.close()">Cancel</button>
-            <button autofocus="" role="button" onclick="createToken()">Confirm</button>
-          </footer>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-cancel" type="button" data-action="close-token">Cancel</button>
+            <button class="dlg-btn dlg-btn-upload" type="submit" form="tokenForm">Create token</button>
+          </div>
         </article>
       </dialog>
 
-      <dialog id="tokenCreatedModal">
+      <dialog class="upload-dialog" id="tokenCreatedModal" aria-labelledby="token-created-modal-title">
         <article>
-          <header>
-            <button aria-label="Close" rel="prev" onclick="tokenCreatedModal.close(); window.location.reload();"></button>
-            <h3>Token Created Successfully</h3>
-          </header>
-          <p><strong>Important:</strong> This is the only time you will see this token. Please copy and save it securely.</p>
-          <fieldset>
-            <legend><strong>Your New API Token</strong></legend>
-            <textarea id="createdTokenValue" readonly style="font-family: monospace;"></textarea>
-            <button onclick="copyTokenToClipboard(this)">Copy to Clipboard</button>
-          </fieldset>
-          <footer>
-            <button autofocus="" role="button" onclick="tokenCreatedModal.close(); window.location.reload();">Close</button>
-          </footer>
+          <div class="dlg-header">
+            <h2 id="token-created-modal-title">Token created</h2>
+            <button class="dlg-close" type="button" data-action="reload" aria-label="Close token dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="dlg-body">
+            <p class="upload-intro" id="token-created-description">This is the only time this token is shown. Copy and store it securely.</p>
+            <div class="field-row">
+              <div class="field-row__key" id="token-value-label">API token</div>
+              <div class="settings-ledger__token-output">
+                <div class="settings-ledger__token-value" role="region" aria-labelledby="token-value-label" aria-describedby="token-created-description" tabindex="0"><code id="createdTokenValue" translate="no"></code></div>
+                <button class="btn-ghost btn-sm btn-copy settings-ledger__copy" type="button" data-action="copy-token" aria-label="Copy API token" title="Copy API token">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <rect x="4" y="0.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                    <rect x="0.5" y="3.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1" fill="var(--surface-2)"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="field-row__caption settings-ledger__copy-status" id="tokenCopyStatus" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-upload" type="button" data-action="reload">Close</button>
+          </div>
         </article>
       </dialog>
 
-      <dialog id="revokeModal">
+      <dialog class="upload-dialog" id="revokeModal" aria-labelledby="revoke-modal-title" aria-describedby="revoke-description">
         <article>
-          <header>
-            <button aria-label="Close" rel="prev" onclick="revokeModal.close()"></button>
-            <h3>Revoke API Token</h3>
-          </header>
-          <p>Are you sure you want to revoke this API token? This action cannot be undone.</p>
-          <fieldset>
-            <legend><strong>Token Details</strong></legend>
-            <p><strong>ID:</strong> <span id="revokeTokenId"></span></p>
-            <p><strong>Description:</strong> <span id="revokeTokenDescription"></span></p>
-            <p><strong>Scopes:</strong> <span id="revokeTokenScopes"></span></p>
-          </fieldset>
-          <footer>
-            <button role="button" onclick="revokeModal.close()">Cancel</button>
-            <button autofocus="" role="button" onclick="confirmRevoke()">Revoke Token</button>
-          </footer>
+          <div class="dlg-header">
+            <h2 id="revoke-modal-title">Revoke API token</h2>
+            <button class="dlg-close" type="button" data-action="close-revoke" aria-label="Close revoke dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="dlg-body">
+            <p class="upload-intro" id="revoke-description">Revoking this token cannot be undone.</p>
+            <dl class="settings-ledger__rows">
+              <div><dt>ID</dt><dd class="settings-ledger__mono" id="revokeTokenId"></dd></div>
+              <div><dt>Description</dt><dd id="revokeTokenDescription"></dd></div>
+              <div><dt>Scopes</dt><dd class="settings-ledger__mono" id="revokeTokenScopes" translate="no"></dd></div>
+            </dl>
+            <p class="settings-ledger__dialog-status" id="revokeStatus" role="status" aria-live="polite"></p>
+          </div>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-cancel" type="button" data-action="close-revoke">Cancel</button>
+            <button class="dlg-btn dlg-btn-delete" type="button" data-action="confirm-revoke">Revoke token</button>
+          </div>
         </article>
       </dialog>
 
-      {{ if .LocalAuth }}
-      <dialog id="passwordModal">
+      {{if .LocalAuth}}
+      <dialog class="settings-ledger__dialog" id="passwordModal" aria-labelledby="password-modal-title">
         <article>
-          <header>
-            <button aria-label="Close" rel="prev" onclick="passwordModal.close()"></button>
-            <h3>Change Password</h3>
+          <header class="settings-ledger__dialog-head">
+            <h2 id="password-modal-title">Change password</h2>
+            <button class="settings-ledger__dialog-close" type="button" data-action="close-password" aria-label="Close password dialog">×</button>
           </header>
-          <form method="dialog">
-            <label for="currentPassword">Current Password:</label>
-            <input type="password" id="currentPassword" name="currentPassword" required>
-            <label for="newPassword">New Password:</label>
-            <input type="password" id="newPassword" name="newPassword" required>
-            <label for="confirmPassword">Confirm New Password:</label>
-            <input type="password" id="confirmPassword" name="confirmPassword" required>
-            <span id="passwordError" style="color: red; display: none;">Passwords do not match</span>
+          <form id="passwordForm">
+            <div class="settings-ledger__dialog-body">
+              <label for="currentPassword">Current password</label>
+              <input type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
+              <label for="newPassword">New password</label>
+              <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" required>
+              <label for="confirmPassword">Confirm new password</label>
+              <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+              <p class="settings-ledger__password-error" id="passwordError" role="alert" style="display: none;">Passwords do not match.</p>
+            </div>
+            <footer class="settings-ledger__dialog-foot">
+              <button class="settings-ledger__button" type="button" data-action="close-password">Cancel</button>
+              <button class="settings-ledger__button settings-ledger__button--primary" type="submit">Change password</button>
+            </footer>
           </form>
-          <footer>
-            <button role="button" onclick="passwordModal.close()">Cancel</button>
-            <button autofocus="" role="button" onclick="changePassword()">Change Password</button>
-          </footer>
         </article>
       </dialog>
-      {{ end }}
+      {{template "password_change_script" .}}
+      {{end}}
 
+      <p class="sr-only" id="settingsStatus" role="status" aria-live="polite"></p>
     </section>
-
-    <style>
-      i[title="Revoke"] {
-        cursor: pointer;
-      }
-    </style>
-
-    {{ if .LocalAuth }}
-    {{ template "password_change_script" . }}
-    {{ end }}
 
     <script>
       let currentTokenId = null;
+      let createdToken = '';
       const revokeModal = document.getElementById('revokeModal');
 
-      // Add click event listeners to all revoke icons
       document.addEventListener('DOMContentLoaded', function() {
-        const revokeIcons = document.querySelectorAll('i[title="Revoke"]');
-        revokeIcons.forEach(icon => {
-          icon.addEventListener('click', function() {
-            currentTokenId = this.id;
-            
-            // Get the parent row to extract token details
+        const settingsStatus = document.getElementById('settingsStatus');
+        const tokenModal = document.getElementById('tokenModal');
+        const tokenCreatedModal = document.getElementById('tokenCreatedModal');
+        const passwordModal = document.getElementById('passwordModal');
+
+        const tokenDateFormat = new Intl.DateTimeFormat(navigator.languages, {dateStyle: 'medium', timeZone: 'UTC'});
+        const tokenTimeFormat = new Intl.DateTimeFormat(navigator.languages, {hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC'});
+        document.querySelectorAll('[data-token-time]').forEach(element => {
+          const date = new Date(element.dateTime);
+          if (isNaN(date.getTime())) return;
+          const day = document.createElement('span');
+          day.textContent = tokenDateFormat.format(date);
+          const time = document.createElement('span');
+          time.className = 'settings-ledger__token-clock';
+          time.textContent = tokenTimeFormat.format(date);
+          element.replaceChildren(day, document.createTextNode(' '), time);
+        });
+        document.querySelectorAll('[data-token-timezone]').forEach(element => {
+          element.textContent = '(UTC)';
+        });
+
+        document.querySelectorAll('[data-copy]').forEach(button => {
+          button.addEventListener('click', function() {
+            if (!navigator.clipboard) {
+              settingsStatus.textContent = 'Copy is unavailable. Select the endpoint and copy it manually.';
+              return;
+            }
+            navigator.clipboard.writeText(this.dataset.copy).then(() => {
+              settingsStatus.textContent = 'Endpoint copied.';
+            }).catch(() => {
+              settingsStatus.textContent = 'Copy is unavailable. Select the endpoint and copy it manually.';
+            });
+          });
+        });
+
+        document.querySelectorAll('[data-action="revoke-token"]').forEach(button => {
+          button.addEventListener('click', function() {
+            currentTokenId = this.dataset.tokenId;
             const row = this.closest('tr');
             const cells = row.querySelectorAll('td');
-            
-            // Populate modal with token details
-            document.getElementById('revokeTokenId').textContent = currentTokenId
+            document.getElementById('revokeTokenId').textContent = currentTokenId;
             document.getElementById('revokeTokenDescription').textContent = cells[0].textContent;
             document.getElementById('revokeTokenScopes').textContent = cells[3].textContent.trim();
-            
+            document.getElementById('revokeStatus').textContent = '';
             revokeModal.showModal();
           });
         });
+
+        document.querySelector('[data-action="open-token"]').addEventListener('click', function() {
+          document.getElementById('tokenForm').reset();
+          document.getElementById('tokenStatus').textContent = '';
+          tokenModal.showModal();
+          document.getElementById('description').focus();
+        });
+        document.querySelectorAll('[data-action="close-token"]').forEach(button => {
+          button.addEventListener('click', () => tokenModal.close());
+        });
+        document.querySelectorAll('[data-action="close-revoke"]').forEach(button => {
+          button.addEventListener('click', () => revokeModal.close());
+        });
+        document.querySelector('[data-action="confirm-revoke"]').addEventListener('click', confirmRevoke);
+        document.querySelector('[data-action="copy-token"]').addEventListener('click', function() {
+          copyTokenToClipboard();
+        });
+        document.querySelectorAll('[data-action="reload"]').forEach(button => {
+          button.addEventListener('click', () => window.location.reload());
+        });
+        document.getElementById('tokenForm').addEventListener('submit', function(event) {
+          event.preventDefault();
+          createToken();
+        });
+
+        if (passwordModal) {
+          document.querySelector('[data-action="change-password"]').addEventListener('click', function() {
+            passwordModal.showModal();
+            document.getElementById('currentPassword').focus();
+          });
+          document.querySelectorAll('[data-action="close-password"]').forEach(button => {
+            button.addEventListener('click', () => passwordModal.close());
+          });
+          document.getElementById('passwordForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            changePassword();
+          });
+        }
       });
 
       function confirmRevoke() {
-        if (currentTokenId) {
-          fetch(`/users/{{.User.Username}}/tokens/${currentTokenId}`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          })
-          .then(response => {
-            if (response.ok) {
-              // Reload the page to reflect the changes
-              window.location.reload();
-            } else {
-              alert('Failed to revoke token:\n\nHTTP_' + response.status + ': ' + response.statusText);
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while revoking the token: ' + error.message);
-          })
-          .finally(() => {
-            revokeModal.close();
-            currentTokenId = null;
-          });
-        }
+        if (!currentTokenId) return;
+
+        fetch(`/users/{{.User.Username}}/tokens/${currentTokenId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        .then(response => {
+          if (!response.ok) throw new Error(response.statusText);
+          window.location.reload();
+        })
+        .catch(error => {
+          document.getElementById('revokeStatus').textContent = 'Unable to revoke token: ' + error.message;
+        });
       }
 
       function createToken() {
-        // Get form values
-        const description = document.getElementById('description').value;
+        const description = document.getElementById('description').value.trim();
 
         // Get selected scopes from checkboxes
         const scopeCheckboxes = document.getElementsByName('scopes');
@@ -233,19 +362,17 @@
 
         const expires = document.getElementById('expires').value;
 
-        // Validate required fields
         if (!description || scopes.length === 0 || !expires) {
-          alert('Please set a description, specify an expiration date, and select at least one scope.');
+          document.getElementById('tokenStatus').textContent = 'Enter a description and expiration date, then select at least one scope.';
           return;
         }
 
-        // Validate expires field (should be a valid future date)
         const expiryDate = new Date(expires);
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
 
         if (isNaN(expiryDate.getTime()) || expiryDate <= today) {
-          alert('Expiration date must be a valid future date.');
+          document.getElementById('tokenStatus').textContent = 'Expiration must be a valid future date.';
           return;
         }
 
@@ -259,7 +386,7 @@
           expires: expiresISO
         };
 
-        // Make POST request
+        let created = false;
         fetch('/users/{{.User.Username}}/tokens', {
           method: 'POST',
           headers: {
@@ -268,7 +395,7 @@
           body: JSON.stringify(tokenData)
         })
         .then(async response => {
-          text = await response.text();
+          const text = await response.text();
           if (response.ok) {
             return text;
           } else {
@@ -276,34 +403,49 @@
           }
         })
         .then(data => {
-          // Display the created token to the user
-          document.getElementById('createdTokenValue').value = data.token || data;
+          createdToken = data;
+          document.getElementById('createdTokenValue').textContent = createdToken;
+          document.getElementById('tokenCopyStatus').textContent = '';
+          created = true;
+          document.getElementById('tokenModal').close();
           document.getElementById('tokenCreatedModal').showModal();
         })
         .catch(error => {
           console.error('Error:', error);
-          alert('An error occurred while creating the token: ' + error.message);
+          document.getElementById('tokenStatus').textContent = 'Unable to create token: ' + error.message;
         })
         .finally(() => {
-          // Clear form and close modal
           document.getElementById('description').value = '';
-          document.getElementById('scopes').value = '';
+          document.querySelectorAll('input[name="scopes"]').forEach(checkbox => {
+            checkbox.checked = false;
+          });
           document.getElementById('expires').value = '';
-          document.getElementById('tokenModal').close();
+          if (created) document.getElementById('tokenModal').close();
         });
       }
 
-      function copyTokenToClipboard(button) {
-        const tokenTextarea = document.getElementById('createdTokenValue');
-        tokenTextarea.select();
-        tokenTextarea.setSelectionRange(0, 99999); // For mobile devices
+      function copyTokenToClipboard() {
+        const status = document.getElementById('tokenCopyStatus');
+        const selectToken = function() {
+          const tokenValue = document.getElementById('createdTokenValue');
+          tokenValue.parentElement.focus();
+          const range = document.createRange();
+          range.selectNodeContents(tokenValue);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          status.textContent = 'Couldn’t copy automatically. Press Ctrl+C or Command+C, or touch and hold the token to copy.';
+        };
 
-        navigator.clipboard.writeText(tokenTextarea.value).then(() => {
-          // Temporarily change button text to show success
-          button.textContent = 'Copied!';
+        if (!navigator.clipboard) {
+          selectToken();
+          return;
+        }
+        navigator.clipboard.writeText(createdToken).then(() => {
+          status.textContent = 'Token copied.';
         }).catch(err => {
           console.error('Failed to copy token: ', err);
-          alert('Failed to copy token to clipboard. Please select and copy manually.');
+          selectToken();
         });
       }
 
