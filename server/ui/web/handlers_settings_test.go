@@ -68,11 +68,11 @@ func TestSettingsTemplateRendersLedgerAndPreservesActions(t *testing.T) {
 
 	html := renderSettingsHTML(t, ctx)
 
-	assert.Contains(t, html, `class="settings-ledger"`)
+	assert.Contains(t, html, `class="settings-ledger device-page-inner"`)
 	assert.Contains(t, html, `<h1>Settings</h1>`)
 	assert.Contains(t, html, `class="settings-ledger__rows"`)
 	assert.Contains(t, html, `operator@example.test`)
-	assert.Contains(t, html, `href="/users/operator/audit-log">Audit log</a>`)
+	assert.Contains(t, html, `<a class="meta-row-action" href="/users/operator/audit-log">Audit log →</a>`)
 	assert.Contains(t, html, `data-action="change-password"`)
 	assert.Contains(t, html, `devices:read-update`)
 	assert.Contains(t, html, `updates:read`)
@@ -169,7 +169,6 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
 		"@layer settings-ledger {",
 		`.settings-ledger {
     width: 100%;
-    max-width: 940px;
     min-width: 0;
     color: var(--text-1);
     font-size: 14px;
@@ -177,25 +176,18 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
 }`,
 		`.settings-ledger__section {
     min-width: 0;
-    padding: 24px 0;
 }`,
-		`.settings-ledger__section-title {
+		`.settings-ledger__section-head .meta-section__title {
     margin: 0;
-    color: var(--text-3);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    line-height: 1.4;
-    text-transform: uppercase;
 }`,
 		`.settings-ledger__rows {
     margin: 0;
 }`,
 		`.settings-ledger__rows > div {
     display: grid;
-    grid-template-columns: 180px minmax(0, 1fr);
-    gap: 18px;
-    padding: 10px 0;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 12px;
+    padding: 9px 0;
     border-bottom: 1px solid var(--border-1);
 }`,
 		`.settings-ledger__scope-table,
@@ -218,6 +210,7 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
 }`,
 		`.settings-ledger__scope-table th,
 .settings-ledger__scope-table td {
+    vertical-align: middle;
     background: transparent;
 }`,
 		`.settings-ledger__scope-names > li,
