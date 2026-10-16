@@ -79,7 +79,7 @@ def test_settings_api_token_and_audit_log(page, update_server):
         f"clientWidth={token_metrics['clientWidth']}"
     )
 
-    page.get_by_text("Audit log", exact=True).click()
+    page.get_by_role("link", name="Audit log →", exact=True).click()
     page.wait_for_load_state("networkidle")
     assert (
         "Token created" in page.content()
