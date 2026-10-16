@@ -1,11 +1,11 @@
 {{ template "header" .}}
-    <section class="settings-ledger">
+    <section class="settings-ledger device-page-inner">
       <h1>{{.Title}}</h1>
 
-      <section class="settings-ledger__section" aria-labelledby="settings-account-title">
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-account-title">
         <div class="settings-ledger__section-head">
-          <h2 class="settings-ledger__section-title" id="settings-account-title">Account</h2>
-          <a class="settings-ledger__link" href="/users/{{.User.Username}}/audit-log">Audit log</a>
+          <h2 class="meta-section__title" id="settings-account-title">Account</h2>
+          <a class="meta-row-action" href="/users/{{.User.Username}}/audit-log">Audit log →</a>
         </div>
         <dl class="settings-ledger__rows">
           <div>
@@ -24,9 +24,9 @@
         {{end}}
       </section>
 
-      <section class="settings-ledger__section" aria-labelledby="settings-scopes-title">
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-scopes-title">
         <div class="settings-ledger__section-head">
-          <h2 class="settings-ledger__section-title" id="settings-scopes-title">Allowed scopes</h2>
+          <h2 class="meta-section__title" id="settings-scopes-title">Allowed scopes</h2>
           <p class="settings-ledger__note">{{len .ScopesList}} effective scopes</p>
         </div>
         <div class="settings-ledger__scope-scroll" role="region" aria-label="Allowed scopes" tabindex="0">
@@ -43,42 +43,58 @@
         </div>
       </section>
 
-      <section class="settings-ledger__section" aria-labelledby="settings-endpoints-title">
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-endpoints-title">
         <div class="settings-ledger__section-head">
-          <h2 class="settings-ledger__section-title" id="settings-endpoints-title">Service endpoints</h2>
+          <h2 class="meta-section__title" id="settings-endpoints-title">Service endpoints</h2>
           <p class="settings-ledger__note">For fio-device-register</p>
         </div>
         <dl class="settings-ledger__endpoints">
           <div>
             <dt>Device API</dt>
             <dd><code>{{.DeviceApiUrl}}</code></dd>
-            <dd><button class="settings-ledger__copy" type="button" data-copy="{{.DeviceApiUrl}}" aria-label="Copy Device API endpoint">Copy</button></dd>
+            <dd>
+              <button class="btn-ghost btn-sm btn-copy settings-ledger__copy" type="button" data-copy="{{.DeviceApiUrl}}" aria-label="Copy Device API endpoint" title="Copy Device API endpoint">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <rect x="4" y="0.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                  <rect x="0.5" y="3.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1" fill="var(--surface-2)"/>
+                </svg>
+                <span class="sr-only">Copy</span>
+              </button>
+            </dd>
           </div>
           <div>
             <dt>OAuth2 API</dt>
             <dd><code>{{.Oauth2ApiUrl}}</code></dd>
-            <dd><button class="settings-ledger__copy" type="button" data-copy="{{.Oauth2ApiUrl}}" aria-label="Copy OAuth2 API endpoint">Copy</button></dd>
+            <dd>
+              <button class="btn-ghost btn-sm btn-copy settings-ledger__copy" type="button" data-copy="{{.Oauth2ApiUrl}}" aria-label="Copy OAuth2 API endpoint" title="Copy OAuth2 API endpoint">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <rect x="4" y="0.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                  <rect x="0.5" y="3.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1" fill="var(--surface-2)"/>
+                </svg>
+                <span class="sr-only">Copy</span>
+              </button>
+            </dd>
           </div>
         </dl>
       </section>
 
-      <section class="settings-ledger__section" aria-labelledby="settings-tokens-title">
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-tokens-title">
         <div class="settings-ledger__section-head">
-          <h2 class="settings-ledger__section-title" id="settings-tokens-title">API tokens</h2>
+          <h2 class="meta-section__title" id="settings-tokens-title">API tokens</h2>
           <button class="settings-ledger__button" type="button" data-action="open-token">New token</button>
         </div>
         {{if .Tokens}}
         <div class="settings-ledger__token-scroll" role="region" aria-label="API tokens" tabindex="0">
           <table class="settings-ledger__token-table">
-            <thead><tr><th scope="col">Description</th><th scope="col">Created</th><th scope="col">Expires</th><th scope="col">Scopes</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+            <thead><tr><th scope="col">Description</th><th scope="col">Created <span data-token-timezone></span></th><th scope="col">Expires <span data-token-timezone></span></th><th scope="col">Scopes</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {{range .Tokens}}
               <tr>
                 <td>{{.Description}}</td>
-                <td><time datetime="{{tsToString .CreatedAt}}">{{tsToString .CreatedAt}}</time></td>
-                <td><time datetime="{{tsToString .ExpiresAt}}">{{tsToString .ExpiresAt}}</time></td>
-                <td><ul class="settings-ledger__scope-list">{{range .Scopes.ToSlice}}<li>{{.}}</li>{{end}}</ul></td>
-                <td><button class="settings-ledger__button settings-ledger__button--danger" type="button" data-action="revoke-token" data-token-id="{{.PublicID}}">Revoke</button></td>
+                <td><time datetime="{{tsToString .CreatedAt}}" title="{{tsToString .CreatedAt}}" aria-label="{{tsToString .CreatedAt}}" data-token-time>{{tsToString .CreatedAt}}</time></td>
+                <td><time datetime="{{tsToString .ExpiresAt}}" title="{{tsToString .ExpiresAt}}" aria-label="{{tsToString .ExpiresAt}}" data-token-time>{{tsToString .ExpiresAt}}</time>{{if isExpired (tsToString .ExpiresAt)}}<span class="settings-ledger__token-expired">Expired</span>{{end}}</td>
+                <td><ul class="settings-ledger__scope-list" translate="no">{{$scopes := .Scopes.ToSlice}}{{range $index, $scope := $scopes}}<li>{{$scope}}{{if lt (add $index 1) (len $scopes)}}, {{end}}</li>{{end}}</ul></td>
+                <td><button class="btn-delete settings-ledger__revoke" type="button" data-action="revoke-token" data-token-id="{{.PublicID}}" aria-label="Revoke token {{.Description}}" title="Revoke token"><i class="trash" aria-hidden="true"></i></button></td>
               </tr>
               {{end}}
             </tbody>
@@ -89,71 +105,108 @@
         {{end}}
       </section>
 
-      <dialog class="settings-ledger__dialog" id="tokenModal" aria-labelledby="token-modal-title">
+      <dialog class="upload-dialog" id="tokenModal" aria-labelledby="token-modal-title">
         <article>
-          <header class="settings-ledger__dialog-head">
+          <div class="dlg-header">
             <h2 id="token-modal-title">Create API token</h2>
-            <button class="settings-ledger__dialog-close" type="button" data-action="close-token" aria-label="Close token dialog">×</button>
-          </header>
+            <button class="dlg-close" type="button" data-action="close-token" aria-label="Close token dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
           <form id="tokenForm">
-            <div class="settings-ledger__dialog-body">
-              <label for="description">Description</label>
-              <input type="text" id="description" name="description" maxlength="80" autocomplete="off" required>
-              <label for="expires">Expires on</label>
-              <input type="date" id="expires" name="expires" autocomplete="off" required>
-              <fieldset class="settings-ledger__scope-options">
-                <legend>Scopes</legend>
-                {{range .ScopesList}}
-                <label for="scope-{{.}}"><input type="checkbox" id="scope-{{.}}" name="scopes" value="{{.}}"> <code>{{.}}</code></label>
-                {{end}}
+            <div class="dlg-body">
+              <div class="field-grid">
+                <div class="field-row">
+                  <label class="field-row__key" for="description">Description</label>
+                  <input class="field-input" type="text" id="description" name="description" maxlength="80" autocomplete="off" required>
+                </div>
+                <div class="field-row">
+                  <label class="field-row__key" for="expires">Expires on</label>
+                  <input class="field-input" type="date" id="expires" name="expires" autocomplete="off" required>
+                </div>
+              </div>
+              <fieldset class="field-row settings-ledger__scope-options" aria-describedby="token-scopes-description">
+                <legend class="field-row__key">Scopes</legend>
+                <p class="field-row__caption" id="token-scopes-description">Select one or more permissions for this token.</p>
+                <div class="group-grid">
+                  {{range .ScopesList}}
+                  <label class="group-check" for="scope-{{.}}">
+                    <input type="checkbox" id="scope-{{.}}" name="scopes" value="{{.}}">
+                    <span class="settings-ledger__mono">{{.}}</span>
+                  </label>
+                  {{end}}
+                </div>
               </fieldset>
               <p class="settings-ledger__dialog-status" id="tokenStatus" role="status" aria-live="polite"></p>
             </div>
-            <footer class="settings-ledger__dialog-foot">
-              <button class="settings-ledger__button" type="button" data-action="close-token">Cancel</button>
-              <button class="settings-ledger__button settings-ledger__button--primary" type="submit">Create token</button>
-            </footer>
           </form>
-        </article>
-      </dialog>
-
-      <dialog class="settings-ledger__dialog" id="tokenCreatedModal" aria-labelledby="token-created-modal-title">
-        <article>
-          <header class="settings-ledger__dialog-head">
-            <h2 id="token-created-modal-title">Token created</h2>
-            <button class="settings-ledger__dialog-close" type="button" data-action="reload" aria-label="Close token dialog">×</button>
-          </header>
-          <div class="settings-ledger__dialog-body">
-            <p>This is the only time this token is shown. Copy and store it securely.</p>
-            <label for="createdTokenValue">API token</label>
-            <textarea class="settings-ledger__token-value" id="createdTokenValue" readonly></textarea>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-cancel" type="button" data-action="close-token">Cancel</button>
+            <button class="dlg-btn dlg-btn-upload" type="submit" form="tokenForm">Create token</button>
           </div>
-          <footer class="settings-ledger__dialog-foot">
-            <button class="settings-ledger__button" type="button" data-action="copy-token">Copy token</button>
-            <button class="settings-ledger__button settings-ledger__button--primary" type="button" data-action="reload">Close</button>
-          </footer>
         </article>
       </dialog>
 
-      <dialog class="settings-ledger__dialog" id="revokeModal" aria-labelledby="revoke-modal-title">
+      <dialog class="upload-dialog" id="tokenCreatedModal" aria-labelledby="token-created-modal-title">
         <article>
-          <header class="settings-ledger__dialog-head">
+          <div class="dlg-header">
+            <h2 id="token-created-modal-title">Token created</h2>
+            <button class="dlg-close" type="button" data-action="reload" aria-label="Close token dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="dlg-body">
+            <p class="upload-intro" id="token-created-description">This is the only time this token is shown. Copy and store it securely.</p>
+            <div class="field-row">
+              <div class="field-row__key" id="token-value-label">API token</div>
+              <div class="settings-ledger__token-output">
+                <div class="settings-ledger__token-value" role="region" aria-labelledby="token-value-label" aria-describedby="token-created-description" tabindex="0"><code id="createdTokenValue" translate="no"></code></div>
+                <button class="btn-ghost btn-sm btn-copy settings-ledger__copy" type="button" data-action="copy-token" aria-label="Copy API token" title="Copy API token">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <rect x="4" y="0.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/>
+                    <rect x="0.5" y="3.5" width="7" height="8" rx="1" stroke="currentColor" stroke-width="1.1" fill="var(--surface-2)"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="field-row__caption settings-ledger__copy-status" id="tokenCopyStatus" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-upload" type="button" data-action="reload">Close</button>
+          </div>
+        </article>
+      </dialog>
+
+      <dialog class="upload-dialog" id="revokeModal" aria-labelledby="revoke-modal-title" aria-describedby="revoke-description">
+        <article>
+          <div class="dlg-header">
             <h2 id="revoke-modal-title">Revoke API token</h2>
-            <button class="settings-ledger__dialog-close" type="button" data-action="close-revoke" aria-label="Close revoke dialog">×</button>
-          </header>
-          <div class="settings-ledger__dialog-body">
-            <p>Revoking this token cannot be undone.</p>
-            <dl class="settings-ledger__token-details">
-              <div><dt>ID</dt><dd id="revokeTokenId"></dd></div>
+            <button class="dlg-close" type="button" data-action="close-revoke" aria-label="Close revoke dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="dlg-body">
+            <p class="upload-intro" id="revoke-description">Revoking this token cannot be undone.</p>
+            <dl class="settings-ledger__rows">
+              <div><dt>ID</dt><dd class="settings-ledger__mono" id="revokeTokenId"></dd></div>
               <div><dt>Description</dt><dd id="revokeTokenDescription"></dd></div>
-              <div><dt>Scopes</dt><dd id="revokeTokenScopes"></dd></div>
+              <div><dt>Scopes</dt><dd class="settings-ledger__mono" id="revokeTokenScopes" translate="no"></dd></div>
             </dl>
             <p class="settings-ledger__dialog-status" id="revokeStatus" role="status" aria-live="polite"></p>
           </div>
-          <footer class="settings-ledger__dialog-foot">
-            <button class="settings-ledger__button" type="button" data-action="close-revoke">Cancel</button>
-            <button class="settings-ledger__button settings-ledger__button--danger" type="button" data-action="confirm-revoke">Revoke token</button>
-          </footer>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-cancel" type="button" data-action="close-revoke">Cancel</button>
+            <button class="dlg-btn dlg-btn-delete" type="button" data-action="confirm-revoke">Revoke token</button>
+          </div>
         </article>
       </dialog>
 
@@ -189,6 +242,7 @@
 
     <script>
       let currentTokenId = null;
+      let createdToken = '';
       const revokeModal = document.getElementById('revokeModal');
 
       document.addEventListener('DOMContentLoaded', function() {
@@ -196,6 +250,22 @@
         const tokenModal = document.getElementById('tokenModal');
         const tokenCreatedModal = document.getElementById('tokenCreatedModal');
         const passwordModal = document.getElementById('passwordModal');
+
+        const tokenDateFormat = new Intl.DateTimeFormat(navigator.languages, {dateStyle: 'medium', timeZone: 'UTC'});
+        const tokenTimeFormat = new Intl.DateTimeFormat(navigator.languages, {hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC'});
+        document.querySelectorAll('[data-token-time]').forEach(element => {
+          const date = new Date(element.dateTime);
+          if (isNaN(date.getTime())) return;
+          const day = document.createElement('span');
+          day.textContent = tokenDateFormat.format(date);
+          const time = document.createElement('span');
+          time.className = 'settings-ledger__token-clock';
+          time.textContent = tokenTimeFormat.format(date);
+          element.replaceChildren(day, document.createTextNode(' '), time);
+        });
+        document.querySelectorAll('[data-token-timezone]').forEach(element => {
+          element.textContent = '(UTC)';
+        });
 
         document.querySelectorAll('[data-copy]').forEach(button => {
           button.addEventListener('click', function() {
@@ -219,6 +289,7 @@
             document.getElementById('revokeTokenId').textContent = currentTokenId;
             document.getElementById('revokeTokenDescription').textContent = cells[0].textContent;
             document.getElementById('revokeTokenScopes').textContent = cells[3].textContent.trim();
+            document.getElementById('revokeStatus').textContent = '';
             revokeModal.showModal();
           });
         });
@@ -237,7 +308,7 @@
         });
         document.querySelector('[data-action="confirm-revoke"]').addEventListener('click', confirmRevoke);
         document.querySelector('[data-action="copy-token"]').addEventListener('click', function() {
-          copyTokenToClipboard(this);
+          copyTokenToClipboard();
         });
         document.querySelectorAll('[data-action="reload"]').forEach(button => {
           button.addEventListener('click', () => window.location.reload());
@@ -332,7 +403,9 @@
           }
         })
         .then(data => {
-          document.getElementById('createdTokenValue').value = data;
+          createdToken = data;
+          document.getElementById('createdTokenValue').textContent = createdToken;
+          document.getElementById('tokenCopyStatus').textContent = '';
           created = true;
           document.getElementById('tokenModal').close();
           document.getElementById('tokenCreatedModal').showModal();
@@ -351,21 +424,28 @@
         });
       }
 
-      function copyTokenToClipboard(button) {
-        const tokenTextarea = document.getElementById('createdTokenValue');
-        tokenTextarea.select();
-        tokenTextarea.setSelectionRange(0, 99999); // For mobile devices
+      function copyTokenToClipboard() {
+        const status = document.getElementById('tokenCopyStatus');
+        const selectToken = function() {
+          const tokenValue = document.getElementById('createdTokenValue');
+          tokenValue.parentElement.focus();
+          const range = document.createRange();
+          range.selectNodeContents(tokenValue);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          status.textContent = 'Couldn’t copy automatically. Press Ctrl+C or Command+C, or touch and hold the token to copy.';
+        };
 
         if (!navigator.clipboard) {
-          button.textContent = 'Copy manually';
+          selectToken();
           return;
         }
-        navigator.clipboard.writeText(tokenTextarea.value).then(() => {
-          // Temporarily change button text to show success
-          button.textContent = 'Copied!';
+        navigator.clipboard.writeText(createdToken).then(() => {
+          status.textContent = 'Token copied.';
         }).catch(err => {
           console.error('Failed to copy token: ', err);
-          alert('Failed to copy token to clipboard. Please select and copy manually.');
+          selectToken();
         });
       }
 

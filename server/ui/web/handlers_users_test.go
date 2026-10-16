@@ -331,8 +331,8 @@ func TestUsersDialogActionsKeepIntrinsicWidth(t *testing.T) {
 }
 
 func TestUserScopesDialogUsesBorderedPermissionLedger(t *testing.T) {
-	assert.Contains(t, usersCSSRule(t, "#user-scopes-dialog .group-check"), "border: 1px solid var(--border-1);")
-	assert.Contains(t, usersCSSRule(t, "#user-scopes-dialog .group-check:has(input:checked)"), "border-color: var(--interactive);")
+	assert.Contains(t, usersCSSRule(t, "#user-scopes-dialog .group-check,\n#tokenModal .group-check"), "border: 1px solid var(--border-1);")
+	assert.Contains(t, usersCSSRule(t, "#user-scopes-dialog .group-check:has(input:checked),\n#tokenModal .group-check:has(input:checked)"), "border-color: var(--interactive);")
 
 	cssBytes, err := webtemplates.Assets.ReadFile("style.css")
 	if err != nil {
@@ -341,7 +341,8 @@ func TestUserScopesDialogUsesBorderedPermissionLedger(t *testing.T) {
 	css := string(cssBytes)
 	assert.NotContains(t, usersCSSRule(t, "#user-scopes-dialog .dlg-footer"), "border-top")
 	assert.Contains(t, css, `@media (max-width: 640px) {
-    #user-scopes-dialog .group-grid {
+    #user-scopes-dialog .group-grid,
+    #tokenModal .group-grid {
         grid-template-columns: 1fr;
     }
 }`)
