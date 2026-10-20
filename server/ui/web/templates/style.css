@@ -61,6 +61,13 @@
     --success-text:  #0d6e30;
     --danger-text:   var(--danger-hover);
     --dot-inactive:  #7a7a7a;
+
+    /* Off-track of the device-apps switch. --border-2 is too faint for the
+       WCAG 1.4.11 non-text 3:1 floor, so the track gets its own token. */
+    --switch-off:    #767676;   /* 4.54:1 on #fff */
+
+    /* --warning (#d97706) is ~3.2:1 on white: too low for 12-13px text. */
+    --warning-text:  #92400e;   /* 7.1:1 on #fff */
 }
 
 } /* end @layer tokens (part 1) */
@@ -497,6 +504,10 @@ dialog.file-content > article > section > ul {
     --success-text:  var(--success);
     --danger-text:   var(--danger);
     --dot-inactive:  #6f7c8a;
+
+    /* Off-track of the device-apps switch; same role as the light --switch-off. */
+    --switch-off:    #7d8898;
+    --warning-text:  #fbbf24;
 
     /* Dark interactive color + surface/text bridge for Pico's own --pico-* vars
        (see the light-mode bridge near the top of this file for the rationale —
@@ -1471,7 +1482,7 @@ summary.user-badge::after {
     outline-offset: 2px;
 }
 .breadcrumb__sep {
-    color: var(--border-2);
+    color: var(--text-3);
 }
 .breadcrumb__current {
     color: var(--text-2);
@@ -2086,7 +2097,8 @@ pre.code-block {
     justify-content: space-between;
     margin-bottom: 6px;
 }
-.zone-header .section-label {
+.zone-header .section-label,
+.zone-header .meta-section__title {
     margin-bottom: 0;
 }
 

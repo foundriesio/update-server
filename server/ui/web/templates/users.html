@@ -96,7 +96,7 @@
     </ol>
     {{else}}
     <section class="users-directory__empty" aria-labelledby="directory-empty-title">
-      <h2 id="directory-empty-title">No users in this directory</h2>
+      <h2 class="meta-section__title" id="directory-empty-title">No users in this directory</h2>
       <p>{{if .CanCreateUser}}Create the first local account and assign its permissions.{{else}}Accounts will appear here when they are available from the configured authentication provider.{{end}}</p>
       {{if .CanCreateUser}}
       <button class="btn-solid" type="button" data-dialog-open="user-create-dialog">Create user</button>
