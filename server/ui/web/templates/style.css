@@ -4710,6 +4710,9 @@ pre.code-block {
     width: 9%;
     text-align: right;
 }
+.settings-ledger__revoke:focus {
+    box-shadow: none;
+}
 .settings-ledger__revoke:focus-visible {
     outline-offset: -2px;
 }

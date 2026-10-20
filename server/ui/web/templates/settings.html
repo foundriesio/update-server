@@ -86,13 +86,13 @@
         {{if .Tokens}}
         <div class="settings-ledger__token-scroll" role="region" aria-label="API tokens" tabindex="0">
           <table class="settings-ledger__token-table">
-            <thead><tr><th scope="col">Description</th><th scope="col">Created <span data-token-timezone></span></th><th scope="col">Expires <span data-token-timezone></span></th><th scope="col">Scopes</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+            <thead><tr><th scope="col">Description</th><th scope="col">Created</th><th scope="col">Expires</th><th scope="col">Scopes</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {{range .Tokens}}
               <tr>
                 <td>{{.Description}}</td>
-                <td><time datetime="{{tsToString .CreatedAt}}" title="{{tsToString .CreatedAt}}" aria-label="{{tsToString .CreatedAt}}" data-token-time>{{tsToString .CreatedAt}}</time></td>
-                <td><time datetime="{{tsToString .ExpiresAt}}" title="{{tsToString .ExpiresAt}}" aria-label="{{tsToString .ExpiresAt}}" data-token-time>{{tsToString .ExpiresAt}}</time>{{if isExpired (tsToString .ExpiresAt)}}<span class="settings-ledger__token-expired">Expired</span>{{end}}</td>
+                <td><time datetime="{{tsToString .CreatedAt}}">{{tsToDate .CreatedAt}}</time></td>
+                <td><time datetime="{{tsToString .ExpiresAt}}">{{tsToDate .ExpiresAt}}</time>{{if isExpired (tsToString .ExpiresAt)}}<span class="settings-ledger__token-expired">Expired</span>{{end}}</td>
                 <td><ul class="settings-ledger__scope-list" translate="no">{{$scopes := .Scopes.ToSlice}}{{range $index, $scope := $scopes}}<li>{{$scope}}{{if lt (add $index 1) (len $scopes)}}, {{end}}</li>{{end}}</ul></td>
                 <td><button class="btn-delete settings-ledger__revoke" type="button" data-action="revoke-token" data-token-id="{{.PublicID}}" aria-label="Revoke token {{.Description}}" title="Revoke token"><i class="trash" aria-hidden="true"></i></button></td>
               </tr>
@@ -250,22 +250,6 @@
         const tokenModal = document.getElementById('tokenModal');
         const tokenCreatedModal = document.getElementById('tokenCreatedModal');
         const passwordModal = document.getElementById('passwordModal');
-
-        const tokenDateFormat = new Intl.DateTimeFormat(navigator.languages, {dateStyle: 'medium', timeZone: 'UTC'});
-        const tokenTimeFormat = new Intl.DateTimeFormat(navigator.languages, {hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC'});
-        document.querySelectorAll('[data-token-time]').forEach(element => {
-          const date = new Date(element.dateTime);
-          if (isNaN(date.getTime())) return;
-          const day = document.createElement('span');
-          day.textContent = tokenDateFormat.format(date);
-          const time = document.createElement('span');
-          time.className = 'settings-ledger__token-clock';
-          time.textContent = tokenTimeFormat.format(date);
-          element.replaceChildren(day, document.createTextNode(' '), time);
-        });
-        document.querySelectorAll('[data-token-timezone]').forEach(element => {
-          element.textContent = '(UTC)';
-        });
 
         document.querySelectorAll('[data-copy]').forEach(button => {
           button.addEventListener('click', function() {

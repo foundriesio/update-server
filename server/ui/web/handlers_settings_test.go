@@ -245,6 +245,9 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
     background: var(--brand-primary);
     color: #fff;
 }`,
+		`.settings-ledger__revoke:focus {
+    box-shadow: none;
+}`,
 		`:root[data-theme="dark"] .settings-ledger__button--primary {
     border-color: var(--brand-accent);
     background: var(--brand-accent);
