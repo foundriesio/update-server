@@ -104,7 +104,9 @@ func TestSettingsTemplateRendersGroupedScopesAndOutlinedControls(t *testing.T) {
 	})
 
 	assert.Contains(t, html, `<th scope="col">Resource</th><th scope="col">Operations</th><th scope="col">Scope names</th>`)
-	assert.Contains(t, html, `<td class="settings-ledger__scope-resource">devices</td><td>Read or update</td><td><ul class="settings-ledger__scope-names"><li><code>devices:read-update</code></li></ul></td>`)
+	devicesScope := `<td class="settings-ledger__scope-resource">devices</td><td>Read or update</td>` +
+		`<td><ul class="settings-ledger__scope-names"><li><code>devices:read-update</code></li></ul></td>`
+	assert.Contains(t, html, devicesScope)
 	assert.Contains(t, html, `<td class="settings-ledger__scope-resource">future</td><td>Manage all</td><td><ul class="settings-ledger__scope-names"><li><code>future:manage-all</code></li></ul></td>`)
 	assert.Contains(t, html, `<td class="settings-ledger__scope-resource">malformed</td><td>Unrecognized</td><td><ul class="settings-ledger__scope-names"><li><code>malformed</code></li></ul></td>`)
 	assert.Contains(t, html, `<button class="settings-ledger__button" type="button" data-action="open-token">New token</button>`)

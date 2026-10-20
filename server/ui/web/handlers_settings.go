@@ -25,11 +25,11 @@ type settingsScopeGroupBuilder struct {
 }
 
 var settingsScopeOperationOrder = map[string]int{
-	"create":       0,
-	"delete":       1,
-	"read":         2,
-	"update":       3,
-	"unrecognized": 4,
+	scopeOperationCreate: 0,
+	scopeOperationDelete: 1,
+	scopeOperationRead:   2,
+	"update":             3,
+	"unrecognized":       4,
 }
 
 func groupSettingsScopes(scopes []string) []settingsScopeGroup {
@@ -79,14 +79,14 @@ func settingsScopeOperations(operation string, valid bool) []string {
 		return []string{"unrecognized"}
 	}
 	switch operation {
-	case "read":
-		return []string{"read"}
+	case scopeOperationRead:
+		return []string{scopeOperationRead}
 	case "read-update":
-		return []string{"read", "update"}
-	case "create":
-		return []string{"create"}
-	case "delete":
-		return []string{"delete"}
+		return []string{scopeOperationRead, "update"}
+	case scopeOperationCreate:
+		return []string{scopeOperationCreate}
+	case scopeOperationDelete:
+		return []string{scopeOperationDelete}
 	default:
 		return []string{strings.ReplaceAll(strings.ReplaceAll(operation, "-", " "), "_", " ")}
 	}
