@@ -52,6 +52,12 @@ type userDirectoryEntry struct {
 	CanDelete        bool
 }
 
+const (
+	scopeOperationCreate = "create"
+	scopeOperationDelete = "delete"
+	scopeOperationRead   = "read"
+)
+
 func (h handlers) usersList(c echo.Context) error {
 	userList, err := h.users.List()
 	if err != nil {
@@ -175,13 +181,13 @@ func scopeResourceLabel(resource string) string {
 
 func scopeCapabilityLabel(capability string) string {
 	switch capability {
-	case "read":
+	case scopeOperationRead:
 		return "Read"
 	case "read-update":
 		return "Read + update"
-	case "create":
+	case scopeOperationCreate:
 		return "Create"
-	case "delete":
+	case scopeOperationDelete:
 		return "Delete"
 	default:
 		return capability
