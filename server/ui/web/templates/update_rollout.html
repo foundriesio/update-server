@@ -13,7 +13,7 @@
         <div class="page-head">
           <div>
             <div class="entity-header">
-              <h1>{{.Rollout}}</h1>
+              <h1 class="device-identity__name">{{.Rollout}}</h1>
               <span class="badge {{ if .Details.Commit }}badge-good{{ else }}badge-neutral{{ end }}">
                 {{ if .Details.Commit }}Scheduled{{ else }}Preparing{{ end }}
               </span>
