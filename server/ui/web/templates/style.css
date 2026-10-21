@@ -1675,6 +1675,17 @@ summary.user-badge::after {
 .meta-section {
     margin-bottom: 28px;
 }
+.meta-section__title {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-2);
+    margin-bottom: 12px;
+}
+.meta-section__title--sub {
+    font-weight: 400;
+    margin-bottom: 6px;
+}
 .files-table td {
     background-color: transparent !important;
 }
@@ -2424,7 +2435,7 @@ pre.code-block {
 }
 .timeline-bar::-webkit-scrollbar { display: none; }
 .timeline-bar-label,
-.snapshot-list-panel .heading--panel,
+.snapshot-list-header,
 .detail-hash-label,
 .app-meta-label {
     font-family: var(--mono);
@@ -2510,7 +2521,8 @@ pre.code-block {
     scrollbar-width: none;
 }
 .snapshot-list-panel::-webkit-scrollbar { display: none; }
-.snapshot-list-panel .heading--panel {
+.snapshot-list-header {
+    margin: 0;
     padding: 10px 14px;
     background: var(--surface-1);
     border-bottom: 1px solid var(--border-1);
@@ -2704,11 +2716,12 @@ pre.code-block {
     border-bottom: none;
     border-radius: 4px 4px 0 0;
 }
-.app-section-header .heading--entity {
+.app-name {
     font-family: var(--mono);
     font-size: 0.8rem;
     font-weight: 700;
     color: var(--text-1);
+    margin: 0;
 }
 .app-state-sep {
     color: var(--text-3);
@@ -3024,6 +3037,13 @@ pre.code-block {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.entity-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-1);
+    margin: 0;
 }
 
 .chip-reason {
@@ -3839,10 +3859,11 @@ pre.code-block {
 .users-directory .account-record__identity {
     min-width: 0;
 }
-.users-directory .account-record__identity .heading--entity {
+.users-directory .account-record__identity .entity-name {
     overflow-wrap: anywhere;
 }
-.users-directory .account-record__identity .heading-support {
+.users-directory .account-record__identity p {
+    margin: 0;
     color: var(--text-2);
     font-size: 0.76rem;
     overflow-wrap: anywhere;
@@ -4044,14 +4065,11 @@ pre.code-block {
     border-radius: 4px;
     background: var(--surface-1);
 }
-.users-directory .users-directory__empty .heading-support {
+.users-directory .users-directory__empty p {
+    margin: 0 0 18px;
     color: var(--text-2);
     font-size: 0.8rem;
 }
-.users-directory .users-directory__empty .btn-solid {
-    margin-top: 18px;
-}
-
 .users-directory-dialog {
     max-width: none;
     overscroll-behavior: contain;
@@ -4365,11 +4383,13 @@ pre.code-block {
 .pki-registry .pki-registry__identity {
     min-width: 0;
 }
-.pki-registry .pki-registry__identity .heading--entity {
+.pki-registry .pki-registry__identity h3 {
+    margin: 0;
     font-size: 0.94rem;
     overflow-wrap: anywhere;
 }
-.pki-registry .pki-registry__identity .heading-support {
+.pki-registry .pki-registry__identity p {
+    margin: 3px 0 0;
     color: var(--text-2);
     font-size: 0.76rem;
     line-height: 1.4;
