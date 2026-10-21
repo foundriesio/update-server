@@ -30,12 +30,12 @@
         <article>
             <header class="account-record__header">
               <div class="identity-avatar" aria-hidden="true">{{initials .Username}}</div>
-              <div class="account-record__identity">
-                <h3 class="entity-name users-directory__mono">
+              <div class="account-record__identity heading-stack">
+                <h3 class="heading heading--entity users-directory__mono">
                   {{.Username}}
                   {{if .IsCurrent}}<span class="current-account">Current account</span>{{end}}
                 </h3>
-                <p>{{if .Email}}{{.Email}}{{else}}Email not available{{end}}</p>
+                <p class="heading-support">{{if .Email}}{{.Email}}{{else}}Email not available{{end}}</p>
               </div>
               <dl class="account-record__facts">
                 <div>

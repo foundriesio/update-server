@@ -87,8 +87,10 @@
               <legend class="visually-hidden">Configured apps</legend>
               <div class="app-lists" id="app-lists">
                 <ul class="app-list" id="appList"></ul>
-                <h3 class="meta-section__title meta-section__title--sub" id="extra-title" hidden></h3>
-                <ul class="app-list" id="extra-list" hidden></ul>
+                <div class="extra-apps" id="extra-apps" hidden>
+                  <h3 class="heading heading--subsection" id="extra-title"></h3>
+                  <ul class="app-list" id="extra-list"></ul>
+                </div>
               </div>
             </fieldset>
             <p class="field-hint">Written to <code>compose_apps</code>. Turning off both overrides deletes the device override.</p>
@@ -366,14 +368,14 @@
         flex-shrink: 0;
         accent-color: var(--interactive);
       }
-      .device-apps .app-name {
+      .device-apps .app-label {
         flex: 1;
         min-width: 0;
         font-family: var(--mono);
         font-size: 0.8rem;
         overflow-wrap: anywhere;
       }
-      .device-apps .app-list li.is-unsupported .app-name {
+      .device-apps .app-list li.is-unsupported .app-label {
         color: var(--text-2);
       }
       .device-apps .app-list .empty {
@@ -381,8 +383,8 @@
         font-size: 0.8rem;
         color: var(--text-3);
       }
-      .device-apps .app-lists .meta-section__title {
-        margin-top: 24px;
+      .device-apps .extra-apps {
+        margin-block-start: 24px;
       }
 
       .device-apps .notice {
@@ -515,7 +517,7 @@
         const checked = cur.apps.includes(app) ? ' checked' : '';
         const disabled = CAN_EDIT ? '' : ' disabled';
         const chip = extra && tagKnown() ? '<span class="chip chip--warn">' + warnIcon + 'Not in tag</span>' : '';
-        return '<li' + (extra ? ' class="is-unsupported"' : '') + '><label><input type="checkbox" value="' + esc(app) + '"' + checked + disabled + '><span class="app-name">' + esc(app) + '</span>' + chip + '</label></li>';
+        return '<li' + (extra ? ' class="is-unsupported"' : '') + '><label><input type="checkbox" value="' + esc(app) + '"' + checked + disabled + '><span class="app-label">' + esc(app) + '</span>' + chip + '</label></li>';
       };
 
       const renderApps = () => {
@@ -524,7 +526,7 @@
         $('appList').innerHTML = inTag.length
           ? inTag.map((a) => renderAppRow(a, false)).join('')
           : '<li class="empty">Tag <code>' + esc(listTag) + '</code> has no published apps.</li>';
-        $('extra-title').hidden = $('extra-list').hidden = !rest.length;
+        $('extra-apps').hidden = !rest.length;
         $('extra-title').textContent = tagKnown() ? 'Configured, not in tag' : 'Other configured apps';
         $('extra-list').innerHTML = rest.map((a) => renderAppRow(a, true)).join('');
         const picked = inTag.filter((a) => cur.apps.includes(a)).length;

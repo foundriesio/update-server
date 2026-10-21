@@ -8,7 +8,7 @@
 
   {{ with .Configs }}
   <div class="entity-header heading-group heading-group--section heading-row">
-    <h2 class="heading heading--section entity-name">Global</h2>
+    <h2 class="heading heading--section">Global</h2>
     {{ if .Reason }}<span class="chip-reason">{{.Reason}}</span>{{ end }}
     <a href="/configs/global/history" class="header-action-link">History →</a>
   </div>
@@ -42,7 +42,7 @@
   {{ $groupsPerPage := 20 }}
   <div class="groups-section">
   <div class="entity-header heading-group heading-group--section heading-row">
-    <h2 class="heading heading--section entity-name">Groups</h2>
+    <h2 class="heading heading--section">Groups</h2>
   </div>
     <table class="configs-group-table">
       <thead>
