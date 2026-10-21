@@ -29,6 +29,19 @@ const (
 	headingAuditComponentGroupOwner
 )
 
+type headingAuditSectionOwner int
+
+const (
+	headingAuditSectionStandaloneOwner headingAuditSectionOwner = iota
+	headingAuditSectionGroupOwner
+	headingAuditSectionComponentOwner
+)
+
+type headingAuditSectionExpectation struct {
+	owner          headingAuditSectionOwner
+	componentClass string
+}
+
 var headingAuditOwners = map[string]headingAuditOwner{
 	"applied_configs_item.html":   headingAuditPageGroupOwner,
 	"configs_device_item.html":    headingAuditPageGroupOwner,
@@ -60,6 +73,84 @@ var headingAuditOwners = map[string]headingAuditOwner{
 	"update_tail.html":            headingAuditPageGroupOwner,
 	"updates.html":                headingAuditPageGroupOwner,
 	"users.html":                  headingAuditPageGroupOwner,
+}
+
+var headingAuditSectionOwners = map[string]map[int]headingAuditSectionExpectation{
+	"applied_configs_item.html": {
+		40: {owner: headingAuditSectionStandaloneOwner},
+		59: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"configs_device_item.html": {
+		40: {owner: headingAuditSectionStandaloneOwner},
+		48: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"configs_item.html": {
+		167: {owner: headingAuditSectionStandaloneOwner},
+		175: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"configs_list.html": {
+		11: {owner: headingAuditSectionGroupOwner},
+		45: {owner: headingAuditSectionGroupOwner},
+	},
+	"device.html": {
+		102: {owner: headingAuditSectionStandaloneOwner},
+		118: {owner: headingAuditSectionStandaloneOwner},
+		157: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"device_apps.html": {
+		36: {owner: headingAuditSectionGroupOwner},
+		63: {owner: headingAuditSectionGroupOwner},
+	},
+	"device_apps_states.html": {
+		55: {owner: headingAuditSectionComponentOwner, componentClass: "snapshot-list-header"},
+	},
+	"device_labels.html": {
+		21: {owner: headingAuditSectionStandaloneOwner},
+		49: {owner: headingAuditSectionGroupOwner},
+	},
+	"device_test.html": {
+		44: {owner: headingAuditSectionStandaloneOwner},
+		50: {owner: headingAuditSectionStandaloneOwner},
+		83: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"device_update.html": {
+		53: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"local-login.html": {
+		53: {owner: headingAuditSectionGroupOwner},
+	},
+	"oauth2-login.html": {
+		53: {owner: headingAuditSectionGroupOwner},
+	},
+	"pki.html": {
+		27: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"settings.html": {
+		9:  {owner: headingAuditSectionGroupOwner},
+		31: {owner: headingAuditSectionGroupOwner},
+		50: {owner: headingAuditSectionGroupOwner},
+		85: {owner: headingAuditSectionGroupOwner},
+	},
+	"tail_stream.html": {
+		3:  {owner: headingAuditSectionStandaloneOwner},
+		28: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"update.html": {
+		33:  {owner: headingAuditSectionStandaloneOwner},
+		49:  {owner: headingAuditSectionStandaloneOwner},
+		62:  {owner: headingAuditSectionStandaloneOwner},
+		101: {owner: headingAuditSectionStandaloneOwner},
+		127: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"update_rollout.html": {
+		46:  {owner: headingAuditSectionStandaloneOwner},
+		59:  {owner: headingAuditSectionStandaloneOwner},
+		116: {owner: headingAuditSectionStandaloneOwner},
+	},
+	"users.html": {
+		24:  {owner: headingAuditSectionStandaloneOwner},
+		101: {owner: headingAuditSectionGroupOwner},
+	},
 }
 
 var fullPageHeadingTemplates = []string{
@@ -282,23 +373,38 @@ func headingAuditSectionHeading(t *testing.T, filename string, line int, classes
 		t.Errorf("%s:%d: non-dialog h2 must use exactly one section-compatible role", filename, line)
 	}
 
+	expectations, ok := headingAuditSectionOwners[filename]
+	if !ok {
+		t.Errorf("%s:%d: non-dialog h2 has no ownership inventory entry", filename, line)
+		return
+	}
+	expectation, ok := expectations[line]
+	if !ok {
+		t.Errorf("%s:%d: non-dialog h2 has no ownership inventory entry", filename, line)
+		return
+	}
+
 	groups := 0
 	sectionGroupOwner := false
-	componentOwner := classes["heading--panel"]
 	for _, ancestor := range ancestors {
 		if ancestor.classes["heading-group"] {
 			groups++
 			sectionGroupOwner = ancestor.classes["heading-group--section"]
 		}
-		if ancestor.classes["entity-header"] || ancestor.classes["users-directory__empty"] {
-			componentOwner = true
+	}
+	switch expectation.owner {
+	case headingAuditSectionStandaloneOwner:
+		if groups != 0 {
+			t.Errorf("%s:%d: non-dialog h2 must own section spacing directly", filename, line)
 		}
-	}
-	if groups > 1 || (groups == 1 && !sectionGroupOwner) {
-		t.Errorf("%s:%d: non-dialog h2 must use at most one section heading-group owner", filename, line)
-	}
-	if groups == 0 && !componentOwner && !classes["heading--section"] && !classes["heading--subsection"] {
-		t.Errorf("%s:%d: non-dialog h2 has no valid spacing owner", filename, line)
+	case headingAuditSectionGroupOwner:
+		if groups != 1 || !sectionGroupOwner {
+			t.Errorf("%s:%d: non-dialog h2 must use one section heading-group owner", filename, line)
+		}
+	case headingAuditSectionComponentOwner:
+		if groups != 0 || !classes[expectation.componentClass] {
+			t.Errorf("%s:%d: non-dialog h2 must use component owner .%s", filename, line, expectation.componentClass)
+		}
 	}
 }
 
