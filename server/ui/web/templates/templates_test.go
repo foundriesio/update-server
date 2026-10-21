@@ -96,7 +96,7 @@ var headingAuditExpectations = map[string]headingAuditExpectation{
 	"settings.html:50":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"settings.html:85":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"tail_stream.html:3":             {role: "heading--section", owner: headingAuditStandaloneOwner},
-	"tail_stream.html:28":            {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"tail_stream.html:29":            {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"update.html:14":                 {role: "heading--page", owner: headingAuditPageGroupOwner},
 	"update.html:33":                 {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"update.html:49":                 {role: "heading--section", owner: headingAuditStandaloneOwner},
@@ -339,6 +339,7 @@ func headingAuditLegacySelectors(t *testing.T) {
 		t.Error("device_apps.html: .extra-apps must retain 24px block-start separation")
 	}
 	for _, selector := range []string{
+		`.rollout-stream .rollout-stream__help`,
 		`.snapshot-list-panel .heading--panel`,
 		`.pki-registry .pki-registry__identity .heading--entity`,
 		`.pki-registry .pki-registry__identity .heading-support`,

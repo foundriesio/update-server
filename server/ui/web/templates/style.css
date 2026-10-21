@@ -3735,7 +3735,6 @@ pre.code-block {
     font-size: 0.8rem;
 }
 .rollout-stream .rollout-stream__help {
-    margin: -6px 0 10px;
     color: var(--text-3);
     font-size: 0.78rem;
 }
