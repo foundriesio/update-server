@@ -1675,17 +1675,6 @@ summary.user-badge::after {
 .meta-section {
     margin-bottom: 28px;
 }
-.meta-section__title {
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: var(--text-2);
-    margin-bottom: 12px;
-}
-.meta-section__title--sub {
-    font-weight: 400;
-    margin-bottom: 6px;
-}
 .files-table td {
     background-color: transparent !important;
 }
@@ -2121,12 +2110,6 @@ pre.code-block {
     }
 }
 
-.page-header__title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-1);
-    margin: 0;
-}
 .page-header__device {
     font-family: var(--mono);
     font-size: 0.8rem;
@@ -2435,7 +2418,6 @@ pre.code-block {
 }
 .timeline-bar::-webkit-scrollbar { display: none; }
 .timeline-bar-label,
-.snapshot-list-header,
 .detail-hash-label,
 .app-meta-label {
     font-family: var(--mono);
@@ -2521,8 +2503,7 @@ pre.code-block {
     scrollbar-width: none;
 }
 .snapshot-list-panel::-webkit-scrollbar { display: none; }
-.snapshot-list-header {
-    margin: 0;
+.snapshot-list-panel .heading--panel {
     padding: 10px 14px;
     background: var(--surface-1);
     border-bottom: 1px solid var(--border-1);
@@ -2716,12 +2697,11 @@ pre.code-block {
     border-bottom: none;
     border-radius: 4px 4px 0 0;
 }
-.app-name {
+.app-section-header .heading--entity {
     font-family: var(--mono);
     font-size: 0.8rem;
     font-weight: 700;
     color: var(--text-1);
-    margin: 0;
 }
 .app-state-sep {
     color: var(--text-3);
@@ -3037,13 +3017,6 @@ pre.code-block {
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.entity-name {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-1);
-    margin: 0;
 }
 
 .chip-reason {
@@ -3859,11 +3832,10 @@ pre.code-block {
 .users-directory .account-record__identity {
     min-width: 0;
 }
-.users-directory .account-record__identity .entity-name {
+.users-directory .account-record__identity .heading--entity {
     overflow-wrap: anywhere;
 }
-.users-directory .account-record__identity p {
-    margin: 0;
+.users-directory .account-record__identity .heading-support {
     color: var(--text-2);
     font-size: 0.76rem;
     overflow-wrap: anywhere;
@@ -4383,13 +4355,11 @@ pre.code-block {
 .pki-registry .pki-registry__identity {
     min-width: 0;
 }
-.pki-registry .pki-registry__identity h3 {
-    margin: 0;
+.pki-registry .pki-registry__identity .heading--entity {
     font-size: 0.94rem;
     overflow-wrap: anywhere;
 }
-.pki-registry .pki-registry__identity p {
-    margin: 3px 0 0;
+.pki-registry .pki-registry__identity .heading-support {
     color: var(--text-2);
     font-size: 0.76rem;
     line-height: 1.4;

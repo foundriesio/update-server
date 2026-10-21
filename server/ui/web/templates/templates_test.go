@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -26,131 +27,103 @@ type headingAuditOwner int
 const (
 	headingAuditStandaloneOwner headingAuditOwner = iota
 	headingAuditPageGroupOwner
+	headingAuditSectionGroupOwner
+	headingAuditComponentOwner
 	headingAuditComponentGroupOwner
 )
 
-type headingAuditSectionOwner int
-
-const (
-	headingAuditSectionStandaloneOwner headingAuditSectionOwner = iota
-	headingAuditSectionGroupOwner
-	headingAuditSectionComponentOwner
-)
-
-type headingAuditSectionExpectation struct {
-	owner          headingAuditSectionOwner
+type headingAuditExpectation struct {
+	role           string
+	owner          headingAuditOwner
 	componentClass string
 }
 
-var headingAuditOwners = map[string]headingAuditOwner{
-	"applied_configs_item.html":   headingAuditPageGroupOwner,
-	"configs_device_item.html":    headingAuditPageGroupOwner,
-	"configs_global_history.html": headingAuditPageGroupOwner,
-	"configs_history.html":        headingAuditStandaloneOwner,
-	"configs_item.html":           headingAuditPageGroupOwner,
-	"configs_list.html":           headingAuditPageGroupOwner,
-	"device.html":                 headingAuditPageGroupOwner,
-	"device_apps.html":            headingAuditPageGroupOwner,
-	"device_apps_states.html":     headingAuditPageGroupOwner,
-	"device_auth.html":            headingAuditStandaloneOwner,
-	"device_auth_confirm.html":    headingAuditStandaloneOwner,
-	"device_auth_success.html":    headingAuditStandaloneOwner,
-	"device_labels.html":          headingAuditPageGroupOwner,
-	"device_test.html":            headingAuditPageGroupOwner,
-	"device_tests.html":           headingAuditPageGroupOwner,
-	"device_update.html":          headingAuditPageGroupOwner,
-	"device_updates.html":         headingAuditStandaloneOwner,
-	"devices_list.html":           headingAuditStandaloneOwner,
-	"error.html":                  headingAuditStandaloneOwner,
-	"local-login.html":            headingAuditComponentGroupOwner,
-	"local-password-change.html":  headingAuditStandaloneOwner,
-	"oauth2-login.html":           headingAuditComponentGroupOwner,
-	"pki.html":                    headingAuditPageGroupOwner,
-	"rollout_tail.html":           headingAuditPageGroupOwner,
-	"settings.html":               headingAuditPageGroupOwner,
-	"update.html":                 headingAuditPageGroupOwner,
-	"update_rollout.html":         headingAuditPageGroupOwner,
-	"update_tail.html":            headingAuditPageGroupOwner,
-	"updates.html":                headingAuditPageGroupOwner,
-	"users.html":                  headingAuditPageGroupOwner,
+var headingAuditExpectations = map[string]headingAuditExpectation{
+	"applied_configs_item.html:15":   {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"applied_configs_item.html:40":   {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"applied_configs_item.html:59":   {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_device_item.html:15":    {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"configs_device_item.html:40":    {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_device_item.html:48":    {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_global_history.html:11": {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"configs_history.html:3":         {role: "heading--page", owner: headingAuditStandaloneOwner},
+	"configs_item.html:2":            {role: "heading--subsection", owner: headingAuditStandaloneOwner},
+	"configs_item.html:162":          {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"configs_item.html:167":          {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_item.html:175":          {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_list.html:5":            {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"configs_list.html:11":           {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"configs_list.html:45":           {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"device.html:13":                 {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"device.html:102":                {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"device.html:118":                {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"device.html:157":                {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"device_apps.html:13":            {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"device_apps.html:36":            {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"device_apps.html:63":            {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"device_apps.html:91":            {role: "heading--subsection", owner: headingAuditStandaloneOwner},
+	"device_apps_states.html:15":     {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"device_apps_states.html:55":     {role: "heading--panel", owner: headingAuditComponentOwner, componentClass: "snapshot-list-panel"},
+	"device_apps_states.html:101":    {role: "heading--entity", owner: headingAuditComponentOwner, componentClass: "app-section-header"},
+	"device_auth.html:3":             {role: "heading--page", owner: headingAuditStandaloneOwner},
+	"device_auth_confirm.html:3":     {role: "heading--page", owner: headingAuditStandaloneOwner},
+	"device_auth_success.html:3":     {role: "heading--page", owner: headingAuditStandaloneOwner},
+	"device_labels.html:14":          {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"device_labels.html:21":          {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"device_labels.html:49":          {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"device_test.html:17":            {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"device_test.html:44":            {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"device_test.html:50":            {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"device_test.html:83":            {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"device_tests.html:15":           {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"device_update.html:17":          {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"device_update.html:53":          {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"device_updates.html:10":         {role: "heading--page", owner: headingAuditStandaloneOwner},
+	"devices_list.html:3":            {role: "heading--page", owner: headingAuditStandaloneOwner},
+	"error.html:3":                   {role: "heading--page", owner: headingAuditStandaloneOwner},
+	"local-login.html:24":            {role: "heading--page", owner: headingAuditComponentGroupOwner},
+	"local-login.html:53":            {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"local-password-change.html:4":   {role: "heading--page", owner: headingAuditStandaloneOwner},
+	"oauth2-login.html:24":           {role: "heading--page", owner: headingAuditComponentGroupOwner},
+	"oauth2-login.html:53":           {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"pki.html:4":                     {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"pki.html:27":                    {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"pki.html:35":                    {role: "heading--entity", owner: headingAuditComponentOwner, componentClass: "heading-stack"},
+	"rollout_tail.html:16":           {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"settings.html:4":                {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"settings.html:9":                {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:31":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:50":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:85":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"tail_stream.html:3":             {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"tail_stream.html:28":            {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update.html:14":                 {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"update.html:33":                 {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update.html:49":                 {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update.html:62":                 {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update.html:101":                {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update.html:127":                {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update_rollout.html:16":         {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"update_rollout.html:46":         {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update_rollout.html:59":         {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update_rollout.html:116":        {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"update_tail.html:14":            {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"updates.html:6":                 {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"users.html:4":                   {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"users.html:24":                  {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"users.html:34":                  {role: "heading--entity", owner: headingAuditComponentOwner, componentClass: "heading-stack"},
+	"users.html:101":                 {role: "heading--section", owner: headingAuditSectionGroupOwner},
 }
 
-var headingAuditSectionOwners = map[string]map[int]headingAuditSectionExpectation{
-	"applied_configs_item.html": {
-		40: {owner: headingAuditSectionStandaloneOwner},
-		59: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"configs_device_item.html": {
-		40: {owner: headingAuditSectionStandaloneOwner},
-		48: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"configs_item.html": {
-		167: {owner: headingAuditSectionStandaloneOwner},
-		175: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"configs_list.html": {
-		11: {owner: headingAuditSectionGroupOwner},
-		45: {owner: headingAuditSectionGroupOwner},
-	},
-	"device.html": {
-		102: {owner: headingAuditSectionStandaloneOwner},
-		118: {owner: headingAuditSectionStandaloneOwner},
-		157: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"device_apps.html": {
-		36: {owner: headingAuditSectionGroupOwner},
-		63: {owner: headingAuditSectionGroupOwner},
-	},
-	"device_apps_states.html": {
-		55: {owner: headingAuditSectionComponentOwner, componentClass: "snapshot-list-header"},
-	},
-	"device_labels.html": {
-		21: {owner: headingAuditSectionStandaloneOwner},
-		49: {owner: headingAuditSectionGroupOwner},
-	},
-	"device_test.html": {
-		44: {owner: headingAuditSectionStandaloneOwner},
-		50: {owner: headingAuditSectionStandaloneOwner},
-		83: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"device_update.html": {
-		53: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"local-login.html": {
-		53: {owner: headingAuditSectionGroupOwner},
-	},
-	"oauth2-login.html": {
-		53: {owner: headingAuditSectionGroupOwner},
-	},
-	"pki.html": {
-		27: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"settings.html": {
-		9:  {owner: headingAuditSectionGroupOwner},
-		31: {owner: headingAuditSectionGroupOwner},
-		50: {owner: headingAuditSectionGroupOwner},
-		85: {owner: headingAuditSectionGroupOwner},
-	},
-	"tail_stream.html": {
-		3:  {owner: headingAuditSectionStandaloneOwner},
-		28: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"update.html": {
-		33:  {owner: headingAuditSectionStandaloneOwner},
-		49:  {owner: headingAuditSectionStandaloneOwner},
-		62:  {owner: headingAuditSectionStandaloneOwner},
-		101: {owner: headingAuditSectionStandaloneOwner},
-		127: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"update_rollout.html": {
-		46:  {owner: headingAuditSectionStandaloneOwner},
-		59:  {owner: headingAuditSectionStandaloneOwner},
-		116: {owner: headingAuditSectionStandaloneOwner},
-	},
-	"users.html": {
-		24:  {owner: headingAuditSectionStandaloneOwner},
-		101: {owner: headingAuditSectionGroupOwner},
-	},
+var legacyHeadingClasses = []string{
+	"device-identity__name",
+	"meta-section__title",
+	"meta-section__title--sub",
+	"page-title",
+	"entity-name",
+	"login-title",
+	"snapshot-list-header",
+	"app-name",
 }
 
 var fullPageHeadingTemplates = []string{
@@ -162,12 +135,13 @@ var fullPageHeadingTemplates = []string{
 	"local-password-change.html",
 }
 
-func TestNonDialogPageHeadingsUseGenericContract(t *testing.T) {
+func TestNonDialogHeadingsUseGenericContract(t *testing.T) {
 	entries, err := Assets.ReadDir(".")
 	if err != nil {
 		t.Fatalf("ReadDir(.) error = %v", err)
 	}
 
+	headingCount := 0
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".html") {
 			continue
@@ -193,55 +167,19 @@ func TestNonDialogPageHeadingsUseGenericContract(t *testing.T) {
 
 			classes := headingAuditClasses(asset[match[0]:match[1]])
 			line := bytes.Count(asset[:match[0]], []byte("\n")) + 1
-			if name == "h1" && !headingAuditHasAncestor(ancestors, "dialog") {
-				headingAuditPageHeading(t, entry.Name(), line, classes, ancestors)
+			if (name == "h1" || name == "h2" || name == "h3") && !headingAuditHasAncestor(ancestors, "dialog") {
+				headingCount++
+				headingAuditHeading(t, entry.Name(), line, name, classes, ancestors)
 			}
 			if (match[6] == -1 || match[7] == match[6]) && !headingAuditVoidElement(name) {
 				ancestors = append(ancestors, headingAuditElement{name: name, classes: classes})
 			}
 		}
 	}
-}
-
-func TestNonDialogSectionHeadingsUseGenericContract(t *testing.T) {
-	entries, err := Assets.ReadDir(".")
-	if err != nil {
-		t.Fatalf("ReadDir(.) error = %v", err)
+	if headingCount != 74 || len(headingAuditExpectations) != headingCount {
+		t.Errorf("non-dialog heading inventory = %d headings and %d entries, want 74 each", headingCount, len(headingAuditExpectations))
 	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".html") {
-			continue
-		}
-
-		asset, err := Assets.ReadFile(entry.Name())
-		if err != nil {
-			t.Fatalf("ReadFile(%s) error = %v", entry.Name(), err)
-		}
-
-		var ancestors []headingAuditElement
-		for _, match := range headingAuditTagRE.FindAllSubmatchIndex(asset, -1) {
-			name := strings.ToLower(string(asset[match[4]:match[5]]))
-			if match[2] != -1 && match[3] > match[2] {
-				for i := len(ancestors) - 1; i >= 0; i-- {
-					if ancestors[i].name == name {
-						ancestors = ancestors[:i]
-						break
-					}
-				}
-				continue
-			}
-
-			classes := headingAuditClasses(asset[match[0]:match[1]])
-			line := bytes.Count(asset[:match[0]], []byte("\n")) + 1
-			if name == "h2" && !headingAuditHasAncestor(ancestors, "dialog") {
-				headingAuditSectionHeading(t, entry.Name(), line, classes, ancestors)
-			}
-			if (match[6] == -1 || match[7] == match[6]) && !headingAuditVoidElement(name) {
-				ancestors = append(ancestors, headingAuditElement{name: name, classes: classes})
-			}
-		}
-	}
+	headingAuditLegacySelectors(t)
 }
 
 func TestFullPagesStartWithPageHeading(t *testing.T) {
@@ -301,10 +239,16 @@ func headingAuditHasAncestor(ancestors []headingAuditElement, name string) bool 
 	return false
 }
 
-func headingAuditPageHeading(t *testing.T, filename string, line int, classes map[string]bool, ancestors []headingAuditElement) {
+func headingAuditHeading(t *testing.T, filename string, line int, name string, classes map[string]bool, ancestors []headingAuditElement) {
 	t.Helper()
+	key := filename + ":" + strconv.Itoa(line)
+	expectation, ok := headingAuditExpectations[key]
+	if !ok {
+		t.Errorf("%s: non-dialog %s has no ownership inventory entry", key, name)
+		return
+	}
 	if !classes["heading"] {
-		t.Errorf("%s:%d: non-dialog h1 must use .heading", filename, line)
+		t.Errorf("%s: non-dialog %s must use .heading", key, name)
 	}
 	roles := 0
 	for _, role := range []string{
@@ -318,93 +262,106 @@ func headingAuditPageHeading(t *testing.T, filename string, line int, classes ma
 			roles++
 		}
 	}
-	if roles != 1 || !classes["heading--page"] {
-		t.Errorf("%s:%d: non-dialog h1 must use exactly one page role", filename, line)
+	if roles != 1 || !classes[expectation.role] {
+		t.Errorf("%s: non-dialog %s must use exactly one %s role", key, name, expectation.role)
 	}
-
 	groups := 0
 	pageGroupOwner := false
+	sectionGroupOwner := false
+	componentOwner := false
 	for _, ancestor := range ancestors {
 		if ancestor.classes["heading-group"] {
 			groups++
 			pageGroupOwner = ancestor.classes["heading-group--page"]
+			sectionGroupOwner = ancestor.classes["heading-group--section"]
+		}
+		if expectation.componentClass != "" && ancestor.classes[expectation.componentClass] {
+			componentOwner = true
 		}
 	}
-
-	expectedOwner, ok := headingAuditOwners[filename]
-	if !ok {
-		t.Errorf("%s:%d: non-dialog h1 has no ownership inventory entry", filename, line)
-		return
-	}
-	switch expectedOwner {
+	switch expectation.owner {
 	case headingAuditStandaloneOwner:
 		if groups != 0 {
-			t.Errorf("%s:%d: non-dialog h1 must own page spacing directly", filename, line)
+			t.Errorf("%s: non-dialog %s must own spacing directly", key, name)
 		}
 	case headingAuditPageGroupOwner:
 		if groups != 1 || !pageGroupOwner {
-			t.Errorf("%s:%d: non-dialog h1 must use a page heading-group owner", filename, line)
+			t.Errorf("%s: non-dialog %s must use one page heading-group owner", key, name)
+		}
+	case headingAuditSectionGroupOwner:
+		if groups != 1 || !sectionGroupOwner {
+			t.Errorf("%s: non-dialog %s must use one section heading-group owner", key, name)
+		}
+	case headingAuditComponentOwner:
+		if groups != 0 || !componentOwner {
+			t.Errorf("%s: non-dialog %s must use component owner .%s", key, name, expectation.componentClass)
 		}
 	case headingAuditComponentGroupOwner:
 		if groups != 1 || pageGroupOwner {
-			t.Errorf("%s:%d: non-dialog h1 must use a component-owned heading group", filename, line)
+			t.Errorf("%s: non-dialog %s must use a component-owned heading group", key, name)
+		}
+	}
+	for _, legacyClass := range legacyHeadingClasses {
+		if classes[legacyClass] {
+			t.Errorf("%s: non-dialog %s must not use legacy .%s", key, name, legacyClass)
 		}
 	}
 }
 
-func headingAuditSectionHeading(t *testing.T, filename string, line int, classes map[string]bool, ancestors []headingAuditElement) {
+func headingAuditLegacySelectors(t *testing.T) {
 	t.Helper()
-	if !classes["heading"] {
-		t.Errorf("%s:%d: non-dialog h2 must use .heading", filename, line)
+	for _, filename := range []string{"style.css", "login.css"} {
+		asset, err := Assets.ReadFile(filename)
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", filename, err)
+		}
+		for _, legacyClass := range legacyHeadingClasses {
+			selector := regexp.MustCompile(`\.` + regexp.QuoteMeta(legacyClass) + `(?:[\s>+~:#.\[,{|]|$)`)
+			if selector.Match(asset) {
+				t.Errorf("%s: legacy heading selector .%s remains", filename, legacyClass)
+			}
+		}
 	}
-
-	roles := 0
-	for _, role := range []string{
-		"heading--section",
-		"heading--subsection",
-		"heading--entity",
-		"heading--panel",
+	deviceApps, err := Assets.ReadFile("device_apps.html")
+	if err != nil {
+		t.Fatalf("ReadFile(device_apps.html) error = %v", err)
+	}
+	if !bytes.Contains(deviceApps, []byte(`<span class="app-label">`)) {
+		t.Error("device_apps.html: client renderer must emit .app-label")
+	}
+	if bytes.Contains(deviceApps, []byte(`app-name`)) {
+		t.Error("device_apps.html: client renderer must not emit .app-name")
+	}
+	if !bytes.Contains(deviceApps, []byte(`<div class="extra-apps" id="extra-apps" hidden>`)) {
+		t.Error("device_apps.html: extra-app heading and list must share an .extra-apps wrapper")
+	}
+	if !regexp.MustCompile(`\.device-apps \.extra-apps\s*\{[^}]*margin-block-start:\s*24px;`).Match(deviceApps) {
+		t.Error("device_apps.html: .extra-apps must retain 24px block-start separation")
+	}
+	for _, selector := range []string{
+		`.snapshot-list-panel .heading--panel`,
+		`.pki-registry .pki-registry__identity .heading--entity`,
+		`.pki-registry .pki-registry__identity .heading-support`,
+		`.users-directory .account-record__identity .heading--entity`,
+		`.users-directory .account-record__identity .heading-support`,
 	} {
-		if classes[role] {
-			roles++
-		}
+		headingAuditSelectorHasNoMargin(t, "style.css", selector)
 	}
-	if roles != 1 {
-		t.Errorf("%s:%d: non-dialog h2 must use exactly one section-compatible role", filename, line)
-	}
+}
 
-	expectations, ok := headingAuditSectionOwners[filename]
-	if !ok {
-		t.Errorf("%s:%d: non-dialog h2 has no ownership inventory entry", filename, line)
+func headingAuditSelectorHasNoMargin(t *testing.T, filename string, selector string) {
+	t.Helper()
+	asset, err := Assets.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", filename, err)
+	}
+	block := regexp.MustCompile(regexp.QuoteMeta(selector) + `\s*\{([^}]*)\}`).FindSubmatch(asset)
+	if len(block) == 0 {
+		t.Errorf("%s: missing migrated selector %s", filename, selector)
 		return
 	}
-	expectation, ok := expectations[line]
-	if !ok {
-		t.Errorf("%s:%d: non-dialog h2 has no ownership inventory entry", filename, line)
-		return
-	}
-
-	groups := 0
-	sectionGroupOwner := false
-	for _, ancestor := range ancestors {
-		if ancestor.classes["heading-group"] {
-			groups++
-			sectionGroupOwner = ancestor.classes["heading-group--section"]
-		}
-	}
-	switch expectation.owner {
-	case headingAuditSectionStandaloneOwner:
-		if groups != 0 {
-			t.Errorf("%s:%d: non-dialog h2 must own section spacing directly", filename, line)
-		}
-	case headingAuditSectionGroupOwner:
-		if groups != 1 || !sectionGroupOwner {
-			t.Errorf("%s:%d: non-dialog h2 must use one section heading-group owner", filename, line)
-		}
-	case headingAuditSectionComponentOwner:
-		if groups != 0 || !classes[expectation.componentClass] {
-			t.Errorf("%s:%d: non-dialog h2 must use component owner .%s", filename, line, expectation.componentClass)
-		}
+	if regexp.MustCompile(`(?m)\bmargin(?:-[a-z]+)?\s*:`).Match(block[1]) {
+		t.Errorf("%s: migrated selector %s must not declare margin", filename, selector)
 	}
 }
 
