@@ -69,7 +69,8 @@ func TestSettingsTemplateRendersLedgerAndPreservesActions(t *testing.T) {
 	html := renderSettingsHTML(t, ctx)
 
 	assert.Contains(t, html, `class="settings-ledger device-page-inner"`)
-	assert.Contains(t, html, `<h1 class="device-identity__name">Settings</h1>`)
+	assert.Contains(t, html, `<header class="heading-group heading-group--page">`)
+	assert.Contains(t, html, `<h1 class="heading heading--page">Settings</h1>`)
 	assert.Contains(t, html, `class="settings-ledger__rows"`)
 	assert.Contains(t, html, `operator@example.test`)
 	assert.Contains(t, html, `<a class="meta-row-action" href="/users/operator/audit-log">Audit log →</a>`)

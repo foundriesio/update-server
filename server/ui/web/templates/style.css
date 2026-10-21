@@ -1575,24 +1575,12 @@ summary.user-badge::after {
     font-size: 0.75rem;
 }
 
-.device-identity {
-    margin-bottom: 28px;
-}
-.device-identity__name-row {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 6px;
-}
 /* .status-badge/.status-indicator sit next to a taller h1 — baseline
    alignment sits them low against it. Override just these children
    instead of the shared row default. */
 .device-identity__name-row .status-badge,
 .device-identity__name-row .status-indicator {
     align-self: center;
-}
-.device-identity__name {
-    margin: 0;
 }
 .device-identity__uuid {
     font-family: var(--mono);
@@ -1999,19 +1987,6 @@ pre.code-block {
     color: var(--text-3);
 }
 
-.update-identity {
-    margin-bottom: 28px;
-}
-.update-identity__name-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 6px;
-}
-.update-identity__name {
-    margin: 0;
-    font-family: var(--mono);
-}
 .update-identity__device {
     font-size: 0.8rem;
     color: var(--text-2);
@@ -2146,9 +2121,6 @@ pre.code-block {
     }
 }
 
-.page-header {
-    margin-bottom: 28px;
-}
 .page-header__title {
     font-size: 1.25rem;
     font-weight: 700;
@@ -2159,7 +2131,6 @@ pre.code-block {
     font-family: var(--mono);
     font-size: 0.8rem;
     color: var(--text-2);
-    margin-top: 4px;
 }
 
 .zone {
@@ -3062,23 +3033,20 @@ pre.code-block {
     max-width: 900px;
 }
 
-.page-title {
-    font-weight: 700;
-    color: var(--text-1);
-    margin-bottom: 4px;
-}
-
 .page-subtitle {
     font-size: 0.82rem;
     color: var(--text-3);
-    margin-bottom: 32px;
+    margin-block: 0;
 }
 
 .entity-header {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 12px;
+}
+
+.entity-header:not(.heading-group) {
+    margin-block-end: 12px;
 }
 
 .entity-name {
@@ -3227,15 +3195,11 @@ pre.code-block {
 
 @layer updates-list {
 
-.updates-page .page-subtitle {
-    margin-bottom: 0;
-}
 .page-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
-    margin-bottom: 24px;
 }
 @media (max-width: 680px) {
     .page-head {
@@ -3433,12 +3397,6 @@ pre.code-block {
 .update-detail__inner {
     max-width: 860px;
 }
-.update-detail__inner h1 {
-    margin: 0;
-}
-.update-detail__inner .page-subtitle {
-    margin-bottom: 0;
-}
 @media (max-width: 860px) {
     .update-detail__inner {
         max-width: none;
@@ -3607,14 +3565,6 @@ pre.code-block {
 .rollout-detail__inner {
     max-width: 900px;
 }
-.rollout-detail__inner h1 {
-    margin: 0;
-    overflow-wrap: anywhere;
-}
-.rollout-detail__inner .page-subtitle {
-    margin-bottom: 0;
-    overflow-wrap: anywhere;
-}
 .rollout-detail__progress {
     flex-shrink: 0;
     text-decoration: none;
@@ -3772,7 +3722,6 @@ pre.code-block {
     max-width: 1160px;
 }
 .rollout-stream .rollout-stream__inner h1 {
-    margin: 0;
     overflow-wrap: anywhere;
     text-wrap: balance;
 }
@@ -3780,7 +3729,6 @@ pre.code-block {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 0;
     color: var(--text-2);
     font-size: 0.8rem;
 }

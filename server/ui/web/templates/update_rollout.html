@@ -10,18 +10,18 @@
           <span class="breadcrumb__current" aria-current="page">{{.Rollout}}</span>
         </nav>
 
-        <div class="page-head">
-          <div>
-            <div class="entity-header">
-              <h1 class="device-identity__name">{{.Rollout}}</h1>
+        <header class="page-head heading-group heading-group--page heading-row heading-row--split">
+          <div class="heading-stack">
+            <div class="heading-row">
+              <h1 class="heading heading--page">{{.Rollout}}</h1>
               <span class="badge {{ if .Details.Commit }}badge-good{{ else }}badge-neutral{{ end }}">
                 {{ if .Details.Commit }}Scheduled{{ else }}Preparing{{ end }}
               </span>
             </div>
-            <p class="page-subtitle">Update {{.Name}} on the {{.Tag}} tag</p>
+            <p class="page-subtitle heading-support">Update {{.Name}} on the {{.Tag}} tag</p>
           </div>
           <a class="btn-ghost rollout-detail__progress" href="/updates/{{.Name}}/rollouts/{{.Rollout}}/tail">Follow progress</a>
-        </div>
+        </header>
 
         <section class="summary-grid" aria-label="Rollout overview">
           <div class="summary-card">
