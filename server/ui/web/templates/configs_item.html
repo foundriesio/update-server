@@ -1,5 +1,5 @@
 {{ define "configs-item-files" }}
-      <h3 class="meta-section__title meta-section__title--sub">Files</h3>
+      <h3 class="heading heading--subsection">Files</h3>
       {{ with .Configs.Files }}
       <table class="files-table">
          <tbody>
@@ -164,7 +164,7 @@
   </header>
 
   <div class="meta-section">
-    <h2 class="meta-section__title">Current Configuration</h2>
+    <h2 class="heading heading--section">Current Configuration</h2>
     {{ template "configs-item" . }}
     {{ if .CanEdit }}
     {{ template "configs-add-button" }}
@@ -172,7 +172,7 @@
   </div>
 
   <div class="meta-section">
-    <h2 class="meta-section__title">Revision History ({{len .History}})</h2>
+    <h2 class="heading heading--section">Revision History ({{len .History}})</h2>
     {{ template "configs-history-list" . }}
   </div>
 

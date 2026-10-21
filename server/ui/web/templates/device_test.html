@@ -41,13 +41,13 @@
 
         {{ if .Test.Details }}
         <div class="meta-section">
-          <h2 class="meta-section__title">Details</h2>
+          <h2 class="heading heading--section">Details</h2>
           <pre class="code-block">{{.Test.Details}}</pre>
         </div>
         {{ end }}
 
         <div class="meta-section">
-          <h2 class="meta-section__title">Results</h2>
+          <h2 class="heading heading--section">Results</h2>
           {{ if .Test.Results }}
           <table class="tests-table results-table">
             <thead>
@@ -80,7 +80,7 @@
 
         {{ if .Test.Artifacts }}
         <div class="meta-section">
-          <h2 class="meta-section__title">Artifacts</h2>
+          <h2 class="heading heading--section">Artifacts</h2>
           <div class="artifact-list">
             {{ range .Test.Artifacts }}
             <div class="artifact-row">

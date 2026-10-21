@@ -37,7 +37,7 @@
       <div class="device-page-inner">
         {{ with .Configs }}
         <div class="meta-section">
-          <h2 class="meta-section__title">Applied Configuration</h2>
+          <h2 class="heading heading--section">Applied Configuration</h2>
           {{ if gt .AppliedAt 0 }}
           <div class="meta-grid">
             <div class="meta-row">
@@ -56,7 +56,7 @@
 
         {{ if gt .AppliedAt 0 }}
         <div class="meta-section">
-          <h2 class="meta-section__title">Generated From</h2>
+          <h2 class="heading heading--section">Generated From</h2>
           <div class="layer-grid">
             {{ with (index .AuditTrail 0) }}
             {{ $set := or (gt .CreatedAt 0) (gt (len .CreatedBy) 0) (gt (len .Reason) 0) }}

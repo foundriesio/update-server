@@ -30,7 +30,7 @@
         </header>
 
         <div class="meta-section">
-          <h2 class="meta-section__title">Rollout history</h2>
+          <h2 class="heading heading--section">Rollout history</h2>
           <div class="history-list">
           {{ range .Rollouts }}
             <div class="history-entry">
@@ -46,7 +46,7 @@
 
         {{ if len .Summary.Status }}
         <div class="meta-section">
-          <h2 class="meta-section__title">Rollout summary</h2>
+          <h2 class="heading heading--section">Rollout summary</h2>
           <div class="history-list">
           {{ range $status, $count := .Summary.Status }}
             <div class="history-entry">
@@ -59,7 +59,7 @@
         {{ end }}
 
         <div class="meta-section">
-          <h2 class="meta-section__title">Release manifest</h2>
+          <h2 class="heading heading--section">Release manifest</h2>
           {{ if .LatestTarget }}
           <div class="meta-grid">
             <div class="meta-row">
@@ -98,7 +98,7 @@
 
         {{ if .LatestTarget }}
         <div class="meta-section">
-          <h2 class="meta-section__title">Applications</h2>
+          <h2 class="heading heading--section">Applications</h2>
           {{ if .LatestTarget.Apps }}
           <div class="artifact-list">
           {{ range .LatestTarget.Apps }}
@@ -124,7 +124,7 @@
         {{ end }}
 
         <div class="meta-section">
-          <h2 class="meta-section__title">TUF metadata</h2>
+          <h2 class="heading heading--section">TUF metadata</h2>
           {{ if .TufError }}
           <p class="empty-state">{{.TufError}}</p>
           {{ else }}

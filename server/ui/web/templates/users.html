@@ -21,7 +21,7 @@
   </section>
 
   <section aria-labelledby="directory-title">
-    <h2 class="meta-section__title" id="directory-title">Account directory</h2>
+    <h2 class="heading heading--section" id="directory-title">Account directory</h2>
 
     {{if .Entries}}
     <ol class="account-directory">
@@ -30,12 +30,12 @@
         <article>
             <header class="account-record__header">
               <div class="identity-avatar" aria-hidden="true">{{initials .Username}}</div>
-              <div class="account-record__identity">
-                <h3 class="entity-name users-directory__mono">
+              <div class="account-record__identity heading-stack">
+                <h3 class="heading heading--entity users-directory__mono">
                   {{.Username}}
                   {{if .IsCurrent}}<span class="current-account">Current account</span>{{end}}
                 </h3>
-                <p>{{if .Email}}{{.Email}}{{else}}Email not available{{end}}</p>
+                <p class="heading-support">{{if .Email}}{{.Email}}{{else}}Email not available{{end}}</p>
               </div>
               <dl class="account-record__facts">
                 <div>
@@ -97,9 +97,11 @@
       {{end}}
     </ol>
     {{else}}
-    <section class="users-directory__empty" aria-labelledby="directory-empty-title">
-      <h2 class="meta-section__title" id="directory-empty-title">No users in this directory</h2>
-      <p>{{if .CanCreateUser}}Create the first local account and assign its permissions.{{else}}Accounts will appear here when they are available from the configured authentication provider.{{end}}</p>
+    <section class="users-directory__empty heading-group heading-group--section" aria-labelledby="directory-empty-title">
+      <div class="heading-stack">
+        <h2 class="heading heading--section" id="directory-empty-title">No users in this directory</h2>
+        <p class="heading-support">{{if .CanCreateUser}}Create the first local account and assign its permissions.{{else}}Accounts will appear here when they are available from the configured authentication provider.{{end}}</p>
+      </div>
       {{if .CanCreateUser}}
       <button class="btn-solid" type="button" data-dialog-open="user-create-dialog">Create user</button>
       {{end}}
