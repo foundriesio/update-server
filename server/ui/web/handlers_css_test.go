@@ -78,4 +78,36 @@ func TestCSSRouteReturnsNotModifiedWithoutCompressedBody(t *testing.T) {
 	assert.Empty(t, response.Body.String())
 }
 
+func TestCSSRouteIncludesGenericHeadingContract(t *testing.T) {
+	e := echo.New()
+	RegisterHandlers(e, nil, cssTestAuthProvider{}, Branding{}, "", NewPageBuilder(Branding{}))
+
+	request := httptest.NewRequest(http.MethodGet, "/css/style.css", nil)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	for _, expected := range []string{
+		"--heading-space-page",
+		"--heading-space-section",
+		"--heading-space-subsection",
+		"--heading-space-inner",
+		".heading",
+		".heading--page",
+		".heading--section",
+		".heading--subsection",
+		".heading--entity",
+		".heading--panel",
+		".heading-group",
+		".heading-group--page",
+		".heading-group--section",
+		".heading-stack",
+		".heading-row",
+		".heading-row--split",
+		".heading-support",
+	} {
+		assert.Contains(t, response.Body.String(), expected)
+	}
+}
+
 const gzipScheme = "gzip"
