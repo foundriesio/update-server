@@ -180,8 +180,11 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
 		`.settings-ledger__section {
     min-width: 0;
 }`,
-		`.settings-ledger__section-head .meta-section__title {
-    margin: 0;
+		`.settings-ledger__section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
 }`,
 		`.settings-ledger__rows {
     margin: 0;

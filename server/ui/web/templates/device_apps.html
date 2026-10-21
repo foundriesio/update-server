@@ -31,10 +31,10 @@
         </dl>
 
         <section class="ov-row" aria-labelledby="tag-title">
-          <div class="ov-head">
-            <div>
-              <h2 class="meta-section__title" id="tag-title">Tag</h2>
-              <div class="ov-state" id="tag-state"></div>
+          <div class="ov-head heading-group heading-group--section heading-row heading-row--split">
+            <div class="heading-stack">
+              <h2 class="heading heading--section" id="tag-title">Tag</h2>
+              <div class="ov-state heading-support" id="tag-state"></div>
             </div>
             <label class="switch">
               <input type="checkbox" role="switch" id="overrideTag" aria-label="Override tag" aria-describedby="tag-state"{{if not .CanEdit}} disabled{{end}}>
@@ -58,10 +58,10 @@
         </section>
 
         <section class="ov-row" aria-labelledby="apps-title">
-          <div class="ov-head">
-            <div>
-              <h2 class="meta-section__title" id="apps-title">Apps</h2>
-              <div class="ov-state" id="apps-state">{{if not .UpdateName}}Not available{{end}}</div>
+          <div class="ov-head heading-group heading-group--section heading-row heading-row--split">
+            <div class="heading-stack">
+              <h2 class="heading heading--section" id="apps-title">Apps</h2>
+              <div class="ov-state heading-support" id="apps-state">{{if not .UpdateName}}Not available{{end}}</div>
             </div>
             <label class="switch"{{if not .UpdateName}} hidden{{end}}>
               <input type="checkbox" role="switch" id="overrideApps" aria-label="Override apps" aria-describedby="apps-state"{{if not .CanEdit}} disabled{{end}}>
@@ -87,8 +87,10 @@
               <legend class="visually-hidden">Configured apps</legend>
               <div class="app-lists" id="app-lists">
                 <ul class="app-list" id="appList"></ul>
-                <h3 class="meta-section__title meta-section__title--sub" id="extra-title" hidden></h3>
-                <ul class="app-list" id="extra-list" hidden></ul>
+                <div class="extra-apps">
+                  <h3 class="heading heading--subsection" id="extra-title" hidden></h3>
+                  <ul class="app-list" id="extra-list" hidden></ul>
+                </div>
               </div>
             </fieldset>
             <p class="field-hint">Written to <code>compose_apps</code>. Turning off both overrides deletes the device override.</p>
@@ -203,7 +205,6 @@
       .device-apps .ov-state {
         font-size: 0.8rem;
         color: var(--text-2);
-        margin-top: 2px;
       }
       .device-apps .ov-state code {
         font-family: var(--mono);
@@ -367,14 +368,14 @@
         flex-shrink: 0;
         accent-color: var(--interactive);
       }
-      .device-apps .app-name {
+      .device-apps .app-label {
         flex: 1;
         min-width: 0;
         font-family: var(--mono);
         font-size: 0.8rem;
         overflow-wrap: anywhere;
       }
-      .device-apps .app-list li.is-unsupported .app-name {
+      .device-apps .app-list li.is-unsupported .app-label {
         color: var(--text-2);
       }
       .device-apps .app-list .empty {
@@ -382,7 +383,7 @@
         font-size: 0.8rem;
         color: var(--text-3);
       }
-      .device-apps .app-lists .meta-section__title {
+      .device-apps .extra-apps {
         margin-top: 24px;
       }
 
@@ -516,7 +517,7 @@
         const checked = cur.apps.includes(app) ? ' checked' : '';
         const disabled = CAN_EDIT ? '' : ' disabled';
         const chip = extra && tagKnown() ? '<span class="chip chip--warn">' + warnIcon + 'Not in tag</span>' : '';
-        return '<li' + (extra ? ' class="is-unsupported"' : '') + '><label><input type="checkbox" value="' + esc(app) + '"' + checked + disabled + '><span class="app-name">' + esc(app) + '</span>' + chip + '</label></li>';
+        return '<li' + (extra ? ' class="is-unsupported"' : '') + '><label><input type="checkbox" value="' + esc(app) + '"' + checked + disabled + '><span class="app-label">' + esc(app) + '</span>' + chip + '</label></li>';
       };
 
       const renderApps = () => {

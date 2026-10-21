@@ -5,8 +5,8 @@
       </header>
 
       <section class="settings-ledger__section meta-section" aria-labelledby="settings-account-title">
-        <div class="settings-ledger__section-head">
-          <h2 class="meta-section__title" id="settings-account-title">Account</h2>
+        <div class="settings-ledger__section-head heading-group heading-group--section heading-row heading-row--split">
+          <h2 class="heading heading--section" id="settings-account-title">Account</h2>
           <a class="meta-row-action" href="/users/{{.User.Username}}/audit-log">Audit log →</a>
         </div>
         <dl class="settings-ledger__rows">
@@ -27,9 +27,9 @@
       </section>
 
       <section class="settings-ledger__section meta-section" aria-labelledby="settings-scopes-title">
-        <div class="settings-ledger__section-head">
-          <h2 class="meta-section__title" id="settings-scopes-title">Allowed scopes</h2>
-          <p class="settings-ledger__note">{{len .ScopesList}} effective scopes</p>
+        <div class="settings-ledger__section-head heading-group heading-group--section heading-row heading-row--split">
+          <h2 class="heading heading--section" id="settings-scopes-title">Allowed scopes</h2>
+          <p class="settings-ledger__note heading-support">{{len .ScopesList}} effective scopes</p>
         </div>
         <div class="settings-ledger__scope-scroll" role="region" aria-label="Allowed scopes" tabindex="0">
           <table class="settings-ledger__scope-table">
@@ -46,9 +46,9 @@
       </section>
 
       <section class="settings-ledger__section meta-section" aria-labelledby="settings-endpoints-title">
-        <div class="settings-ledger__section-head">
-          <h2 class="meta-section__title" id="settings-endpoints-title">Service endpoints</h2>
-          <p class="settings-ledger__note">For fio-device-register</p>
+        <div class="settings-ledger__section-head heading-group heading-group--section heading-row heading-row--split">
+          <h2 class="heading heading--section" id="settings-endpoints-title">Service endpoints</h2>
+          <p class="settings-ledger__note heading-support">For fio-device-register</p>
         </div>
         <dl class="settings-ledger__endpoints">
           <div>
@@ -81,8 +81,8 @@
       </section>
 
       <section class="settings-ledger__section meta-section" aria-labelledby="settings-tokens-title">
-        <div class="settings-ledger__section-head">
-          <h2 class="meta-section__title" id="settings-tokens-title">API tokens</h2>
+        <div class="settings-ledger__section-head heading-group heading-group--section heading-row heading-row--split">
+          <h2 class="heading heading--section" id="settings-tokens-title">API tokens</h2>
           <button class="settings-ledger__button" type="button" data-action="open-token">New token</button>
         </div>
         {{if .Tokens}}

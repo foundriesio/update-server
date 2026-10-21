@@ -33,18 +33,24 @@ var headingAuditOwners = map[string]headingAuditOwner{
 	"applied_configs_item.html":   headingAuditPageGroupOwner,
 	"configs_device_item.html":    headingAuditPageGroupOwner,
 	"configs_global_history.html": headingAuditPageGroupOwner,
+	"configs_history.html":        headingAuditStandaloneOwner,
 	"configs_item.html":           headingAuditPageGroupOwner,
 	"configs_list.html":           headingAuditPageGroupOwner,
 	"device.html":                 headingAuditPageGroupOwner,
 	"device_apps.html":            headingAuditPageGroupOwner,
 	"device_apps_states.html":     headingAuditPageGroupOwner,
+	"device_auth.html":            headingAuditStandaloneOwner,
+	"device_auth_confirm.html":    headingAuditStandaloneOwner,
+	"device_auth_success.html":    headingAuditStandaloneOwner,
 	"device_labels.html":          headingAuditPageGroupOwner,
 	"device_test.html":            headingAuditPageGroupOwner,
 	"device_tests.html":           headingAuditPageGroupOwner,
 	"device_update.html":          headingAuditPageGroupOwner,
 	"device_updates.html":         headingAuditStandaloneOwner,
 	"devices_list.html":           headingAuditStandaloneOwner,
+	"error.html":                  headingAuditStandaloneOwner,
 	"local-login.html":            headingAuditComponentGroupOwner,
+	"local-password-change.html":  headingAuditStandaloneOwner,
 	"oauth2-login.html":           headingAuditComponentGroupOwner,
 	"pki.html":                    headingAuditPageGroupOwner,
 	"rollout_tail.html":           headingAuditPageGroupOwner,
@@ -54,6 +60,15 @@ var headingAuditOwners = map[string]headingAuditOwner{
 	"update_tail.html":            headingAuditPageGroupOwner,
 	"updates.html":                headingAuditPageGroupOwner,
 	"users.html":                  headingAuditPageGroupOwner,
+}
+
+var fullPageHeadingTemplates = []string{
+	"configs_history.html",
+	"device_auth.html",
+	"device_auth_confirm.html",
+	"device_auth_success.html",
+	"error.html",
+	"local-password-change.html",
 }
 
 func TestNonDialogPageHeadingsUseGenericContract(t *testing.T) {
@@ -93,6 +108,79 @@ func TestNonDialogPageHeadingsUseGenericContract(t *testing.T) {
 			if (match[6] == -1 || match[7] == match[6]) && !headingAuditVoidElement(name) {
 				ancestors = append(ancestors, headingAuditElement{name: name, classes: classes})
 			}
+		}
+	}
+}
+
+func TestNonDialogSectionHeadingsUseGenericContract(t *testing.T) {
+	entries, err := Assets.ReadDir(".")
+	if err != nil {
+		t.Fatalf("ReadDir(.) error = %v", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".html") {
+			continue
+		}
+
+		asset, err := Assets.ReadFile(entry.Name())
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", entry.Name(), err)
+		}
+
+		var ancestors []headingAuditElement
+		for _, match := range headingAuditTagRE.FindAllSubmatchIndex(asset, -1) {
+			name := strings.ToLower(string(asset[match[4]:match[5]]))
+			if match[2] != -1 && match[3] > match[2] {
+				for i := len(ancestors) - 1; i >= 0; i-- {
+					if ancestors[i].name == name {
+						ancestors = ancestors[:i]
+						break
+					}
+				}
+				continue
+			}
+
+			classes := headingAuditClasses(asset[match[0]:match[1]])
+			line := bytes.Count(asset[:match[0]], []byte("\n")) + 1
+			if name == "h2" && !headingAuditHasAncestor(ancestors, "dialog") {
+				headingAuditSectionHeading(t, entry.Name(), line, classes, ancestors)
+			}
+			if (match[6] == -1 || match[7] == match[6]) && !headingAuditVoidElement(name) {
+				ancestors = append(ancestors, headingAuditElement{name: name, classes: classes})
+			}
+		}
+	}
+}
+
+func TestFullPagesStartWithPageHeading(t *testing.T) {
+	for _, filename := range fullPageHeadingTemplates {
+		asset, err := Assets.ReadFile(filename)
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", filename, err)
+		}
+
+		var match []byte
+		var headingName string
+		for _, candidate := range headingAuditTagRE.FindAll(asset, -1) {
+			candidateName := strings.ToLower(string(headingAuditTagRE.FindSubmatch(candidate)[2]))
+			if candidateName == "h1" || candidateName == "h2" || candidateName == "h3" {
+				match = candidate
+				headingName = candidateName
+				break
+			}
+		}
+		if len(match) == 0 {
+			t.Errorf("%s: missing page heading", filename)
+			continue
+		}
+		if headingName != "h1" {
+			t.Errorf("%s: first heading = %s, want h1", filename, headingName)
+			continue
+		}
+		classes := headingAuditClasses(match)
+		if !classes["heading"] || !classes["heading--page"] {
+			t.Errorf("%s: first heading must use .heading.heading--page", filename)
 		}
 	}
 }
@@ -170,6 +258,47 @@ func headingAuditPageHeading(t *testing.T, filename string, line int, classes ma
 		if groups != 1 || pageGroupOwner {
 			t.Errorf("%s:%d: non-dialog h1 must use a component-owned heading group", filename, line)
 		}
+	}
+}
+
+func headingAuditSectionHeading(t *testing.T, filename string, line int, classes map[string]bool, ancestors []headingAuditElement) {
+	t.Helper()
+	if !classes["heading"] {
+		t.Errorf("%s:%d: non-dialog h2 must use .heading", filename, line)
+	}
+
+	roles := 0
+	for _, role := range []string{
+		"heading--section",
+		"heading--subsection",
+		"heading--entity",
+		"heading--panel",
+	} {
+		if classes[role] {
+			roles++
+		}
+	}
+	if roles != 1 {
+		t.Errorf("%s:%d: non-dialog h2 must use exactly one section-compatible role", filename, line)
+	}
+
+	groups := 0
+	sectionGroupOwner := false
+	componentOwner := classes["heading--panel"]
+	for _, ancestor := range ancestors {
+		if ancestor.classes["heading-group"] {
+			groups++
+			sectionGroupOwner = ancestor.classes["heading-group--section"]
+		}
+		if ancestor.classes["entity-header"] || ancestor.classes["users-directory__empty"] {
+			componentOwner = true
+		}
+	}
+	if groups > 1 || (groups == 1 && !sectionGroupOwner) {
+		t.Errorf("%s:%d: non-dialog h2 must use at most one section heading-group owner", filename, line)
+	}
+	if groups == 0 && !componentOwner && !classes["heading--section"] && !classes["heading--subsection"] {
+		t.Errorf("%s:%d: non-dialog h2 has no valid spacing owner", filename, line)
 	}
 }
 
