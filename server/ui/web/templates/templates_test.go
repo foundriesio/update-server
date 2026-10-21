@@ -21,6 +21,41 @@ type headingAuditElement struct {
 	classes map[string]bool
 }
 
+type headingAuditOwner int
+
+const (
+	headingAuditStandaloneOwner headingAuditOwner = iota
+	headingAuditPageGroupOwner
+	headingAuditComponentGroupOwner
+)
+
+var headingAuditOwners = map[string]headingAuditOwner{
+	"applied_configs_item.html":   headingAuditPageGroupOwner,
+	"configs_device_item.html":    headingAuditPageGroupOwner,
+	"configs_global_history.html": headingAuditPageGroupOwner,
+	"configs_item.html":           headingAuditPageGroupOwner,
+	"configs_list.html":           headingAuditPageGroupOwner,
+	"device.html":                 headingAuditPageGroupOwner,
+	"device_apps.html":            headingAuditPageGroupOwner,
+	"device_apps_states.html":     headingAuditPageGroupOwner,
+	"device_labels.html":          headingAuditPageGroupOwner,
+	"device_test.html":            headingAuditPageGroupOwner,
+	"device_tests.html":           headingAuditPageGroupOwner,
+	"device_update.html":          headingAuditPageGroupOwner,
+	"device_updates.html":         headingAuditStandaloneOwner,
+	"devices_list.html":           headingAuditStandaloneOwner,
+	"local-login.html":            headingAuditComponentGroupOwner,
+	"oauth2-login.html":           headingAuditComponentGroupOwner,
+	"pki.html":                    headingAuditPageGroupOwner,
+	"rollout_tail.html":           headingAuditPageGroupOwner,
+	"settings.html":               headingAuditPageGroupOwner,
+	"update.html":                 headingAuditPageGroupOwner,
+	"update_rollout.html":         headingAuditPageGroupOwner,
+	"update_tail.html":            headingAuditPageGroupOwner,
+	"updates.html":                headingAuditPageGroupOwner,
+	"users.html":                  headingAuditPageGroupOwner,
+}
+
 func TestNonDialogPageHeadingsUseGenericContract(t *testing.T) {
 	entries, err := Assets.ReadDir(".")
 	if err != nil {
@@ -109,15 +144,32 @@ func headingAuditPageHeading(t *testing.T, filename string, line int, classes ma
 	}
 
 	groups := 0
-	validGroupOwner := false
+	pageGroupOwner := false
 	for _, ancestor := range ancestors {
 		if ancestor.classes["heading-group"] {
 			groups++
-			validGroupOwner = ancestor.classes["heading-group--page"]
+			pageGroupOwner = ancestor.classes["heading-group--page"]
 		}
 	}
-	if groups > 1 || (groups == 1 && !validGroupOwner) {
-		t.Errorf("%s:%d: non-dialog h1 must use a valid page heading-group owner", filename, line)
+
+	expectedOwner, ok := headingAuditOwners[filename]
+	if !ok {
+		t.Errorf("%s:%d: non-dialog h1 has no ownership inventory entry", filename, line)
+		return
+	}
+	switch expectedOwner {
+	case headingAuditStandaloneOwner:
+		if groups != 0 {
+			t.Errorf("%s:%d: non-dialog h1 must own page spacing directly", filename, line)
+		}
+	case headingAuditPageGroupOwner:
+		if groups != 1 || !pageGroupOwner {
+			t.Errorf("%s:%d: non-dialog h1 must use a page heading-group owner", filename, line)
+		}
+	case headingAuditComponentGroupOwner:
+		if groups != 1 || pageGroupOwner {
+			t.Errorf("%s:%d: non-dialog h1 must use a component-owned heading group", filename, line)
+		}
 	}
 }
 
