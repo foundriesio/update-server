@@ -1,8 +1,10 @@
 {{ template "header" .}}
 <div class="configs-page">
 
-  <h1 class="page-title">Configurations</h1>
-  <p class="page-subtitle">1 global config · {{ len .Groups }} {{ if eq (len .Groups) 1 }}group{{ else }}groups{{ end }}</p>
+  <hgroup class="heading-group heading-group--page heading-stack">
+    <h1 class="heading heading--page">Configurations</h1>
+    <p class="page-subtitle heading-support">1 global config · {{ len .Groups }} {{ if eq (len .Groups) 1 }}group{{ else }}groups{{ end }}</p>
+  </hgroup>
 
   {{ with .Configs }}
   <div class="entity-header">

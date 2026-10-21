@@ -175,8 +175,8 @@ func TestUsersTemplateRendersIdentityDirectory(t *testing.T) {
 
 	html := renderUsersHTML(t, ctx)
 	assert.Contains(t, html, `class="users-directory"`)
-	assert.Contains(t, html, `<h1>Users</h1>`)
-	assert.NotContains(t, html, `<h1 class=`)
+	assert.Contains(t, html, `<header class="heading-group heading-group--page heading-row heading-row--split">`)
+	assert.Contains(t, html, `<h1 class="heading heading--page">Users</h1>`)
 	assert.NotContains(t, html, `identity and access at a glance`)
 	assert.Contains(t, html, `class="meta-section"`)
 	assert.Contains(t, html, `<span class="meta-label">Total users</span>`)

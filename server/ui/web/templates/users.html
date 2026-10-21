@@ -1,9 +1,11 @@
 {{ template "header" .}}
 <section class="users-directory">
-  <h1>{{.Title}}</h1>
-  {{if .CanCreateUser}}
-  <button class="btn-solid" type="button" data-dialog-open="user-create-dialog">Create user</button>
-  {{end}}
+  <header class="heading-group heading-group--page heading-row heading-row--split">
+    <h1 class="heading heading--page">{{.Title}}</h1>
+    {{if .CanCreateUser}}
+    <button class="btn-solid" type="button" data-dialog-open="user-create-dialog">Create user</button>
+    {{end}}
+  </header>
 
   <section class="meta-section" aria-label="Users overview">
     <div class="meta-grid">

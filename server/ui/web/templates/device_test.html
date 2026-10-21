@@ -12,14 +12,14 @@
           <span class="breadcrumb__current">{{.Test.Name}}</span>
         </nav>
 
-        <div class="device-identity">
-          <div class="device-identity__name-row">
-            <h1 class="device-identity__name">{{.Test.Name}}</h1>
+        <div class="device-identity heading-group heading-group--page heading-stack">
+          <div class="device-identity__name-row heading-row">
+            <h1 class="heading heading--page">{{.Test.Name}}</h1>
             {{ if eq .Test.Status "PASSED" }}<span class="status-badge status-badge--pass">PASSED</span>
             {{ else if eq .Test.Status "FAILED" }}<span class="status-badge status-badge--fail">FAILED</span>
             {{ else }}<span class="status-badge status-badge--running">{{.Test.Status}}</span>{{ end }}
           </div>
-          <div class="device-identity__uuid">{{.Test.Uuid}}</div>
+          <div class="device-identity__uuid heading-support">{{.Test.Uuid}}</div>
         </div>
 
         <div class="meta-section">

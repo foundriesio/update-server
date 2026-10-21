@@ -9,9 +9,9 @@
         <span class="breadcrumb__current" aria-current="page">Tag &amp; Apps</span>
       </nav>
 
-      <div class="page-header">
-        <h1 class="device-identity__name">Tag &amp; Apps</h1>
-        <div class="page-header__device">{{if .Device.Labels.name}}{{.Device.Labels.name}} · {{end}}{{.Device.Uuid}}</div>
+      <div class="page-header heading-group heading-group--page heading-stack">
+        <h1 class="heading heading--page">Tag &amp; Apps</h1>
+        <div class="page-header__device heading-support">{{if .Device.Labels.name}}{{.Device.Labels.name}} · {{end}}{{.Device.Uuid}}</div>
       </div>
 
       {{if not .CanEdit}}

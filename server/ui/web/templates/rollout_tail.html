@@ -11,16 +11,16 @@
           <span class="breadcrumb__current" aria-current="page">Progress</span>
         </nav>
 
-        <div class="page-head">
-          <div>
-            <h1 class="device-identity__name">{{.Rollout}} Stream</h1>
-            <p class="page-subtitle connection-status">
+        <header class="page-head heading-group heading-group--page heading-row heading-row--split">
+          <div class="heading-stack">
+            <h1 class="heading heading--page">{{.Rollout}} Stream</h1>
+            <p class="page-subtitle connection-status heading-support">
               <span id="connection-status-dot" class="status-indicator__dot is-warning" aria-hidden="true"></span>
               <span id="connection-status" role="status" aria-live="polite" aria-atomic="true">Connecting&hellip;</span>
             </p>
           </div>
           <a class="btn-ghost rollout-stream__back" href="/updates/{{.Name}}/rollouts/{{.Rollout}}">Back to Rollout</a>
-        </div>
+        </header>
 
         {{ template "tail-stream-content" .}}
       </div>

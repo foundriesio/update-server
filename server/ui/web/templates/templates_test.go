@@ -6,9 +6,128 @@ package templates
 import (
 	"bytes"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
+
+var (
+	headingAuditTagRE   = regexp.MustCompile(`(?i)<(/?)([a-z][a-z0-9-]*)(?:\s+[^<>]*?)?(/?)>`)
+	headingAuditClassRE = regexp.MustCompile(`(?i)\bclass\s*=\s*(?:"([^"]*)"|'([^']*)')`)
+)
+
+type headingAuditElement struct {
+	name    string
+	classes map[string]bool
+}
+
+func TestNonDialogPageHeadingsUseGenericContract(t *testing.T) {
+	entries, err := Assets.ReadDir(".")
+	if err != nil {
+		t.Fatalf("ReadDir(.) error = %v", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".html") {
+			continue
+		}
+
+		asset, err := Assets.ReadFile(entry.Name())
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", entry.Name(), err)
+		}
+
+		var ancestors []headingAuditElement
+		for _, match := range headingAuditTagRE.FindAllSubmatchIndex(asset, -1) {
+			name := strings.ToLower(string(asset[match[4]:match[5]]))
+			if match[2] != -1 && match[3] > match[2] {
+				for i := len(ancestors) - 1; i >= 0; i-- {
+					if ancestors[i].name == name {
+						ancestors = ancestors[:i]
+						break
+					}
+				}
+				continue
+			}
+
+			classes := headingAuditClasses(asset[match[0]:match[1]])
+			line := bytes.Count(asset[:match[0]], []byte("\n")) + 1
+			if name == "h1" && !headingAuditHasAncestor(ancestors, "dialog") {
+				headingAuditPageHeading(t, entry.Name(), line, classes, ancestors)
+			}
+			if (match[6] == -1 || match[7] == match[6]) && !headingAuditVoidElement(name) {
+				ancestors = append(ancestors, headingAuditElement{name: name, classes: classes})
+			}
+		}
+	}
+}
+
+func headingAuditClasses(tag []byte) map[string]bool {
+	classes := make(map[string]bool)
+	match := headingAuditClassRE.FindSubmatch(tag)
+	if len(match) == 0 {
+		return classes
+	}
+	classValue := match[1]
+	if len(classValue) == 0 {
+		classValue = match[2]
+	}
+	for _, class := range strings.Fields(string(classValue)) {
+		classes[class] = true
+	}
+	return classes
+}
+
+func headingAuditHasAncestor(ancestors []headingAuditElement, name string) bool {
+	for _, ancestor := range ancestors {
+		if ancestor.name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func headingAuditPageHeading(t *testing.T, filename string, line int, classes map[string]bool, ancestors []headingAuditElement) {
+	t.Helper()
+	if !classes["heading"] {
+		t.Errorf("%s:%d: non-dialog h1 must use .heading", filename, line)
+	}
+	roles := 0
+	for _, role := range []string{
+		"heading--page",
+		"heading--section",
+		"heading--subsection",
+		"heading--entity",
+		"heading--panel",
+	} {
+		if classes[role] {
+			roles++
+		}
+	}
+	if roles != 1 || !classes["heading--page"] {
+		t.Errorf("%s:%d: non-dialog h1 must use exactly one page role", filename, line)
+	}
+
+	groups := 0
+	validGroupOwner := false
+	for _, ancestor := range ancestors {
+		if ancestor.classes["heading-group"] {
+			groups++
+			validGroupOwner = ancestor.classes["heading-group--page"]
+		}
+	}
+	if groups > 1 || (groups == 1 && !validGroupOwner) {
+		t.Errorf("%s:%d: non-dialog h1 must use a valid page heading-group owner", filename, line)
+	}
+}
+
+func headingAuditVoidElement(name string) bool {
+	switch name {
+	case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr":
+		return true
+	}
+	return false
+}
 
 func TestJSONEscapesScriptEndTag(t *testing.T) {
 	tmpl, err := Templates.Clone()

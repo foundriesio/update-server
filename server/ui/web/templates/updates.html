@@ -1,13 +1,13 @@
 {{ template "header" .}}
 <div class="updates-page">
 
-  <div class="page-head">
-    <div>
-      <h1 class="device-identity__name">Updates</h1>
-      <p class="page-subtitle">{{ len .Updates }} update{{ if ne (len .Updates) 1 }}s{{ end }} uploaded</p>
+  <header class="page-head heading-group heading-group--page heading-row heading-row--split">
+    <div class="heading-stack">
+      <h1 class="heading heading--page">Updates</h1>
+      <p class="page-subtitle heading-support">{{ len .Updates }} update{{ if ne (len .Updates) 1 }}s{{ end }} uploaded</p>
     </div>
     <button type="button" class="btn-solid" id="show-upload-btn">Upload update</button>
-  </div>
+  </header>
 
   {{ if .Updates }}
   <div class="update-server-tables updates-table">

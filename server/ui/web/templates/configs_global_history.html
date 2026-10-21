@@ -7,8 +7,10 @@
     <span class="breadcrumb__current">History</span>
   </nav>
 
-  <h1 class="page-title">Global Configs History</h1>
-  <p class="page-subtitle">{{ len .History }} {{ if eq (len .History) 1 }}revision{{ else }}revisions{{ end }}</p>
+  <hgroup class="heading-group heading-group--page heading-stack">
+    <h1 class="heading heading--page">Global Configs History</h1>
+    <p class="page-subtitle heading-support">{{ len .History }} {{ if eq (len .History) 1 }}revision{{ else }}revisions{{ end }}</p>
+  </hgroup>
 
   {{ $perPage := 20 }}
   <div class="history-list" id="history-list">
