@@ -10,11 +10,13 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/ostree"
+	"github.com/foundriesio/update-server/storage/tuf"
 )
 
 // A special status used to indicate that a device was expected to be part of the rollout
@@ -27,8 +29,72 @@ type UpdateSummary struct {
 	Tag    string
 }
 
+// latestUpdateTargets returns the targets an update installs: the latest version carrying the update's tag, per
+// hardware id. It returns nil when the update has no targets metadata.
+func (s Storage) latestUpdateTargets(name string) (map[string]bool, error) {
+	u, err := s.GetUpdate(name)
+	if err != nil || u == nil {
+		return nil, err
+	}
+	var targets tuf.AtsTufTargets
+	if err = s.fs.Tuf.ReadTufMeta(name, storage.TufTargetsFile, &targets); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	type latest struct {
+		name    string
+		version int
+	}
+	byHwId := make(map[string]latest)
+	for targetName, target := range targets.Signed.Targets {
+		// The version is decoded only for candidates, so another target's version format cannot fail the query
+		var custom struct {
+			Version     json.RawMessage `json:"version"`
+			Tags        []string        `json:"tags"`
+			HardwareIds []string        `json:"hardwareIds"`
+		}
+		if len(target.Custom) == 0 {
+			continue
+		} else if err := json.Unmarshal(target.Custom, &custom); err != nil {
+			return nil, fmt.Errorf("invalid custom metadata of target %s: %w", targetName, err)
+		}
+		// A target without hardware ids is no device's update target, so its version is irrelevant
+		if !slices.Contains(custom.Tags, u.Tag) || len(custom.HardwareIds) == 0 {
+			continue
+		}
+		var versionStr string
+		if err := json.Unmarshal(custom.Version, &versionStr); err != nil {
+			return nil, fmt.Errorf("invalid version of target %s: %w", targetName, err)
+		}
+		version, err := strconv.Atoi(versionStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid version of target %s: %w", targetName, err)
+		}
+		for _, hwId := range custom.HardwareIds {
+			if cur, ok := byHwId[hwId]; !ok || version > cur.version {
+				byHwId[hwId] = latest{targetName, version}
+			}
+		}
+	}
+	if len(byHwId) == 0 {
+		return nil, nil
+	}
+	names := make(map[string]bool, len(byHwId))
+	for _, l := range byHwId {
+		names[l.name] = true
+	}
+	return names, nil
+}
+
 func (s Storage) lastKnownStates(name string, filterUuids map[string]any) (map[string]string, error) {
 	lastStates := make(map[string]string)
+	targets, err := s.latestUpdateTargets(name)
+	if err != nil {
+		return nil, err
+	}
 
 	// Collect the last known state for each device in the rollout.
 	for line, err := range s.TailRolloutsLog(name, nil) {
@@ -45,6 +111,10 @@ func (s Storage) lastKnownStates(name string, filterUuids map[string]any) (map[s
 				if _, ok := filterUuids[status.Uuid]; !ok {
 					continue
 				}
+			}
+			// A device reports other targets too, like the one it rolls back to after this update fails
+			if targets != nil && len(status.TargetName) > 0 && !targets[status.TargetName] {
+				continue
 			}
 			lastStates[status.Uuid] = status.Status
 		}
