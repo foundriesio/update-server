@@ -54,7 +54,9 @@ VM directly.
   `gcloud` CLI, and a project with the Compute Engine, Secret Manager, Cloud
   DNS (if used), and IAP APIs enabled.
 - Credentials with permission to create VPC, Compute Engine, load balancer,
-  IAM, Secret Manager, and (optionally) Cloud DNS resources.
+  IAM, and Secret Manager resources. For deployments that manage Cloud DNS, the
+  Terraform identity also needs `roles/dns.admin` (or an equivalent custom role).
+  Verify the active identity with `gcloud auth list` before applying.
 - A local `fioserver` binary matching the version in the image, for
   `scripts/init-secrets.sh` (release binaries are linux-amd64/linux-arm64
   only; build from source for other platforms).

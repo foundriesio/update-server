@@ -70,8 +70,7 @@ device-facing URL from it — each enrolled device stores those URLs in its
   source for other platforms).
 
 The IAM identity that runs Terraform needs these permissions in addition to
-permissions for the VPC, EC2, ELB, Secrets Manager, and optionally Route53
-resources it creates:
+permissions for the VPC, EC2, ELB, and optionally Route53 resources it creates:
 
 ```json
 {
@@ -83,6 +82,10 @@ resources it creates:
       "Action": [
         "iam:CreateInstanceProfile",
         "dlm:CreateLifecyclePolicy",
+        "secretsmanager:CreateSecret",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret",
         "logs:PutTransformer",
         "iam:TagRole",
         "iam:CreateRole",
