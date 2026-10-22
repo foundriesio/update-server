@@ -114,9 +114,13 @@ sudo journalctl -u fioserver-bootstrap -f
 ```
 
 ```bash
+# Only when auth-config.json uses the local authentication provider.
 gcloud compute ssh "$(terraform output -raw instance_name)" --tunnel-through-iap --zone us-central1-a
 sudo fioserver --datadir /data user-add --username admin --password <password>
 ```
+
+With Google or another non-local provider, manage access through that provider;
+`user-add` is not supported.
 
 To change the auth config on an already-deployed stack, populate the secret
 out of band instead of re-running `init-secrets.sh` (which would mint a new
@@ -131,8 +135,8 @@ gcloud secrets versions add "$(terraform output -raw secret_prefix)-auth-config"
 
 ```bash
 HOST=$(terraform output -raw ui_url)
-curl -sI "$HOST/favicon"            # 200
-curl -sI "http://${HOST#https://}"  # 301 to HTTPS
+curl -s "$HOST/favicon" -o /dev/null -w "%{http_code}\\n"  # 200
+curl -sI "http://${HOST#https://}"                         # 301 to HTTPS
 ```
 
 The UI's Google-managed certificate stays in `PROVISIONING` until `var.hostname`'s
