@@ -69,6 +69,40 @@ device-facing URL from it — each enrolled device stores those URLs in its
   `scripts/init-secrets.sh` (release binaries are linux-amd64/linux-arm64 only; build from
   source for other platforms).
 
+The IAM identity that runs Terraform needs these permissions in addition to
+permissions for the VPC, EC2, ELB, Secrets Manager, and optionally Route53
+resources it creates:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageFioserverTerraformResources",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateInstanceProfile",
+        "dlm:CreateLifecyclePolicy",
+        "logs:PutTransformer",
+        "iam:TagRole",
+        "iam:CreateRole",
+        "logs:GetTransformer",
+        "logs:TagResource",
+        "logs:DeleteTransformer",
+        "logs:CreateLogGroup",
+        "dlm:TagResource",
+        "iam:TagInstanceProfile"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+These are permissions for the Terraform caller, not the EC2 instance role.
+The instance role only needs the log-stream and log-event permissions used by
+the CloudWatch agent.
+
 ## 1. Build the AMI
 
 ```bash
