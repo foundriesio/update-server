@@ -68,7 +68,7 @@ log "installing fioserver ${FIOSERVER_VERSION} (${FIOSERVER_ARCH})"
 url="https://github.com/foundriesio/update-server/releases/download/${FIOSERVER_VERSION}/fioserver-linux-${FIOSERVER_ARCH}"
 curl -fsSL "$url" -o /usr/local/bin/fioserver
 chmod 0755 /usr/local/bin/fioserver
-/usr/local/bin/fioserver --datadir=/tmp version || true
+/usr/local/bin/fioserver --version || true
 
 install -d -m 0755 /etc/fioserver
 {

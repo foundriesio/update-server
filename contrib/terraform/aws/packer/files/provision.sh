@@ -93,7 +93,7 @@ log "installing fioserver ${FIOSERVER_VERSION}"
 url="https://github.com/foundriesio/update-server/releases/download/${FIOSERVER_VERSION}/fioserver-linux-amd64"
 curl -fsSL "$url" -o /usr/local/bin/fioserver
 chmod 0755 /usr/local/bin/fioserver
-/usr/local/bin/fioserver --datadir=/tmp version || true
+/usr/local/bin/fioserver --version || true
 
 log "installing the CloudWatch agent (disabled by default; Terraform enables it via user_data when enable_cloudwatch_logs is set)"
 curl -fsSL "https://amazoncloudwatch-agent.s3.amazonaws.com/debian/amd64/latest/amazon-cloudwatch-agent.deb" \
