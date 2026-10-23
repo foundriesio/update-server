@@ -1,0 +1,109 @@
+{{ template "header" .}}
+<div class="configs-page">
+
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="/configs">Configs</a>
+    <span class="breadcrumb__sep">/</span>
+    <span class="breadcrumb__current">History</span>
+  </nav>
+
+  <h1 class="page-title">Global Configs History</h1>
+  <p class="page-subtitle">{{ len .History }} {{ if eq (len .History) 1 }}revision{{ else }}revisions{{ end }}</p>
+
+  {{ $perPage := 20 }}
+  <div class="history-list" id="history-list">
+    {{ range $i, $rev := .History }}
+    <details class="collapsible-section{{ if ge $i $perPage }} hidden{{ end }}"{{ if $rev.Current }} open{{ end }}>
+      <summary>
+        <div class="summary-row">
+          <div class="history-summary-row__main">
+            <span class="history-reason">{{$rev.Reason}}{{ if $rev.Current }} <span class="badge badge-good">Current</span>{{ end }}</span>
+            <span class="history-summary-row__by">by {{$rev.CreatedBy}}</span>
+          </div>
+          <div class="history-summary-row__right">
+            <span class="history-summary-row__meta is-mono">{{tsToDate $rev.CreatedAt}}</span>
+            <span class="collapsible-toggle">
+              <span class="toggle-show">Show</span>
+              <span class="toggle-hide">Hide</span>
+            </span>
+          </div>
+        </div>
+      </summary>
+      <div class="collapsible-body">
+        {{ range $name, $file := $rev.Files }}
+        <div class="file-name">{{ $name }}</div>
+        {{ else }}
+        <p class="history-empty-note"><i>No files in this revision.</i></p>
+        {{ end }}
+      </div>
+    </details>
+    {{ end }}
+  </div>
+  {{ if gt (len .History) $perPage }}
+  <div class="pagination">
+    <span class="pagination-summary">Showing page <span id="history-page">1</span> of <span id="history-page-total"></span></span>
+    <div class="pagination-controls">
+      <a id="history-page-first" class="page-link hidden" href="#" role="button" aria-label="First page">&laquo;</a>
+      <a id="history-page-prev" class="page-link hidden" href="#" role="button" aria-label="Previous page">&lsaquo;</a>
+      <a id="history-page-next" class="page-link" href="#" role="button" aria-label="Next page">&rsaquo;</a>
+      <a id="history-page-last" class="page-link" href="#" role="button" aria-label="Last page">&raquo;</a>
+    </div>
+  </div>
+  {{ end }}
+
+</div>
+
+<script>
+(function () {
+  var $ = document.querySelector.bind(document),
+      $$ = document.querySelectorAll.bind(document);
+
+  var list = $('#history-list');
+
+  /* History Paging */
+  var historyPerPage = {{ $perPage }},
+      historyTotal = {{ len .History }},
+      historyTotalPages = Math.ceil(historyTotal / historyPerPage);
+
+  var historyPage = 1;
+
+  function updatePageNum(el) {
+    switch (el.id) {
+    case 'history-page-first': historyPage = 1; break;
+    case 'history-page-prev':  historyPage -= 1; break;
+    case 'history-page-next':  historyPage += 1; break;
+    case 'history-page-last':  historyPage = historyTotalPages; break;
+    }
+  }
+
+  function updatePageNav() {
+    $('#history-page').textContent = historyPage;
+    $('#history-page-first').classList.toggle('hidden', historyPage === 1);
+    $('#history-page-prev').classList.toggle('hidden', historyPage === 1);
+    $('#history-page-next').classList.toggle('hidden', historyPage === historyTotalPages);
+    $('#history-page-last').classList.toggle('hidden', historyPage === historyTotalPages);
+  }
+
+  function updatePageTable() {
+    var end = historyPage * historyPerPage,
+        start = end - historyPerPage;
+    Array.from(list.children).forEach(function (item, index) {
+      item.classList.toggle('hidden', index < start || index >= end);
+    });
+  }
+
+  if (historyTotalPages > 1) {
+    $('#history-page-total').textContent = historyTotalPages;
+    $$('.pagination-controls .page-link').forEach(function (el) {
+      el.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        updatePageNum(el);
+        updatePageNav();
+        updatePageTable();
+      });
+    });
+  }
+})();
+</script>
+
+{{ template "footer" .}}
