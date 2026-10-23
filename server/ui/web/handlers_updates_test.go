@@ -13,9 +13,11 @@ import (
 	"testing"
 
 	"github.com/foundriesio/update-server/server/ui/api"
+	"github.com/foundriesio/update-server/server/ui/i18n"
 	"github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/text/language"
 )
 
 func TestUpdatesTemplateDeleteEligibility(t *testing.T) {
@@ -25,6 +27,7 @@ func TestUpdatesTemplateDeleteEligibility(t *testing.T) {
 			Updates   []api.Update
 			CanDelete bool
 		}{
+			baseCtx: baseCtx{L: i18n.For(language.English)},
 			Updates: []api.Update{
 				{Name: "unused", DeviceCount: 0},
 				{Name: "assigned", DeviceCount: 1},
@@ -49,6 +52,7 @@ func TestUpdatesTemplateDeleteFailureStaysInDialog(t *testing.T) {
 		Updates   []api.Update
 		CanDelete bool
 	}{
+		baseCtx:   baseCtx{L: i18n.For(language.English)},
 		Updates:   []api.Update{{Name: "unused", DeviceCount: 0}},
 		CanDelete: true,
 	}
@@ -77,7 +81,7 @@ func TestUpdatesTemplateUsesInlineUploadValidation(t *testing.T) {
 		baseCtx
 		Updates   []api.Update
 		CanDelete bool
-	}{}
+	}{baseCtx: baseCtx{L: i18n.For(language.English)}}
 	var buf bytes.Buffer
 	if err := templates.Templates.ExecuteTemplate(&buf, "updates.html", ctx); err != nil {
 		t.Fatal(err)
@@ -106,7 +110,7 @@ func TestUpdatesTemplateDirectoryPickerRecovers(t *testing.T) {
 		baseCtx
 		Updates   []api.Update
 		CanDelete bool
-	}{}
+	}{baseCtx: baseCtx{L: i18n.For(language.English)}}
 	var buf bytes.Buffer
 	if err := templates.Templates.ExecuteTemplate(&buf, "updates.html", ctx); err != nil {
 		t.Fatal(err)
@@ -156,6 +160,7 @@ type updateRolloutDetailCtx struct {
 
 func renderUpdateHTML(t *testing.T, ctx updateDetailCtx) string {
 	t.Helper()
+	ctx.L = i18n.For(language.English)
 	var buf bytes.Buffer
 	if err := templates.Templates.ExecuteTemplate(&buf, "update.html", ctx); err != nil {
 		t.Fatalf("ExecuteTemplate() error = %v", err)
@@ -165,6 +170,7 @@ func renderUpdateHTML(t *testing.T, ctx updateDetailCtx) string {
 
 func renderUpdateRolloutHTML(t *testing.T, ctx updateRolloutDetailCtx) string {
 	t.Helper()
+	ctx.L = i18n.For(language.English)
 	var buf bytes.Buffer
 	if err := templates.Templates.ExecuteTemplate(&buf, "update_rollout.html", ctx); err != nil {
 		t.Fatalf("ExecuteTemplate() error = %v", err)
@@ -174,6 +180,7 @@ func renderUpdateRolloutHTML(t *testing.T, ctx updateRolloutDetailCtx) string {
 
 func renderUpdateTailHTML(t *testing.T, ctx tailStreamCtx) string {
 	t.Helper()
+	ctx.L = i18n.For(language.English)
 	var buf bytes.Buffer
 	if err := templates.Templates.ExecuteTemplate(&buf, "update_tail.html", ctx); err != nil {
 		t.Fatalf("ExecuteTemplate() error = %v", err)
@@ -183,6 +190,7 @@ func renderUpdateTailHTML(t *testing.T, ctx tailStreamCtx) string {
 
 func renderRolloutTailHTML(t *testing.T, ctx tailStreamCtx) string {
 	t.Helper()
+	ctx.L = i18n.For(language.English)
 	var buf bytes.Buffer
 	if err := templates.Templates.ExecuteTemplate(&buf, "rollout_tail.html", ctx); err != nil {
 		t.Fatalf("ExecuteTemplate() error = %v", err)

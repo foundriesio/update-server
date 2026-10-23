@@ -84,6 +84,10 @@ func (p oauth2BaseProvider) renderLoginPage(c echo.Context, reason string) error
 			"error": "authentication required",
 		})
 	}
+	// The login HTML varies by Accept-Language, so shared caches must key on it.
+	c.Response().Header().Add("Vary", "Accept-Language")
+	base := p.pageCtx.Base(c, "", "")
+	base.Title = base.L.T("Sign in")
 	context := struct {
 		pagectx.Base
 		LoginTip string
@@ -94,7 +98,7 @@ func (p oauth2BaseProvider) renderLoginPage(c echo.Context, reason string) error
 		Reason      string
 		Next        string
 	}{
-		Base:        p.pageCtx.Base(c, "Login", ""),
+		Base:        base,
 		LoginTip:    p.loginTip,
 		Name:        p.displayName,
 		ProviderKey: p.name,

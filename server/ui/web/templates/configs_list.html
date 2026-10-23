@@ -2,35 +2,35 @@
 <div class="configs-page">
 
   <hgroup class="heading-group heading-group--page heading-stack">
-    <h1 class="heading heading--page">Configurations</h1>
-    <p class="page-subtitle heading-support">1 global config · {{ len .Groups }} {{ if eq (len .Groups) 1 }}group{{ else }}groups{{ end }}</p>
+    <h1 class="heading heading--page">{{ .L.T "Configurations" }}</h1>
+    <p class="page-subtitle heading-support">{{ .L.N "1 global config · %[1]s group" "1 global config · %[1]s groups" (len .Groups) }}</p>
   </hgroup>
 
   {{ with .Configs }}
   <div class="entity-header heading-group heading-group--section heading-row">
-    <h2 class="heading heading--section">Global</h2>
+    <h2 class="heading heading--section">{{ $.L.T "Global" }}</h2>
     {{ if .Reason }}<span class="chip-reason">{{.Reason}}</span>{{ end }}
-    <a href="/configs/global/history" class="header-action-link">History →</a>
+    <a href="/configs/global/history" class="header-action-link">{{ $.L.T "History" }} →</a>
   </div>
   <div class="meta-grid">
     <div class="meta-row">
-      <span class="meta-label">Created at</span>
+      <span class="meta-label">{{ $.L.T "Created at" }}</span>
       <span class="meta-value is-mono">{{tsToString .CreatedAt}}</span>
     </div>
     <div class="meta-row">
-      <span class="meta-label">Created by</span>
+      <span class="meta-label">{{ $.L.T "Created by" }}</span>
       <span class="meta-value is-mono">{{.CreatedBy}}</span>
     </div>
   </div>
   <div class="configs-files-wrapper">
-    <p class="section-label">Files</p>
+    <p class="section-label">{{ $.L.T "Files" }}</p>
     {{ template "configs-item-files" $ }}
   </div>
   {{ end }}
 
   {{ if .CanEdit }}
   <div class="action-row">
-    <button class="btn-ghost btn-sm" name="AddFile">Add</button>
+    <button class="btn-ghost btn-sm" name="AddFile">{{ .L.T "Add" }}</button>
   </div>
   <script type="module">
     window.EditConfigsFileConfig.apiUrl = '/configs/global';
@@ -42,16 +42,16 @@
   {{ $groupsPerPage := 20 }}
   <div class="groups-section">
   <div class="entity-header heading-group heading-group--section heading-row">
-    <h2 class="heading heading--section">Groups</h2>
+    <h2 class="heading heading--section">{{ .L.T "Groups" }}</h2>
   </div>
     <table class="configs-group-table">
       <thead>
         <tr>
           <th>
-            <button class="sort-btn groups-header" aria-label="Sorted ascending, click for descending">
+            <button class="sort-btn groups-header" aria-label="{{ .L.T "Sorted ascending, click for descending" }}">
               UUID <span class="sort-indicator">▲</span>
             </button>
-            <button class="sort-btn groups-header hidden" aria-label="Sorted descending, click for ascending">
+            <button class="sort-btn groups-header hidden" aria-label="{{ .L.T "Sorted descending, click for ascending" }}">
               UUID <span class="sort-indicator">▼</span>
             </button>
           </th>
@@ -67,12 +67,12 @@
     </table>
     {{ if gt (len .Groups) $groupsPerPage }}
     <div class="pagination">
-      <span class="pagination-summary">Showing page <span id="groups-page">1</span> of <span id="groups-page-total"></span></span>
+      <span class="pagination-summary" id="groups-page-summary" data-format="{{ .L.T "Page %[1]s of %[2]s" "{page}" "{total}" }}"></span>
       <div class="pagination-controls">
-        <a id="groups-page-first" class="page-link hidden" href="#" role="button" aria-label="First page">&laquo;</a>
-        <a id="groups-page-prev" class="page-link hidden" href="#" role="button" aria-label="Previous page">&lsaquo;</a>
-        <a id="groups-page-next" class="page-link" href="#" role="button" aria-label="Next page">&rsaquo;</a>
-        <a id="groups-page-last" class="page-link" href="#" role="button" aria-label="Last page">&raquo;</a>
+        <a id="groups-page-first" class="page-link hidden" href="#" role="button" aria-label="{{ .L.T "First page" }}">&laquo;</a>
+        <a id="groups-page-prev" class="page-link hidden" href="#" role="button" aria-label="{{ .L.T "Previous page" }}">&lsaquo;</a>
+        <a id="groups-page-next" class="page-link" href="#" role="button" aria-label="{{ .L.T "Next page" }}">&rsaquo;</a>
+        <a id="groups-page-last" class="page-link" href="#" role="button" aria-label="{{ .L.T "Last page" }}">&raquo;</a>
       </div>
     </div>
     {{ end }}
@@ -113,7 +113,8 @@
   }
 
   function updatePageNav() {
-    $('#groups-page').textContent = groupsPage;
+    var summary = $('#groups-page-summary');
+    summary.textContent = summary.dataset.format.split('{page}').join(groupsPage).split('{total}').join(groupsTotalPages);
     $('#groups-page-first').classList.toggle('hidden', groupsPage === 1);
     $('#groups-page-prev').classList.toggle('hidden', groupsPage === 1);
     $('#groups-page-next').classList.toggle('hidden', groupsPage === groupsTotalPages);
@@ -130,7 +131,7 @@
   }
 
   if (groupsTotalPages > 1) {
-    $('#groups-page-total').textContent = groupsTotalPages;
+    updatePageNav();
     $$('.pagination-controls .page-link').forEach(function (el) {
       el.addEventListener('click', function (ev) {
         ev.preventDefault();

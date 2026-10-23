@@ -18,6 +18,17 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type devicesListCtx struct {
+	baseCtx
+	Devices    []api.DeviceListItem
+	CanDelete  bool
+	Page       int
+	TotalPages int
+	HasNext    bool
+	HasPrev    bool
+	Sort       string
+}
+
 func (h handlers) devicesList(c echo.Context) error {
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	if page < 1 {
@@ -44,17 +55,12 @@ func (h handlers) devicesList(c echo.Context) error {
 	hasNext := linkHasRel(headers.Get("Link"), "next")
 	totalPages := linkTotalPages(headers.Get("Link"), pageSize)
 
-	ctx := struct {
-		baseCtx
-		Devices    []api.DeviceListItem
-		CanDelete  bool
-		Page       int
-		TotalPages int
-		HasNext    bool
-		HasPrev    bool
-		Sort       string
-	}{
-		baseCtx:    h.baseCtx(c, devicesLabel, "devices"),
+	base := h.baseCtx(c, devicesLabel, "devices")
+	// <title> and the h1 read Title, which must be the translated name.
+	base.Title = base.L.T("Devices")
+
+	ctx := devicesListCtx{
+		baseCtx:    base,
 		Devices:    devices,
 		CanDelete:  CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeDevicesD),
 		Page:       page,

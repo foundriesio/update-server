@@ -8,13 +8,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/foundriesio/update-server/server/ui/i18n"
 	webtemplates "github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/foundriesio/update-server/storage/users"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/text/language"
 )
 
 func renderUsersHTML(t *testing.T, ctx usersDirectoryCtx) string {
 	t.Helper()
+	ctx.L = i18n.For(language.English)
 	var buf bytes.Buffer
 	if err := webtemplates.Templates.ExecuteTemplate(&buf, "users.html", ctx); err != nil {
 		t.Fatalf("ExecuteTemplate() error = %v", err)

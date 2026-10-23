@@ -7,23 +7,909 @@ msgstr ""
 "Language: \n"
 "X-Generator: i18nscan\n"
 
-#: server/ui/web/templates/settings.html:39
+#: server/ui/web/templates/templates.go:76
+#, go-format
+msgid "%[1]s day ago"
+msgid_plural "%[1]s days ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: server/ui/web/templates/settings.html:65
+#, go-format
+msgid "%[1]s effective scope"
+msgid_plural "%[1]s effective scopes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: server/ui/web/templates/templates.go:74
+#, go-format
+msgid "%[1]s hour ago"
+msgid_plural "%[1]s hours ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: server/ui/web/templates/templates.go:72
+#, go-format
+msgid "%[1]s minute ago"
+msgid_plural "%[1]s minutes ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: server/ui/web/handlers_settings.go:151
+#, go-format
+msgid "%[1]s or %[2]s"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:12
+#, go-format
+msgid "%[1]s revision"
+msgid_plural "%[1]s revisions"
+msgstr[0] ""
+msgstr[1] ""
+
+#: server/ui/web/handlers_settings.go:149
+#, go-format
+msgid "%[1]s, %[2]s"
+msgstr ""
+
+#: server/ui/web/templates/configs_list.html:6
+#, go-format
+msgid "1 global config · %[1]s group"
+msgid_plural "1 global config · %[1]s groups"
+msgstr[0] ""
+msgstr[1] ""
+
+#: server/ui/web/templates/configs_item_edit.html:4
+#, go-format
+msgid "A file with name \"%[1]s\" already exists. Do you want to overwrite it?"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:246
+msgid "API token"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:118
+#: server/ui/web/templates/settings.html:122
+msgid "API tokens"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:21
+msgid "Account"
+msgstr ""
+
+#: server/ui/web/templates/local-login.html:52
+msgid "Account access"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:58
+#: server/ui/web/templates/settings.html:124
+msgid "Actions"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:209
+#: server/ui/web/templates/configs_list.html:33
+msgid "Add"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:54
+msgid "Add Config File"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:10
+msgid "Add New Config File"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:64
+#: server/ui/web/templates/settings.html:67
+msgid "Allowed scopes"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:22
+msgid "Audit log →"
+msgstr ""
+
+#: server/ui/web/templates/oauth2-login.html:54
+#, go-format
+msgid "Authenticate with your %[1]s account"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:51
 msgid "Automatic (browser language)"
 msgstr ""
 
-#: server/ui/web/templates/settings.html:43
+#: server/ui/web/templates/configs_global_history.html:4
+#: server/ui/web/templates/configs_item.html:245
+msgid "Breadcrumb"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:93
+#: server/ui/web/templates/configs_item_edit.html:52
+#: server/ui/web/templates/configs_item_edit.html:75
+#: server/ui/web/templates/devices_list.html:180
+#: server/ui/web/templates/settings.html:185
+#: server/ui/web/templates/settings.html:226
+#: server/ui/web/templates/settings.html:286
+#: server/ui/web/templates/settings.html:324
+msgid "Cancel"
+msgstr ""
+
+#: auth/provider_local.go:284 server/ui/web/templates/settings.html:36
+#: server/ui/web/templates/settings.html:296
+#: server/ui/web/templates/settings.html:325
+msgid "Change password"
+msgstr ""
+
+#: server/ui/web/templates/local-password-change.html:11
+#: server/ui/web/templates/settings.html:304
+msgid "Changing password…"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:33
+#: server/ui/web/templates/configs_item.html:48
+#: server/ui/web/templates/settings.html:260
+msgid "Close"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:75
+#: server/ui/web/templates/configs_item_edit.html:13
+#: server/ui/web/templates/configs_item_edit.html:64
+#: server/ui/web/templates/devices_list.html:151
+#: server/ui/web/templates/settings.html:150
+#: server/ui/web/templates/settings.html:195
+#: server/ui/web/templates/settings.html:236
+#: server/ui/web/templates/settings.html:269
+msgid "Close dialog"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:297
+msgid "Close password dialog"
+msgstr ""
+
+#: server/ui/web/pagebuilder.go:78
+#: server/ui/web/templates/configs_global_history.html:5
+#: server/ui/web/templates/configs_item.html:246
+msgid "Configs"
+msgstr ""
+
+#: server/ui/web/templates/configs_list.html:5
+msgid "Configurations"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:316
+msgid "Confirm new password"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:45
+msgid "Content"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:44
+msgid "Content:"
+msgstr ""
+
+#: server/ui/web/templates/oauth2-login.html:82
+#, go-format
+msgid "Continue with %[1]s"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:96
+#: server/ui/web/templates/settings.html:109
+msgid "Copy"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:249
+msgid "Copy API token"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:91
+msgid "Copy Device API endpoint"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:104
+msgid "Copy OAuth2 API endpoint"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:3
+msgid "Copy is unavailable. Select the endpoint and copy it manually."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:9
+msgid "Couldn’t copy automatically. Press Ctrl+C or Command+C, or touch and hold the token to copy."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:149
+msgid "Create API token"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:186
+msgid "Create token"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:39
+#: server/ui/web/templates/devices_list.html:41
+#: server/ui/web/templates/devices_list.html:43
+#: server/ui/web/templates/settings.html:124
+msgid "Created"
+msgstr ""
+
+#: server/ui/web/templates/configs_list.html:17
+msgid "Created at"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:200
+#: server/ui/web/templates/configs_list.html:21
+msgid "Created by"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:196
+msgid "Created on"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:22
+#: server/ui/web/templates/configs_item.html:218
+msgid "Current"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:257
+msgid "Current Configuration"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:308
+msgid "Current password"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:55
 #, go-format
 msgid "Currently using %[1]s"
 msgstr ""
 
-#: server/ui/web/templates/settings.html:37
+#: server/ui/web/templates/configs_item.html:84
+#: server/ui/web/templates/configs_item.html:94
+#: server/ui/web/templates/devices_list.html:181
+msgid "Delete"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:74
+msgid "Delete Config File"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:97
+#: server/ui/web/templates/devices_list.html:150
+msgid "Delete device"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:97
+#, go-format
+msgid "Delete device %[1]s"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:57
+msgid "Delete file"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:70
+msgid "Deleting config file…"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:124
+#: server/ui/web/templates/settings.html:161
+#: server/ui/web/templates/settings.html:206
+#: server/ui/web/templates/settings.html:280
+msgid "Description"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:88
+msgid "Device API"
+msgstr ""
+
+#: server/ui/web/handlers_devices.go:60 server/ui/web/pagebuilder.go:77
+msgid "Devices"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:121
+msgid "Devices pagination"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:49
 msgid "Display language"
 msgstr ""
 
-#: server/ui/web/templates/settings.html:32
+#: server/ui/web/templates/base.html:67
+msgid "Docs"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:194
+msgid "Edit API token"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:11
+msgid "Edit Config File"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:16
+msgid "Edit file content"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:133
+msgid "Edit token"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:133
+#, go-format
+msgid "Edit token %[1]s"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:30
+msgid "Email"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:40
+msgid "Encrypt file content"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:42
+msgid "Encrypted files cannot be edited; remove and re-add them instead."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:4
+msgid "Endpoint copied."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:5
+msgid "Enter a description and expiration date, then select at least one scope."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:12
+msgid "Enter a description and select at least one scope."
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:3
+msgid "Enter a file name."
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:147
+#, go-format
+msgid "Error deleting device: %[1]s"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:6
+msgid "Expiration must be a valid future date."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:130
+msgid "Expired"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:124
+msgid "Expires"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:165
+msgid "Expires on"
+msgstr ""
+
+#: server/ui/web/templates/local-password-change.html:11
+#: server/ui/web/templates/settings.html:304
+msgid "Failed to change password: {error}"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:32
+msgid "File"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:54
+msgid "File content is encrypted"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:24
+msgid "File name"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:2
+#: server/ui/web/templates/configs_list.html:26
+msgid "Files"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:48
+#: server/ui/web/templates/configs_list.html:72
+#: server/ui/web/templates/devices_list.html:127
+#: server/ui/web/templates/devices_list.html:130
+msgid "First page"
+msgstr ""
+
+#: server/ui/web/templates/local-login.html:24
+#: server/ui/web/templates/oauth2-login.html:24
+msgid "Fleet updates, under control."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:84
+msgid "For fio-device-register"
+msgstr ""
+
+#: server/ui/web/templates/configs_list.html:11
+msgid "Global"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:11
+msgid "Global Configs History"
+msgstr ""
+
+#: server/ui/web/templates/base.html:66
+msgid "Global actions"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:57
+msgid "Group / Tag"
+msgstr ""
+
+#: server/ui/web/templates/configs_list.html:45
+msgid "Groups"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:35
+msgid "Handlers must be defined in"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:29
+#: server/ui/web/templates/configs_item.html:225
+msgid "Hide"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:171
+msgid "Historical data is not preserved."
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:7
+#: server/ui/web/templates/configs_list.html:13
+msgid "History"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:175
+msgid "I understand this action cannot be undone"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:279
+msgid "ID"
+msgstr ""
+
+#: auth/provider_local.go:161 auth/provider_local.go:168
+msgid "Invalid username or password"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:56
+msgid "Labels"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:44
 msgid "Language"
 msgstr ""
 
-#: server/ui/web/templates/settings.html:45
+#: server/ui/web/templates/configs_global_history.html:51
+#: server/ui/web/templates/configs_list.html:75
+#: server/ui/web/templates/devices_list.html:136
+#: server/ui/web/templates/devices_list.html:139
+msgid "Last page"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:48
+#: server/ui/web/templates/devices_list.html:50
+#: server/ui/web/templates/devices_list.html:52
+msgid "Last seen"
+msgstr ""
+
+#: server/ui/web/templates/base.html:92
+msgid "Logout"
+msgstr ""
+
+#: server/ui/web/templates/base.html:101
+msgid "Main navigation"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:21
+#: server/ui/web/templates/devices_list.html:23
+#: server/ui/web/templates/devices_list.html:25
+#: server/ui/web/templates/devices_list.html:165
+msgid "Name"
+msgstr ""
+
+#: server/ui/web/templates/templates.go:62
+msgid "Never"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:312
+msgid "New password"
+msgstr ""
+
+#: server/ui/web/templates/local-password-change.html:11
+#: server/ui/web/templates/settings.html:304
+msgid "New password and confirmation do not match."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:119
+msgid "New token"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:50
+#: server/ui/web/templates/configs_list.html:74
+#: server/ui/web/templates/devices_list.html:135
+#: server/ui/web/templates/devices_list.html:138
+msgid "Next page"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:142
+msgid "No API tokens. Use the New token button to create one."
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:38
+#: server/ui/web/templates/configs_item.html:234
+msgid "No files in this revision."
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:65
+msgid "No files yet."
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:72
+msgid "No labels"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:74
+msgid "No scopes assigned"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:31
+msgid "Not configured"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:101
+msgid "OAuth2 API"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:227
+msgid "OK"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:33
+msgid "On Change Handlers"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:37
+msgid "On Change Handlers:"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:12
+msgid "On-change triggers:"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:69
+msgid "Operations"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:76
+msgid "Overwrite"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:63
+msgid "Overwrite Config File"
+msgstr ""
+
+#: server/ui/web/pagebuilder.go:81
+msgid "PKI"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:133
+#, go-format
+msgid "Page %[1]d"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:123
+#, go-format
+msgid "Page %[1]d of %[2]d"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:46
+#: server/ui/web/templates/configs_list.html:70
+#, go-format
+msgid "Page %[1]s of %[2]s"
+msgstr ""
+
+#: server/ui/web/templates/local-login.html:76
+msgid "Password"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:14
+msgid "Password changed."
+msgstr ""
+
+#: auth/provider_local.go:285
+msgid "Password expired. Choose a new password"
+msgstr ""
+
+#: server/ui/web/templates/local-password-change.html:11
+#: server/ui/web/templates/settings.html:304
+#: server/ui/web/templates/settings.html:320
+msgid "Passwords do not match."
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:49
+#: server/ui/web/templates/configs_list.html:73
+#: server/ui/web/templates/devices_list.html:128
+#: server/ui/web/templates/devices_list.html:131
+msgid "Previous page"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:86
+#: server/ui/web/templates/configs_item.html:192
+#: server/ui/web/templates/configs_item_edit.html:28
+msgid "Reason"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:6
+msgid "Registered devices"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:170
+msgid "Removing this device will disconnect it from all update targets."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:69
+msgid "Resource"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:265
+#, go-format
+msgid "Revision History (%[1]d)"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:268
+msgid "Revoke API token"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:134
+#: server/ui/web/templates/settings.html:287
+msgid "Revoke token"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:134
+#, go-format
+msgid "Revoke token %[1]s"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:277
+msgid "Revoking this token cannot be undone."
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:55
+msgid "Save Changes"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:57
 msgid "Save language"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:5
+msgid "Saving config file…"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:11
+msgid "Saving will remove scopes you can no longer grant: {scopes}"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:69
+msgid "Scope names"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:124
+#: server/ui/web/templates/settings.html:170
+#: server/ui/web/templates/settings.html:211
+#: server/ui/web/templates/settings.html:281
+msgid "Scopes"
+msgstr ""
+
+#: server/ui/web/templates/base.html:100
+msgid "Section navigation"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:171
+#: server/ui/web/templates/settings.html:212
+msgid "Select one or more permissions for this token."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:83
+msgid "Service endpoints"
+msgstr ""
+
+#: server/ui/web/handlers_settings.go:169 server/ui/web/templates/base.html:91
+msgid "Settings"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:28
+#: server/ui/web/templates/configs_item.html:224
+msgid "Show"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:78
+#, go-format
+msgid "Show %[1]s more label"
+msgid_plural "Show %[1]s more labels"
+msgstr[0] ""
+msgstr[1] ""
+
+#: auth/provider_local.go:235 auth/provider_oauthbase.go:90
+#: server/ui/web/templates/local-login.html:53
+#: server/ui/web/templates/local-login.html:79
+#: server/ui/web/templates/oauth2-login.html:53
+msgid "Sign in"
+msgstr ""
+
+#: server/ui/web/templates/oauth2-login.html:52
+msgid "Single sign-on"
+msgstr ""
+
+#: server/ui/web/templates/base.html:50
+msgid "Skip to main content"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:43
+msgid "Sort by Created"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:52
+msgid "Sort by Last seen"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:25
+msgid "Sort by Name"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:34
+msgid "Sort by UUID"
+msgstr ""
+
+#: server/ui/web/templates/configs_list.html:51
+#: server/ui/web/templates/devices_list.html:21
+#: server/ui/web/templates/devices_list.html:30
+#: server/ui/web/templates/devices_list.html:39
+#: server/ui/web/templates/devices_list.html:48
+msgid "Sorted ascending, click for descending"
+msgstr ""
+
+#: server/ui/web/templates/configs_list.html:54
+#: server/ui/web/templates/devices_list.html:23
+#: server/ui/web/templates/devices_list.html:32
+#: server/ui/web/templates/devices_list.html:41
+#: server/ui/web/templates/devices_list.html:50
+msgid "Sorted descending, click for ascending"
+msgstr ""
+
+#: server/ui/web/templates/base.html:68
+#: server/ui/web/templates/local-login.html:31
+#: server/ui/web/templates/oauth2-login.html:31
+msgid "Switch to dark mode"
+msgstr ""
+
+#: server/ui/web/templates/base.html:68
+#: server/ui/web/templates/local-login.html:31
+#: server/ui/web/templates/oauth2-login.html:31
+msgid "Switch to light mode"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:55
+msgid "Target"
+msgstr ""
+
+#: server/ui/web/templates/local-login.html:25
+#: server/ui/web/templates/oauth2-login.html:25
+msgid "The management console for over-the-air updates across your embedded and IoT device fleet."
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:84
+msgid "This action cannot be undone."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:244
+msgid "This is the only time this token is shown. Copy and store it securely."
+msgstr ""
+
+#: server/ui/web/templates/base.html:54
+msgid "Toggle navigation"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:10
+msgid "Token copied."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:235
+msgid "Token created"
+msgstr ""
+
+#: server/ui/web/templates/devices_list.html:30
+#: server/ui/web/templates/devices_list.html:32
+#: server/ui/web/templates/devices_list.html:34
+#: server/ui/web/templates/devices_list.html:161
+msgid "UUID"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:7
+msgid "Unable to create token: {error}"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:71
+msgid "Unable to delete config file."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:8
+msgid "Unable to revoke token: {error}"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:6
+msgid "Unable to save config file."
+msgstr ""
+
+#: server/ui/web/templates/settings.html:13
+msgid "Unable to update token: {error}"
+msgstr ""
+
+#: server/ui/web/pagebuilder.go:79
+msgid "Updates"
+msgstr ""
+
+#: server/ui/web/templates/local-login.html:54
+#, go-format
+msgid "Use your %[1]s credentials."
+msgstr ""
+
+#: server/ui/web/templates/base.html:89
+msgid "User menu"
+msgstr ""
+
+#: server/ui/web/templates/local-login.html:72
+#: server/ui/web/templates/settings.html:26
+msgid "Username"
+msgstr ""
+
+#: server/ui/web/pagebuilder.go:80
+msgid "Users"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:27
+msgid "View file content"
+msgstr ""
+
+#: server/ui/web/templates/configs_global_history.html:23
+#: server/ui/web/templates/configs_item.html:219
+#, go-format
+msgid "by %[1]s"
+msgstr ""
+
+#: server/ui/web/handlers_settings.go:106
+msgid "create"
+msgstr ""
+
+#: server/ui/web/handlers_settings.go:108
+msgid "delete"
+msgstr ""
+
+#: server/ui/web/templates/configs_item.html:253
+msgid "group"
+msgstr ""
+
+#: server/ui/web/templates/templates.go:70
+msgid "just now"
+msgstr ""
+
+#: server/ui/web/templates/configs_item_edit.html:35
+msgid "on devices."
+msgstr ""
+
+#: server/ui/web/handlers_settings.go:110
+msgid "read"
+msgstr ""
+
+#: server/ui/web/handlers_settings.go:114
+msgid "unrecognized"
+msgstr ""
+
+#: server/ui/web/handlers_settings.go:112
+msgid "update"
 msgstr ""

@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/foundriesio/update-server/server/ui/i18n"
 	"github.com/foundriesio/update-server/storage/users"
@@ -29,14 +31,14 @@ type settingsScopeGroupBuilder struct {
 }
 
 var settingsScopeOperationOrder = map[string]int{
-	scopeOperationCreate: 0,
-	scopeOperationDelete: 1,
-	scopeOperationRead:   2,
-	"update":             3,
-	"unrecognized":       4,
+	scopeOperationCreate:       0,
+	scopeOperationDelete:       1,
+	scopeOperationRead:         2,
+	scopeOperationUpdate:       3,
+	scopeOperationUnrecognized: 4,
 }
 
-func groupSettingsScopes(scopes []string) []settingsScopeGroup {
+func groupSettingsScopes(scopes []string, loc i18n.Printer) []settingsScopeGroup {
 	grouped := make(map[string]int)
 	builders := make([]settingsScopeGroupBuilder, 0, len(scopes))
 	for _, scopeName := range scopes {
@@ -71,7 +73,7 @@ func groupSettingsScopes(scopes []string) []settingsScopeGroup {
 	for _, group := range builders {
 		groups = append(groups, settingsScopeGroup{
 			Resource:   group.resource,
-			Operations: settingsScopeOperationSummary(group.operations),
+			Operations: settingsScopeOperationSummary(group.operations, loc),
 			ScopeNames: group.scopeNames,
 		})
 	}
@@ -80,13 +82,13 @@ func groupSettingsScopes(scopes []string) []settingsScopeGroup {
 
 func settingsScopeOperations(operation string, valid bool) []string {
 	if !valid || operation == "" {
-		return []string{"unrecognized"}
+		return []string{scopeOperationUnrecognized}
 	}
 	switch operation {
 	case scopeOperationRead:
 		return []string{scopeOperationRead}
 	case "read-update":
-		return []string{scopeOperationRead, "update"}
+		return []string{scopeOperationRead, scopeOperationUpdate}
 	case scopeOperationCreate:
 		return []string{scopeOperationCreate}
 	case scopeOperationDelete:
@@ -96,7 +98,27 @@ func settingsScopeOperations(operation string, valid bool) []string {
 	}
 }
 
-func settingsScopeOperationSummary(operations map[string]struct{}) string {
+// settingsScopeOperationLabel returns the translated word for a known operation key.
+// Raw operations from unknown scopes stay as the scope wrote them.
+func settingsScopeOperationLabel(operation string, loc i18n.Printer) string {
+	switch operation {
+	case scopeOperationCreate:
+		return loc.T("create")
+	case scopeOperationDelete:
+		return loc.T("delete")
+	case scopeOperationRead:
+		return loc.T("read")
+	case scopeOperationUpdate:
+		return loc.T("update")
+	case scopeOperationUnrecognized:
+		return loc.T("unrecognized")
+	}
+	return operation
+}
+
+// settingsScopeOperationSummary joins the labels as "a, b or c". The fold keeps
+// each msgid literal, so translators control the separators per language.
+func settingsScopeOperationSummary(operations map[string]struct{}, loc i18n.Printer) string {
 	summary := make([]string, 0, len(operations))
 	for operation := range operations {
 		summary = append(summary, operation)
@@ -113,17 +135,25 @@ func settingsScopeOperationSummary(operations map[string]struct{}) string {
 		return summary[i] < summary[j]
 	})
 
-	if len(summary) == 0 {
-		return "Unrecognized"
+	labels := make([]string, 0, len(summary))
+	for _, operation := range summary {
+		labels = append(labels, settingsScopeOperationLabel(operation, loc))
 	}
-	if len(summary) == 1 {
-		return settingsScopeSentenceCase(summary[0])
+	if len(labels) == 1 {
+		return settingsScopeSentenceCase(labels[0])
 	}
-	return settingsScopeSentenceCase(strings.Join(summary[:len(summary)-1], ", ")) + " or " + summary[len(summary)-1]
+
+	// summary is never empty: settingsScopeOperations always returns at least one key.
+	joined := labels[0]
+	for _, label := range labels[1 : len(labels)-1] {
+		joined = loc.T("%[1]s, %[2]s", joined, label)
+	}
+	return settingsScopeSentenceCase(loc.T("%[1]s or %[2]s", joined, labels[len(labels)-1]))
 }
 
 func settingsScopeSentenceCase(value string) string {
-	return strings.ToUpper(value[:1]) + value[1:]
+	first, size := utf8.DecodeRuneInString(value)
+	return string(unicode.ToUpper(first)) + value[size:]
 }
 
 func (h handlers) settings(c echo.Context) error {
@@ -135,6 +165,8 @@ func (h handlers) settings(c echo.Context) error {
 
 	scopes := session.User.AllowedScopes.ToSlice()
 	base := h.baseCtx(c, "Settings", "settings")
+	// <title> and the h1 read Title, which must be the translated name.
+	base.Title = base.L.T("Settings")
 	storedLocale := session.User.Locale
 	if _, ok := i18n.Valid(storedLocale); !ok {
 		storedLocale = ""
@@ -163,7 +195,7 @@ func (h handlers) settings(c echo.Context) error {
 		Tokens:            tokens,
 		ScopesList:        scopes,
 		GrantableScopes:   session.User.AllowedScopes.Grantable(),
-		ScopeGroups:       groupSettingsScopes(scopes),
+		ScopeGroups:       groupSettingsScopes(scopes, base.L),
 		LocalAuth:         h.provider.Name() == "local",
 		DeviceApiUrl:      c.Scheme() + "://" + c.Request().Host + "/v1/devices",
 		Oauth2ApiUrl:      c.Scheme() + "://" + c.Request().Host + "/oauth2",

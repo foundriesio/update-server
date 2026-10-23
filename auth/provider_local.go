@@ -158,14 +158,14 @@ func (p *localProvider) handleLogin(c echo.Context) error {
 		return server.EchoError(c, err, http.StatusInternalServerError, "Unable to look up user")
 	} else if user == nil {
 		p.rateLimiter.FlagBadOperation(c)
-		return p.renderLoginPage(c, "Invalid username or password")
+		return p.renderLoginPage(c, p.pageCtx.Base(c, "", "").L.T("Invalid username or password"))
 	}
 
 	if ok, err := PasswordVerify(password, user.Password); err != nil {
 		return server.EchoError(c, err, http.StatusInternalServerError, "Internal error verifying password")
 	} else if !ok {
 		p.rateLimiter.FlagBadOperation(c)
-		return p.renderLoginPage(c, "Invalid username or password")
+		return p.renderLoginPage(c, p.pageCtx.Base(c, "", "").L.T("Invalid username or password"))
 	}
 
 	expires := time.Now().Add(p.sessionTimeout)
@@ -226,15 +226,19 @@ func (p localProvider) renderLoginPage(c echo.Context, reason string) error {
 			"error": "authentication required",
 		})
 	}
+	// The login HTML varies by Accept-Language, so shared caches must key on it.
+	c.Response().Header().Add("Vary", "Accept-Language")
 
 	csrfToken := SetCsrfCookie(c, time.Now().Add(10*time.Minute), !p.authConfig.DevelopmentCookies)
 
+	base := p.pageCtx.Base(c, "", "")
+	base.Title = base.L.T("Sign in")
 	context := struct {
 		pagectx.Base
 		Reason string
 		Next   string
 	}{
-		Base:   p.pageCtx.Base(c, "Login", ""),
+		Base:   base,
 		Reason: reason,
 		Next:   loginNext(c),
 	}
@@ -272,15 +276,16 @@ func (p localProvider) GetSession(c echo.Context) (*Session, error) {
 }
 
 func (p *localProvider) handlePasswordPage(c echo.Context, session *Session) error {
+	printer := i18n.For(i18n.Resolve(session.User.Locale, c.Request().Header.Get("Accept-Language")))
 	context := struct {
 		pagectx.Base
 		Message string
 	}{
-		Base:    p.pageCtx.Base(c, "Change Password", ""),
-		Message: "Your password has expired. Please choose a new password.",
+		Base:    p.pageCtx.Base(c, printer.T("Change password"), ""),
+		Message: printer.T("Password expired. Choose a new password"),
 	}
 	context.User = session.User
-	context.L = i18n.For(i18n.Resolve(session.User.Locale, c.Request().Header.Get("Accept-Language")))
+	context.L = printer
 	return templates.Templates.ExecuteTemplate(c.Response(), localPasswordChangeTemplate, context)
 }
 

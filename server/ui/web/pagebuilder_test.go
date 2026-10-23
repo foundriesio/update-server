@@ -54,3 +54,20 @@ func TestBasePrinterLocale(t *testing.T) {
 		})
 	}
 }
+
+func TestNavTitlesFollowLocale(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Accept-Language", "it")
+	req = req.WithContext(CtxWithSession(req.Context(), &auth.Session{User: &users.User{}}))
+	c := e.NewContext(req, httptest.NewRecorder())
+
+	nav := NewPageBuilder(Branding{}).Base(c, "", "devices").NavItems
+	if assert.Len(t, nav, 5) {
+		assert.Equal(t, "Dispositivi", nav[0].Title)
+		assert.Equal(t, "Configurazioni", nav[1].Title)
+		assert.Equal(t, "Aggiornamenti", nav[2].Title)
+		assert.Equal(t, "Utenti", nav[3].Title)
+		assert.Equal(t, "PKI", nav[4].Title)
+	}
+}

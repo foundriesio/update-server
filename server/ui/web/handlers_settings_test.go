@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -124,7 +126,7 @@ func TestSettingsTemplateRendersLedgerAndPreservesActions(t *testing.T) {
             document.getElementById('passwordForm').reset();
             passwordModal.showModal();`, "reopening the password dialog must clear the stale error")
 	assert.Contains(t, html, `document.getElementById('passwordModal').close();
-          document.getElementById('passwordStatus').textContent = 'Password changed.';
+          document.getElementById('passwordStatus').textContent = messages.passwordChanged;
         });`, "a successful change must be announced after the dialog closes")
 	assert.Contains(t, html, `class="sr-only" id="settingsStatus" role="status" aria-live="polite"`, "endpoint copy status stays screen-reader only")
 	assert.Contains(t, html, `passwordModal.addEventListener('cancel', function(event) {
@@ -222,7 +224,7 @@ func TestGroupSettingsScopesPreservesRawScopeNamesAndSummarizesOperations(t *tes
 		"updates:read-update",
 		"future:manage-all",
 		"malformed",
-	}))
+	}, i18n.For(language.English)))
 }
 
 func TestSettingsTemplateHidesLocalPasswordDialogForExternalAuth(t *testing.T) {
@@ -419,4 +421,307 @@ func TestSettingsTokenUpdate(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, update(t, tc.id, tc.body))
 		})
 	}
+}
+
+// hostileMsgid would close the script tag and inject markup if it were written raw.
+const hostileMsgid = `</script><script>alert(1)</script>"<b>`
+
+type hostilePrinter struct{ i18n.Printer }
+
+func (hostilePrinter) T(string, ...any) string { return hostileMsgid }
+
+func (hostilePrinter) N(string, string, int, ...any) string { return hostileMsgid }
+
+func settingsFullCtx(L i18n.Printer) settingsTemplateCtx {
+	return settingsTemplateCtx{
+		baseCtx: baseCtx{
+			Title: L.T("Settings"),
+			L:     L,
+			User: &users.User{
+				Username:      "operator",
+				Email:         "operator@example.test",
+				AllowedScopes: users.ScopeDevicesRU | users.ScopeUpdatesR,
+			},
+		},
+		Tokens: []users.Token{
+			{PublicID: 17, CreatedAt: 1_780_000_000, ExpiresAt: 1_780_086_400, Description: "CI release pipeline", Scopes: users.ScopeDevicesRU},
+			{PublicID: 18, CreatedAt: 1_700_000_000, ExpiresAt: 1_000_000, Description: "Old token", Scopes: users.ScopeDevicesR},
+		},
+		ScopesList: []string{"devices:read-update", "updates:read"},
+		ScopeGroups: []settingsScopeTemplateGroup{
+			{Resource: "devices", Operations: "Read or update", ScopeNames: []string{"devices:read-update"}},
+			{Resource: "updates", Operations: "Read", ScopeNames: []string{"updates:read"}},
+		},
+		LocalAuth:         true,
+		DeviceApiUrl:      "https://updates.example.test/v1/devices",
+		Oauth2ApiUrl:      "https://updates.example.test/oauth2",
+		Languages:         i18n.Languages(),
+		EffectiveLanguage: "English",
+	}
+}
+
+func settingsEmptyCtx(L i18n.Printer) settingsTemplateCtx {
+	return settingsTemplateCtx{
+		baseCtx:      baseCtx{Title: L.T("Settings"), L: L, User: &users.User{Username: "operator"}},
+		DeviceApiUrl: "https://updates.example.test/v1/devices",
+		Oauth2ApiUrl: "https://updates.example.test/oauth2",
+		Languages:    i18n.Languages(),
+		StoredLocale: "it",
+	}
+}
+
+// English text shown in both settings states; each msgid must be in the English render.
+var settingsCommonEnglish = []string{
+	"Settings", "Account", "Audit log →", "Username", "Email", "ID", "Language", "Display language",
+	"Automatic (browser language)", "Save language", "Allowed scopes", "Resource", "Operations",
+	"Scope names", "Service endpoints", "For fio-device-register", "Device API", "OAuth2 API", "Copy",
+	"Copy Device API endpoint", "Copy OAuth2 API endpoint",
+	"API tokens", "New token", "Description", "Expires on", "Scopes", "Revoke token",
+	"Create API token", "Close dialog", "Create token", "Select one or more permissions for this token.",
+	"Token created", "This is the only time this token is shown. Copy and store it securely.",
+	"API token", "Copy API token", "Close", "Revoke API token", "Revoking this token cannot be undone.",
+	"Cancel", "Edit API token", "OK",
+}
+
+var settingsFullOnlyEnglish = []string{
+	"Change password", "Current password", "New password", "Confirm new password",
+	"Passwords do not match.", "Expired", "Created", "Expires", "Actions", "Edit token",
+}
+
+var settingsEmptyOnlyEnglish = []string{
+	"Not configured", "No scopes assigned", "No API tokens. Use the New token button to create one.",
+}
+
+// Msgids whose Italian text equals the English; TestSettingsSameInItalianMsgidsAreWrapped covers them.
+var settingsSameInItalian = []string{"Account", "Email", "ID", "OK"}
+
+// assertSettingsNoEnglish fails on any msgid whose English text survives in got.
+func assertSettingsNoEnglish(t *testing.T, got string, msgids []string) {
+	t.Helper()
+
+	it := i18n.For(language.Italian)
+	for _, msgid := range msgids {
+		if slices.Contains(settingsSameInItalian, msgid) {
+			continue
+		}
+		require.NotEqual(t, msgid, it.T(msgid), "missing it translation for %q", msgid)
+		// Whole-token match, as in the devices list leak check.
+		leak := regexp.MustCompile(`(^|[>"\s])` + regexp.QuoteMeta(msgid) + `($|[<"\s])`)
+		assert.NotRegexp(t, leak, got, "English leak %q in Italian output", msgid)
+	}
+}
+
+func TestSettingsTemplateItalianStatesHaveNoEnglish(t *testing.T) {
+	tests := []struct {
+		name   string
+		ctx    func(i18n.Printer) settingsTemplateCtx
+		msgids []string
+	}{
+		{
+			name:   "local auth with tokens and scopes",
+			ctx:    settingsFullCtx,
+			msgids: slices.Concat(settingsCommonEnglish, settingsFullOnlyEnglish),
+		},
+		{
+			name:   "external auth without tokens or scopes",
+			ctx:    settingsEmptyCtx,
+			msgids: slices.Concat(settingsCommonEnglish, settingsEmptyOnlyEnglish),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotEn := renderSettingsHTML(t, tt.ctx(i18n.For(language.English)))
+			for _, msgid := range tt.msgids {
+				require.Contains(t, gotEn, msgid, "English render lacks %q, so the leak check would pass vacuously", msgid)
+			}
+
+			gotIt := renderSettingsHTML(t, tt.ctx(i18n.For(language.Italian)))
+			assert.NotContains(t, gotIt, "%!", "formatting error in output")
+			assertSettingsNoEnglish(t, gotIt, tt.msgids)
+			// Revoke token takes a format argument, so the msgid regex cannot match its rendered form.
+			assert.NotContains(t, gotIt, `aria-label="Revoke token CI release pipeline"`)
+			assert.NotContains(t, gotIt, `aria-label="Revoke token Old token"`)
+			assert.NotContains(t, gotIt, `aria-label="Edit token CI release pipeline"`)
+		})
+	}
+}
+
+func TestSettingsTemplateItalianStatesRenderEffectiveLanguage(t *testing.T) {
+	got := renderSettingsHTML(t, settingsFullCtx(i18n.For(language.Italian)))
+	assert.Contains(t, got, "Attualmente in uso: English")
+	assert.NotContains(t, got, "Currently using")
+
+	got = renderSettingsHTML(t, settingsEmptyCtx(i18n.For(language.Italian)))
+	assert.NotContains(t, got, "Attualmente in uso")
+}
+
+func TestSettingsScriptMessagesAreDataAttributes(t *testing.T) {
+	tests := []struct {
+		name string
+		tag  language.Tag
+		want []string
+	}{
+		{
+			name: "en",
+			tag:  language.English,
+			want: []string{
+				`data-copy-unavailable="Copy is unavailable. Select the endpoint and copy it manually."`,
+				`data-endpoint-copied="Endpoint copied."`,
+				`data-token-fields-required="Enter a description and expiration date, then select at least one scope."`,
+				`data-token-expiry-invalid="Expiration must be a valid future date."`,
+				`data-token-create-failed="Unable to create token: {error}"`,
+				`data-revoke-failed="Unable to revoke token: {error}"`,
+				`data-token-copy-manual="Couldn’t copy automatically. Press Ctrl&#43;C or Command&#43;C, or touch and hold the token to copy."`,
+				`data-token-copied="Token copied."`,
+				`data-mismatch="New password and confirmation do not match."`,
+				`data-failed-format="Failed to change password: {error}"`,
+				`data-token-scopes-dropped="Saving will remove scopes you can no longer grant: {scopes}"`,
+				`data-token-edit-required="Enter a description and select at least one scope."`,
+				`data-token-update-failed="Unable to update token: {error}"`,
+			},
+		},
+		{
+			name: "it",
+			tag:  language.Italian,
+			want: []string{
+				`data-copy-unavailable="La copia non è disponibile. Seleziona l&#39;endpoint e copialo manualmente."`,
+				`data-endpoint-copied="Endpoint copiato."`,
+				`data-token-fields-required="Inserisci una descrizione e una data di scadenza, poi seleziona almeno un ambito."`,
+				`data-token-expiry-invalid="La scadenza deve essere una data futura valida."`,
+				`data-token-create-failed="Creazione del token non riuscita: {error}"`,
+				`data-revoke-failed="Revoca del token non riuscita: {error}"`,
+				`data-token-copy-manual="Copia automatica non riuscita. Premi Ctrl&#43;C o Command&#43;C, oppure tieni premuto il token per copiarlo."`,
+				`data-token-copied="Token copiato."`,
+				`data-mismatch="La nuova password e la conferma non coincidono."`,
+				`data-failed-format="Modifica della password non riuscita: {error}"`,
+				`data-token-scopes-dropped="Il salvataggio rimuoverà gli ambiti che non puoi più concedere: {scopes}"`,
+				`data-token-edit-required="Inserisci una descrizione e seleziona almeno un ambito."`,
+				`data-token-update-failed="Aggiornamento del token non riuscito: {error}"`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := renderSettingsHTML(t, settingsFullCtx(i18n.For(tt.tag)))
+			for _, want := range tt.want {
+				assert.Contains(t, got, want)
+			}
+		})
+	}
+}
+
+var (
+	settingsPageTagRE     = regexp.MustCompile(`<section class="settings-ledger device-page-inner" id="settingsPage"[^>]*>`)
+	settingsPasswordTagRE = regexp.MustCompile(`<form id="passwordForm"[^>]*>`)
+	settingsDataAttrRE    = regexp.MustCompile(`\s(data-[a-z-]+)="`)
+)
+
+// settingsMessageAttrNames lists the data-* attributes on #settingsPage and the password form.
+func settingsMessageAttrNames(html string) []string {
+	var names []string
+	for _, tagRE := range []*regexp.Regexp{settingsPageTagRE, settingsPasswordTagRE} {
+		for _, m := range settingsDataAttrRE.FindAllStringSubmatch(tagRE.FindString(html), -1) {
+			names = append(names, m[1])
+		}
+	}
+	return names
+}
+
+// msgidHostilePrinter returns the hostile string for one msgid and the real translation for the rest.
+type msgidHostilePrinter struct {
+	i18n.Printer
+	msgid string
+}
+
+func (p msgidHostilePrinter) T(msgid string, args ...any) string {
+	if msgid == p.msgid {
+		return hostileMsgid
+	}
+	return p.Printer.T(msgid, args...)
+}
+
+func TestSettingsTemplateEscapesHostileTranslation(t *testing.T) {
+	en := renderSettingsHTML(t, settingsFullCtx(i18n.For(language.English)))
+	got := renderSettingsHTML(t, settingsFullCtx(hostilePrinter{i18n.For(language.English)}))
+
+	// The hostile string must reach the page only as escaped text or attribute values.
+	assert.Equal(t, strings.Count(en, "</script>"), strings.Count(got, "</script>"), "catalog string closed a script tag")
+	assert.NotContains(t, got, `<script>alert(1)</script>`)
+	assert.NotContains(t, got, `"<b>`)
+
+	const escaped = `&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;&#34;&lt;b&gt;`
+	names := settingsMessageAttrNames(en)
+	require.Contains(t, names, "data-copy-unavailable", "settings page attributes not found")
+	require.Contains(t, names, "data-failed-format", "password form attributes not found")
+	for _, name := range names {
+		assert.Contains(t, got, name+`="`+escaped+`"`)
+	}
+	// Revoke button: aria-label and title both come from catalog strings.
+	assert.Contains(t, got, `data-token-id="17" aria-label="`+escaped+`" title="`+escaped+`"`)
+}
+
+// Msgids identical in Italian pass the leak check, so prove each one is wrapped in L.T.
+func TestSettingsSameInItalianMsgidsAreWrapped(t *testing.T) {
+	const escaped = `&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;&#34;&lt;b&gt;`
+	for _, msgid := range settingsSameInItalian {
+		t.Run(msgid, func(t *testing.T) {
+			got := renderSettingsHTML(t, settingsFullCtx(msgidHostilePrinter{i18n.For(language.Italian), msgid}))
+			assert.Contains(t, got, escaped, "%q is not rendered through L.T", msgid)
+		})
+	}
+}
+
+func TestSettingsScopeSentenceCaseKeepsMultiByteFirstRune(t *testing.T) {
+	assert.Equal(t, "Élément", settingsScopeSentenceCase("élément"))
+}
+
+func TestGroupSettingsScopesTranslatesOperations(t *testing.T) {
+	got := groupSettingsScopes([]string{
+		"devices:read-update",
+		"devices:create",
+		"devices:delete",
+		"updates:delete",
+		"updates:read-update",
+	}, i18n.For(language.Italian))
+
+	assert.Equal(t, []settingsScopeGroup{
+		{
+			Resource:   "devices",
+			Operations: "Creazione, eliminazione, lettura o aggiornamento",
+			ScopeNames: []string{"devices:read-update", "devices:create", "devices:delete"},
+		},
+		{
+			Resource:   "updates",
+			Operations: "Eliminazione, lettura o aggiornamento",
+			ScopeNames: []string{"updates:delete", "updates:read-update"},
+		},
+	}, got)
+}
+
+func TestSettingsPageLocalizesTitleAndOperations(t *testing.T) {
+	strg := newLocaleTestStorage(t)
+	e := newLocaleTestServer(t, strg, newLocaleTestUser(t, strg, "it"))
+
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `<h1 class="heading heading--page">Impostazioni</h1>`)
+	assert.Contains(t, rec.Body.String(), `<td>Lettura</td>`)
+}
+
+func TestSettingsTemplateLocalizesTokenDates(t *testing.T) {
+	gotIt := renderSettingsHTML(t, settingsFullCtx(i18n.For(language.Italian)))
+
+	assert.Contains(t, gotIt, `<time datetime="2026-05-28T20:26:40Z">28 mag 2026</time>`)
+	assert.Contains(t, gotIt, `<time datetime="2026-05-29T20:26:40Z">29 mag 2026</time>`)
+	assert.Contains(t, gotIt, `<time datetime="2023-11-14T22:13:20Z">14 nov 2023</time>`)
+
+	gotEn := renderSettingsHTML(t, settingsFullCtx(i18n.For(language.English)))
+
+	assert.Contains(t, gotEn, `<time datetime="2026-05-28T20:26:40Z">May 28, 2026</time>`)
+	assert.Contains(t, gotEn, `<time datetime="2023-11-14T22:13:20Z">Nov 14, 2023</time>`)
 }

@@ -1,15 +1,15 @@
 {{ template "header" .}}
 <div class="configs-page">
 
-  <nav class="breadcrumb" aria-label="Breadcrumb">
-    <a href="/configs">Configs</a>
+  <nav class="breadcrumb" aria-label="{{ .L.T "Breadcrumb" }}">
+    <a href="/configs">{{ .L.T "Configs" }}</a>
     <span class="breadcrumb__sep">/</span>
-    <span class="breadcrumb__current">History</span>
+    <span class="breadcrumb__current">{{ .L.T "History" }}</span>
   </nav>
 
   <hgroup class="heading-group heading-group--page heading-stack">
-    <h1 class="heading heading--page">Global Configs History</h1>
-    <p class="page-subtitle heading-support">{{ len .History }} {{ if eq (len .History) 1 }}revision{{ else }}revisions{{ end }}</p>
+    <h1 class="heading heading--page">{{ .L.T "Global Configs History" }}</h1>
+    <p class="page-subtitle heading-support">{{ .L.N "%[1]s revision" "%[1]s revisions" (len .History) }}</p>
   </hgroup>
 
   {{ $perPage := 20 }}
@@ -19,14 +19,14 @@
       <summary>
         <div class="summary-row">
           <div class="history-summary-row__main">
-            <span class="history-reason">{{$rev.Reason}}{{ if $rev.Current }} <span class="badge badge-good">Current</span>{{ end }}</span>
-            <span class="history-summary-row__by">by {{$rev.CreatedBy}}</span>
+            <span class="history-reason">{{$rev.Reason}}{{ if $rev.Current }} <span class="badge badge-good">{{ $.L.T "Current" }}</span>{{ end }}</span>
+            <span class="history-summary-row__by">{{ $.L.T "by %[1]s" $rev.CreatedBy }}</span>
           </div>
           <div class="history-summary-row__right">
             <span class="history-summary-row__meta is-mono">{{tsToDate $rev.CreatedAt}}</span>
             <span class="collapsible-toggle">
-              <span class="toggle-show">Show</span>
-              <span class="toggle-hide">Hide</span>
+              <span class="toggle-show">{{ $.L.T "Show" }}</span>
+              <span class="toggle-hide">{{ $.L.T "Hide" }}</span>
             </span>
           </div>
         </div>
@@ -35,7 +35,7 @@
         {{ range $name, $file := $rev.Files }}
         <div class="file-name">{{ $name }}</div>
         {{ else }}
-        <p class="history-empty-note"><i>No files in this revision.</i></p>
+        <p class="history-empty-note"><i>{{ $.L.T "No files in this revision." }}</i></p>
         {{ end }}
       </div>
     </details>
@@ -43,12 +43,12 @@
   </div>
   {{ if gt (len .History) $perPage }}
   <div class="pagination">
-    <span class="pagination-summary">Showing page <span id="history-page">1</span> of <span id="history-page-total"></span></span>
+    <span class="pagination-summary" id="history-page-summary" data-format="{{ .L.T "Page %[1]s of %[2]s" "{page}" "{total}" }}"></span>
     <div class="pagination-controls">
-      <a id="history-page-first" class="page-link hidden" href="#" role="button" aria-label="First page">&laquo;</a>
-      <a id="history-page-prev" class="page-link hidden" href="#" role="button" aria-label="Previous page">&lsaquo;</a>
-      <a id="history-page-next" class="page-link" href="#" role="button" aria-label="Next page">&rsaquo;</a>
-      <a id="history-page-last" class="page-link" href="#" role="button" aria-label="Last page">&raquo;</a>
+      <a id="history-page-first" class="page-link hidden" href="#" role="button" aria-label="{{ .L.T "First page" }}">&laquo;</a>
+      <a id="history-page-prev" class="page-link hidden" href="#" role="button" aria-label="{{ .L.T "Previous page" }}">&lsaquo;</a>
+      <a id="history-page-next" class="page-link" href="#" role="button" aria-label="{{ .L.T "Next page" }}">&rsaquo;</a>
+      <a id="history-page-last" class="page-link" href="#" role="button" aria-label="{{ .L.T "Last page" }}">&raquo;</a>
     </div>
   </div>
   {{ end }}
@@ -79,7 +79,8 @@
   }
 
   function updatePageNav() {
-    $('#history-page').textContent = historyPage;
+    var summary = $('#history-page-summary');
+    summary.textContent = summary.dataset.format.split('{page}').join(historyPage).split('{total}').join(historyTotalPages);
     $('#history-page-first').classList.toggle('hidden', historyPage === 1);
     $('#history-page-prev').classList.toggle('hidden', historyPage === 1);
     $('#history-page-next').classList.toggle('hidden', historyPage === historyTotalPages);
@@ -95,7 +96,7 @@
   }
 
   if (historyTotalPages > 1) {
-    $('#history-page-total').textContent = historyTotalPages;
+    updatePageNav();
     $$('.pagination-controls .page-link').forEach(function (el) {
       el.addEventListener('click', function (ev) {
         ev.preventDefault();
