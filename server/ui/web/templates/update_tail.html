@@ -1,64 +1,27 @@
 {{ template "header" .}}
-    <section class="content-section">
-      <h2>{{.Title}}</h2>
+    <section class="rollout-stream">
+      <div class="rollout-stream__inner">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/updates">Updates</a>
+          <span class="breadcrumb__sep">/</span>
+          <a href="/updates/{{.Name}}">{{.Name}}</a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current" aria-current="page">Progress</span>
+        </nav>
+
+        <div class="page-head">
+          <div>
+            <h1>{{.Name}} Stream</h1>
+            <p class="page-subtitle connection-status">
+              <span id="connection-status-dot" class="status-indicator__dot is-warning" aria-hidden="true"></span>
+              <span id="connection-status" role="status" aria-live="polite" aria-atomic="true">Connecting&hellip;</span>
+            </p>
+          </div>
+          <a class="btn-ghost rollout-stream__back" href="/updates/{{.Name}}">Back to Update</a>
+        </div>
+
+        {{ template "tail-stream-content" .}}
+      </div>
     </section>
-
-    <section class="content-section">
-      <h3>Logs</h3>
-      <p>Output format: [Device time] [Device UUID]: [Status]</p>
-      <pre id="tail-logs"></pre>
-    </section>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const tailLogs = document.getElementById('tail-logs');
-        const url = '{{.TailUrl}}';
-        
-        console.log('Connecting to EventSource:', url);
-        tailLogs.textContent += '[Connecting to log stream: ' + url + ']\n';
-        
-        const eventSource = new EventSource(url);
-        
-        eventSource.onopen = function(event) {
-          tailLogs.textContent += '[Connection established]\n';
-        };
-        
-        eventSource.onmessage = function(event) {
-          tailLogs.textContent += event.data + '\n';
-          // Auto-scroll to bottom to follow the logs
-          tailLogs.scrollTop = tailLogs.scrollHeight;
-        };
-
-        eventSource.addEventListener("log", (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            tailLogs.textContent += data.deviceTime + ' ' + data.uuid + ': ' + data.status + '\n';
-          } catch (e) {
-            // Fallback to raw data if not valid JSON
-            tailLogs.textContent += event.data + '\n';
-          }
-          tailLogs.scrollTop = tailLogs.scrollHeight;
-        });
-        
-        eventSource.onerror = function(event) {
-          console.error('EventSource error:', event);
-          console.log('EventSource readyState:', eventSource.readyState);
-          
-          let errorMsg = '[Connection error';
-          if (eventSource.readyState === EventSource.CONNECTING) {
-            errorMsg += ' - connecting...';
-          } else if (eventSource.readyState === EventSource.CLOSED) {
-            errorMsg += ' - connection closed';
-          }
-          errorMsg += ']\n';
-          
-          tailLogs.textContent += errorMsg;
-        };
-        
-        window.addEventListener('beforeunload', function() {
-          eventSource.close();
-        });
-      });
-    </script>
 
 {{ template "footer" .}}

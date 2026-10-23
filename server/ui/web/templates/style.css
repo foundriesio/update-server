@@ -5,7 +5,7 @@
    standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
 @import url('/css/pico_min_211.css') layer(pico);
 
-@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list;
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream;
 
 @layer tokens {
 
@@ -560,17 +560,17 @@ dialog.file-content > article > section > ul {
 
 @layer table {
 
-.device-table {
+.update-server-tables {
     overflow-x: auto;
 }
-.device-table table {
+.update-server-tables table {
     width: 100%;
     table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0 8px;
     font-size: 0.87rem;
 }
-.device-table thead th {
+.update-server-tables thead th {
     text-align: left;
     font-family: var(--mono);
     font-size: 0.7rem;
@@ -583,52 +583,52 @@ dialog.file-content > article > section > ul {
     white-space: nowrap;
     border-bottom: none;
 }
-.device-table thead th:first-child {
+.update-server-tables thead th:first-child {
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
 }
-.device-table thead th:last-child {
+.update-server-tables thead th:last-child {
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
 }
-.device-table th.sortable a {
+.update-server-tables th.sortable a {
     color: inherit;
     text-decoration: none;
     text-transform: inherit;
 }
-.device-table th.sortable a:hover {
+.update-server-tables th.sortable a:hover {
     color: var(--interactive);
     text-decoration: none;
 }
-.device-table .sort-idle {
+.update-server-tables .sort-idle {
     opacity: 0.5;
     font-size: 0.85em;
 }
-.device-table .sort-active {
+.update-server-tables .sort-active {
     opacity: 1;
     color: var(--interactive);
 }
 
-.device-table tbody tr td {
+.update-server-tables tbody tr td {
     border: 1px solid var(--border-1);
     border-left: none;
     border-right: none;
 }
-.device-table tbody tr td:first-child {
+.update-server-tables tbody tr td:first-child {
     border-left: 1px solid var(--border-1);
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
 }
-.device-table tbody tr td:last-child {
+.update-server-tables tbody tr td:last-child {
     border-right: 1px solid var(--border-1);
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
 }
-.device-row td { cursor: pointer; }
-.device-table tbody tr:hover td {
+.device-row td, .update-row td { cursor: pointer; }
+.update-server-tables tbody tr:hover td {
     background: var(--surface-hover);
 }
-.device-table tbody tr td {
+.update-server-tables tbody tr td {
     background: var(--surface-2);
     padding: 12px 14px;
     color: var(--text-1);
@@ -1133,7 +1133,7 @@ summary.user-badge::after {
        preference only applies to the push mechanism. */
     #app,
     #app.nav-collapsed {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         grid-template-areas: "topbar" "main";
         transition: none;
     }
@@ -1189,6 +1189,9 @@ summary.user-badge::after {
   .device-table td:nth-child(2), .device-table td:nth-child(3),
   .device-table td:nth-child(5), .device-table td:nth-child(6),
   .device-table td:nth-child(7) { display: none; }
+
+  .updates-table th:nth-child(3), .updates-table th:nth-child(4), .updates-table th:nth-child(5),
+  .updates-table td:nth-child(3), .updates-table td:nth-child(4), .updates-table td:nth-child(5) { display: none; }
 }
 
 } /* end @layer shell */
@@ -1218,6 +1221,7 @@ summary.user-badge::after {
 }
 .dlg-close {
     margin-left: auto;
+    margin-bottom: 0;
     background: none;
     border: none;
     color: var(--text-3);
@@ -1672,14 +1676,6 @@ summary.user-badge::after {
 
 .update-history {
     margin-bottom: 28px;
-}
-.update-history__title {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--text-3);
-    margin-bottom: 12px;
 }
 .history-entry {
     display: flex;
@@ -3063,3 +3059,644 @@ pre.code-block {
 }
 
 } /* end @layer configs-list */
+
+@layer updates-list {
+
+.updates-page .page-subtitle {
+    margin-bottom: 0;
+}
+.page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+@media (max-width: 680px) {
+    .page-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .page-head .update-detail__actions > * {
+        flex: 1;
+    }
+}
+.updates-empty {
+    color: var(--text-3);
+    padding: 24px 0;
+}
+
+.upload-dialog {
+    max-width: none;
+    overscroll-behavior: contain;
+}
+.upload-dialog > article {
+    width: min(850px, calc(100vw - 32px));
+    max-width: 850px;
+}
+.upload-dialog .dlg-body {
+    padding-bottom: 8px;
+}
+.upload-intro {
+    max-width: 680px;
+    margin: 0 0 12px;
+    color: var(--text-2);
+    font-size: 0.8rem;
+    line-height: 1.55;
+}
+.upload-intro + .upload-intro {
+    margin-bottom: 24px;
+}
+.upload-dialog .field-grid,
+.rollout-dialog .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 18px;
+    margin-bottom: 20px;
+}
+.upload-dialog .field-row,
+.rollout-dialog .field-row {
+    display: block;
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+.upload-dialog .field-row__key,
+.rollout-dialog .field-row__key {
+    font-family: inherit;
+    font-size: 0.72rem;
+    margin-bottom: 7px;
+}
+.upload-dialog .field-input,
+.rollout-dialog .field-input {
+    max-width: none;
+    min-height: 40px;
+    padding: 8px 10px;
+}
+.upload-dialog .field-row__caption,
+.rollout-dialog .field-row__caption {
+    margin-top: 5px;
+    line-height: 1.4;
+}
+.upload-dialog .upload-directory-field {
+    margin-bottom: 18px;
+}
+.directory-picker {
+    display: flex;
+    min-width: 0;
+    min-height: 46px;
+    align-items: stretch;
+    border: 1px solid var(--border-2);
+    border-radius: 3px;
+    background: var(--surface-2);
+}
+.directory-picker:focus-within {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+}
+.directory-picker__button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0 13px;
+    border-right: 1px solid var(--border-2);
+    color: var(--text-1);
+    background: var(--surface-1);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.directory-picker__button:hover {
+    background: var(--surface-hover);
+}
+.directory-picker__status {
+    min-width: 0;
+    align-self: center;
+    padding: 0 12px;
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.upload-dialog details {
+    margin: 0;
+    border-top: 0;
+    border-bottom: 0;
+}
+.upload-dialog details > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 52px;
+    margin: 0;
+    padding: 0;
+    color: var(--text-2);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.upload-dialog details > summary::-webkit-details-marker {
+    display: none;
+}
+.upload-dialog details > summary::marker {
+    content: none;
+}
+.upload-dialog details > summary::after {
+    display: none;
+}
+.upload-dialog details[open] .toggle-show {
+    display: none;
+}
+.upload-dialog details[open] .toggle-hide {
+    display: inline;
+}
+.upload-dialog details > summary:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.upload-advanced-content {
+    padding: 10px 0 6px;
+}
+.upload-advanced-hint {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-2);
+    margin: 0 0 20px;
+}
+.upload-dialog .upload-apps-field {
+    margin-bottom: 8px;
+}
+.dlg-btn-upload {
+    background: var(--brand-primary);
+    color: #fff;
+    border: none;
+}
+.dlg-btn-upload:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+@media (max-width: 640px) {
+    .upload-dialog > article {
+        width: calc(100vw - 16px);
+    }
+    .upload-dialog .field-grid {
+        grid-template-columns: 1fr;
+    }
+    .directory-picker__button {
+        padding: 0 10px;
+    }
+}
+
+} /* end @layer updates-list */
+
+/* Update detail (release brief) page — reuses .breadcrumb/.entity-header/
+   .page-subtitle/.meta-section/.meta-section__title/.meta-grid/.meta-row/
+   .dd-chip/.tag-cloud/.cell-empty/.empty-state/.badge*, .artifact-list/
+   .artifact-row/.artifact-name/.btn-copy/.collapsible-section/.sr-only/
+   pre.code-block from existing layers (the artifact row/name/copy-button
+   overrides below are scoped to this page only — those classes are also
+   reused as-is by device_test.html). New rules below cover only what's
+   specific to this page: the content-width cap, the action-button row,
+   the devices-by-status list, the artifact row's name/URI stacking and
+   URI column (wide screens ellipsize with the full value still in
+   `title`/the copy button's data attribute; narrow screens wrap), and
+   the TUF role card grid. */
+@layer update-detail {
+
+.update-detail__inner {
+    max-width: 860px;
+}
+.update-detail__inner h1 {
+    margin: 0;
+}
+.update-detail__inner .page-subtitle {
+    margin-bottom: 0;
+}
+@media (max-width: 860px) {
+    .update-detail__inner {
+        max-width: none;
+    }
+}
+
+.update-detail__actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.update-detail__progress {
+    flex-shrink: 0;
+    text-decoration: none;
+}
+.update-detail__progress:hover {
+    text-decoration: none;
+}
+.update-detail .history-entry__action {
+    display: inline;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--interactive);
+    line-height: inherit;
+    text-align: left;
+}
+.update-detail .history-entry__action:hover {
+    background: transparent;
+    color: var(--interactive);
+    text-decoration: underline;
+}
+.update-detail .history-entry__action:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.update-detail__inner .artifact-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.update-detail__inner .artifact-name {
+    font-weight: 600;
+}
+
+.artifact-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.update-detail__inner .btn-copy {
+    padding: 5px;
+}
+
+.artifact-uri {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: transparent;
+    padding: 0;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-2);
+    word-break: break-all;
+}
+
+.trust-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+    .trust-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 680px) {
+    .trust-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.trust-item {
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+.trust-item__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.trust-item__name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-1);
+}
+.trust-item__expiry {
+    font-size: 0.75rem;
+    color: var(--text-3);
+}
+
+/* Create Rollout dialog — reuses .dlg-header/.dlg-close/.dlg-body/.dlg-footer/
+   .dlg-btn/.dlg-btn-cancel (dialog layer) and .upload-intro/.field-grid/
+   .field-row/.field-row__key/.field-input/.field-row__caption
+   (updates-list layer). The device-group checkboxes are the only genuinely
+   new control here. */
+.rollout-dialog > article {
+    width: min(640px, calc(100vw - 32px));
+}
+.group-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+}
+.group-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    background: var(--surface-1);
+    font-size: 0.85rem;
+    cursor: pointer;
+    /* Pico's label:has(:checkbox) sets width: fit-content, which defeats
+       grid's default stretch and shrinks the fill to the label text. */
+    width: 100%;
+}
+.group-check:hover {
+    background: var(--surface-hover);
+}
+.group-check input {
+    margin: 0;
+}
+.dlg-btn-rollout {
+    background: var(--brand-primary);
+    color: #fff;
+    border: none;
+}
+.dlg-btn-rollout:hover {
+    opacity: 0.9;
+}
+@media (max-width: 640px) {
+    .rollout-dialog .field-grid {
+        grid-template-columns: 1fr;
+    }
+    .group-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Rollout detail (scan-first ledger) page — reuses .breadcrumb/.page-head/
+   .entity-header/.page-subtitle/.meta-section/.meta-section__title/.badge*,
+   .tag-cloud/.dd-chip/.cell-empty/.empty-state/.status-indicator and the
+   existing token set. */
+.rollout-detail__inner {
+    max-width: 900px;
+}
+.rollout-detail__inner h1 {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.rollout-detail__inner .page-subtitle {
+    margin-bottom: 0;
+    overflow-wrap: anywhere;
+}
+.rollout-detail__progress {
+    flex-shrink: 0;
+    text-decoration: none;
+}
+.rollout-detail__progress:hover {
+    text-decoration: none;
+}
+.rollout-detail__progress:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.rollout-detail .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+}
+.rollout-detail .summary-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 12px 14px;
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+    background: var(--surface-2);
+}
+.rollout-detail .summary-card__label,
+.rollout-detail .recipient-record dt {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.rollout-detail .summary-card__value {
+    margin-top: 4px;
+    color: var(--text-1);
+    font-size: 1rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.rollout-detail .summary-card__note {
+    margin-top: 2px;
+    color: var(--text-3);
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+.rollout-detail .rollout-ledger {
+    margin: 0;
+}
+.rollout-detail .rollout-ledger__row {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.rollout-detail .rollout-ledger dt {
+    color: var(--text-3);
+    font-size: 0.8rem;
+}
+.rollout-detail .rollout-ledger dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--text-1);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+.rollout-detail__mono {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+.rollout-detail__value-list,
+.rollout-detail .recipient-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.rollout-detail__value-list {
+    display: grid;
+    gap: 4px;
+}
+.rollout-detail__value-list > li,
+.rollout-detail .recipient-list > li {
+    list-style: none;
+}
+
+.rollout-detail .recipient-list {
+    display: grid;
+    gap: 8px;
+    max-width: 900px;
+}
+.rollout-detail .recipient-record {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 16px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+    background: var(--surface-2);
+}
+.rollout-detail .recipient-record > div {
+    min-width: 0;
+}
+.rollout-detail .recipient-record dt {
+    margin-bottom: 3px;
+}
+.rollout-detail .recipient-record dd {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+.rollout-detail .status-indicator__dot.is-warning {
+    background: var(--warning);
+}
+.rollout-detail .rollout-detail__empty {
+    max-width: 900px;
+    padding: 14px;
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+    background: var(--surface-2);
+    text-align: left;
+}
+
+@media (max-width: 900px) {
+    .rollout-detail__inner {
+        max-width: none;
+    }
+}
+@media (max-width: 640px) {
+    .rollout-detail .summary-grid,
+    .rollout-detail .recipient-record {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .rollout-detail .rollout-ledger__row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+    }
+    .rollout-detail__progress {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+} /* end @layer update-detail */
+
+@layer update-stream {
+
+.rollout-stream .rollout-stream__inner {
+    max-width: 1160px;
+}
+.rollout-stream .rollout-stream__inner h1 {
+    margin: 0;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+.rollout-stream .connection-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+    color: var(--text-2);
+    font-size: 0.8rem;
+}
+.rollout-stream .rollout-stream__back {
+    flex-shrink: 0;
+    text-decoration: none;
+}
+.rollout-stream .rollout-stream__back:hover {
+    text-decoration: none;
+}
+.rollout-stream .rollout-stream__back:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.rollout-stream .rollout-stream__metadata {
+    max-width: 820px;
+}
+.rollout-stream .stream-metadata {
+    margin: 0;
+}
+.rollout-stream .stream-metadata__row {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.rollout-stream .stream-metadata dt {
+    color: var(--text-3);
+    font-size: 0.8rem;
+}
+.rollout-stream .stream-metadata dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--text-1);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+.rollout-stream .rollout-stream__mono {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+}
+.rollout-stream .rollout-stream__help {
+    margin: -6px 0 10px;
+    color: var(--text-3);
+    font-size: 0.78rem;
+}
+.rollout-stream .stream-output {
+    overflow: hidden;
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+    background: var(--surface-2);
+}
+.rollout-stream .stream-output__log {
+    min-height: 270px;
+    max-height: min(480px, 60vh);
+    margin: 0;
+    padding: 16px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    background: var(--surface-2);
+    color: var(--text-1);
+    font: 0.75rem/1.55 var(--mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.rollout-stream .stream-output__log:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+
+@media (max-width: 640px) {
+    .rollout-stream .stream-metadata__row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+    }
+    .rollout-stream .rollout-stream__back {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+} /* end @layer update-stream */

@@ -116,6 +116,13 @@ func init() {
 			}
 			return clock.Now().After(t)
 		},
+		"rfc3339ToDate": func(expires string) string {
+			t, err := time.Parse(time.RFC3339, expires)
+			if err != nil {
+				return ""
+			}
+			return t.Format("Jan 2, 2006, 3:04 PM")
+		},
 		"add": func(a, b int) int {
 			return a + b
 		},
