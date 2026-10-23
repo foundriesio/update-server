@@ -182,7 +182,7 @@ func (h handlers) updatesList(c echo.Context) error {
 		baseCtx
 		Updates []api.Update
 	}{
-		baseCtx: h.baseCtx(c, "Updates", "updates"),
+		baseCtx: h.baseCtx(c, updatesLabel, "updates"),
 		Updates: updates,
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "updates.html", ctx)
