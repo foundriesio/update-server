@@ -5,7 +5,7 @@
    standard fix: it keeps Pico as our base layer while every layer below still overrides it. */
 @import url('/css/pico_min_211.css') layer(pico);
 
-@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream, users-directory, pki-registry;
+@layer tokens, pico-bridge, typography, utils, icons, shell, table, pagination, accordion, dialog, device-detail, configs-list, updates-list, update-detail, update-stream, users-directory, pki-registry, settings-ledger;
 
 @layer tokens {
 
@@ -61,6 +61,18 @@
     --success-text:  #0d6e30;
     --danger-text:   var(--danger-hover);
     --dot-inactive:  #7a7a7a;
+
+    /* Off-track of the device-apps switch. --border-2 is too faint for the
+       WCAG 1.4.11 non-text 3:1 floor, so the track gets its own token. */
+    --switch-off:    #767676;   /* 4.54:1 on #fff */
+
+    /* --warning (#d97706) is ~3.2:1 on white: too low for 12-13px text. */
+    --warning-text:  #92400e;   /* 7.1:1 on #fff */
+
+    --heading-space-page:       1.75rem;
+    --heading-space-section:    0.75rem;
+    --heading-space-subsection: 0.375rem;
+    --heading-space-inner:      0.25rem;
 }
 
 } /* end @layer tokens (part 1) */
@@ -72,6 +84,28 @@ html, body {
     margin: 0;
     padding: 0;
     background-color: var(--bg-body);
+}
+
+:where(.heading-stack) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--heading-space-inner);
+}
+
+:where(.heading-row) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--heading-space-inner);
+}
+
+:where(.heading-row--split) {
+    justify-content: space-between;
+}
+
+:where(.heading-support) {
+    margin-block: 0;
+    overflow-wrap: anywhere;
 }
 
 } /* end @layer utils (part 1) */
@@ -142,6 +176,62 @@ h5 {
 h6 {
     --pico-font-size:   11px;
     --pico-line-height: 1.4;
+}
+
+:where(.heading) {
+    margin-block: 0;
+    overflow-wrap: anywhere;
+}
+
+:where(.heading--page) {
+    margin-block-end: var(--heading-space-page);
+}
+
+:where(.heading--section) {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-2);
+    margin-block-end: var(--heading-space-section);
+}
+
+:where(.heading--subsection) {
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: var(--text-2);
+    margin-block-end: var(--heading-space-subsection);
+}
+
+:where(.heading--entity) {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-1);
+}
+
+:where(.heading--panel) {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+:where(.heading-group) {
+    margin-block: 0;
+}
+
+:where(.heading-group) :where(.heading) {
+    margin-block: 0;
+}
+
+:where(.heading-group--page) {
+    margin-block-end: var(--heading-space-page);
+}
+
+:where(.heading-group--section) {
+    margin-block-end: var(--heading-space-section);
 }
 
 } /* end @layer typography */
@@ -497,6 +587,10 @@ dialog.file-content > article > section > ul {
     --success-text:  var(--success);
     --danger-text:   var(--danger);
     --dot-inactive:  #6f7c8a;
+
+    /* Off-track of the device-apps switch; same role as the light --switch-off. */
+    --switch-off:    #7d8898;
+    --warning-text:  #fbbf24;
 
     /* Dark interactive color + surface/text bridge for Pico's own --pico-* vars
        (see the light-mode bridge near the top of this file for the rationale —
@@ -1471,7 +1565,7 @@ summary.user-badge::after {
     outline-offset: 2px;
 }
 .breadcrumb__sep {
-    color: var(--border-2);
+    color: var(--text-3);
 }
 .breadcrumb__current {
     color: var(--text-2);
@@ -1481,24 +1575,12 @@ summary.user-badge::after {
     font-size: 0.75rem;
 }
 
-.device-identity {
-    margin-bottom: 28px;
-}
-.device-identity__name-row {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 6px;
-}
 /* .status-badge/.status-indicator sit next to a taller h1 — baseline
    alignment sits them low against it. Override just these children
    instead of the shared row default. */
 .device-identity__name-row .status-badge,
 .device-identity__name-row .status-indicator {
     align-self: center;
-}
-.device-identity__name {
-    margin: 0;
 }
 .device-identity__uuid {
     font-family: var(--mono);
@@ -1592,17 +1674,6 @@ summary.user-badge::after {
 
 .meta-section {
     margin-bottom: 28px;
-}
-.meta-section__title {
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: var(--text-2);
-    margin-bottom: 12px;
-}
-.meta-section__title--sub {
-    font-weight: 400;
-    margin-bottom: 6px;
 }
 .files-table td {
     background-color: transparent !important;
@@ -1905,19 +1976,6 @@ pre.code-block {
     color: var(--text-3);
 }
 
-.update-identity {
-    margin-bottom: 28px;
-}
-.update-identity__name-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 6px;
-}
-.update-identity__name {
-    margin: 0;
-    font-family: var(--mono);
-}
 .update-identity__device {
     font-size: 0.8rem;
     color: var(--text-2);
@@ -2052,20 +2110,10 @@ pre.code-block {
     }
 }
 
-.page-header {
-    margin-bottom: 28px;
-}
-.page-header__title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-1);
-    margin: 0;
-}
 .page-header__device {
     font-family: var(--mono);
     font-size: 0.8rem;
     color: var(--text-2);
-    margin-top: 4px;
 }
 
 .zone {
@@ -2077,17 +2125,12 @@ pre.code-block {
 .zone-caption {
     font-size: 0.8rem;
     color: var(--text-2);
-    margin-bottom: 18px;
     max-width: 560px;
 }
 .zone-header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 6px;
-}
-.zone-header .section-label {
-    margin-bottom: 0;
 }
 
 .field-row {
@@ -2375,7 +2418,6 @@ pre.code-block {
 }
 .timeline-bar::-webkit-scrollbar { display: none; }
 .timeline-bar-label,
-.snapshot-list-header,
 .detail-hash-label,
 .app-meta-label {
     font-family: var(--mono);
@@ -2461,8 +2503,7 @@ pre.code-block {
     scrollbar-width: none;
 }
 .snapshot-list-panel::-webkit-scrollbar { display: none; }
-.snapshot-list-header {
-    margin: 0;
+.snapshot-list-panel .heading--panel {
     padding: 10px 14px;
     background: var(--surface-1);
     border-bottom: 1px solid var(--border-1);
@@ -2656,12 +2697,11 @@ pre.code-block {
     border-bottom: none;
     border-radius: 4px 4px 0 0;
 }
-.app-name {
+.app-section-header .heading--entity {
     font-family: var(--mono);
     font-size: 0.8rem;
     font-weight: 700;
     color: var(--text-1);
-    margin: 0;
 }
 .app-state-sep {
     color: var(--text-3);
@@ -2967,30 +3007,16 @@ pre.code-block {
     max-width: 900px;
 }
 
-.page-title {
-    font-weight: 700;
-    color: var(--text-1);
-    margin-bottom: 4px;
-}
-
 .page-subtitle {
     font-size: 0.82rem;
     color: var(--text-3);
-    margin-bottom: 32px;
+    margin-block: 0;
 }
 
 .entity-header {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 12px;
-}
-
-.entity-name {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-1);
-    margin: 0;
 }
 
 .chip-reason {
@@ -3132,15 +3158,11 @@ pre.code-block {
 
 @layer updates-list {
 
-.updates-page .page-subtitle {
-    margin-bottom: 0;
-}
 .page-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
-    margin-bottom: 24px;
 }
 @media (max-width: 680px) {
     .page-head {
@@ -3322,7 +3344,7 @@ pre.code-block {
 } /* end @layer updates-list */
 
 /* Update detail (release brief) page — reuses .breadcrumb/.entity-header/
-   .page-subtitle/.meta-section/.meta-section__title/.meta-grid/.meta-row/
+   .page-subtitle/.meta-section/.heading/.meta-grid/.meta-row/
    .dd-chip/.tag-cloud/.cell-empty/.empty-state/.badge*, .artifact-list/
    .artifact-row/.artifact-name/.btn-copy/.collapsible-section/.sr-only/
    pre.code-block from existing layers (the artifact row/name/copy-button
@@ -3337,12 +3359,6 @@ pre.code-block {
 
 .update-detail__inner {
     max-width: 860px;
-}
-.update-detail__inner h1 {
-    margin: 0;
-}
-.update-detail__inner .page-subtitle {
-    margin-bottom: 0;
 }
 @media (max-width: 860px) {
     .update-detail__inner {
@@ -3506,19 +3522,11 @@ pre.code-block {
 }
 
 /* Rollout detail (scan-first ledger) page — reuses .breadcrumb/.page-head/
-   .entity-header/.page-subtitle/.meta-section/.meta-section__title/.badge*,
+   .entity-header/.page-subtitle/.meta-section/.heading/.badge*,
    .tag-cloud/.dd-chip/.cell-empty/.empty-state/.status-indicator and the
    existing token set. */
 .rollout-detail__inner {
     max-width: 900px;
-}
-.rollout-detail__inner h1 {
-    margin: 0;
-    overflow-wrap: anywhere;
-}
-.rollout-detail__inner .page-subtitle {
-    margin-bottom: 0;
-    overflow-wrap: anywhere;
 }
 .rollout-detail__progress {
     flex-shrink: 0;
@@ -3677,7 +3685,6 @@ pre.code-block {
     max-width: 1160px;
 }
 .rollout-stream .rollout-stream__inner h1 {
-    margin: 0;
     overflow-wrap: anywhere;
     text-wrap: balance;
 }
@@ -3685,7 +3692,6 @@ pre.code-block {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 0;
     color: var(--text-2);
     font-size: 0.8rem;
 }
@@ -3729,7 +3735,6 @@ pre.code-block {
     font-size: 0.8rem;
 }
 .rollout-stream .rollout-stream__help {
-    margin: -6px 0 10px;
     color: var(--text-3);
     font-size: 0.78rem;
 }
@@ -3826,11 +3831,10 @@ pre.code-block {
 .users-directory .account-record__identity {
     min-width: 0;
 }
-.users-directory .account-record__identity .entity-name {
+.users-directory .account-record__identity .heading--entity {
     overflow-wrap: anywhere;
 }
-.users-directory .account-record__identity p {
-    margin: 0;
+.users-directory .account-record__identity .heading-support {
     color: var(--text-2);
     font-size: 0.76rem;
     overflow-wrap: anywhere;
@@ -4037,7 +4041,6 @@ pre.code-block {
     color: var(--text-2);
     font-size: 0.8rem;
 }
-
 .users-directory-dialog {
     max-width: none;
     overscroll-behavior: contain;
@@ -4096,12 +4099,14 @@ pre.code-block {
     width: min(680px, calc(100vw - 32px));
     max-width: 680px;
 }
-#user-scopes-dialog .group-grid {
+#user-scopes-dialog .group-grid,
+#tokenModal .group-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     margin-top: 12px;
 }
-#user-scopes-dialog .group-check {
+#user-scopes-dialog .group-check,
+#tokenModal .group-check {
     min-height: 44px;
     padding: 8px 10px;
     border: 1px solid var(--border-1);
@@ -4110,20 +4115,25 @@ pre.code-block {
     line-height: 1.35;
     transition: background 0.1s, border-color 0.1s;
 }
-#user-scopes-dialog .group-check:hover {
+#user-scopes-dialog .group-check:hover,
+#tokenModal .group-check:hover {
     border-color: var(--border-2);
     background: var(--surface-hover);
 }
-#user-scopes-dialog .group-check:has(input:checked) {
+#user-scopes-dialog .group-check:has(input:checked),
+#tokenModal .group-check:has(input:checked) {
     border-color: var(--interactive);
     background: color-mix(in srgb, var(--interactive) 7%, var(--surface-2));
 }
-#user-scopes-dialog .group-check:has(input:checked):hover {
+#user-scopes-dialog .group-check:has(input:checked):hover,
+#tokenModal .group-check:has(input:checked):hover {
     background: color-mix(in srgb, var(--interactive) 11%, var(--surface-2));
 }
-#user-scopes-dialog .group-check input {
+#user-scopes-dialog .group-check input,
+#tokenModal .group-check input {
     accent-color: var(--interactive);
 }
+#tokenModal .group-check input:focus-visible,
 .users-directory-dialog .group-check input:focus-visible,
 .users-directory-dialog .users-directory-dialog__acknowledgement input:focus-visible {
     outline: 2px solid var(--focus-ring);
@@ -4173,7 +4183,8 @@ pre.code-block {
 }
 
 @media (max-width: 640px) {
-    #user-scopes-dialog .group-grid {
+    #user-scopes-dialog .group-grid,
+    #tokenModal .group-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -4305,10 +4316,6 @@ pre.code-block {
     font-size: 0.82rem;
 }
 
-.pki-registry .pki-registry__section > h2 {
-    margin: 0 0 12px;
-    overflow-wrap: anywhere;
-}
 .pki-registry .pki-registry__records {
     display: grid;
     gap: 12px;
@@ -4347,13 +4354,11 @@ pre.code-block {
 .pki-registry .pki-registry__identity {
     min-width: 0;
 }
-.pki-registry .pki-registry__identity h3 {
-    margin: 0;
+.pki-registry .pki-registry__identity .heading--entity {
     font-size: 0.94rem;
     overflow-wrap: anywhere;
 }
-.pki-registry .pki-registry__identity p {
-    margin: 3px 0 0;
+.pki-registry .pki-registry__identity .heading-support {
     color: var(--text-2);
     font-size: 0.76rem;
     line-height: 1.4;
@@ -4525,3 +4530,530 @@ pre.code-block {
 }
 
 } /* end @layer pki-registry */
+
+@layer settings-ledger {
+
+.settings-ledger {
+    width: 100%;
+    min-width: 0;
+    color: var(--text-1);
+    font-size: 14px;
+    line-height: 1.5;
+}
+.settings-ledger__section {
+    min-width: 0;
+}
+.settings-ledger__section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+.settings-ledger__note,
+.settings-ledger__empty {
+    color: var(--text-3);
+}
+.settings-ledger__note {
+    font-size: 0.75rem;
+}
+.settings-ledger__empty {
+    font-style: italic;
+}
+.settings-ledger__mono,
+.settings-ledger code,
+.settings-ledger__scope-list,
+.settings-ledger__token-value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+}
+.settings-ledger__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    width: auto;
+    margin: 0;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--interactive);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+}
+.settings-ledger__link:hover {
+    color: var(--interactive);
+    text-decoration: underline;
+}
+.settings-ledger__link:focus-visible,
+.settings-ledger__copy:focus-visible,
+.settings-ledger__button:focus-visible,
+.settings-ledger__dialog-close:focus-visible,
+.settings-ledger__token-value:focus-visible,
+.settings-ledger__scope-scroll:focus-visible,
+.settings-ledger__token-scroll:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+.settings-ledger__rows {
+    margin: 0;
+}
+.settings-ledger__rows > div {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.settings-ledger__rows dt,
+.settings-ledger__endpoints dt {
+    color: var(--text-3);
+}
+.settings-ledger__rows dd,
+.settings-ledger__endpoints dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.settings-ledger__account-actions {
+    display: flex;
+    gap: 12px;
+    padding-top: 10px;
+}
+.settings-ledger .settings-ledger__scope-scroll,
+.settings-ledger .settings-ledger__token-scroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    contain: paint;
+    overflow-x: auto;
+}
+.settings-ledger__scope-table,
+.settings-ledger__token-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    text-align: left;
+}
+.settings-ledger__scope-table th,
+.settings-ledger__token-table th {
+    padding: 0 14px 8px 0;
+    border-bottom: 1px solid var(--border-2);
+    color: var(--text-3);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+.settings-ledger__scope-table td,
+.settings-ledger__token-table td {
+    padding: 8px 16px 8px 0;
+    border-bottom: 1px solid var(--border-1);
+    vertical-align: top;
+}
+.settings-ledger__scope-table th:last-child,
+.settings-ledger__scope-table td:last-child,
+.settings-ledger__token-table th:last-child,
+.settings-ledger__token-table td:last-child {
+    padding-right: 0;
+}
+.settings-ledger__scope-table td:last-child {
+    color: var(--text-2);
+}
+.settings-ledger__scope-table th:first-child {
+    width: 140px;
+}
+.settings-ledger__scope-table th:nth-child(2),
+.settings-ledger__scope-table td:nth-child(2) {
+    width: 220px;
+}
+.settings-ledger__scope-table th,
+.settings-ledger__scope-table td {
+    vertical-align: middle;
+    background: transparent;
+}
+.settings-ledger__token-table {
+    table-layout: fixed;
+}
+.settings-ledger__token-table th,
+.settings-ledger__token-table td {
+    vertical-align: middle;
+    background: transparent;
+    overflow-wrap: anywhere;
+}
+.settings-ledger__token-table td {
+    padding-top: 9px;
+    padding-bottom: 9px;
+}
+.settings-ledger__token-table th:first-child {
+    width: 30%;
+}
+.settings-ledger__token-table th:nth-child(2),
+.settings-ledger__token-table th:nth-child(3) {
+    width: 17%;
+}
+.settings-ledger__token-table th:nth-child(4) {
+    width: 27%;
+}
+.settings-ledger__token-table th:last-child,
+.settings-ledger__token-table td:last-child {
+    width: 9%;
+    text-align: right;
+}
+.settings-ledger__revoke:focus {
+    box-shadow: none;
+}
+.settings-ledger__revoke:focus-visible {
+    outline-offset: -2px;
+}
+.settings-ledger__scope-resource {
+    width: 140px;
+    font: 650 0.81rem var(--mono);
+}
+.settings-ledger code {
+    padding: 0;
+    background: transparent;
+}
+.settings-ledger__scope-names,
+.settings-ledger__scope-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: 0;
+    padding: 0;
+    color: var(--text-2);
+    font-size: 12px;
+    list-style: none;
+}
+.settings-ledger__scope-names > li,
+.settings-ledger__scope-list > li {
+    margin: 0;
+    list-style: none;
+}
+.settings-ledger__scope-names > li {
+    display: flex;
+    align-items: center;
+}
+.settings-ledger__token-table time {
+    display: block;
+    color: var(--text-2);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+}
+.settings-ledger__token-clock,
+.settings-ledger__token-expired {
+    display: block;
+    color: var(--text-3);
+    font-size: 0.75rem;
+}
+.settings-ledger__token-table .settings-ledger__scope-list {
+    gap: 4px;
+}
+.settings-ledger__token-empty {
+    margin: 0;
+    padding: 10px 0;
+}
+.settings-ledger__endpoints {
+    margin: 0;
+}
+.settings-ledger__endpoints > div {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.settings-ledger__endpoints code {
+    display: block;
+    overflow-wrap: anywhere;
+    color: var(--text-1);
+    font-size: 0.78rem;
+}
+.settings-ledger__button {
+    display: inline-flex;
+    min-height: 34px;
+    width: auto;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--interactive);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+}
+.settings-ledger__copy {
+    padding: 5px;
+}
+.settings-ledger__button:hover {
+    border-color: var(--border-2);
+    background: var(--surface-hover);
+}
+.settings-ledger__button--primary {
+    border-color: var(--brand-primary);
+    background: var(--brand-primary);
+    color: #fff;
+}
+:root[data-theme="dark"] .settings-ledger__button--primary {
+    border-color: var(--brand-accent);
+    background: var(--brand-accent);
+    color: var(--brand-primary);
+}
+.settings-ledger__button--danger {
+    color: var(--danger);
+}
+.settings-ledger .settings-ledger__dialog {
+    width: auto;
+    max-width: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-1);
+}
+.settings-ledger__dialog::backdrop {
+    background: rgba(0, 0, 0, 0.48);
+}
+.settings-ledger__dialog > article {
+    width: min(560px, calc(100vw - 32px));
+    max-width: 560px;
+    max-height: min(760px, calc(100vh - 32px));
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    box-shadow: none;
+}
+.settings-ledger__dialog form {
+    margin: 0;
+}
+.settings-ledger__dialog-head,
+.settings-ledger__dialog-foot {
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+.settings-ledger__dialog-head {
+    gap: 16px;
+    padding: 18px 24px 16px;
+}
+.settings-ledger__dialog-head h2 {
+    margin: 0;
+    color: var(--text-1);
+    font-size: 0.94rem;
+}
+.settings-ledger__dialog-close {
+    display: inline-flex;
+    min-width: 24px;
+    min-height: 24px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0 0 auto;
+    padding: 4px;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.settings-ledger__dialog-close:hover {
+    color: var(--text-1);
+    background: var(--surface-hover);
+}
+.settings-ledger__dialog-body {
+    display: grid;
+    gap: 7px;
+    padding: 0 24px 20px;
+}
+.settings-ledger__dialog-body > p {
+    margin: 0 0 8px;
+    color: var(--text-2);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+.settings-ledger__dialog-body > label {
+    color: var(--text-2);
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+.settings-ledger__dialog-body input:not([type="checkbox"]) {
+    width: 100%;
+    min-height: 40px;
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-2);
+    border-radius: 3px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    font: inherit;
+    font-size: 0.85rem;
+}
+.settings-ledger__token-value {
+    min-width: 0;
+    max-height: 12rem;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+}
+.settings-ledger__token-value code {
+    color: inherit;
+    font: inherit;
+}
+.settings-ledger__token-output {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border-1);
+    border-radius: 3px;
+    background: var(--surface-1);
+}
+.settings-ledger__copy-status {
+    min-height: 1.25rem;
+}
+#tokenModal,
+#tokenCreatedModal,
+#revokeModal {
+    font-size: 1rem;
+}
+#tokenModal .dlg-btn,
+#tokenCreatedModal .dlg-btn,
+#revokeModal .dlg-btn {
+    width: auto;
+}
+#tokenForm {
+    margin: 0;
+}
+.settings-ledger__scope-options {
+    min-width: 0;
+}
+.settings-ledger__scope-options > legend {
+    float: none;
+    width: auto;
+    padding: 0;
+}
+#tokenModal .group-check {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.settings-ledger__dialog-status {
+    min-height: 1.25rem;
+    margin: 4px 0 0;
+    color: var(--danger);
+    font-size: 0.76rem;
+}
+.settings-ledger__password-error {
+    margin: 0;
+    color: var(--danger);
+    font-size: 0.76rem;
+}
+.settings-ledger__dialog-foot {
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 24px;
+}
+#revokeModal .settings-ledger__rows {
+    font-size: 0.85rem;
+}
+#revokeModal .dlg-btn-delete {
+    background: var(--danger-text);
+    color: var(--surface-2);
+}
+#revokeModal .dlg-btn-delete:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger-text) 85%, var(--text-1));
+}
+
+@media (max-width: 620px) {
+    .settings-ledger__section-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .settings-ledger__rows > div {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+    }
+    .settings-ledger__endpoints > div {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 5px 12px;
+    }
+    .settings-ledger__endpoints dt {
+        grid-column: 1 / -1;
+    }
+    .settings-ledger__token-table {
+        min-width: 680px;
+    }
+    .settings-ledger__scope-table {
+        min-width: 640px;
+    }
+}
+
+@media (max-width: 480px) {
+    .settings-ledger__dialog > article {
+        width: calc(100vw - 16px);
+        max-height: calc(100vh - 16px);
+    }
+    .settings-ledger__dialog-head,
+    .settings-ledger__dialog-foot {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+    .settings-ledger__dialog-body {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+}
+
+@media (pointer: coarse) {
+    .settings-ledger__link,
+    .settings-ledger__copy,
+    .settings-ledger__button,
+    .settings-ledger__revoke,
+    .settings-ledger__dialog-close,
+    #tokenModal .dlg-close,
+    #tokenModal .dlg-btn,
+    #tokenCreatedModal .dlg-close,
+    #tokenCreatedModal .dlg-btn,
+    #revokeModal .dlg-close,
+    #revokeModal .dlg-btn,
+    #tokenCreatedModal .btn-copy {
+        min-height: 44px;
+    }
+    .settings-ledger__dialog-close,
+    .settings-ledger__revoke,
+    #tokenModal .dlg-close,
+    #tokenCreatedModal .dlg-close,
+    #revokeModal .dlg-close {
+        min-width: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-ledger *,
+    .settings-ledger *::before,
+    .settings-ledger *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+} /* end @layer settings-ledger */

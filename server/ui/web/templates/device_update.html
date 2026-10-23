@@ -12,15 +12,15 @@
           <span class="breadcrumb__current">Update {{.CorrelationId}}</span>
         </nav>
 
-        <div class="update-identity">
-          <div class="update-identity__name-row">
-            <h1 class="update-identity__name">{{.Target}}</h1>
+        <div class="update-identity heading-group heading-group--page heading-stack">
+          <div class="update-identity__name-row heading-row">
+            <h1 class="heading heading--page">{{.Target}}</h1>
             <span class="status-indicator is-static">
               <span class="status-indicator__dot{{if .Failed}} is-danger{{end}}"></span>
               {{if .Failed}}Failed{{else}}Succeeded{{end}}
             </span>
           </div>
-          <div class="update-identity__device">Applied to <a href="/devices/{{.DeviceUuid}}">{{.DeviceUuid}}</a></div>
+          <div class="update-identity__device heading-support">Applied to <a href="/devices/{{.DeviceUuid}}">{{.DeviceUuid}}</a></div>
         </div>
 
         <div class="meta-section">
@@ -50,7 +50,7 @@
         </div>
 
         <div class="stepper-section">
-          <h2 class="meta-section__title">Lifecycle</h2>
+          <h2 class="heading heading--section">Lifecycle</h2>
           <div class="stepper">
             {{ range $i, $step := .Steps }}
             <div class="step">

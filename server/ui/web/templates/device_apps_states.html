@@ -10,9 +10,9 @@
           <span class="breadcrumb__current">App States</span>
         </nav>
 
-        <div class="device-identity">
-          <div class="device-identity__name-row">
-            <h1 class="device-identity__name">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
+        <div class="device-identity heading-group heading-group--page heading-stack">
+          <div class="device-identity__name-row heading-row">
+            <h1 class="heading heading--page">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</h1>
             {{ if .Device.Status }}
             <a href="/devices/{{.Device.Uuid}}/updates/{{.Device.Status.CorrelationId}}"
                title="Target: {{.Device.Status.TargetName}}&#10;Time: {{.Device.Status.DeviceTime}}"
@@ -22,7 +22,7 @@
             </a>
             {{ end }}
           </div>
-          <div class="device-identity__uuid">{{.Device.Uuid}}</div>
+          <div class="device-identity__uuid heading-support">{{.Device.Uuid}}</div>
         </div>
       </div>
 
@@ -52,7 +52,7 @@
       <div class="split-view">
 
         <div class="snapshot-list-panel">
-          <h2 class="snapshot-list-header" id="snapshot-list-label">Snapshots &mdash; {{len .Snapshots}} total</h2>
+          <h2 class="heading heading--panel" id="snapshot-list-label">Snapshots &mdash; {{len .Snapshots}} total</h2>
           <ul class="snapshot-list" id="snapshot-list" role="listbox" aria-labelledby="snapshot-list-label" aria-activedescendant="snap-item-0">
             {{ range $i, $s := .Snapshots }}
             <li class="snapshot-item{{if $s.Changed}} is-changed{{end}}"
@@ -98,7 +98,7 @@
             {{ range $appName, $app := $s.Apps }}
             <div class="app-section">
               <div class="app-section-header">
-                <h3 class="app-name">{{$appName}}</h3>
+                <h3 class="heading heading--entity">{{$appName}}</h3>
                 <span class="app-state-sep" aria-hidden="true">&mdash;</span>
                 <span class="badge badge-app {{badgeClass $app.State}}" aria-label="App state: {{$app.State}}">{{$app.State}}</span>
               </div>

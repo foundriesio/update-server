@@ -1,6 +1,6 @@
 {{ define "tail-stream-content" }}
         <section class="meta-section rollout-stream__metadata" aria-labelledby="connection-title">
-          <h2 class="meta-section__title" id="connection-title">Connection Metadata</h2>
+          <h2 class="heading heading--section" id="connection-title">Connection Metadata</h2>
           <dl class="stream-metadata">
             <div class="stream-metadata__row">
               <dt>Endpoint</dt>
@@ -25,8 +25,10 @@
         </section>
 
         <section class="meta-section" aria-labelledby="event-stream-title">
-          <h2 class="meta-section__title" id="event-stream-title">Event Stream</h2>
-          <p class="rollout-stream__help" id="event-stream-help">Raw {{ if .Rollout }}rollout{{ else }}update{{ end }} records in arrival order.</p>
+          <div class="heading-group heading-group--section heading-stack">
+            <h2 class="heading heading--section" id="event-stream-title">Event Stream</h2>
+            <p class="rollout-stream__help heading-support" id="event-stream-help">Raw {{ if .Rollout }}rollout{{ else }}update{{ end }} records in arrival order.</p>
+          </div>
           <div class="stream-output">
             <pre id="tail-logs" class="stream-output__log" role="log" tabindex="0" aria-labelledby="event-stream-title" aria-describedby="event-stream-help" translate="no" data-endpoint="{{.TailUrl}}" data-waiting-label="{{ if .Rollout }}Waiting for rollout{{ else }}Waiting for stream{{ end }}">[Connecting to log stream: {{.TailUrl}}]
 </pre>

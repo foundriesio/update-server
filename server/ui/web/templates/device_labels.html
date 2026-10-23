@@ -10,15 +10,15 @@
         <span class="breadcrumb__current">Labels</span>
       </nav>
 
-      <div class="page-header">
-        <h1 class="page-header__title">Manage labels</h1>
-        <div class="page-header__device">{{.Device.Uuid}}</div>
+      <div class="page-header heading-group heading-group--page heading-stack">
+        <h1 class="heading heading--page">Manage labels</h1>
+        <div class="page-header__device heading-support">{{.Device.Uuid}}</div>
       </div>
 
       <form id="labels-form">
 
         <div class="zone">
-          <div class="section-label">Standard labels</div>
+          <h2 class="heading heading--section">Standard labels</h2>
 
           <div class="field-row" data-field-row="name">
             <div class="field-row__main">
@@ -44,8 +44,11 @@
 
         <div class="zone">
           {{ $customLabels := otherLabels .Device.Labels }}
-          <div class="zone-header">
-            <div class="section-label">Custom labels</div>
+          <div class="zone-header heading-group heading-group--section heading-row heading-row--split">
+            <div class="heading-stack">
+              <h2 class="heading heading--section">Custom labels</h2>
+              <p class="zone-caption heading-support">Arbitrary label names are also supported.</p>
+            </div>
             <button type="button" class="btn-ghost btn-sm" id="add-label-btn">
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
                 <line x1="5.5" y1="1" x2="5.5" y2="10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
@@ -54,7 +57,6 @@
               Add label
             </button>
           </div>
-          <p class="zone-caption">Arbitrary label names are also supported.</p>
 
           <p class="empty-state" id="labels-empty" {{ if $customLabels }}style="display:none"{{ end }}>
             No custom labels. Use <strong>Add label</strong> to create one.

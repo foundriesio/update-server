@@ -46,6 +46,7 @@ func (h handlers) configsDeviceItemApps(c echo.Context) error {
 
 	ctx := struct {
 		baseCtx
+		Device             api.Device
 		UpdateName         string
 		OverrideTag        bool
 		OverrideApps       bool
@@ -58,6 +59,7 @@ func (h handlers) configsDeviceItemApps(c echo.Context) error {
 		CanEdit            bool
 	}{
 		baseCtx:            h.baseCtx(c, fmt.Sprintf("Device \"%s\" Tag & Apps", uuid), "devices"),
+		Device:             device,
 		UpdateName:         device.UpdateName,
 		OverrideTag:        sotaTag != "",
 		OverrideApps:       sotaApps != nil,

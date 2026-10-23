@@ -1,5 +1,5 @@
 {{ define "configs-item-files" }}
-      <h3 class="meta-section__title meta-section__title--sub">Files</h3>
+      <h3 class="heading heading--subsection">Files</h3>
       {{ with .Configs.Files }}
       <table class="files-table">
          <tbody>
@@ -158,13 +158,13 @@
     <span class="breadcrumb__current">{{.Group}}</span>
   </nav>
 
-  <div class="entity-header">
-    <h1 class="entity-name">{{.Group}}</h1>
+  <header class="entity-header heading-group heading-group--page heading-row">
+    <h1 class="heading heading--page">{{.Group}}</h1>
     <span class="chip chip-group">group</span>
-  </div>
+  </header>
 
   <div class="meta-section">
-    <h2 class="meta-section__title">Current Configuration</h2>
+    <h2 class="heading heading--section">Current Configuration</h2>
     {{ template "configs-item" . }}
     {{ if .CanEdit }}
     {{ template "configs-add-button" }}
@@ -172,7 +172,7 @@
   </div>
 
   <div class="meta-section">
-    <h2 class="meta-section__title">Revision History ({{len .History}})</h2>
+    <h2 class="heading heading--section">Revision History ({{len .History}})</h2>
     {{ template "configs-history-list" . }}
   </div>
 

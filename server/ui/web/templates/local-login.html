@@ -20,9 +20,9 @@
       <section class="login-brand" aria-label="{{.BrandName}}">
         {{ if .LogoPath }}<img src="{{.LogoPath}}" alt="{{.BrandName}}" class="login-brand-logo">{{ end }}
         <span class="login-brand-lockup">{{.BrandName}}</span>
-        <div class="login-panel-body">
-          <h1>Fleet updates,<br>under control.</h1>
-          <p class="login-tagline">The management console for over-the-air updates across your embedded and IoT device fleet.</p>
+        <div class="login-panel-body heading-group heading-stack">
+          <h1 class="heading heading--page">Fleet updates,<br>under control.</h1>
+          <p class="login-tagline heading-support">The management console for over-the-air updates across your embedded and IoT device fleet.</p>
         </div>
         <span class="login-panel-footer">{{.Version}}</span>
       </section>
@@ -48,9 +48,11 @@
         </button>
 
         <div class="login-form-wrap">
-          <p class="login-eyebrow">Account access</p>
-          <h2 class="login-title">Sign in</h2>
-          <p class="login-sub">Use your {{.BrandName}} credentials.</p>
+          <div class="heading-group heading-group--section heading-stack">
+            <p class="login-eyebrow heading-support">Account access</p>
+            <h2 class="heading heading--section">Sign in</h2>
+            <p class="login-sub heading-support">Use your {{.BrandName}} credentials.</p>
+          </div>
 
           {{ if .Reason }}
           <div class="login-error" role="alert">

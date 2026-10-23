@@ -140,11 +140,14 @@ func TestPkiTemplateRendersRegistryCards(t *testing.T) {
 	page := rendered.String()
 
 	for _, text := range []string{
-		"<h1>PKI</h1>",
-		"<h2 class=\"meta-section__title\" id=\"certificate-registry-title\">Certificate Registry</h2>",
+		"<header class=\"heading-group heading-group--page\">",
+		"<h1 class=\"heading heading--page\">PKI</h1>",
+		"<h2 class=\"heading heading--section\" id=\"certificate-registry-title\">Certificate Registry</h2>",
 		"<ol class=\"pki-registry__records\">",
 		"<li class=\"pki-registry__record pki-registry__record--configured\">",
-		"<h3 class=\"entity-name\">Root CA</h3>",
+		"<div class=\"pki-registry__identity heading-stack\">",
+		"<h3 class=\"heading heading--entity\">Root CA</h3>",
+		"<p class=\"heading-support\">Server trust anchor</p>",
 		"Trust items",
 		"Configured",
 		"Not configured",

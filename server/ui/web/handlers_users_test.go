@@ -175,22 +175,23 @@ func TestUsersTemplateRendersIdentityDirectory(t *testing.T) {
 
 	html := renderUsersHTML(t, ctx)
 	assert.Contains(t, html, `class="users-directory"`)
-	assert.Contains(t, html, `<h1>Users</h1>`)
-	assert.NotContains(t, html, `<h1 class=`)
+	assert.Contains(t, html, `<header class="heading-group heading-group--page heading-row heading-row--split">`)
+	assert.Contains(t, html, `<h1 class="heading heading--page">Users</h1>`)
 	assert.NotContains(t, html, `identity and access at a glance`)
 	assert.Contains(t, html, `class="meta-section"`)
 	assert.Contains(t, html, `<span class="meta-label">Total users</span>`)
 	assert.Contains(t, html, `<span class="meta-label">Authentication provider</span>`)
 	assert.Contains(t, html, `<span class="meta-value is-mono">4</span>`)
 	assert.Contains(t, html, `<span class="meta-value is-mono">local</span>`)
-	assert.Contains(t, html, `<h2 class="meta-section__title" id="directory-title">Account directory</h2>`)
+	assert.Contains(t, html, `<h2 class="heading heading--section" id="directory-title">Account directory</h2>`)
 	assert.Contains(t, html, `<dd>1 resource</dd>`)
 	assert.Contains(t, html, `<dd>2 resources</dd>`)
 	assert.NotContains(t, html, `resource area`)
 	assert.Contains(t, html, `class="account-directory"`)
 	assert.Contains(t, html, `class="account-record`)
-	assert.Contains(t, html, `class="account-record__identity"`)
-	assert.Contains(t, html, `<h3 class="entity-name users-directory__mono">`)
+	assert.Contains(t, html, `<div class="account-record__identity heading-stack">`)
+	assert.Contains(t, html, `<h3 class="heading heading--entity users-directory__mono">`)
+	assert.Contains(t, html, `<p class="heading-support">`)
 	assert.Contains(t, html, `class="account-record__facts"`)
 	assert.Contains(t, html, `class="access-disclosure"`)
 	assert.Contains(t, html, `<span class="access-disclosure__title">View access</span>`)
@@ -331,8 +332,8 @@ func TestUsersDialogActionsKeepIntrinsicWidth(t *testing.T) {
 }
 
 func TestUserScopesDialogUsesBorderedPermissionLedger(t *testing.T) {
-	assert.Contains(t, usersCSSRule(t, "#user-scopes-dialog .group-check"), "border: 1px solid var(--border-1);")
-	assert.Contains(t, usersCSSRule(t, "#user-scopes-dialog .group-check:has(input:checked)"), "border-color: var(--interactive);")
+	assert.Contains(t, usersCSSRule(t, "#user-scopes-dialog .group-check,\n#tokenModal .group-check"), "border: 1px solid var(--border-1);")
+	assert.Contains(t, usersCSSRule(t, "#user-scopes-dialog .group-check:has(input:checked),\n#tokenModal .group-check:has(input:checked)"), "border-color: var(--interactive);")
 
 	cssBytes, err := webtemplates.Assets.ReadFile("style.css")
 	if err != nil {
@@ -341,7 +342,8 @@ func TestUserScopesDialogUsesBorderedPermissionLedger(t *testing.T) {
 	css := string(cssBytes)
 	assert.NotContains(t, usersCSSRule(t, "#user-scopes-dialog .dlg-footer"), "border-top")
 	assert.Contains(t, css, `@media (max-width: 640px) {
-    #user-scopes-dialog .group-grid {
+    #user-scopes-dialog .group-grid,
+    #tokenModal .group-grid {
         grid-template-columns: 1fr;
     }
 }`)

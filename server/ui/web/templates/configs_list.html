@@ -1,12 +1,14 @@
 {{ template "header" .}}
 <div class="configs-page">
 
-  <h1 class="page-title">Configurations</h1>
-  <p class="page-subtitle">1 global config · {{ len .Groups }} {{ if eq (len .Groups) 1 }}group{{ else }}groups{{ end }}</p>
+  <hgroup class="heading-group heading-group--page heading-stack">
+    <h1 class="heading heading--page">Configurations</h1>
+    <p class="page-subtitle heading-support">1 global config · {{ len .Groups }} {{ if eq (len .Groups) 1 }}group{{ else }}groups{{ end }}</p>
+  </hgroup>
 
   {{ with .Configs }}
-  <div class="entity-header">
-    <h2 class="entity-name">Global</h2>
+  <div class="entity-header heading-group heading-group--section heading-row">
+    <h2 class="heading heading--section">Global</h2>
     {{ if .Reason }}<span class="chip-reason">{{.Reason}}</span>{{ end }}
     <a href="/configs/global/history" class="header-action-link">History →</a>
   </div>
@@ -39,8 +41,8 @@
 
   {{ $groupsPerPage := 20 }}
   <div class="groups-section">
-  <div class="entity-header">
-    <h2 class="entity-name">Groups</h2>
+  <div class="entity-header heading-group heading-group--section heading-row">
+    <h2 class="heading heading--section">Groups</h2>
   </div>
     <table class="configs-group-table">
       <thead>

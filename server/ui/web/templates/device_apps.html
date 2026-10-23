@@ -1,373 +1,745 @@
 {{ template "header" .}}
-    <section class="content-section device-apps">
-      <h2>{{.Title}}</h2>
-      <fieldset{{ if not .OverrideTag }} disabled{{ end }}>
-        <legend>
-          <label>
-            <input type="checkbox" id="overrideTag" role="switch"{{ if .OverrideTag }} checked{{ end}}>
-            Configure Tag
-          </label>
-        </legend>
-        <label>Device Tag
-          <input type="text" id="tagSelector" list="tagSuggestions" placeholder="Type or select a tag..." value="{{ .SelectedTag }}">
-          <datalist id="tagSuggestions">
-            {{range .SupportedTags}}
-            <option value="{{ . }}" data-id="{{ . }}"></option>
-            {{end}}
-          </datalist>
-        </label>
-      </fieldset>
+    <section class="device-apps">
 
-      <fieldset{{ if not .OverrideApps}} disabled{{ end }}>
-        <legend>
-          <label>
-    {{ if .UpdateName }}
-            <input type="checkbox" id="overrideApps" role="switch"{{ if .OverrideApps }} checked{{ end}}>
-    {{ end }}
-            Configure Apps
-          </label>
-        </legend>
-    {{ if not .UpdateName }}
-        <div><em>Device needs to be added to a <a href="/updates">rollout</a> to configure apps.</em></div>
-    {{ else }}
-        <div class="transfer-grid">
-          <label>
-            Supported Apps
-            <select id="supportedApps" multiple></select>
-          </label>
-          <div class="controls-vertical">
-            <button id="btnAddAllApps" title="Add all supported apps"><i class="chevron-right-duo"></i></button>
-            <button id="btnAddSelectedApps" title="Add selected apps"><i class="chevron-right-uno"></i></button>
-            <button id="btnRemoveSelectedApps" title="Remove selected apps"><i class="chevron-left-uno"></i></button>
-            <button id="btnRemoveAllApps" title="Remove all apps"><i class="chevron-left-duo"></i></button>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/devices">Devices</a>
+        <span class="breadcrumb__sep" aria-hidden="true">/</span>
+        <a href="/devices/{{.Device.Uuid}}">{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</a>
+        <span class="breadcrumb__sep" aria-hidden="true">/</span>
+        <span class="breadcrumb__current" aria-current="page">Tag &amp; Apps</span>
+      </nav>
+
+      <div class="page-header heading-group heading-group--page heading-stack">
+        <h1 class="heading heading--page">Tag &amp; Apps</h1>
+        <div class="page-header__device heading-support">{{if .Device.Labels.name}}{{.Device.Labels.name}} · {{end}}{{.Device.Uuid}}</div>
+      </div>
+
+      {{if not .CanEdit}}
+      <div class="notice">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" stroke-width="1.3"/></svg>
+        <div>You are not allowed to modify the device config. Showing current values read-only.</div>
+      </div>
+      {{end}}
+
+      <form id="ta-form" novalidate>
+        <dl class="kv">
+          <div class="kv__cell"><dt>Update</dt><dd class="mono">{{if .UpdateName}}{{.UpdateName}}{{else}}<span class="kv__muted">None</span>{{end}}</dd></div>
+          <div class="kv__cell"><dt>Rollout tag</dt><dd>{{if .ReportedTag}}<span class="chip">{{.ReportedTag}}</span>{{else}}<span class="kv__muted">Not set</span>{{end}}</dd></div>
+          <div class="kv__cell"><dt>Effective tag</dt><dd id="eff-tag"></dd></div>
+          <div class="kv__cell"><dt>Effective apps</dt><dd id="eff-apps"></dd></div>
+          <div class="kv__cell kv__cell--full"><dt>Device override</dt><dd id="eff-over"></dd></div>
+        </dl>
+
+        <section class="ov-row" aria-labelledby="tag-title">
+          <div class="ov-head heading-group heading-group--section heading-row heading-row--split">
+            <div class="heading-stack">
+              <h2 class="heading heading--section" id="tag-title">Tag</h2>
+              <div class="ov-state heading-support" id="tag-state"></div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" role="switch" id="overrideTag" aria-label="Override tag" aria-describedby="tag-state"{{if not .CanEdit}} disabled{{end}}>
+              <span>Override</span>
+            </label>
           </div>
-          <label>
-            Configured Apps
-            <select id="appSelector" multiple>
-              {{range .SelectedApps}}
-              <option value="{{ . }}">{{ . }}</option>
+          <div class="ov-body" id="tag-inherited">
+            <span class="readonly-val" id="tag-ro"></span>
+          </div>
+          <div class="ov-body" id="tag-edit" hidden>
+            <label class="visually-hidden" for="tagSelector">Tag</label>
+            <input class="field-input tag-input" id="tagSelector" list="tagSuggestions" autocomplete="off" aria-describedby="tagMsg tag-hint"{{if not .CanEdit}} disabled{{end}}>
+            <datalist id="tagSuggestions">
+              {{range .SupportedTags}}
+              <option value="{{ . }}"></option>
               {{end}}
-            </select>
-          </label>
-        </div>
-        <div><em>Showing apps for the update "{{ .UpdateName }}" tag "{{ .ReportedTag }}", which is rolled out to this device.</em></div>
-    {{ end }}
-      </fieldset>
+            </datalist>
+            <p class="field-msg" id="tagMsg" hidden></p>
+            <p class="field-hint" id="tag-hint">Written to <code>[pacman] tags</code>. Apps below are listed for this tag.</p>
+          </div>
+        </section>
 
-      <fieldset>
-        <button id="btnReset">Reset</button>
-    {{ if .CanEdit }}
-        <button id="btnSave">Save</button>
-    {{ else }}
-        <div><em>You are not allowed to modify the device config. Please, contact your administrator.</em></div>
-    {{ end }}
-      </fieldset>
+        <section class="ov-row" aria-labelledby="apps-title">
+          <div class="ov-head heading-group heading-group--section heading-row heading-row--split">
+            <div class="heading-stack">
+              <h2 class="heading heading--section" id="apps-title">Apps</h2>
+              <div class="ov-state heading-support" id="apps-state">{{if not .UpdateName}}Not available{{end}}</div>
+            </div>
+            <label class="switch"{{if not .UpdateName}} hidden{{end}}>
+              <input type="checkbox" role="switch" id="overrideApps" aria-label="Override apps" aria-describedby="apps-state"{{if not .CanEdit}} disabled{{end}}>
+              <span>Override</span>
+            </label>
+          </div>
+          {{if not .UpdateName}}
+          <div class="notice">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2V11M8 5v.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <div><strong>This device is not in a rollout.</strong> Add it to a rollout to configure its apps. <a href="/updates">View rollouts</a></div>
+          </div>
+          {{else}}
+          <div class="ov-body" id="apps-inherited">
+            <div class="readonly-apps" id="apps-ro"></div>
+          </div>
+          <div class="ov-body" id="apps-edit" hidden>
+            <div class="list-tools">
+              <span class="list-tools__count" id="appsCount" aria-live="polite"></span>
+              <button type="button" class="text-btn" id="sel-all"{{if not .CanEdit}} disabled{{end}}>Select all</button>
+              <button type="button" class="text-btn" id="sel-none"{{if not .CanEdit}} disabled{{end}}>Clear</button>
+            </div>
+            <fieldset>
+              <legend class="visually-hidden">Configured apps</legend>
+              <div class="app-lists" id="app-lists">
+                <ul class="app-list" id="appList"></ul>
+                <div class="extra-apps" id="extra-apps" hidden>
+                  <h3 class="heading heading--subsection" id="extra-title"></h3>
+                  <ul class="app-list" id="extra-list"></ul>
+                </div>
+              </div>
+            </fieldset>
+            <p class="field-hint">Written to <code>compose_apps</code>. Turning off both overrides deletes the device override.</p>
+          </div>
+          {{end}}
+        </section>
+
+        {{if .CanEdit}}
+        <div class="actions-bar">
+          <span class="dirty" id="dirty" role="status"></span>
+          <span class="field-msg" id="saveError" role="alert"></span>
+          <button type="button" class="btn-ghost" id="btnReset" disabled>Reset</button>
+          <button type="submit" class="btn-solid" id="btnSave" disabled>Save</button>
+        </div>
+        {{end}}
+      </form>
+
+      {{if .CanEdit}}
+      <dialog id="confirmDialog" aria-labelledby="confirm-title">
+        <h2 id="confirm-title"></h2>
+        <p id="confirm-body"></p>
+        <ul id="confirm-list"></ul>
+        <div class="actions-bar">
+          <button type="button" class="btn-ghost" id="confirm-cancel">Cancel</button>
+          <button type="button" class="btn-solid" id="confirm-ok">Save anyway</button>
+        </div>
+      </dialog>
+      {{end}}
     </section>
 
     <style>
       .device-apps {
-        --transfer-grid-column-width: minmax(min(25rem, 45vw), 1fr);
+        max-width: 860px;
+      }
+      @media (max-width: 860px) {
+        .device-apps {
+          max-width: none;
+        }
+      }
+      .device-apps [hidden] {
+        display: none !important;
+      }
+      .device-apps dl,
+      .device-apps dd,
+      .device-apps fieldset,
+      .device-apps label {
+        margin: 0;
+      }
+      .device-apps fieldset {
+        padding: 0;
+        border: 0;
+        min-inline-size: 0;
+      }
+      .device-apps dt {
+        font-weight: 400;
+      }
 
-        & legend {
-          font-weight: 700;
+      .device-apps .mono {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        overflow-wrap: anywhere;
+      }
+      .device-apps .kv {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        font-size: 0.85rem;
+      }
+      .device-apps .kv__cell {
+        display: grid;
+        grid-template-columns: 8rem minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
+        min-height: 44px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-1);
+      }
+      .device-apps .kv dt {
+        color: var(--text-2);
+      }
+      .device-apps .kv dd {
+        color: var(--text-1);
+        overflow-wrap: anywhere;
+      }
+      .device-apps .kv__muted {
+        color: var(--text-3);
+      }
+      @media (min-width: 721px) {
+        .device-apps .kv {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         }
+        .device-apps .kv__cell:nth-child(odd):not(.kv__cell--full) {
+          border-right: 1px solid var(--border-1);
+          padding-right: 16px;
+        }
+        .device-apps .kv__cell:nth-child(even) {
+          padding-left: 24px;
+        }
+        .device-apps .kv__cell--full {
+          grid-column: 1 / -1;
+        }
+      }
 
-        & legend label {
-          font: inherit;
-        }
+      .device-apps .ov-row {
+        padding: 16px 0;
+      }
+      .device-apps .ov-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .device-apps .ov-state {
+        font-size: 0.8rem;
+        color: var(--text-2);
+      }
+      .device-apps .ov-state code {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        color: var(--text-1);
+      }
+      .device-apps .ov-body {
+        margin-top: 12px;
+      }
 
-        .transfer-grid {
-          display: grid;
-          grid-template-columns: var(--transfer-grid-column-width) auto var(--transfer-grid-column-width);
-          align-items: center;
-          margin: 0;
-        }
-        .transfer-grid label {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-        }
-        .transfer-grid select[multiple] {
-          width: 100%;
-          min-height: 250px;
-          max-height: 60vh;
-          overflow-y: auto;
-          margin-bottom: 0;
-        }
-        .transfer-grid select option.copied-item {
-          font-style: italic;
-          opacity: 0.6;
-        }
-        .transfer-grid select option.unsupported-item {
-          font-style: italic;
-          color: red;
-          opacity: 0.6;
-        }
-        .controls-vertical {
-          display: flex;
-          flex-direction: column;
-          margin: 0 10px;
-        }
-        .controls-vertical button {
-          white-space: nowrap;
-          margin: 3px 0;
-          padding: 5px;
-        }
+      .device-apps .chip--state {
+        background: color-mix(in srgb, var(--interactive) 14%, transparent);
+        color: var(--interactive);
+        font-family: inherit;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 1px 8px;
+      }
+      .device-apps .chip--warn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: color-mix(in srgb, var(--warning) 12%, transparent);
+        color: var(--warning-text);
+        font-family: inherit;
+        font-weight: 600;
+      }
+      .device-apps .chip--plain {
+        background: transparent;
+        border: 1px solid var(--border-2);
+        color: var(--text-2);
+      }
+
+      .device-apps .switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 24px;
+        font-size: 0.8125rem;
+        color: var(--text-2);
+        cursor: pointer;
+      }
+      /* Pico draws the switch (track, thumb, motion, disabled dimming); map its variables to tokens */
+      .device-apps .switch input[role="switch"] {
+        --pico-switch-background-color: var(--switch-off);
+        --pico-switch-checked-background-color: var(--interactive);
+        --pico-switch-color: var(--surface-2);
+        margin: 0;
+        flex-shrink: 0;
+      }
+      .device-apps .switch input[role="switch"]:focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+      }
+
+      .device-apps .readonly-val {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        color: var(--text-2);
+      }
+      .device-apps .readonly-apps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .device-apps .readonly-apps span {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border: 1px solid var(--border-1);
+        border-radius: 3px;
+        color: var(--text-2);
+        overflow-wrap: anywhere;
+      }
+
+      .device-apps .tag-input {
+        max-inline-size: 320px;
+        font-family: var(--mono);
+      }
+      .device-apps .field-input[aria-invalid="true"] {
+        border-color: var(--warning-text);
+      }
+      .device-apps .field-msg {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+        font-size: 0.8rem;
+        color: var(--warning-text);
+      }
+      .device-apps .field-msg:empty {
+        display: none;
+      }
+      .device-apps .field-hint {
+        margin-top: 6px;
+        font-size: 0.75rem;
+        color: var(--text-3);
+      }
+
+      .device-apps .list-tools {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .device-apps .list-tools__count {
+        margin-right: auto;
+        font-size: 0.75rem;
+        color: var(--text-3);
+      }
+      .device-apps .text-btn {
+        width: auto;
+        margin: 0;
+        padding: 2px 4px;
+        min-height: 24px;
+        border: none;
+        border-radius: 3px;
+        background: none;
+        color: var(--interactive);
+        font: inherit;
+        font-size: 0.8rem;
+        cursor: pointer;
+      }
+      .device-apps .text-btn:hover {
+        text-decoration: underline;
+      }
+      .device-apps .text-btn:disabled {
+        color: var(--text-3);
+        cursor: not-allowed;
+        text-decoration: none;
+      }
+
+      .device-apps .app-lists {
+        max-height: 320px;
+        overflow-y: auto;
+      }
+      .device-apps .app-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .device-apps .app-list li {
+        border-bottom: 1px solid var(--border-1);
+      }
+      .device-apps .app-list label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 32px;
+        padding: 6px 4px;
+        cursor: pointer;
+      }
+      .device-apps .app-list label:hover {
+        background: var(--surface-hover);
+      }
+      .device-apps .app-list input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        flex-shrink: 0;
+        accent-color: var(--interactive);
+      }
+      .device-apps .app-label {
+        flex: 1;
+        min-width: 0;
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        overflow-wrap: anywhere;
+      }
+      .device-apps .app-list li.is-unsupported .app-label {
+        color: var(--text-2);
+      }
+      .device-apps .app-list .empty {
+        padding: 12px 4px;
+        font-size: 0.8rem;
+        color: var(--text-3);
+      }
+      .device-apps .extra-apps {
+        margin-block-start: 24px;
+      }
+
+      .device-apps .notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 0 0 20px;
+        padding: 12px 14px;
+        border-left: 3px solid var(--border-2);
+        background: var(--surface-hover);
+        font-size: 0.8125rem;
+      }
+      .device-apps .ov-row .notice {
+        margin: 12px 0 0;
+      }
+      .device-apps .notice svg {
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+
+      .device-apps .actions-bar {
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .device-apps .dirty {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-right: auto;
+        font-size: 0.8rem;
+        color: var(--text-2);
+      }
+      .device-apps .dirty:empty {
+        display: none;
+      }
+      .device-apps .dirty::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--warning);
+      }
+      .device-apps .btn-ghost,
+      .device-apps .btn-solid {
+        width: auto;
+      }
+      .device-apps .btn-ghost:disabled,
+      .device-apps .btn-solid:disabled {
+        opacity: 1;
+        background: transparent;
+        border-color: var(--border-2);
+        color: var(--text-3);
+        cursor: not-allowed;
+      }
+
+      .device-apps dialog {
+        margin: auto;
+        max-width: min(440px, calc(100vw - 32px));
+        padding: 20px;
+        border: 1px solid var(--border-2);
+        border-radius: 4px;
+        background: var(--surface-2);
+        color: var(--text-1);
+      }
+      .device-apps dialog::backdrop {
+        background: rgba(0, 0, 0, 0.4);
+      }
+      .device-apps dialog h2 {
+        margin-bottom: 8px;
+        font-size: 0.9375rem;
+      }
+      .device-apps dialog p {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: var(--text-2);
+      }
+      .device-apps dialog ul {
+        margin: 8px 0 0 18px;
+        font-family: var(--mono);
+        font-size: 0.8rem;
+      }
+      .device-apps dialog .actions-bar {
+        padding-top: 16px;
       }
     </style>
 
     <script type="module">
-      // Golang template populates this structure inside the local module scope
-      const appsByTag = {
-        {{ range $tag, $apps := .SupportedAppsByTag }}
-        '{{ $tag }}': [{{ range $apps }}'{{ . }}', {{ end }}],
-        {{ end}}
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const byName = (a, b) => a.localeCompare(b);
+
+      // Golang template populates these; a nil map or slice renders as null.
+      const APPS_BY_TAG = {{ .SupportedAppsByTag }} || {};
+      const REPORTED_TAG = {{ .ReportedTag }};
+      const UPDATE_NAME = {{ .UpdateName }};
+      const HAS_ROLLOUT = {{ if .UpdateName }}true{{ else }}false{{ end }};
+      const CAN_EDIT = {{ .CanEdit }};
+
+      // Server snapshot. Never mutated: a successful save reloads the page.
+      const saved = {
+        tagOn: {{ .OverrideTag }},
+        tag: {{ .SelectedTag }} || REPORTED_TAG,
+        appsOn: {{ .OverrideApps }},
+        apps: ({{ .SelectedApps }} || []).sort(byName),
+      };
+      let cur = structuredClone(saved);
+
+      const warnIcon = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 15 14H1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.5v3.2M8 11.6v.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
+      const effTag = () => (cur.tagOn ? cur.tag.trim() : REPORTED_TAG);
+      const tagKnown = () => Object.hasOwn(APPS_BY_TAG, effTag());
+      // A tag can only be checked when the update publishes a tag list.
+      const tagCheckable = () => Object.keys(APPS_BY_TAG).length > 0;
+      // Last tag with a published app list. A half-typed or unknown tag never empties the list.
+      let listTag = REPORTED_TAG;
+      const appsFor = (tag) => (Object.hasOwn(APPS_BY_TAG, tag) ? APPS_BY_TAG[tag] || [] : []);
+      const tagApps = () => appsFor(listTag);
+      const effApps = () => (cur.appsOn ? cur.apps : tagApps());
+      const extras = () => cur.apps.filter((a) => !tagApps().includes(a));
+      // Saved apps outside the tag stay listed while unchecked, so unchecking one is reversible.
+      const extraRows = () => [...new Set([...saved.apps, ...cur.apps])].filter((a) => !tagApps().includes(a)).sort(byName);
+      // Apps can only be validated against a tag the update actually publishes.
+      const unsupported = () => (tagKnown() ? extras() : []);
+      const dirty = () => JSON.stringify(cur) !== JSON.stringify(saved);
+      const setApps = (apps) => {
+        cur.apps = [...new Set(apps)].sort(byName);
       };
 
-      const tagSelector = document.getElementById('tagSelector');
-      const overrideTag = document.getElementById('overrideTag');
-
-      const initialTagSnapshot = tagSelector.value;
-
-      const syncOverrideToggle = (e) => {
-        e.target.closest('fieldset').disabled = !e.target.checked;
+      const renderAppRow = (app, extra) => {
+        const checked = cur.apps.includes(app) ? ' checked' : '';
+        const disabled = CAN_EDIT ? '' : ' disabled';
+        const chip = extra && tagKnown() ? '<span class="chip chip--warn">' + warnIcon + 'Not in tag</span>' : '';
+        return '<li' + (extra ? ' class="is-unsupported"' : '') + '><label><input type="checkbox" value="' + esc(app) + '"' + checked + disabled + '><span class="app-label">' + esc(app) + '</span>' + chip + '</label></li>';
       };
 
-      overrideTag.addEventListener('change', syncOverrideToggle);
-
-      {{/* App selection is only available when some update was rolled out to this device */}}
-      {{ if .UpdateName }}
-      const overrideApps = document.getElementById('overrideApps');
-      const supportedApps = document.getElementById('supportedApps');
-      const appSelector = document.getElementById('appSelector');
-
-      const btnAddAllApps = document.getElementById('btnAddAllApps');
-      const btnAddSelectedApps = document.getElementById('btnAddSelectedApps');
-      const btnRemoveSelectedApps = document.getElementById('btnRemoveSelectedApps');
-      const btnRemoveAllApps = document.getElementById('btnRemoveAllApps');
-
-      const getSelectedApps = () => Array.from(appSelector.options).map(opt => opt.value);
-      const initialAppsSnapshot = getSelectedApps();
-
-      const syncSupportedAppsVisualState = () => {
-        const selected = getSelectedApps();
-        Array.from(supportedApps.options).forEach(option => {
-          if (selected.includes(option.value)) {
-            option.classList.add('copied-item');
-          } else {
-            option.classList.remove('copied-item');
-          }
-        });
+      const renderApps = () => {
+        const inTag = tagApps();
+        const rest = extraRows();
+        $('appList').innerHTML = inTag.length
+          ? inTag.map((a) => renderAppRow(a, false)).join('')
+          : '<li class="empty">Tag <code>' + esc(listTag) + '</code> has no published apps.</li>';
+        $('extra-apps').hidden = !rest.length;
+        $('extra-title').textContent = tagKnown() ? 'Configured, not in tag' : 'Other configured apps';
+        $('extra-list').innerHTML = rest.map((a) => renderAppRow(a, true)).join('');
+        const picked = inTag.filter((a) => cur.apps.includes(a)).length;
+        const bad = unsupported().length;
+        $('appsCount').textContent = picked + ' of ' + inTag.length + ' selected' + (bad ? ' · ' + bad + ' not in tag' : '');
       };
 
-      const syncAppSelectorVisualState = () => {
-        const selectedTag = overrideTag.checked ? tagSelector.value : '{{ .ReportedTag }}';
-        const supported = appsByTag[selectedTag] || [];
-        Array.from(appSelector.options).forEach(option => {
-          if (supported.includes(option.value)) {
-            option.classList.remove('unsupported-item');
-          } else {
-            option.classList.add('unsupported-item');
-          }
-        });
-      };
+      const renderTag = () => {
+        const t = effTag();
+        $('overrideTag').checked = cur.tagOn;
+        $('tag-state').innerHTML = cur.tagOn
+          ? '<span class="chip chip--state">Overridden</span>'
+          : (REPORTED_TAG ? 'Inherited from rollout' : 'Not set. The device reports no tag.');
+        $('tag-inherited').hidden = cur.tagOn || !REPORTED_TAG;
+        $('tag-ro').textContent = REPORTED_TAG;
+        $('tag-edit').hidden = !cur.tagOn;
+        $('tagSelector').setAttribute('aria-invalid', String(cur.tagOn && !t));
 
-      const filterSupportedAppsByTag = () => {
-        const selectedTag = overrideTag.checked ? tagSelector.value : '{{ .ReportedTag }}';
-        supportedApps.innerHTML = '';
-
-        if (!selectedTag || !appsByTag[selectedTag]) {
-          syncAppSelectorVisualState();
-          return;
-        }
-
-        appsByTag[selectedTag].forEach(app => {
-          const option = document.createElement('option');
-          option.value = app;
-          option.textContent = app;
-          supportedApps.appendChild(option);
-        });
-
-        sortListOptions(supportedApps);
-        syncSupportedAppsVisualState();
-        syncAppSelectorVisualState();
-      };
-
-      const copyToAppSelector = (copyAll = false) => {
-        const selected = getSelectedApps();
-        let changesMade = false;
-
-        Array.from(supportedApps.options).forEach(option => {
-          if ((copyAll || option.selected) && !selected.includes(option.value)) {
-            const clone = document.createElement('option');
-            clone.value = option.value;
-            clone.textContent = option.text;
-            appSelector.appendChild(clone);
-            changesMade = true;
-          }
-          option.selected = false;
-        });
-
-        if (changesMade) {
-          sortListOptions(appSelector);
-          syncSupportedAppsVisualState();
+        const showMsg = cur.tagOn && !tagKnown() && (!t || tagCheckable());
+        $('tagMsg').hidden = !showMsg;
+        if (showMsg) {
+          $('tagMsg').innerHTML = warnIcon + (t
+            ? 'Tag <code>' + esc(t) + '</code> is not published by update <code>' + esc(UPDATE_NAME) + '</code>. Showing apps for <code>' + esc(listTag) + '</code>.'
+            : 'Enter a tag. An empty tag cannot be saved.');
         }
       };
 
-      const removeFromAppSelector = (removeAll = false) => {
-        if (removeAll) {
-          appSelector.innerHTML = '';
-        } else {
-          Array.from(appSelector.options).forEach(option => {
-            if (option.selected) option.remove();
-          });
+      function render() {
+        if (tagKnown()) {
+          listTag = effTag();
         }
-        syncSupportedAppsVisualState();
-      };
+        const t = effTag();
+        renderTag();
 
-      const sortListOptions = (list) => {
-        const options = Array.from(list.options);
-        options.sort((a, b) => a.value.localeCompare(b.value));
-        list.innerHTML = '';
-        options.forEach(option => list.add(option));
-      };
+        if (HAS_ROLLOUT) {
+          $('overrideApps').checked = cur.appsOn;
+          $('apps-state').innerHTML = cur.appsOn
+            ? '<span class="chip chip--state">Overridden</span>'
+            : 'Inherited from tag: <code>' + esc(t) + '</code> (all apps)';
+          $('apps-inherited').hidden = cur.appsOn;
+          $('apps-edit').hidden = !cur.appsOn;
+          $('apps-ro').innerHTML = tagApps().map((a) => '<span>' + esc(a) + '</span>').join('') || '<span>none</span>';
+          renderApps();
+        }
 
-      overrideApps.addEventListener('change', syncOverrideToggle);
-      overrideTag.addEventListener('change', filterSupportedAppsByTag);
-      tagSelector.addEventListener('change', filterSupportedAppsByTag);
-      btnAddAllApps.addEventListener('click', () => copyToAppSelector(true));
-      btnAddSelectedApps.addEventListener('click', () => copyToAppSelector(false));
-      btnRemoveSelectedApps.addEventListener('click', () => removeFromAppSelector(false));
-      btnRemoveAllApps.addEventListener('click', () => removeFromAppSelector(true));
+        $('eff-tag').innerHTML = t ? '<span class="chip">' + esc(t) + '</span>' : '<span class="kv__muted">Not set</span>';
+        $('eff-apps').innerHTML = HAS_ROLLOUT
+          ? effApps().length + (effApps().length === 1 ? ' app' : ' apps')
+          : '<span class="kv__muted">Not available</span>';
+        let over = cur.tagOn ? '<span class="chip chip--plain">Tag</span> ' : '';
+        if (HAS_ROLLOUT && cur.appsOn) {
+          over += '<span class="chip chip--plain">Apps</span>';
+        }
+        $('eff-over').innerHTML = over || '<span class="kv__muted">None. Inheriting from the rollout.</span>';
 
-      tagSelector.addEventListener("focus", () => {
-        {{/* Input with datalist events are badly supported: often there is no event fired when a user selects from a dropdown.
-             This handler watches for a user input after tag selector gets focus.
-             If a user pauses on typing/selecting for a second - fire a change event.
-             Stop watching on blur; which would normally fire a change event as well. */}}
-        let latest = tagSelector.value, ticks = 0;
-        let watcher = setInterval(() => {
-          if (tagSelector.value !== latest) {
-            latest = tagSelector.value
-            ticks = 1
-          } else if (ticks > 10) {
-            ticks = 0;
-            tagSelector.dispatchEvent(new Event("change"));
-          } else if (ticks > 0) {
-            ticks += 1;
-          }
-        }, 100);
-        tagSelector.addEventListener("blur", () => clearInterval(watcher), { once: true });
+        $('saveError').textContent = '';
+        if (CAN_EDIT) {
+          const isDirty = dirty();
+          $('dirty').textContent = isDirty ? 'Unsaved changes' : '';
+          $('btnSave').disabled = !isDirty || (cur.tagOn && !t);
+          $('btnReset').disabled = !isDirty;
+        }
+      }
+
+      if (HAS_ROLLOUT) {
+        $('sel-all').addEventListener('click', () => {
+          setApps([...cur.apps, ...tagApps()]);
+          render();
+        });
+        $('sel-none').addEventListener('click', () => {
+          setApps([]);
+          render();
+        });
+        // Checkboxes are re-rendered, so keep keyboard focus on the one that changed.
+        $('app-lists').addEventListener('change', (e) => {
+          const app = e.target.value;
+          setApps(e.target.checked ? [...cur.apps, app] : cur.apps.filter((a) => a !== app));
+          render();
+          $('app-lists').querySelector('input[value="' + CSS.escape(app) + '"]')?.focus();
+        });
+        $('overrideApps').addEventListener('change', (e) => {
+          cur.appsOn = e.target.checked;
+          // Turning the override on starts from what the device runs now, so nothing drops silently.
+          setApps(cur.appsOn ? (saved.appsOn ? saved.apps : tagApps()) : []);
+          render();
+        });
+      }
+
+      $('overrideTag').addEventListener('change', (e) => {
+        cur.tagOn = e.target.checked;
+        if (!cur.tagOn) {
+          cur.tag = saved.tag;
+        }
+        if (cur.tagOn && !cur.tag) {
+          cur.tag = REPORTED_TAG;
+        }
+        $('tagSelector').value = cur.tag;
+        render();
       });
-      {{ end }}
+      $('tagSelector').addEventListener('input', (e) => {
+        cur.tag = e.target.value;
+        render();
+      });
 
-      const btnReset = document.getElementById('btnReset');
+      if (CAN_EDIT) {
+        const confirmDialog = $('confirmDialog');
 
-      const resetToInitialAppsState = () => {
-        tagSelector.value = initialTagSnapshot;
+        const confirmSave = (title, body, list) => {
+          $('confirm-title').textContent = title;
+          $('confirm-body').innerHTML = body;
+          $('confirm-list').innerHTML = list.map((a) => '<li>' + esc(a) + '</li>').join('');
+          confirmDialog.showModal();
+        };
 
-      {{ if .UpdateName }}
-        appSelector.innerHTML = '';
-        initialAppsSnapshot.forEach(app => {
-          const option = document.createElement('option');
-          option.value = app;
-          option.textContent = app;
-          appSelector.appendChild(option);
-        });
-        sortListOptions(appSelector);
-        filterSupportedAppsByTag();
-      {{ end }}
-      };
+        const buildSotaTomlRequest = (tag, apps) => {
+          const sotaOverride = '{{ .ConfigFileName }}';
+          const sotaOverrideOnChanged = '/usr/share/fioconfig/handlers/aktualizr-toml-update';
+          const reason = 'Override aktualizr-lite update configuration';
 
-      btnReset.addEventListener('click', resetToInitialAppsState);
+          if (tag === null && apps === null) {
+            return {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                'Reason': reason,
+                'FileName': sotaOverride,
+              }),
+            };
+          }
 
-      {{ if .CanEdit }}
-      const btnSave = document.getElementById('btnSave');
-
-      const buildSotaTomlRequest = (tag, apps) => {
-        const sotaOverride = '{{ .ConfigFileName }}';
-        const sotaOverrideOnChanged = '/usr/share/fioconfig/handlers/aktualizr-toml-update';
-        const reason = 'Override aktualizr-lite update configuration';
-
-        if (tag === null && apps === null) {
+          var sotaToml = '[pacman]';
+          if (tag !== null) {
+            sotaToml += `\n  tags = '${tag}'`;
+          }
+          if (apps !== null) {
+            const appsStr = apps.join(',');
+            sotaToml += `\n  compose_apps = '${appsStr}'`;
+          }
           return {
-            method: 'DELETE',
+            method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               'Reason': reason,
               'FileName': sotaOverride,
+              'OnChanged': sotaOverrideOnChanged,
+              'Value': sotaToml,
             }),
           };
-        }
-
-        var sotaToml = '[pacman]';
-        if (tag !== null) {
-          sotaToml += `\n  tags = '${tag}'`;
-        }
-        if (apps !== null) {
-          const appsStr = apps.join(',');
-          sotaToml += `\n  compose_apps = '${appsStr}'`;
-        }
-        return {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            'Reason': reason,
-            'FileName': sotaOverride,
-            'OnChanged': sotaOverrideOnChanged,
-            'Value': sotaToml,
-          }),
         };
-      };
 
-      const handleAppsConfigurationSave = () => {
-        const selectedTag = overrideTag.checked ? tagSelector.value : null;
+        const save = () => {
+          const tag = cur.tagOn ? effTag() : null;
+          const apps = cur.appsOn ? cur.apps : null;
+          fetch(
+            location.pathname.replace(/\/apps\/?$/, ''),
+            buildSotaTomlRequest(tag, apps)
+          )
+          .then(async response => {
+            if (response.ok) {
+              location.reload(); // refresh the page to get updated data.
+            } else {
+              $('saveError').textContent = 'Error saving config file: ' + await response.text();
+            }
+          })
+          .catch(error => {
+            $('saveError').textContent = 'Error saving config file: ' + error.message;
+          });
+        };
 
-        {{ if .UpdateName }}
-        const selectedApps = overrideApps.checked ? getSelectedApps() : null;
-
-        if (selectedApps !== null) {
-          const validIdsForTag = selectedTag && appsByTag[selectedTag] 
-            ? appsByTag[selectedTag]
-            : [];
-          const outOfBoundsApps = selectedApps.filter(app => !validIdsForTag.includes(app));
-          if (outOfBoundsApps.length > 0) {
-            const appNames = outOfBoundsApps.map(opt => `• ${opt}`).join('\n');
-            const userConfirmed = confirm(
-              `Warning: The following selected apps do not match your current tag filter:\n\n${appNames}\n\nDo you want to proceed and save anyway?`
-            );
-            if (!userConfirmed) return;
-          }
-        }
-        {{ else }}
-        const selectedApps = null;
-        {{ end }}
-
-        fetch(
-          location.pathname.replace(/\/apps\/?$/, ''),
-          buildSotaTomlRequest(selectedTag, selectedApps)
-        )
-        .then(async response => {
-          if (response.ok) {
-            location.reload(); // refresh the page to get updated data.
-          } else {
-            const errorText = await response.text();
-            alert('Error saving config file: ' + errorText);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error saving config file: ' + error.message);
+        $('btnReset').addEventListener('click', () => {
+          cur = structuredClone(saved);
+          $('tagSelector').value = cur.tag;
+          render();
         });
-      };
 
-      btnSave.addEventListener('click', handleAppsConfigurationSave);
-      {{ end }}
+        $('ta-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const t = effTag();
+          if (cur.tagOn && !t) {
+            return;
+          }
+          if (cur.tagOn && tagCheckable() && !tagKnown()) {
+            confirmSave(
+              'Save a tag this update does not publish?',
+              'Tag <code>' + esc(t) + '</code> is not published by update <code>' + esc(UPDATE_NAME) + '</code>. Configured apps cannot be checked against it.',
+              []
+            );
+            return;
+          }
+          const bad = cur.appsOn ? unsupported() : [];
+          if (bad.length) {
+            confirmSave(
+              'Save apps not in this tag?',
+              'These configured apps are not published for tag <code>' + esc(t) + '</code> and will not run until the tag provides them:',
+              bad
+            );
+            return;
+          }
+          save();
+        });
 
-      resetToInitialAppsState();
+        $('confirm-cancel').addEventListener('click', () => confirmDialog.close());
+        $('confirm-ok').addEventListener('click', () => {
+          confirmDialog.close();
+          save();
+        });
+      }
+
+      $('tagSelector').value = cur.tag;
+      render();
     </script>
 {{ template "footer"}}
