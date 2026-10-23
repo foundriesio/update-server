@@ -16,6 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/foundriesio/update-server/server"
+	"github.com/foundriesio/update-server/server/ui/i18n"
 	"github.com/foundriesio/update-server/server/ui/pagectx"
 	"github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/foundriesio/update-server/storage"
@@ -279,6 +280,7 @@ func (p *localProvider) handlePasswordPage(c echo.Context, session *Session) err
 		Message: "Your password has expired. Please choose a new password.",
 	}
 	context.User = session.User
+	context.L = i18n.For(i18n.Resolve(session.User.Locale, c.Request().Header.Get("Accept-Language")))
 	return templates.Templates.ExecuteTemplate(c.Response(), localPasswordChangeTemplate, context)
 }
 

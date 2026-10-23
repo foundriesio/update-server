@@ -20,6 +20,7 @@ type User struct {
 	Username string
 	Password string
 	Email    string
+	Locale   string
 
 	CreatedAt int64
 	Deleted   bool
@@ -45,6 +46,16 @@ func (u User) Update(reason string) error {
 	return nil
 }
 
+// Pointer receiver: updates u.Locale so the caller's copy stays current.
+func (u *User) SetLocale(locale, reason string) error {
+	if err := u.h.stmtUserSetLocale.run(u.id, locale); err != nil {
+		return err
+	}
+	u.h.fs.Audit.AppendEvent(u.id, fmt.Sprintf("%s (locale %q -> %q)", reason, u.Locale, locale))
+	u.Locale = locale
+	return nil
+}
+
 func (u User) GetAuditLog() (string, error) {
 	return u.h.fs.Audit.ReadEvents(u.id)
 }
@@ -62,6 +73,7 @@ type Storage struct {
 	stmtUserGetByName stmtUserGetByName
 	stmtUserList      stmtUserList
 	stmtUserUpdate    stmtUserUpdate
+	stmtUserSetLocale stmtUserSetLocale
 
 	stmtSessionCreate        stmtSessionCreate
 	stmtSessionDelete        stmtSessionDelete
@@ -104,6 +116,7 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle, authConfig *storage.
 		&handle.stmtUserGetByName,
 		&handle.stmtUserList,
 		&handle.stmtUserUpdate,
+		&handle.stmtUserSetLocale,
 		&handle.stmtSessionCreate,
 		&handle.stmtSessionDelete,
 		&handle.stmtSessionDeleteExpired,
@@ -211,8 +224,8 @@ type stmtUserCreate storage.DbStmt
 
 func (s *stmtUserCreate) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("userCreate", `
-		INSERT INTO users (username, password, email, created_at, deleted, allowed_scopes, auth_provider_data)
-		VALUES (?, ?, ?, ?, ?, ?, jsonb(?))`,
+		INSERT INTO users (username, password, email, created_at, deleted, allowed_scopes, auth_provider_data, locale)
+		VALUES (?, ?, ?, ?, ?, ?, jsonb(?), ?)`,
 	)
 	return
 }
@@ -232,6 +245,7 @@ func (s *stmtUserCreate) run(u *User) error {
 		u.Deleted,
 		u.AllowedScopes.String(),
 		u.AuthProviderData,
+		u.Locale,
 	)
 	if err != nil {
 		return err
@@ -247,7 +261,7 @@ type stmtUserGetById storage.DbStmt
 
 func (s *stmtUserGetById) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("userGetId", `
-		SELECT id, username, password, email, created_at, allowed_scopes, json_extract(auth_provider_data, '$')
+		SELECT id, username, password, email, created_at, allowed_scopes, json_extract(auth_provider_data, '$'), locale
 		FROM users
 		WHERE id = ? and deleted = false`,
 	)
@@ -265,6 +279,7 @@ func (s *stmtUserGetById) run(id int64) (*User, error) {
 		&u.CreatedAt,
 		&scopeStr,
 		&u.AuthProviderData,
+		&u.Locale,
 	)
 	if err == nil {
 		u.AllowedScopes, err = ScopesFromString(scopeStr)
@@ -279,7 +294,7 @@ type stmtUserGetByName storage.DbStmt
 
 func (s *stmtUserGetByName) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("userGet", `
-		SELECT id, username, password, email, created_at, allowed_scopes, json_extract(auth_provider_data, '$')
+		SELECT id, username, password, email, created_at, allowed_scopes, json_extract(auth_provider_data, '$'), locale
 		FROM users
 		WHERE username = ? AND deleted = false`,
 	)
@@ -297,6 +312,7 @@ func (s *stmtUserGetByName) run(username string) (*User, error) {
 		&u.CreatedAt,
 		&scopesStr,
 		&u.AuthProviderData,
+		&u.Locale,
 	)
 	if err == nil {
 		u.AllowedScopes, err = ScopesFromString(scopesStr)
@@ -311,7 +327,7 @@ type stmtUserList storage.DbStmt
 
 func (s *stmtUserList) Init(db storage.DbHandle) (err error) {
 	s.Stmt, err = db.Prepare("userList", `
-		SELECT id, username, password, email, created_at, deleted, allowed_scopes
+		SELECT id, username, password, email, created_at, deleted, allowed_scopes, locale
 		FROM users
 		WHERE deleted = false`,
 	)
@@ -341,6 +357,7 @@ func (s *stmtUserList) run() ([]User, error) {
 			&u.CreatedAt,
 			&u.Deleted,
 			&scopesStr,
+			&u.Locale,
 		)
 		if err != nil {
 			return nil, err
@@ -370,5 +387,19 @@ func (s *stmtUserUpdate) run(u User) error {
 		u.AuthProviderData = []byte("{}")
 	}
 	_, err := s.Stmt.Exec(u.Username, u.Password, u.Email, u.AllowedScopes.String(), u.Deleted, u.AuthProviderData, u.id)
+	return err
+}
+
+type stmtUserSetLocale storage.DbStmt
+
+func (s *stmtUserSetLocale) Init(db storage.DbHandle) (err error) {
+	s.Stmt, err = db.Prepare("userSetLocale", `
+		UPDATE users SET locale = ? WHERE id = ?`,
+	)
+	return
+}
+
+func (s *stmtUserSetLocale) run(id int64, locale string) error {
+	_, err := s.Stmt.Exec(locale, id)
 	return err
 }

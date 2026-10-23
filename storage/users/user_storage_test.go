@@ -346,3 +346,94 @@ func TestOAuth2DeviceFlow(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, auth10)
 }
+
+func newTestUsers(t *testing.T) (*Storage, *storage.FsHandle) {
+	t.Helper()
+	tmpdir := t.TempDir()
+	db, err := storage.NewDb(filepath.Join(tmpdir, "sql.db"))
+	require.NoError(t, err)
+	fs, err := storage.NewFs(tmpdir)
+	require.NoError(t, err)
+	require.NoError(t, fs.Auth.InitHmacSecret())
+	users, err := NewStorage(db, fs, &storage.AuthConfig{})
+	require.NoError(t, err)
+	return users, fs
+}
+
+func TestAuthProviderDataRoundTrip(t *testing.T) {
+	users, _ := newTestUsers(t)
+
+	u := User{Username: "authuser", AllowedScopes: ScopeDevicesR, AuthProviderData: []byte(`{"ID":"auth-456"}`)}
+	require.NoError(t, users.Create(&u))
+
+	u2, err := users.Get("authuser")
+	require.NoError(t, err)
+	require.JSONEq(t, `{"ID":"auth-456"}`, string(u2.AuthProviderData))
+
+	u2.AuthProviderData = []byte(`{"ID":"auth-789"}`)
+	require.NoError(t, u2.Update("auth data changed"))
+
+	u3, err := users.Get("authuser")
+	require.NoError(t, err)
+	require.JSONEq(t, `{"ID":"auth-789"}`, string(u3.AuthProviderData))
+}
+
+func TestSetLocale(t *testing.T) {
+	users, fs := newTestUsers(t)
+
+	u := User{Username: "testuser", AllowedScopes: ScopeDevicesR}
+	require.NoError(t, users.Create(&u))
+
+	require.NoError(t, u.SetLocale("it", "user selected"))
+	u2, err := users.Get("testuser")
+	require.NoError(t, err)
+	require.Equal(t, "it", u2.Locale)
+
+	// Empty string is Automatic and must round-trip as stored.
+	require.NoError(t, u2.SetLocale("", "user selected Automatic"))
+	u3, err := users.Get("testuser")
+	require.NoError(t, err)
+	require.Empty(t, u3.Locale)
+
+	events, err := fs.Audit.ReadEvents(u.id)
+	require.NoError(t, err)
+	require.Contains(t, events, `user selected (locale "" -> "it")`)
+	require.Contains(t, events, `user selected Automatic (locale "it" -> "")`)
+}
+
+func TestUpdateKeepsLocale(t *testing.T) {
+	users, _ := newTestUsers(t)
+
+	u := User{Username: "testuser", AllowedScopes: ScopeDevicesR}
+	require.NoError(t, users.Create(&u))
+	require.NoError(t, u.SetLocale("it", "user selected"))
+
+	u.Email = "changed@example.com"
+	require.NoError(t, u.Update("email changed"))
+
+	u2, err := users.Get("testuser")
+	require.NoError(t, err)
+	require.Equal(t, "it", u2.Locale)
+	require.Equal(t, "changed@example.com", u2.Email)
+}
+
+func TestUpdateDoesNotClobberLocale(t *testing.T) {
+	users, _ := newTestUsers(t)
+
+	u := User{Username: "testuser", AllowedScopes: ScopeDevicesR}
+	require.NoError(t, users.Create(&u))
+
+	stale, err := users.GetByID(u.id)
+	require.NoError(t, err)
+	fresh, err := users.GetByID(u.id)
+	require.NoError(t, err)
+	require.NoError(t, fresh.SetLocale("it", "user selected"))
+
+	stale.Email = "changed@example.com"
+	require.NoError(t, stale.Update("email changed"))
+
+	u2, err := users.GetByID(u.id)
+	require.NoError(t, err)
+	require.Equal(t, "it", u2.Locale)
+	require.Equal(t, "changed@example.com", u2.Email)
+}
