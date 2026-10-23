@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/foundriesio/update-server/auth"
 	"github.com/foundriesio/update-server/server"
@@ -62,7 +63,7 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	e.POST("/auth/authorize-activation", h.authDeviceAuthorize, h.requireSession, rateLimiter)
 	e.POST("/auth/deny-activation", h.authDeviceDeny, h.requireSession, rateLimiter)
 
-	e.GET("/css/:filename", h.css)
+	e.GET("/css/:filename", h.css, middleware.Gzip())
 	e.GET("/branding/:filename", h.brandingAsset)
 	e.GET("/favicon", h.favicon)
 
