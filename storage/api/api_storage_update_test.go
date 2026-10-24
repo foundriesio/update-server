@@ -198,3 +198,75 @@ func TestDeleteUpdate(t *testing.T) {
 	err = s.DeleteUpdate("v1.0")
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
+
+func TestUpdateSummaryCountsOnlyTheUpdateTarget(t *testing.T) {
+	tmpdir := t.TempDir()
+	db, err := storage.NewDb(filepath.Join(tmpdir, "sql.db"))
+	require.NoError(t, err)
+	fs, err := storage.NewFs(tmpdir)
+	require.NoError(t, err)
+	s, err := NewStorage(db, fs)
+	require.NoError(t, err)
+	dg, err := gateway.NewStorage(db, fs)
+	require.NoError(t, err)
+
+	// The update's targets metadata also holds the target devices roll back to.
+	require.NoError(t, s.InsertUpdate("main", "v2", "tester"))
+	targets := `{"signed": {"targets": {
+		"hw-lmp-1": {"custom": {"version": "1", "tags": ["main"], "hardwareIds": ["hw"]}},
+		"hw-lmp-2": {"custom": {"version": "2", "tags": ["main"], "hardwareIds": ["hw"]}},
+		"hw-lmp-3": {"custom": {"version": "3", "tags": ["devel"], "hardwareIds": ["hw"]}}}}}`
+	require.NoError(t, s.fs.Updates.Tuf.WriteFile("v2", storage.TufTargetsFile, targets))
+
+	uuids := []string{"in-place", "boot-fallback", "succeeded"}
+	for _, uuid := range uuids {
+		d, err := dg.DeviceCreate(uuid, "cert-"+uuid)
+		require.NoError(t, err)
+		require.NoError(t, d.CheckIn("hw-lmp-1", "main", "hash", ""))
+	}
+	_, err = s.SetUpdateName("main", "v2", uuids, nil)
+	require.NoError(t, err)
+
+	completed := func(corrId, target string, success bool) storage.DeviceUpdateEvent {
+		return storage.DeviceUpdateEvent{
+			Id:         corrId + target,
+			DeviceTime: "2026-10-21T12:00:00Z",
+			Event:      storage.DeviceEvent{CorrelationId: corrId, TargetName: target, Success: &success},
+			EventType:  storage.DeviceEventType{Id: "EcuInstallationCompleted"},
+		}
+	}
+	events := map[string][]storage.DeviceUpdateEvent{
+		// An app failing to start: the client reinstalls the previous target under the same correlation id.
+		"in-place": {completed("c1", "hw-lmp-2", false), completed("c1", "hw-lmp-1", true)},
+		// The boot loader falls back: the client syncs the previous target under a new correlation id.
+		"boot-fallback": {completed("c2", "hw-lmp-2", false), completed("c3", "hw-lmp-1", true)},
+		"succeeded":     {completed("c4", "hw-lmp-2", true)},
+	}
+	for uuid, evts := range events {
+		d, err := dg.DeviceGet(uuid)
+		require.NoError(t, err)
+		require.NoError(t, d.ProcessEvents(evts))
+	}
+
+	summary, err := s.UpdateSummary("v2")
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int{"Installation completed; failed": 2, "Installation completed; succeeded": 1}, summary.Status)
+	failed, err := s.UpdateStateFor("v2", "Installation completed; failed")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"in-place", "boot-fallback"}, failed)
+
+	// An invalid version of the update's tag is an error, not a target to compare as version 0.
+	invalid := `{"signed": {"targets": {
+		"hw-lmp-2": {"custom": {"version": "two", "tags": ["main"], "hardwareIds": ["hw"]}}}}}`
+	require.NoError(t, s.fs.Updates.Tuf.WriteFile("v2", storage.TufTargetsFile, invalid))
+	_, err = s.UpdateSummary("v2")
+	assert.ErrorContains(t, err, "invalid version of target hw-lmp-2")
+	_, err = s.UpdateStateFor("v2", "Installation completed; failed")
+	assert.ErrorContains(t, err, "invalid version of target hw-lmp-2")
+
+	// Without targets metadata every event counts.
+	require.NoError(t, os.Remove(s.fs.Updates.Tuf.FilePath("v2", storage.TufTargetsFile)))
+	summary, err = s.UpdateSummary("v2")
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int{"Installation completed; succeeded": 3}, summary.Status)
+}
