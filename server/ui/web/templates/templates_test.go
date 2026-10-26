@@ -76,6 +76,7 @@ var headingAuditExpectations = map[string]headingAuditExpectation{
 	"device_test.html:50":            {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"device_test.html:83":            {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"device_tests.html:15":           {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"device_tests.html:40":           {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"device_update.html:17":          {role: "heading--page", owner: headingAuditPageGroupOwner},
 	"device_update.html:53":          {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"device_updates.html:10":         {role: "heading--page", owner: headingAuditStandaloneOwner},
@@ -176,8 +177,8 @@ func TestNonDialogHeadingsUseGenericContract(t *testing.T) {
 			}
 		}
 	}
-	if headingCount != 74 || len(headingAuditExpectations) != headingCount {
-		t.Errorf("non-dialog heading inventory = %d headings and %d entries, want 74 each", headingCount, len(headingAuditExpectations))
+	if headingCount != 75 || len(headingAuditExpectations) != headingCount {
+		t.Errorf("non-dialog heading inventory = %d headings and %d entries, want 75 each", headingCount, len(headingAuditExpectations))
 	}
 	headingAuditLegacySelectors(t)
 }

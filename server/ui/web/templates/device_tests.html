@@ -35,6 +35,42 @@
       </nav>
 
       <div class="device-page-inner">
+        <section class="remote-actions" aria-labelledby="remote-actions-heading">
+          <div>
+            <h2 id="remote-actions-heading" class="heading heading--section">Remote actions</h2>
+            <p>Actions reported by this device's fioconfig installation.</p>
+          </div>
+          {{ if .ActionsUnavailable }}
+            <p class="remote-actions__hint">Remote actions are temporarily unavailable. Existing tests remain available below.</p>
+          {{ else if .RemoteActions }}
+            {{ if .CanTrigger }}
+            <button class="btn-solid" type="button" data-dialog-open="remote-action-dialog">Run remote action</button>
+            {{ else }}
+            <p class="remote-actions__hint">Your account can view these actions but cannot run them.</p>
+            {{ end }}
+          {{ else }}
+            <p class="remote-actions__hint">This device has not reported any remote actions.</p>
+          {{ end }}
+        </section>
+
+        {{ if .Pending }}
+        <div class="remote-action-progress" role="status">
+          <strong>Remote action submitted.</strong> Waiting for the device to report test <code>{{.PendingTestID}}</code>. The test will become available once the device has reported it.
+        </div>
+        <script>
+          window.setTimeout(function () {
+            var url = new URL(window.location.href);
+            var poll = Number(url.searchParams.get('poll') || '0');
+            url.searchParams.set('poll', String(poll + 1));
+            window.location.assign(url);
+          }, 5000);
+        </script>
+        {{ else if .PendingTimedOut }}
+        <div class="remote-action-progress remote-action-progress--timeout" role="status">
+          <strong>Waiting for device timed out.</strong> Test <code>{{.PendingTestID}}</code> has not been reported after five minutes. The action remains queued until the device checks in.
+        </div>
+        {{ end }}
+
         {{ if .Tests }}
         <div class="layer-grid">
           <div class="layer-card">
@@ -95,6 +131,59 @@
         <p class="empty-state">No tests have been recorded for this device yet.</p>
         {{ end }}
       </div>
+
+      {{ if and .CanTrigger .RemoteActions }}
+      <dialog id="remote-action-dialog" class="upload-dialog remote-actions-dialog" aria-labelledby="remote-action-title">
+        <article>
+          <div class="dlg-header">
+            <h2 id="remote-action-title" tabindex="-1">Run remote action</h2>
+            <button class="dlg-close" type="button" data-dialog-close aria-label="Close dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <form id="remote-action-form" method="post" action="/devices/{{.Device.Uuid}}/remote-actions">
+            <input type="hidden" name="_csrf" value="{{.CsrfToken}}">
+            <div class="dlg-body">
+              <p class="upload-intro">Choose an action reported by <strong>{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</strong>. Fioconfig runs it on the device and reports its output as a test.</p>
+              <div class="field-row">
+                <label class="field-row__key" for="remote-action-value">Action</label>
+                <select class="field-input" id="remote-action-value" name="action" required>
+                  {{ range .RemoteActions }}<option value="{{.}}">{{.}}</option>{{ end }}
+                </select>
+              </div>
+            </div>
+          </form>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-cancel" type="button" data-dialog-close>Cancel</button>
+            <button class="dlg-btn dlg-btn-upload" type="submit" form="remote-action-form">Run action</button>
+          </div>
+        </article>
+      </dialog>
+      <script>
+      (function () {
+        var dialog = document.getElementById('remote-action-dialog');
+        var trigger = document.querySelector('[data-dialog-open="remote-action-dialog"]');
+        var activeTrigger = null;
+        if (!dialog || !trigger) return;
+        trigger.addEventListener('click', function () {
+          activeTrigger = trigger;
+          document.getElementById('remote-action-form').reset();
+          dialog.showModal();
+          document.getElementById('remote-action-title').focus();
+        });
+        dialog.querySelectorAll('[data-dialog-close]').forEach(function (button) {
+          button.addEventListener('click', function () { dialog.close(); });
+        });
+        dialog.addEventListener('close', function () {
+          if (activeTrigger && document.contains(activeTrigger)) activeTrigger.focus();
+          activeTrigger = null;
+        });
+      }());
+      </script>
+      {{ end }}
 
     </section>
 {{ template "footer" .}}

@@ -61,6 +61,8 @@ func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, user
 	g.DELETE("/denied-devices/:uuid", h.undenyDevice, requireScope(users.ScopeDevicesD))
 	g.GET("/devices/:uuid/apps-states", h.deviceAppsStatesGet, requireScope(users.ScopeDevicesR))
 	g.GET("/devices/:uuid/tests", h.deviceTestsList, requireScope(users.ScopeDevicesR))
+	g.GET("/devices/:uuid/remote-actions", h.deviceRemoteActions, requireScope(users.ScopeDevicesR))
+	g.POST("/devices/:uuid/remote-actions", h.deviceRemoteActionTrigger, requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU))
 	g.GET("/devices/:uuid/tests/:testid", h.deviceTestGet, requireScope(users.ScopeDevicesR))
 	g.GET("/devices/:uuid/tests/:testid/:artifact", h.deviceTestArtifact, requireScope(users.ScopeDevicesR))
 	g.GET("/devices/:uuid/updates", h.deviceUpdatesList, requireScope(users.ScopeDevicesR))

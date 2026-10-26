@@ -2881,6 +2881,36 @@ pre.code-block {
    --mono, --focus-ring); only the tests-table/status-badge pieces below are new. */
 @layer device-detail {
 
+.remote-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border: 1px solid var(--border-1);
+    border-radius: 6px;
+}
+.remote-actions h2 { margin: 0; font-size: 1rem; }
+.remote-actions p { margin: 0.25rem 0 0; color: var(--text-2); font-size: 0.85rem; }
+.remote-actions__hint { width: 100%; }
+.remote-actions-dialog > article {
+    width: min(560px, calc(100vw - 32px));
+    max-width: 560px;
+}
+.remote-actions-dialog .dlg-body { padding-bottom: 8px; }
+.remote-actions-dialog .dlg-btn { width: auto; }
+.remote-actions-dialog .field-row { margin: 0; }
+.remote-actions-dialog .field-input { max-width: none; }
+.remote-action-progress {
+    margin-bottom: 1.5rem;
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--warning);
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+.remote-action-progress--timeout { border-left-color: var(--danger); }
+
 .tests-table {
     width: 100%;
     margin-bottom: 0;
