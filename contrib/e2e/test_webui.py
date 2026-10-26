@@ -28,7 +28,7 @@ def test_nav_links(page, update_server):
 def test_configs_page_loads(page, update_server):
     page.goto(f"{SERVER_URL}/configs")
     assert page.title() == "Global Configs - Foundries Update Server"
-    assert page.get_by_role("heading", name="Global Configs").is_visible()
+    assert page.get_by_role("heading", name="Configurations").is_visible()
     assert page.get_by_role("heading", name="Groups").is_visible()
 
 
