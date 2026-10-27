@@ -245,6 +245,63 @@ func TestUpdateTemplateNoLatestTarget(t *testing.T) {
 	assert.Contains(t, html, "No release information available")
 }
 
+func TestUpdateTemplateStateBadge(t *testing.T) {
+	const (
+		unavailable = `<span class="badge badge-bad">Unavailable</span>`
+		unknown     = `<span class="badge badge-warn">Status unknown</span>`
+		legacy      = `<span class="badge badge-good">Available</span>`
+	)
+	tests := []struct {
+		name        string
+		ctx         updateDetailCtx
+		wantBadge   string
+		wantNoBadge []string
+	}{
+		{
+			name: "release found shows no badge",
+			ctx: updateDetailCtx{
+				Name:         "148",
+				LatestTarget: &latestTarget{Name: "main/148", Version: "148"},
+				TufMetadata:  releaseTufMetadata(api.UpdateTufResp{}),
+			},
+			wantNoBadge: []string{unavailable, unknown, legacy},
+		},
+		{
+			name: "no release shows unavailable",
+			ctx: updateDetailCtx{
+				Name:        "148",
+				TufMetadata: releaseTufMetadata(api.UpdateTufResp{}),
+			},
+			wantBadge:   unavailable,
+			wantNoBadge: []string{unknown, legacy},
+		},
+		{
+			name: "lookup error shows status unknown",
+			ctx: updateDetailCtx{
+				Name:        "148",
+				TufError:    "Unable to look up the TUF metadata",
+				TufMetadata: releaseTufMetadata(api.UpdateTufResp{}),
+			},
+			wantBadge:   unknown,
+			wantNoBadge: []string{unavailable, legacy},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			html := renderUpdateHTML(t, tt.ctx)
+			if tt.wantBadge != "" {
+				assert.Contains(t, html, tt.wantBadge)
+			}
+			for _, absent := range tt.wantNoBadge {
+				assert.NotContains(t, html, absent)
+			}
+			if tt.ctx.TufError != "" {
+				assert.Contains(t, html, tt.ctx.TufError)
+			}
+		})
+	}
+}
+
 func TestUpdateTemplateNoRollouts(t *testing.T) {
 	ctx := updateDetailCtx{Name: "148", TufMetadata: releaseTufMetadata(api.UpdateTufResp{})}
 	html := renderUpdateHTML(t, ctx)

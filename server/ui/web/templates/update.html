@@ -12,7 +12,7 @@
           <div class="heading-stack">
             <div class="heading-row">
               <h1 class="heading heading--page">{{.Name}}</h1>
-              {{ if .LatestTarget }}<span class="badge badge-good">Available</span>{{ end }}
+              {{ if .TufError }}<span class="badge badge-warn">Status unknown</span>{{ else if not .LatestTarget }}<span class="badge badge-bad">Unavailable</span>{{ end }}
             </div>
             <p class="page-subtitle heading-support">
               {{ if .LatestRollout }}

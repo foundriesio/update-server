@@ -2792,6 +2792,7 @@ pre.code-block {
 }
 .badge-good    { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success-text); }
 .badge-bad     { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger-text); }
+.badge-warn    { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning-text); }
 .badge-neutral { background: var(--border-1); color: var(--text-2); }
 .badge-app { font-size: 0.7rem; padding: 2px 8px; }
 
