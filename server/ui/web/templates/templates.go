@@ -20,6 +20,50 @@ import (
 var Assets embed.FS
 var Templates *template.Template
 
+const (
+	// Fixed US English until the UI is localized.
+	dateLayout     = "Jan 2, 2006"
+	day            = 24 * time.Hour
+	maxRelativeAge = 7 * day
+)
+
+// FormatDate renders a Unix timestamp as e.g. "Oct 28, 2026" in UTC.
+func FormatDate(ts int64) string {
+	return time.Unix(ts, 0).UTC().Format(dateLayout)
+}
+
+// RelativeTime renders ts relative to now ("5 minutes ago"), falling back to
+// FormatDate after maxRelativeAge.
+func RelativeTime(now time.Time, ts int64) string {
+	if ts <= 0 {
+		return "Never"
+	}
+
+	age := now.Sub(time.Unix(ts, 0))
+	switch {
+	case age >= maxRelativeAge:
+		return FormatDate(ts)
+	case age < time.Minute:
+		return "just now"
+	case age < time.Hour:
+		return pluralize(int(age/time.Minute), "%d minute ago", "%d minutes ago")
+	case age < day:
+		return pluralize(int(age/time.Hour), "%d hour ago", "%d hours ago")
+	default:
+		return pluralize(int(age/day), "%d day ago", "%d days ago")
+	}
+}
+
+// pluralize keeps each form a whole sentence so it can be localized as one
+// plural message, never assembled from a number, unit and suffix.
+func pluralize(n int, one, other string) string {
+	if n == 1 {
+		return fmt.Sprintf(one, n)
+	}
+
+	return fmt.Sprintf(other, n)
+}
+
 // LabelPair is a single device label key/value, used by devices_list.html's
 // "+N" label-expand widget (see OtherLabels).
 type LabelPair struct {
@@ -100,10 +144,11 @@ func init() {
 			return res, nil
 		},
 		"tsToString": func(ts int64) string {
-			return time.Unix(ts, 0).Format(time.RFC3339)
+			return time.Unix(ts, 0).UTC().Format(time.RFC3339)
 		},
-		"tsToDate": func(ts int64) string {
-			return time.Unix(ts, 0).Format(time.DateOnly)
+		"tsToDate": FormatDate,
+		"tsToAgo": func(ts int64) string {
+			return RelativeTime(clock.Now(), ts)
 		},
 		"isExpired": func(expires any) bool {
 			s, ok := expires.(string)

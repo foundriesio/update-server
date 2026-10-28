@@ -125,7 +125,7 @@
 
           <div class="meta-row">
             <span class="meta-label">Last seen</span>
-            <span class="meta-value is-mono">{{tsToDate .Device.LastSeen}}</span>
+            <span class="meta-value is-mono">{{ if gt .Device.LastSeen 0 }}<time datetime="{{tsToString .Device.LastSeen}}" title="{{tsToString .Device.LastSeen}}">{{tsToAgo .Device.LastSeen}}</time>{{ else }}{{tsToAgo .Device.LastSeen}}{{ end }}</span>
           </div>
 
           {{ if .IpInfo }}
