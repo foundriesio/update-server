@@ -218,7 +218,7 @@ func TestUpdateSummaryCountsOnlyTheUpdateTarget(t *testing.T) {
 		"hw-lmp-3": {"custom": {"version": "3", "tags": ["devel"], "hardwareIds": ["hw"]}}}}}`
 	require.NoError(t, s.fs.Updates.Tuf.WriteFile("v2", storage.TufTargetsFile, targets))
 
-	uuids := []string{"in-place", "boot-fallback", "succeeded"}
+	uuids := []string{"in-place", "boot-fallback", "succeeded", "stuck", "retried"}
 	for _, uuid := range uuids {
 		d, err := dg.DeviceCreate(uuid, "cert-"+uuid)
 		require.NoError(t, err)
@@ -241,6 +241,10 @@ func TestUpdateSummaryCountsOnlyTheUpdateTarget(t *testing.T) {
 		// The boot loader falls back: the client syncs the previous target under a new correlation id.
 		"boot-fallback": {completed("c2", "hw-lmp-2", false), completed("c3", "hw-lmp-1", true)},
 		"succeeded":     {completed("c4", "hw-lmp-2", true)},
+		// No later installation: the device did not recover, so it stays failed.
+		"stuck": {completed("c5", "hw-lmp-2", false)},
+		// Rolled back, then installed this update's target on a later attempt.
+		"retried": {completed("c6", "hw-lmp-2", false), completed("c6", "hw-lmp-1", true), completed("c7", "hw-lmp-2", true)},
 	}
 	for uuid, evts := range events {
 		d, err := dg.DeviceGet(uuid)
@@ -250,10 +254,17 @@ func TestUpdateSummaryCountsOnlyTheUpdateTarget(t *testing.T) {
 
 	summary, err := s.UpdateSummary("v2")
 	require.NoError(t, err)
-	assert.Equal(t, map[string]int{"Installation completed; failed": 2, "Installation completed; succeeded": 1}, summary.Status)
+	assert.Equal(t, map[string]int{
+		RolledBackState:                     2,
+		"Installation completed; failed":    1,
+		"Installation completed; succeeded": 2,
+	}, summary.Status)
+	rolledBack, err := s.UpdateStateFor("v2", RolledBackState)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"in-place", "boot-fallback"}, rolledBack)
 	failed, err := s.UpdateStateFor("v2", "Installation completed; failed")
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"in-place", "boot-fallback"}, failed)
+	assert.ElementsMatch(t, []string{"stuck"}, failed)
 
 	// An invalid version of the update's tag is an error, not a target to compare as version 0.
 	invalid := `{"signed": {"targets": {
@@ -269,7 +280,7 @@ func TestUpdateSummaryCountsOnlyTheUpdateTarget(t *testing.T) {
 	require.NoError(t, s.fs.Updates.Tuf.WriteFile("v2", storage.TufTargetsFile, noHwIds))
 	summary, err = s.UpdateSummary("v2")
 	require.NoError(t, err)
-	assert.Equal(t, map[string]int{"Installation completed; succeeded": 3}, summary.Status)
+	assert.Equal(t, map[string]int{"Installation completed; failed": 1, "Installation completed; succeeded": 4}, summary.Status)
 
 	// Another tag's target with a version that is not a string does not fail the query.
 	otherTagNumber := `{"signed": {"targets": {
@@ -279,11 +290,26 @@ func TestUpdateSummaryCountsOnlyTheUpdateTarget(t *testing.T) {
 	require.NoError(t, s.fs.Updates.Tuf.WriteFile("v2", storage.TufTargetsFile, otherTagNumber))
 	summary, err = s.UpdateSummary("v2")
 	require.NoError(t, err)
-	assert.Equal(t, map[string]int{"Installation completed; failed": 2, "Installation completed; succeeded": 1}, summary.Status)
+	assert.Equal(t, map[string]int{
+		RolledBackState:                     2,
+		"Installation completed; failed":    1,
+		"Installation completed; succeeded": 2,
+	}, summary.Status)
 
 	// Without targets metadata every event counts.
 	require.NoError(t, os.Remove(s.fs.Updates.Tuf.FilePath("v2", storage.TufTargetsFile)))
 	summary, err = s.UpdateSummary("v2")
 	require.NoError(t, err)
-	assert.Equal(t, map[string]int{"Installation completed; succeeded": 3}, summary.Status)
+	assert.Equal(t, map[string]int{"Installation completed; failed": 1, "Installation completed; succeeded": 4}, summary.Status)
+}
+
+func TestInstallationStatesMatchParseStatus(t *testing.T) {
+	status := func(success bool) string {
+		return storage.DeviceUpdateEvent{
+			Event:     storage.DeviceEvent{Success: &success},
+			EventType: storage.DeviceEventType{Id: "EcuInstallationCompleted"},
+		}.ParseStatus().Status
+	}
+	assert.Equal(t, installationFailedState, status(false))
+	assert.Equal(t, installationSucceededState, status(true))
 }

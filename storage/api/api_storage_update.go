@@ -23,6 +23,16 @@ import (
 // but is not present in the rollout log.
 const MissingState = "Missing"
 
+// A special status for a device that failed this update and then installed another target, i.e. rolled back.
+// Its update failed, but unlike a device left in a failed state it recovered.
+const RolledBackState = "Rolled back"
+
+// The statuses storage.DeviceUpdateEvent.ParseStatus gives an EcuInstallationCompleted event.
+const (
+	installationFailedState    = "Installation completed; failed"
+	installationSucceededState = "Installation completed; succeeded"
+)
+
 type UpdateSummary struct {
 	// A map of device status to the number of devices in that status for the update.
 	Status map[string]int `json:"summaries"`
@@ -91,6 +101,8 @@ func (s Storage) latestUpdateTargets(name string) (map[string]bool, error) {
 
 func (s Storage) lastKnownStates(name string, filterUuids map[string]any) (map[string]string, error) {
 	lastStates := make(map[string]string)
+	// Devices whose last event for this update's target is a failed installation
+	failed := make(map[string]bool)
 	targets, err := s.latestUpdateTargets(name)
 	if err != nil {
 		return nil, err
@@ -106,18 +118,23 @@ func (s Storage) lastKnownStates(name string, filterUuids map[string]any) (map[s
 			return nil, err
 		}
 		var status DeviceStatus
-		if err = json.Unmarshal([]byte(line), &status); err == nil {
-			if filterUuids != nil {
-				if _, ok := filterUuids[status.Uuid]; !ok {
-					continue
-				}
-			}
-			// A device reports other targets too, like the one it rolls back to after this update fails
-			if targets != nil && len(status.TargetName) > 0 && !targets[status.TargetName] {
+		if err = json.Unmarshal([]byte(line), &status); err != nil {
+			continue
+		}
+		if filterUuids != nil {
+			if _, ok := filterUuids[status.Uuid]; !ok {
 				continue
 			}
-			lastStates[status.Uuid] = status.Status
 		}
+		// A device reports other targets too, like the one it rolls back to after this update fails
+		if targets != nil && len(status.TargetName) > 0 && !targets[status.TargetName] {
+			if failed[status.Uuid] && status.Status == installationSucceededState {
+				lastStates[status.Uuid] = RolledBackState
+			}
+			continue
+		}
+		lastStates[status.Uuid] = status.Status
+		failed[status.Uuid] = status.Status == installationFailedState
 	}
 
 	return lastStates, nil
