@@ -12,7 +12,19 @@
                <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range .OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
                {{ if .Unencrypted }}
-               <button type="button" class="icontip icon-view" aria-label="View{{ if $.CanEdit }} or edit{{ end }} file content"
+               {{ if $.CanEdit }}
+               <button type="button" class="icontip icon-view" name="EditFile" aria-label="Edit file content"><i class="edit" aria-hidden="true"></i></button>
+               <template class="config-file-edit-source">
+                 <span data-config-file-name>{{ $name }}</span>
+                 <ul data-config-file-on-changed>
+                   {{ range .OnChanged }}
+                   <li>{{ . }}</li>
+                   {{ end }}
+                 </ul>
+                 <span data-config-file-value>{{ .Value }}</span>
+               </template>
+               {{ else }}
+               <button type="button" class="icontip icon-view" aria-label="View file content"
                   onclick="this.nextElementSibling.showModal()"><i class="gear"></i></button>
                <dialog class="file-content">
                  <article>
@@ -33,18 +45,16 @@
                      <p name="Value">{{ .Value }}</p>
                    </section>
                    <footer>
-                     {{ if $.CanEdit }}
-                     <button name="EditFile">Edit</button>
-                     {{ end }}
                      <button autofocus onclick="this.closest('dialog').close()">Close</button>
                    </footer>
                  </article>
                </dialog>
+               {{ end }}
                {{ else }}
                <i class="icontip lock-closed" role="img" aria-label="File content is encrypted"></i>
                {{ end }}
                {{ if $.CanEdit }}
-               <button type="button" class="icontip icon-delete" aria-label="Delete file"><i class="trash" style="transform: translateY(0.1em)"></i></button>
+               <button type="button" class="icontip icon-delete" aria-label="Delete file"><i class="trash" aria-hidden="true"></i></button>
                {{ end }}
              </td>
            </tr>
@@ -56,39 +66,112 @@
       {{ end }}
       {{ if .CanEdit }}
         {{ template "configs-item-edit-dialog" $ }}
+        <dialog id="DeleteConfigFile" class="upload-dialog config-file-dialog config-file-delete-dialog" aria-labelledby="config-file-delete-title">
+          <article>
+            <div class="dlg-header">
+              <h2 id="config-file-delete-title">Delete Config File</h2>
+              <button class="dlg-close" id="config-file-delete-close-btn" type="button" aria-label="Close dialog">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <form id="config-file-delete-form" autocomplete="off">
+              <div class="dlg-body">
+                <p class="upload-intro">Delete <strong data-config-file-delete-name></strong>? This action cannot be undone.</p>
+                <div class="field-row">
+                  <label class="field-row__key" for="config-file-delete-reason">Reason</label>
+                  <input class="field-input" id="config-file-delete-reason" name="Reason" />
+                </div>
+                <p class="config-file-dialog__status" data-config-file-delete-status aria-live="polite" role="status" tabindex="-1"></p>
+              </div>
+            </form>
+            <div class="dlg-footer">
+              <button class="dlg-btn dlg-btn-cancel" id="config-file-delete-cancel-btn" type="button" autofocus>Cancel</button>
+              <button class="dlg-btn dlg-btn-delete" type="submit" form="config-file-delete-form">Delete</button>
+            </div>
+          </article>
+        </dialog>
         <script type="module">
-            document.querySelectorAll('td button.icon-delete').forEach( el => {
-            el.addEventListener('click', ev => {
-              const fileName = el.closest('tr').querySelector('td[name="FileName"]').textContent.trim();
-              const reason = window.prompt(`Are you sure to delete config file "${fileName}"?\nThis action cannot be reverted.\n\nReason:`, '');
-              if (reason === null) {
-                // Action cancelled
-                return
-              }
-              {{/* Reuse config from configs-item-edit-dialog */}}
-              fetch(window.EditConfigsFileConfig.apiUrl, {
-                method: 'DELETE',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  'FileName': fileName,
-                  'Reason': reason,
-                }),
-              })
-              .then(async response => {
-                if (response.ok) {
-                  location.reload(); // refresh the page to get updated data.
-                } else {
-                  const errorText = await response.text();
-                  alert('Error deleting config file: ' + errorText);
-                }
-              })
-              .catch(error => {
-                console.error('Error:', error);
-                alert('Error deleting config file: ' + error.message);
-              });
+          const deleteDialog = document.querySelector('#DeleteConfigFile'),
+                deleteCancelButton = deleteDialog.querySelector('#config-file-delete-cancel-btn'),
+                deleteCloseButton = deleteDialog.querySelector('#config-file-delete-close-btn'),
+                deleteForm = deleteDialog.querySelector('#config-file-delete-form'),
+                deleteName = deleteDialog.querySelector('[data-config-file-delete-name]'),
+                deleteReason = deleteDialog.querySelector('input[name="Reason"]'),
+                deleteStatus = deleteDialog.querySelector('[data-config-file-delete-status]'),
+                deleteSubmitButton = deleteDialog.querySelector('button[type="submit"]');
+          let deleteFileName = '', deleteInFlight = false;
+
+          function setDeleteStatus(message, state) {
+            deleteStatus.dataset.state = state || '';
+            deleteStatus.setAttribute('role', state === 'error' ? 'alert' : 'status');
+            deleteStatus.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');
+            deleteStatus.textContent = message || '';
+            if (state === 'error') deleteStatus.focus();
+          }
+
+          function setDeleteSubmitting(submitting) {
+            deleteInFlight = submitting;
+            deleteCancelButton.disabled = submitting;
+            deleteCloseButton.disabled = submitting;
+            deleteSubmitButton.disabled = submitting;
+            deleteSubmitButton.setAttribute('aria-busy', submitting ? 'true' : 'false');
+            deleteForm.setAttribute('aria-busy', submitting ? 'true' : 'false');
+          }
+
+          function openDeleteDialog(trigger) {
+            deleteFileName = trigger.closest('tr').querySelector('td[name="FileName"]').textContent.trim();
+            deleteForm.reset();
+            deleteName.textContent = deleteFileName;
+            setDeleteStatus('');
+            setDeleteSubmitting(false);
+            deleteDialog.showModal();
+          }
+
+          async function deleteConfigFile() {
+            const response = await fetch(window.EditConfigsFileConfig.apiUrl, {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                'FileName': deleteFileName,
+                'Reason': deleteReason.value,
+              }),
             });
+            if (!response.ok) {
+              let message = await response.text();
+              try {
+                const payload = JSON.parse(message);
+                if (payload && payload.message) message = payload.message;
+              } catch (_) {}
+              throw new Error(message || 'Unable to delete config file.');
+            }
+          }
+
+          document.querySelectorAll('td button.icon-delete').forEach(el => {
+            el.addEventListener('click', () => { openDeleteDialog(el) });
+          });
+          deleteCloseButton.addEventListener('click', () => { deleteDialog.close() });
+          deleteCancelButton.addEventListener('click', () => { deleteDialog.close() });
+          deleteDialog.addEventListener('cancel', ev => {
+            if (deleteInFlight) ev.preventDefault();
+          });
+          deleteForm.addEventListener('submit', async ev => {
+            ev.preventDefault();
+            if (deleteInFlight) return;
+            setDeleteSubmitting(true);
+            setDeleteStatus('Deleting config file…', 'saving');
+            try {
+              await deleteConfigFile();
+              location.reload();
+            } catch (error) {
+              console.error('Error:', error);
+              setDeleteStatus(error.message || 'Unable to delete config file.', 'error');
+              setDeleteSubmitting(false);
+            }
           });
         </script>
       {{ end }}
