@@ -110,4 +110,90 @@ func TestCSSRouteIncludesGenericHeadingContract(t *testing.T) {
 	}
 }
 
+func TestCSSRouteKeepsUpdateDeleteButtonInsideActionColumn(t *testing.T) {
+	e := echo.New()
+	RegisterHandlers(e, nil, cssTestAuthProvider{}, Branding{}, "", NewPageBuilder(Branding{}))
+
+	request := httptest.NewRequest(http.MethodGet, "/css/style.css", nil)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	assert.Contains(t, response.Body.String(), ".updates-table td.cell-delete {\n    padding: 12px 6px;\n}")
+}
+
+func TestCSSRouteIncludesConfigFileDialogContract(t *testing.T) {
+	e := echo.New()
+	RegisterHandlers(e, nil, cssTestAuthProvider{}, Branding{}, "", NewPageBuilder(Branding{}))
+
+	request := httptest.NewRequest(http.MethodGet, "/css/style.css", nil)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	css := response.Body.String()
+	for _, expected := range []string{
+		".config-file-dialog:modal",
+		".config-file-dialog::backdrop",
+		"overscroll-behavior: contain",
+		".config-file-dialog > article",
+		"width: min(720px, calc(100vw - 32px))",
+		".config-file-dialog .config-file-grid",
+		"grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)",
+		".config-file-dialog .field-row",
+		".config-file-dialog textarea",
+		"resize: vertical",
+		"overflow: auto",
+		".config-file-dialog input[readonly]",
+		".config-file-dialog input[type=\"checkbox\"]:focus-visible",
+		".config-file-dialog .dlg-close",
+		"min-width: 24px",
+		"min-height: 24px",
+		".config-file-checkbox",
+		".config-file-dialog__status",
+		".config-file-dialog__status[data-state=\"error\"]",
+		".config-file-dialog__status:focus-visible",
+		".config-file-delete-dialog > article",
+		"width: min(460px, calc(100vw - 32px))",
+		".config-file-delete-dialog .dlg-btn {\n    width: auto;\n    flex: 0 0 auto;\n}",
+		"background: var(--pico-primary-background)",
+		"border: 1px solid var(--pico-primary-border)",
+		"color: var(--pico-primary-inverse)",
+		"@media (pointer: coarse)",
+		"min-width: 44px",
+		"min-height: 44px",
+		"@media (max-width: 640px)",
+		"width: calc(100vw - 16px)",
+	} {
+		assert.Contains(t, css, expected)
+	}
+}
+
+func TestCSSRouteAlignsConfigFileIcons(t *testing.T) {
+	e := echo.New()
+	RegisterHandlers(e, nil, cssTestAuthProvider{}, Branding{}, "", NewPageBuilder(Branding{}))
+
+	request := httptest.NewRequest(http.MethodGet, "/css/style.css", nil)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	css := response.Body.String()
+	for _, expected := range []string{
+		".icon-view,\n.icon-delete {",
+		"display: inline-flex",
+		"align-items: center",
+		"justify-content: center",
+		"width: 24px",
+		"height: 24px",
+		"vertical-align: middle",
+		"i.lock-closed {\n  display: inline-block;\n  width: 24px;\n  height: 24px;",
+		"no-repeat center / 20px 20px",
+	} {
+		assert.Contains(t, css, expected)
+	}
+	assert.NotContains(t, css, `content: "\1F512"`)
+	assert.NotContains(t, css, "filter: grayscale(100%)")
+}
+
 const gzipScheme = "gzip"
