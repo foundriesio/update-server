@@ -144,6 +144,7 @@
               </svg>
             </button>
           </div>
+          <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- Go template CSRF field is rendered below. -->
           <form id="remote-action-form" method="post" action="/devices/{{.Device.Uuid}}/remote-actions">
             <input type="hidden" name="_csrf" value="{{.CsrfToken}}">
             <div class="dlg-body">
