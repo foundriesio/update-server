@@ -2882,19 +2882,13 @@ pre.code-block {
 @layer device-detail {
 
 .remote-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
     margin-bottom: 1.5rem;
-    padding: 1rem;
-    border: 1px solid var(--border-1);
-    border-radius: 6px;
 }
-.remote-actions h2 { margin: 0; font-size: 1rem; }
-.remote-actions p { margin: 0.25rem 0 0; color: var(--text-2); font-size: 0.85rem; }
-.remote-actions__hint { width: 100%; }
+.remote-actions__hint {
+    margin-bottom: 1.5rem;
+    color: var(--text-2);
+    font-size: 0.85rem;
+}
 .remote-actions-dialog > article {
     width: min(560px, calc(100vw - 32px));
     max-width: 560px;
@@ -2903,13 +2897,26 @@ pre.code-block {
 .remote-actions-dialog .dlg-btn { width: auto; }
 .remote-actions-dialog .field-row { margin: 0; }
 .remote-actions-dialog .field-input { max-width: none; }
+.remote-action-select {
+    appearance: none;
+    cursor: pointer;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%23636363' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+}
 .remote-action-progress {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
     margin-bottom: 1.5rem;
     padding: 0.75rem 1rem;
     border-left: 3px solid var(--warning);
     background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
-.remote-action-progress--timeout { border-left-color: var(--danger); }
+.remote-action-progress__refresh { white-space: nowrap; }
 
 .tests-table {
     width: 100%;

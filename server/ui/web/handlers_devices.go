@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -424,9 +423,6 @@ func (h handlers) devicesTests(c echo.Context) error {
 		actionsUnavailable = true
 	}
 
-	pendingTestID := c.QueryParam("test")
-	poll, _ := strconv.Atoi(c.QueryParam("poll"))
-	pending, pendingTimedOut := remoteActionPending(tests, pendingTestID, poll)
 	total, passed, failed := buildTestStats(tests)
 
 	ctx := struct {
@@ -441,9 +437,7 @@ func (h handlers) devicesTests(c echo.Context) error {
 		RemoteActions      []string
 		ActionsUnavailable bool
 		CanTrigger         bool
-		PendingTestID      string
-		Pending            bool
-		PendingTimedOut    bool
+		ActionSubmitted    bool
 	}{
 		baseCtx:            h.baseCtx(c, "Device - "+c.Param("uuid")+" Tests", "devices"),
 		Device:             device,
@@ -454,35 +448,13 @@ func (h handlers) devicesTests(c echo.Context) error {
 		RemoteActions:      remoteActions.Actions,
 		ActionsUnavailable: actionsUnavailable,
 		CanTrigger:         CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeDevicesRU | users.ScopeUpdatesRU),
-		PendingTestID:      pendingTestID,
-		Pending:            pending,
-		PendingTimedOut:    pendingTimedOut,
+		ActionSubmitted:    c.QueryParam("remote-action-submitted") == "1",
 	}
 	if total > 0 {
 		ctx.PassRate = passed * 100 / total
 		ctx.FailRate = failed * 100 / total
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "device_tests.html", ctx)
-}
-
-const maxRemoteActionPolls = 60
-
-func remoteActionPending(tests []storage.TargetTest, testID string, poll int) (pending, timedOut bool) {
-	if poll < 0 {
-		poll = 0
-	}
-	if !storage.TestIdRegex.MatchString(testID) {
-		return false, false
-	}
-	for _, test := range tests {
-		if test.Uuid == testID && test.CompletedOn != nil {
-			return false, false
-		}
-	}
-	if poll >= maxRemoteActionPolls {
-		return false, true
-	}
-	return true, false
 }
 
 func (h handlers) devicesRemoteActionTrigger(c echo.Context) error {
@@ -494,7 +466,7 @@ func (h handlers) devicesRemoteActionTrigger(c echo.Context) error {
 	if err := postJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/remote-actions", req, &result); err != nil {
 		return h.handleUnexpected(c, err)
 	}
-	return c.Redirect(http.StatusSeeOther, "/devices/"+c.Param("uuid")+"/tests?test="+url.QueryEscape(result.TestID)+"&poll=0")
+	return c.Redirect(http.StatusSeeOther, "/devices/"+c.Param("uuid")+"/tests?remote-action-submitted=1")
 }
 
 func (h handlers) devicesTestGet(c echo.Context) error {

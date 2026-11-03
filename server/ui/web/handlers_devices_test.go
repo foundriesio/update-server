@@ -130,37 +130,6 @@ func TestBuildTestRowsComputesDurationOnlyWhenCompleted(t *testing.T) {
 	}
 }
 
-func TestRemoteActionPending(t *testing.T) {
-	completed := int64(1)
-	tests := []storage.TargetTest{
-		{Uuid: "running_action_123456789012345", Status: "RUNNING"},
-		{Uuid: "completed_action_123456789012", Status: "PASSED", CompletedOn: &completed},
-	}
-
-	cases := []struct {
-		name         string
-		testID       string
-		poll         int
-		wantPending  bool
-		wantTimedOut bool
-	}{
-		{name: "invalid ID", testID: "bad.id"},
-		{name: "running", testID: "running_action_123456789012345", wantPending: true},
-		{name: "negative poll is clamped", testID: "running_action_123456789012345", poll: -100, wantPending: true},
-		{name: "completed", testID: "completed_action_123456789012"},
-		{name: "missing before timeout", testID: "missing_action_123456789012345", wantPending: true},
-		{name: "missing after timeout", testID: "missing_action_123456789012345", poll: maxRemoteActionPolls, wantTimedOut: true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			pending, timedOut := remoteActionPending(tests, tc.testID, tc.poll)
-			if pending != tc.wantPending || timedOut != tc.wantTimedOut {
-				t.Errorf("remoteActionPending() = (%t, %t), want (%t, %t)", pending, timedOut, tc.wantPending, tc.wantTimedOut)
-			}
-		})
-	}
-}
-
 func TestBuildUpdateStepsNilSuccessIsNotFailure(t *testing.T) {
 	events := []storage.DeviceUpdateEvent{
 		{DeviceTime: "2026-08-30T09:00:27Z", Event: storage.DeviceEvent{}},

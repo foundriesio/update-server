@@ -35,39 +35,20 @@
       </nav>
 
       <div class="device-page-inner">
-        <section class="remote-actions" aria-labelledby="remote-actions-heading">
-          <div>
-            <h2 id="remote-actions-heading" class="heading heading--section">Remote actions</h2>
-            <p>Actions reported by this device's fioconfig installation.</p>
-          </div>
-          {{ if .ActionsUnavailable }}
-            <p class="remote-actions__hint">Remote actions are temporarily unavailable. Existing tests remain available below.</p>
-          {{ else if .RemoteActions }}
-            {{ if .CanTrigger }}
-            <button class="btn-solid" type="button" data-dialog-open="remote-action-dialog">Run remote action</button>
-            {{ else }}
-            <p class="remote-actions__hint">Your account can view these actions but cannot run them.</p>
-            {{ end }}
-          {{ else }}
-            <p class="remote-actions__hint">This device has not reported any remote actions.</p>
-          {{ end }}
+        {{ if and .RemoteActions .CanTrigger }}
+        <section class="remote-actions">
+          <button class="btn-solid" type="button" data-dialog-open="remote-action-dialog">Run remote action</button>
         </section>
+        {{ else if .ActionsUnavailable }}
+        <p class="remote-actions__hint">Remote actions are temporarily unavailable.</p>
+        {{ else if .RemoteActions }}
+        <p class="remote-actions__hint">Your account cannot run remote actions.</p>
+        {{ end }}
 
-        {{ if .Pending }}
+        {{ if .ActionSubmitted }}
         <div class="remote-action-progress" role="status">
-          <strong>Remote action submitted.</strong> Waiting for the device to report test <code>{{.PendingTestID}}</code>. The test will become available once the device has reported it.
-        </div>
-        <script>
-          window.setTimeout(function () {
-            var url = new URL(window.location.href);
-            var poll = Number(url.searchParams.get('poll') || '0');
-            url.searchParams.set('poll', String(poll + 1));
-            window.location.assign(url);
-          }, 5000);
-        </script>
-        {{ else if .PendingTimedOut }}
-        <div class="remote-action-progress remote-action-progress--timeout" role="status">
-          <strong>Waiting for device timed out.</strong> Test <code>{{.PendingTestID}}</code> has not been reported after five minutes. The action remains queued until the device checks in.
+          <strong>Remote action submitted.</strong> Refresh this page after the device checks in to see its test result.
+          <a class="remote-action-progress__refresh" href="/devices/{{.Device.Uuid}}/tests">Refresh</a>
         </div>
         {{ end }}
 
@@ -148,10 +129,10 @@
           <form id="remote-action-form" method="post" action="/devices/{{.Device.Uuid}}/remote-actions">
             <input type="hidden" name="_csrf" value="{{.CsrfToken}}">
             <div class="dlg-body">
-              <p class="upload-intro">Choose an action reported by <strong>{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</strong>. Fioconfig runs it on the device and reports its output as a test.</p>
+              <p class="upload-intro">Choose an action to run on <strong>{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</strong>.</p>
               <div class="field-row">
-                <label class="field-row__key" for="remote-action-value">Action</label>
-                <select class="field-input" id="remote-action-value" name="action" required>
+                <label class="field-row__key" for="remote-action-value">Select an action</label>
+                <select class="field-input remote-action-select" id="remote-action-value" name="action" required>
                   {{ range .RemoteActions }}<option value="{{.}}">{{.}}</option>{{ end }}
                 </select>
               </div>
