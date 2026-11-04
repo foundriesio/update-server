@@ -35,6 +35,23 @@
       </nav>
 
       <div class="device-page-inner">
+        {{ if and .RemoteActions .CanTrigger }}
+        <section class="remote-actions">
+          <button class="btn-solid" type="button" data-dialog-open="remote-action-dialog">Run remote action</button>
+        </section>
+        {{ else if .ActionsUnavailable }}
+        <p class="remote-actions__hint">Remote actions are temporarily unavailable.</p>
+        {{ else if .RemoteActions }}
+        <p class="remote-actions__hint">Your account cannot run remote actions.</p>
+        {{ end }}
+
+        {{ if .ActionSubmitted }}
+        <div class="remote-action-progress" role="status">
+          <strong>Remote action submitted.</strong> Refresh this page after the device checks in to see its test result.
+          <a class="remote-action-progress__refresh" href="/devices/{{.Device.Uuid}}/tests">Refresh</a>
+        </div>
+        {{ end }}
+
         {{ if .Tests }}
         <div class="layer-grid">
           <div class="layer-card">
@@ -95,6 +112,60 @@
         <p class="empty-state">No tests have been recorded for this device yet.</p>
         {{ end }}
       </div>
+
+      {{ if and .CanTrigger .RemoteActions }}
+      <dialog id="remote-action-dialog" class="upload-dialog remote-actions-dialog" aria-labelledby="remote-action-title">
+        <article>
+          <div class="dlg-header">
+            <h2 id="remote-action-title" tabindex="-1">Run remote action</h2>
+            <button class="dlg-close" type="button" data-dialog-close aria-label="Close dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <!-- nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- Go template CSRF field is rendered below. -->
+          <form id="remote-action-form" method="post" action="/devices/{{.Device.Uuid}}/remote-actions">
+            <input type="hidden" name="_csrf" value="{{.CsrfToken}}">
+            <div class="dlg-body">
+              <p class="upload-intro">Choose an action to run on <strong>{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</strong>.</p>
+              <div class="field-row">
+                <label class="field-row__key" for="remote-action-value">Select an action</label>
+                <select class="field-input remote-action-select" id="remote-action-value" name="action" required>
+                  {{ range .RemoteActions }}<option value="{{.}}">{{.}}</option>{{ end }}
+                </select>
+              </div>
+            </div>
+          </form>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-cancel" type="button" data-dialog-close>Cancel</button>
+            <button class="dlg-btn dlg-btn-upload" type="submit" form="remote-action-form">Run action</button>
+          </div>
+        </article>
+      </dialog>
+      <script>
+      (function () {
+        var dialog = document.getElementById('remote-action-dialog');
+        var trigger = document.querySelector('[data-dialog-open="remote-action-dialog"]');
+        var activeTrigger = null;
+        if (!dialog || !trigger) return;
+        trigger.addEventListener('click', function () {
+          activeTrigger = trigger;
+          document.getElementById('remote-action-form').reset();
+          dialog.showModal();
+          document.getElementById('remote-action-title').focus();
+        });
+        dialog.querySelectorAll('[data-dialog-close]').forEach(function (button) {
+          button.addEventListener('click', function () { dialog.close(); });
+        });
+        dialog.addEventListener('close', function () {
+          if (activeTrigger && document.contains(activeTrigger)) activeTrigger.focus();
+          activeTrigger = null;
+        });
+      }());
+      </script>
+      {{ end }}
 
     </section>
 {{ template "footer" .}}

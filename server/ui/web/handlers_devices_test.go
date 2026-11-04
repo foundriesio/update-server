@@ -4,12 +4,33 @@
 package web
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
+	"github.com/foundriesio/update-server/server/ui/api"
 	"github.com/foundriesio/update-server/storage"
+	"github.com/labstack/echo/v4"
 )
 
 func boolPtr(b bool) *bool { return &b }
+
+func TestRemoteActionFormBinding(t *testing.T) {
+	form := url.Values{"action": {"diag"}, "_csrf": {"token"}}
+	req := httptest.NewRequest(http.MethodPost, "/devices/device/remote-actions", strings.NewReader(form.Encode()))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	ctx := echo.New().NewContext(req, httptest.NewRecorder())
+
+	var trigger api.RemoteActionTrigger
+	if err := ctx.Bind(&trigger); err != nil {
+		t.Fatalf("Bind() error = %v", err)
+	}
+	if trigger.Action != "diag" {
+		t.Errorf("bound action = %q, want diag", trigger.Action)
+	}
+}
 
 func TestBuildUpdateStepsHappyPath(t *testing.T) {
 	events := []storage.DeviceUpdateEvent{

@@ -6,6 +6,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -415,31 +416,57 @@ func (h handlers) devicesTests(c echo.Context) error {
 	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/tests", &tests); err != nil {
 		return h.handleUnexpected(c, err)
 	}
+	var remoteActions api.RemoteActions
+	actionsUnavailable := false
+	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/remote-actions", &remoteActions); err != nil {
+		context.CtxGetLog(c.Request().Context()).Warn("failed to load device remote actions", "err", err)
+		actionsUnavailable = true
+	}
 
 	total, passed, failed := buildTestStats(tests)
 
 	ctx := struct {
 		baseCtx
-		Device   api.Device
-		Tests    []testRow
-		Total    int
-		Passed   int
-		Failed   int
-		PassRate int
-		FailRate int
+		Device             api.Device
+		Tests              []testRow
+		Total              int
+		Passed             int
+		Failed             int
+		PassRate           int
+		FailRate           int
+		RemoteActions      []string
+		ActionsUnavailable bool
+		CanTrigger         bool
+		ActionSubmitted    bool
 	}{
-		baseCtx: h.baseCtx(c, "Device - "+c.Param("uuid")+" Tests", "devices"),
-		Device:  device,
-		Tests:   buildTestRows(tests),
-		Total:   total,
-		Passed:  passed,
-		Failed:  failed,
+		baseCtx:            h.baseCtx(c, "Device - "+c.Param("uuid")+" Tests", "devices"),
+		Device:             device,
+		Tests:              buildTestRows(tests),
+		Total:              total,
+		Passed:             passed,
+		Failed:             failed,
+		RemoteActions:      remoteActions.Actions,
+		ActionsUnavailable: actionsUnavailable,
+		CanTrigger:         CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeDevicesRU | users.ScopeUpdatesRU),
+		ActionSubmitted:    c.QueryParam("remote-action-submitted") == "1",
 	}
 	if total > 0 {
 		ctx.PassRate = passed * 100 / total
 		ctx.FailRate = failed * 100 / total
 	}
 	return h.templates.ExecuteTemplate(c.Response(), "device_tests.html", ctx)
+}
+
+func (h handlers) devicesRemoteActionTrigger(c echo.Context) error {
+	var req api.RemoteActionTrigger
+	if err := c.Bind(&req); err != nil {
+		return EchoError(c, err, http.StatusBadRequest, "Could not parse remote action request")
+	}
+	var result api.RemoteActionTriggerResult
+	if err := postJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/remote-actions", req, &result); err != nil {
+		return h.handleUnexpected(c, err)
+	}
+	return c.Redirect(http.StatusSeeOther, "/devices/"+c.Param("uuid")+"/tests?remote-action-submitted=1")
 }
 
 func (h handlers) devicesTestGet(c echo.Context) error {
