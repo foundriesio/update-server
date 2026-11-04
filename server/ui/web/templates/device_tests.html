@@ -35,21 +35,27 @@
       </nav>
 
       <div class="device-page-inner">
-        {{ if and .RemoteActions .CanTrigger }}
-        <section class="remote-actions">
+        {{ if or (and .RemoteActions .CanTrigger) .ActionSubmitted }}
+        <div class="remote-actions">
+          {{ if and .RemoteActions .CanTrigger }}
           <button class="btn-solid" type="button" data-dialog-open="remote-action-dialog">Run remote action</button>
-        </section>
+          {{ end }}
+          {{ if .ActionSubmitted }}
+          <p class="remote-action-progress" role="status">
+            Action submitted. Refresh the page to see the results.
+            <a class="remote-action-progress__refresh" href="/devices/{{.Device.Uuid}}/tests">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89L13.5 5.7M13.5 2.5v3.2h-3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Refresh</span>
+            </a>
+          </p>
+          {{ end }}
+        </div>
         {{ else if .ActionsUnavailable }}
         <p class="remote-actions__hint">Remote actions are temporarily unavailable.</p>
         {{ else if .RemoteActions }}
         <p class="remote-actions__hint">Your account cannot run remote actions.</p>
-        {{ end }}
-
-        {{ if .ActionSubmitted }}
-        <div class="remote-action-progress" role="status">
-          <strong>Remote action submitted.</strong> Refresh this page after the device checks in to see its test result.
-          <a class="remote-action-progress__refresh" href="/devices/{{.Device.Uuid}}/tests">Refresh</a>
-        </div>
         {{ end }}
 
         {{ if .Tests }}
@@ -129,7 +135,7 @@
           <form id="remote-action-form" method="post" action="/devices/{{.Device.Uuid}}/remote-actions">
             <input type="hidden" name="_csrf" value="{{.CsrfToken}}">
             <div class="dlg-body">
-              <p class="upload-intro">Choose an action to run on <strong>{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</strong>.</p>
+              <p class="upload-intro">Choose an action to run on <strong>{{if .Device.Labels.name}}{{.Device.Labels.name}}{{else}}{{.Device.Uuid}}{{end}}</strong>. Results appear here as tests.</p>
               <div class="field-row">
                 <label class="field-row__key" for="remote-action-value">Select an action</label>
                 <select class="field-input remote-action-select" id="remote-action-value" name="action" required>
@@ -144,26 +150,51 @@
           </div>
         </article>
       </dialog>
-      <script>
-      (function () {
-        var dialog = document.getElementById('remote-action-dialog');
-        var trigger = document.querySelector('[data-dialog-open="remote-action-dialog"]');
-        var activeTrigger = null;
-        if (!dialog || !trigger) return;
-        trigger.addEventListener('click', function () {
-          activeTrigger = trigger;
-          document.getElementById('remote-action-form').reset();
-          dialog.showModal();
-          document.getElementById('remote-action-title').focus();
-        });
-        dialog.querySelectorAll('[data-dialog-close]').forEach(function (button) {
-          button.addEventListener('click', function () { dialog.close(); });
-        });
-        dialog.addEventListener('close', function () {
-          if (activeTrigger && document.contains(activeTrigger)) activeTrigger.focus();
-          activeTrigger = null;
-        });
-      }());
+      <script type="module">
+        const dialog = document.getElementById('remote-action-dialog');
+        const trigger = document.querySelector('[data-dialog-open="remote-action-dialog"]');
+        const form = document.getElementById('remote-action-form');
+        const submitButton = dialog && dialog.querySelector('button[type="submit"]');
+        if (dialog && trigger && form && submitButton) {
+          let activeTrigger = null;
+          let submitInFlight = false;
+
+          trigger.addEventListener('click', () => {
+            activeTrigger = trigger;
+            form.reset();
+            dialog.showModal();
+            document.getElementById('remote-action-title').focus();
+          });
+          form.addEventListener('submit', (event) => {
+            if (submitInFlight) {
+              event.preventDefault();
+              return;
+            }
+            submitInFlight = true;
+            submitButton.disabled = true;
+            submitButton.setAttribute('aria-busy', 'true');
+            form.setAttribute('aria-busy', 'true');
+            dialog.querySelectorAll('[data-dialog-close]').forEach((button) => { button.disabled = true; });
+          });
+          dialog.querySelectorAll('[data-dialog-close]').forEach((button) => {
+            button.addEventListener('click', () => { dialog.close(); });
+          });
+          dialog.addEventListener('cancel', (event) => {
+            if (submitInFlight) event.preventDefault();
+          });
+          dialog.addEventListener('close', () => {
+            if (activeTrigger && document.contains(activeTrigger)) activeTrigger.focus();
+            activeTrigger = null;
+          });
+          window.addEventListener('pageshow', (event) => {
+            if (!event.persisted) return;
+            submitInFlight = false;
+            submitButton.disabled = false;
+            submitButton.removeAttribute('aria-busy');
+            form.removeAttribute('aria-busy');
+            dialog.querySelectorAll('[data-dialog-close]').forEach((button) => { button.disabled = false; });
+          });
+        }
       </script>
       {{ end }}
 
