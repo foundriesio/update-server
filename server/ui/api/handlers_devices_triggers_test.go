@@ -13,6 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestValidRemoteAction(t *testing.T) {
+	require.True(t, validRemoteAction("diag"))
+	require.True(t, validRemoteAction(strings.Repeat("a", 32)))
+	require.False(t, validRemoteAction(strings.Repeat("a", 33)))
+	require.False(t, validRemoteAction("invalid.action"))
+	require.False(t, validRemoteAction("../diag"))
+}
+
 func TestDeviceRemoteActions(t *testing.T) {
 	tc := NewTestClient(t)
 	_, err := tc.gw.DeviceCreate("foo", "cert1")
