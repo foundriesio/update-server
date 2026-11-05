@@ -24,6 +24,22 @@ func putJson(ctx context.Context, resource string, data, result any) error {
 	return err
 }
 
+func postJson(ctx context.Context, resource string, data, result any) error {
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(data); err != nil {
+		return err
+	}
+	s := CtxGetSession(ctx)
+	req, err := http.NewRequest(http.MethodPost, s.BaseUrl+resource, &body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	auth.PassCsrfCookie(ctx, req)
+	_, err = reqJsonWithHeaders(ctx, req, result)
+	return err
+}
+
 func getJsonWithHeaders(ctx context.Context, resource string, result any) (http.Header, error) {
 	s := CtxGetSession(ctx)
 	req, err := http.NewRequest(http.MethodGet, s.BaseUrl+resource, nil)
