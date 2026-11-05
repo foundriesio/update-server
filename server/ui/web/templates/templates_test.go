@@ -22,6 +22,111 @@ type headingAuditElement struct {
 	classes map[string]bool
 }
 
+func TestDeviceDeleteFailureStaysInDialog(t *testing.T) {
+	asset, err := Assets.ReadFile("devices_list.html")
+	if err != nil {
+		t.Fatalf("ReadFile(devices_list.html) error = %v", err)
+	}
+	html := string(asset)
+	for _, required := range []string{
+		`class="dlg-status" id="delete-status" aria-live="polite" role="status" tabindex="-1"`,
+		`var deletePending = false;`,
+		"if (deletePending) return;\n  setDeleteStatus('');\n  setDeletePending(true);",
+		`status.setAttribute('role', state === 'error' ? 'alert' : 'status');`,
+		`status.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');`,
+		`status.textContent = message || '';`,
+		`if (state === 'error') status.focus();`,
+		"addEventListener('close', function() {\n    if (deletePending && !this.open) {\n      this.showModal();\n    }",
+		"deletePending = false;\n        document.getElementById('deleteDialog').close();",
+	} {
+		if !strings.Contains(html, required) {
+			t.Errorf("devices_list.html missing %q", required)
+		}
+	}
+	if strings.Contains(html, `alert('Error deleting device:`) {
+		t.Error("devices_list.html still alerts on device deletion failure")
+	}
+}
+
+func TestLocalPasswordChangeUsesInlineErrors(t *testing.T) {
+	pageAsset, err := Assets.ReadFile("local-password-change.html")
+	if err != nil {
+		t.Fatalf("ReadFile(local-password-change.html) error = %v", err)
+	}
+	scriptAsset, err := Assets.ReadFile("password_change.html")
+	if err != nil {
+		t.Fatalf("ReadFile(password_change.html) error = %v", err)
+	}
+
+	page := string(pageAsset)
+	script := string(scriptAsset)
+	for _, required := range []string{
+		`id="passwordError" style="color: var(--danger-text); display: none;" role="alert" aria-live="assertive" tabindex="-1"`,
+		`submitPasswordChange(currentPassword, newPassword, confirmPassword, 'passwordError', function()`,
+		"window.location.reload();\n            return true;",
+		`<label for="currentPassword"><strong>Current Password</strong></label>`,
+		`<label for="newPassword"><strong>New Password</strong></label>`,
+		`<label for="confirmNewPassword"><strong>Confirm New Password</strong></label>`,
+		`id="currentPassword" autocomplete="current-password" required`,
+		`id="newPassword" autocomplete="new-password" required`,
+		`id="confirmNewPassword" autocomplete="new-password" required`,
+	} {
+		if !strings.Contains(page, required) {
+			t.Errorf("local-password-change.html missing %q", required)
+		}
+	}
+	for _, required := range []string{
+		`function submitPasswordChange(currentPassword, newPassword, confirmPassword, errorSpanId, onSuccess)`,
+		`errorSpan.textContent = message;`,
+		`errorSpan.focus();`,
+		"if (passwordPending) {\n      return;\n    }",
+		`.finally(function() {`,
+		`function setPasswordPending(form, pending) {`,
+		`scope.querySelectorAll('button').forEach(function(button) {`,
+		`setPasswordPending(form, true);`,
+		"if (!keepLocked) {\n        setPasswordPending(form, false);\n      }",
+		`var keepLocked = false;`,
+		`keepLocked = onSuccess ? onSuccess() === true : (window.location.reload(), true);`,
+		"if (event.target !== newInput && event.target !== confirmInput) {\n        checkMatch();",
+	} {
+		if !strings.Contains(script, required) {
+			t.Errorf("password_change.html missing %q", required)
+		}
+	}
+	if strings.Contains(script, "Locks every control") {
+		t.Error("password_change.html comment claims inputs are locked")
+	}
+	if strings.Contains(script, `alert(`) {
+		t.Error("password_change.html still alerts on password change failure")
+	}
+}
+
+func TestProductionTemplatesAvoidBlockingBrowserDialogs(t *testing.T) {
+	blockingDialogRE := regexp.MustCompile(`(window\.)?(alert|confirm|prompt)\s*\(`)
+	entries, err := Assets.ReadDir(".")
+	if err != nil {
+		t.Fatalf("ReadDir(.) error = %v", err)
+	}
+
+	scanned := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".html") {
+			continue
+		}
+		asset, err := Assets.ReadFile(entry.Name())
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", entry.Name(), err)
+		}
+		scanned++
+		if match := blockingDialogRE.FindSubmatch(asset); match != nil {
+			t.Errorf("%s: blocking browser dialog %s() remains", entry.Name(), match[2])
+		}
+	}
+	if scanned == 0 {
+		t.Fatal("no templates scanned")
+	}
+}
+
 type headingAuditOwner int
 
 const (
@@ -48,9 +153,9 @@ var headingAuditExpectations = map[string]headingAuditExpectation{
 	"configs_global_history.html:11": {role: "heading--page", owner: headingAuditPageGroupOwner},
 	"configs_history.html:3":         {role: "heading--page", owner: headingAuditStandaloneOwner},
 	"configs_item.html:2":            {role: "heading--subsection", owner: headingAuditStandaloneOwner},
-	"configs_item.html:245":          {role: "heading--page", owner: headingAuditPageGroupOwner},
-	"configs_item.html:250":          {role: "heading--section", owner: headingAuditStandaloneOwner},
-	"configs_item.html:258":          {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_item.html:250":          {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"configs_item.html:255":          {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_item.html:263":          {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"configs_list.html:5":            {role: "heading--page", owner: headingAuditPageGroupOwner},
 	"configs_list.html:11":           {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"configs_list.html:45":           {role: "heading--section", owner: headingAuditSectionGroupOwner},
@@ -92,9 +197,9 @@ var headingAuditExpectations = map[string]headingAuditExpectation{
 	"rollout_tail.html:16":           {role: "heading--page", owner: headingAuditPageGroupOwner},
 	"settings.html:4":                {role: "heading--page", owner: headingAuditPageGroupOwner},
 	"settings.html:9":                {role: "heading--section", owner: headingAuditSectionGroupOwner},
-	"settings.html:31":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
-	"settings.html:50":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
-	"settings.html:85":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:32":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:51":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:86":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"tail_stream.html:3":             {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"tail_stream.html:29":            {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"update.html:14":                 {role: "heading--page", owner: headingAuditPageGroupOwner},

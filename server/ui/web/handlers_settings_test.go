@@ -104,9 +104,62 @@ func TestSettingsTemplateRendersLedgerAndPreservesActions(t *testing.T) {
 	assert.Contains(t, html, `id="description" name="description" maxlength="80" autocomplete="off" required`)
 	assert.Contains(t, html, `id="expires" name="expires" autocomplete="off" required`)
 	assert.Contains(t, html, `id="revokeModal"`)
-	assert.Contains(t, html, `id="passwordModal"`)
+	assert.Contains(t, html, `<dialog class="upload-dialog" id="passwordModal"`)
+	assert.Contains(t, html, `<button class="dlg-btn dlg-btn-cancel" type="button" data-action="close-password">Cancel</button>`)
+	assert.Contains(t, html, `<button class="dlg-btn dlg-btn-upload" type="submit" form="passwordForm">Change password</button>`)
+	assert.NotContains(t, html, `<header class="settings-ledger__dialog-head">`, "password dialog must use the shared .dlg-header")
+	assert.Contains(t, html, `id="passwordError" role="alert" aria-live="assertive" tabindex="-1" style="display: none;"`)
 	assert.Contains(t, html, `/users/operator/tokens`)
-	assert.Contains(t, html, `submitPasswordChange(currentPassword, newPassword, confirmPassword`)
+	assert.Contains(t, html, `submitPasswordChange(currentPassword, newPassword, confirmPassword, 'passwordError', function()`)
+	assert.Contains(t, html, `<button class="settings-ledger__button" type="button" data-action="change-password">Change password</button>
+          <p class="settings-ledger__account-status" id="passwordStatus" role="status" aria-live="polite"></p>`, "password confirmation must sit next to the button, which is styled as a button")
+	assert.Contains(t, html, `document.getElementById('passwordStatus').textContent = '';
+            setPasswordError(document.getElementById('passwordError'), '', false);
+            document.getElementById('passwordForm').reset();
+            passwordModal.showModal();`, "reopening the password dialog must clear the stale error")
+	assert.Contains(t, html, `document.getElementById('passwordModal').close();
+          document.getElementById('passwordStatus').textContent = 'Password changed.';
+        });`, "a successful change must be announced after the dialog closes")
+	assert.Contains(t, html, `class="sr-only" id="settingsStatus" role="status" aria-live="polite"`, "endpoint copy status stays screen-reader only")
+	assert.Contains(t, html, `passwordModal.addEventListener('cancel', function(event) {
+            if (passwordPending) {
+              event.preventDefault();`, "Escape must not dismiss the dialog while a password request is pending")
+	assert.Contains(t, html, `passwordModal.addEventListener('close', function() {
+            if (passwordPending && !passwordModal.open) {
+              passwordModal.showModal();
+            }`, "a non-cancelable Escape must not leave a pending request in a closed dialog")
+	assert.Contains(t, html, `passwordPending = false;
+          document.getElementById('passwordModal').close();`, "success must clear the pending flag before closing")
+	assert.Contains(t, html, `if (tokenCreating) {
+          return;
+        }`, "a second create click must not send another POST")
+	assert.Contains(t, html, `tokenCreating = true;
+        setTokenBusy('button[form="tokenForm"]', true);
+        let created = false;
+        fetch('/users/operator/tokens', {`, "create must lock before the request starts")
+	assert.Contains(t, html, `tokenCreating = false;
+          setTokenBusy('button[form="tokenForm"]', false);`, "create must unlock when the request settles")
+	assert.Contains(t, html, `if (created) {
+            document.getElementById('tokenForm').reset();
+          }`, "failed creates must keep the user's input")
+	assert.NotContains(t, html, `document.getElementById('description').value = '';`)
+	assert.Contains(t, html, `if (tokenUpdating) {
+          return;
+        }`, "a second update click must not send another PATCH")
+	assert.Contains(t, html, `tokenUpdating = true;
+        setTokenBusy('button[form="tokenEditForm"]', true);
+        fetch(`)
+	assert.Contains(t, html, `tokenUpdating = false;
+          setTokenBusy('button[form="tokenEditForm"]', false);`)
+	assert.Contains(t, html, `if (tokenRevoking) {
+          return;
+        }`, "a second revoke click must not send another DELETE")
+	assert.Contains(t, html, `tokenRevoking = true;
+        setTokenBusy('[data-action="confirm-revoke"]', true);
+        fetch(`)
+	assert.Contains(t, html, `tokenRevoking = false;
+          setTokenBusy('[data-action="confirm-revoke"]', false);`)
+	assert.NotContains(t, html, `alert(`)
 	assert.NotContains(t, html, `onclick=`)
 	assert.Contains(t, html, `<td class="settings-ledger__scope-resource">devices</td>`)
 }
@@ -175,7 +228,8 @@ func TestSettingsTemplateHidesLocalPasswordDialogForExternalAuth(t *testing.T) {
 		ScopesList: []string{"devices:read"},
 	})
 
-	assert.NotContains(t, html, `<button class="settings-ledger__link" type="button" data-action="change-password">`)
+	assert.NotContains(t, html, `<button class="settings-ledger__button" type="button" data-action="change-password">`)
+	assert.NotContains(t, html, `id="passwordStatus"`)
 	assert.NotContains(t, html, `id="passwordModal"`)
 }
 
@@ -283,7 +337,9 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
     background: var(--brand-accent);
     color: var(--brand-primary);
 }`,
-		".settings-ledger .settings-ledger__dialog",
+		"#tokenCreatedModal,\n#revokeModal,\n#passwordModal {\n    font-size: 1rem;\n}",
+		"    #revokeModal .dlg-close,\n    #revokeModal .dlg-btn,\n    #passwordModal .dlg-close,\n    #passwordModal .dlg-btn,\n    #tokenCreatedModal .btn-copy {\n        min-height: 44px;\n    }",
+		"    #revokeModal .dlg-close,\n    #passwordModal .dlg-close {\n        min-width: 44px;\n    }",
 		"@media (max-width: 620px)",
 		"@media (pointer: coarse)",
 		"@media (prefers-reduced-motion: reduce)",
@@ -293,6 +349,12 @@ func TestSettingsLedgerStylesAreScopedAndResponsive(t *testing.T) {
 		}
 	}
 	assert.NotContains(t, css, ".settings-ledger > h1 {")
+	assert.NotContains(t, css, ".settings-ledger__dialog {")
+	assert.NotContains(t, css, ".settings-ledger__dialog-close")
+	assert.NotContains(t, css, ".settings-ledger__dialog-head")
+	assert.NotContains(t, css, ".settings-ledger__dialog-body")
+	assert.NotContains(t, css, ".settings-ledger__dialog-foot")
+	assert.NotContains(t, css, ".settings-ledger__dialog >")
 }
 
 func TestSettingsTokenUpdate(t *testing.T) {

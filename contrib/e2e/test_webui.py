@@ -80,7 +80,6 @@ def test_update_delete_locks_dialog_while_pending(page, update_server):
         updateName => {
           var realFetch = window.fetch.bind(window);
           window.__deleteRequests = 0;
-          window.alert = function() {};
           window.fetch = function(url, options) {
             if (url === '/v1/updates/' + encodeURIComponent(updateName) &&
                 options && options.method === 'DELETE') {
@@ -131,10 +130,41 @@ def test_update_delete_locks_dialog_while_pending(page, update_server):
         "cancelDisabled": True,
     }
     assert page.locator("#deleteDialog").is_visible()
+    assert page.locator("#delete-status").inner_text() == (
+        "Error deleting update: test failure"
+    )
     assert not page.locator("#confirm-cb").is_disabled()
     assert not page.locator("#deleteConfirmBtn").is_disabled()
     assert not page.locator("#delete-close-btn").is_disabled()
     assert not page.locator("#delete-cancel-btn").is_disabled()
+    assert page.locator("#delete-status").get_attribute("role") == "alert"
+    assert page.evaluate("document.activeElement.id") == "delete-status"
+
+    # A retry clears the previous error while the new request is in flight.
+    page.locator("#deleteConfirmBtn").click()
+    page.wait_for_function(
+        "document.getElementById('deleteDialog').getAttribute('aria-busy') === 'true'"
+    )
+    assert page.locator("#delete-status").inner_text() == ""
+
+
+def test_upload_validation_stays_inline(page, update_server):
+    """Upload validation reports errors in the dialog instead of blocking alerts."""
+    page.goto(f"{SERVER_URL}/updates")
+    page.click("#show-upload-btn")
+
+    page.fill("#upload-tag", "   ")
+    page.fill("#upload-name", "   ")
+    page.click("#upload-btn")
+    assert page.evaluate("document.getElementById('upload-form').checkValidity()") is False
+
+    page.fill("#upload-tag", "main")
+    page.fill("#upload-name", "inline-validation")
+    page.click("#upload-btn")
+    result = page.locator("#upload-result")
+    assert result.get_attribute("role") == "alert"
+    assert result.inner_text() == "Please select a directory."
+    assert page.evaluate("document.activeElement.id") == "upload-dir-btn"
 
 
 def test_delete_dialog_contains_scroll(page, update_server):

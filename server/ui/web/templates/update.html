@@ -204,7 +204,7 @@
               {{ end }}
             </div>
           </div>
-          <div id="rollout-result" aria-live="polite" role="status"></div>
+          <div class="dlg-status" id="rollout-result" aria-live="polite" role="status" tabindex="-1"></div>
         </div>
         <div class="dlg-footer">
           <button class="dlg-btn dlg-btn-cancel" id="rollout-cancel-btn" type="button">Cancel</button>
@@ -248,9 +248,11 @@
       const devicesDialogClose = document.getElementById('devices-dlg-close-btn');
       const devicesDialogFooterClose = document.getElementById('devices-dlg-footer-close-btn');
       let devicesDialogTrigger = null;
+      let devicesRun = 0;
 
       function showDevicesModal(status, trigger) {
         devicesDialogTrigger = trigger;
+        const run = ++devicesRun;
         document.getElementById('devicesStatus').textContent = status;
         const list = document.getElementById('devicesList');
         list.innerHTML = '<li>Loading...</li>';
@@ -259,6 +261,9 @@
         fetch('/v1/updates/{{.Name}}/query?status=' + encodeURIComponent(status))
           .then(response => response.json())
           .then(data => {
+            if (run !== devicesRun) {
+              return;
+            }
             const devicesList = data || [];
             list.innerHTML = '';
             devicesList.forEach(uuid => {
@@ -271,6 +276,9 @@
             });
           })
           .catch(error => {
+            if (run !== devicesRun) {
+              return;
+            }
             console.error('Error fetching devices:', error);
             list.innerHTML = '';
             const li = document.createElement('li');
@@ -308,16 +316,16 @@
         rolloutCloseBtn.disabled = isCreating;
       }
 
-      function showRolloutResult(message) {
-        rolloutResult.textContent = message;
-      }
-
-      function clearRolloutResult() {
-        rolloutResult.textContent = '';
+      function setRolloutResult(message, state) {
+        rolloutResult.dataset.state = state || '';
+        rolloutResult.setAttribute('role', state === 'error' ? 'alert' : 'status');
+        rolloutResult.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');
+        rolloutResult.textContent = message || '';
+        if (state === 'error') rolloutResult.focus();
       }
 
       showRolloutBtn.addEventListener('click', function () {
-        clearRolloutResult();
+        setRolloutResult('');
         rolloutDialog.showModal();
       });
 
@@ -356,30 +364,42 @@
         showRolloutBtn.focus();
       });
 
+      rolloutDialog.addEventListener('close', function () {
+        if (creatingRollout && !rolloutDialog.open) {
+          rolloutDialog.showModal();
+        }
+      });
+
       async function createRollout() {
         if (creatingRollout) {
           return;
         }
 
-        const uuids = document.getElementById('rollout-uuids').value;
+        const uuids = document.getElementById('rollout-uuids').value.split(',').map(s => s.trim()).filter(s => s);
         const selectedGroups = Array.from(document.querySelectorAll('input[name="deviceGroups"]:checked')).map(cb => cb.value);
 
-        if (!uuids && selectedGroups.length === 0) {
-          alert('Please provide either UUIDs or device groups.');
+        if (uuids.length === 0 && selectedGroups.length === 0) {
+          setRolloutResult('Please provide either UUIDs or device groups.', 'error');
+          return;
+        }
+
+        const rolloutName = document.getElementById('rollout-name').value.trim();
+        if (!rolloutName) {
+          setRolloutResult('Enter a rollout name.', 'error');
           return;
         }
 
         const rolloutData = {
-          uuids: uuids ? uuids.split(',').map(s => s.trim()).filter(s => s) : [],
+          uuids: uuids,
           groups: selectedGroups
         };
 
-        clearRolloutResult();
+        setRolloutResult('');
         rolloutAbortController = new AbortController();
         setRolloutCreating(true);
 
         try {
-          const response = await fetch('/v1/updates/{{.Name}}/rollouts/' + document.getElementById('rollout-name').value, {
+          const response = await fetch('/v1/updates/{{.Name}}/rollouts/' + encodeURIComponent(rolloutName), {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -389,6 +409,7 @@
           });
 
           if (response.ok) {
+            creatingRollout = false;
             rolloutDialog.close();
             window.location.reload();
           } else {
@@ -397,10 +418,10 @@
           }
         } catch (error) {
           if (error.name === 'AbortError') {
-            showRolloutResult('Rollout creation request cancelled.');
+            setRolloutResult('Request cancelled. The rollout may still have been created; check Rollout history.');
           } else {
             console.error('Error:', error);
-            alert('Error creating rollout: ' + error.message);
+            setRolloutResult('Error creating rollout: ' + error.message, 'error');
           }
         } finally {
           rolloutAbortController = null;

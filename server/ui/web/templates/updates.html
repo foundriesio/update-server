@@ -71,6 +71,7 @@
         <input type="checkbox" id="confirm-cb" aria-describedby="delete-title">
         <label for="confirm-cb">I understand this action cannot be undone</label>
       </div>
+      <p class="dlg-status" id="delete-status" aria-live="polite" role="status" tabindex="-1"></p>
     </div>
     <div class="dlg-footer">
       <button class="dlg-btn dlg-btn-cancel" id="delete-cancel-btn" type="button">Cancel</button>
@@ -81,6 +82,15 @@
 
 <script>
 var deletePending = false;
+
+function setDeleteStatus(message, state) {
+  var status = document.getElementById('delete-status');
+  status.dataset.state = state || '';
+  status.setAttribute('role', state === 'error' ? 'alert' : 'status');
+  status.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');
+  status.textContent = message || '';
+  if (state === 'error') status.focus();
+}
 
 function setDeletePending(pending) {
   var dialog = document.getElementById('deleteDialog');
@@ -100,6 +110,7 @@ function showDeleteDialog(name) {
   var deleteBtn = document.getElementById('deleteConfirmBtn');
   document.getElementById('deleteName').textContent = name;
   cb.checked = false;
+  setDeleteStatus('');
   setDeletePending(false);
   deleteBtn.onclick = function() { deleteUpdate(name); };
   document.getElementById('deleteDialog').showModal();
@@ -107,30 +118,32 @@ function showDeleteDialog(name) {
 
 function deleteUpdate(name) {
   if (deletePending) return;
+  setDeleteStatus('');
   setDeletePending(true);
   fetch('/v1/updates/' + encodeURIComponent(name), { method: 'DELETE' })
     .then(function(response) {
       if (response.ok) {
+        deletePending = false;
         document.getElementById('deleteDialog').close();
         window.location.reload();
       } else {
         return response.text().then(function(errorText) {
           setDeletePending(false);
-          alert('Error deleting update: ' + errorText);
+          setDeleteStatus('Error deleting update: ' + errorText, 'error');
         });
       }
     })
     .catch(function(error) {
       setDeletePending(false);
-      alert('Error deleting update: ' + error.message);
+      setDeleteStatus('Error deleting update: ' + error.message, 'error');
     });
 }
 
 (function() {
   document.getElementById('confirm-cb').addEventListener('change', function() {
     var deleteBtn = document.getElementById('deleteConfirmBtn');
-    deleteBtn.disabled = !this.checked;
-    deleteBtn.setAttribute('aria-disabled', String(!this.checked));
+    deleteBtn.disabled = deletePending || !this.checked;
+    deleteBtn.setAttribute('aria-disabled', String(deleteBtn.disabled));
   });
   document.getElementById('delete-close-btn').addEventListener('click', function() {
     if (!deletePending) document.getElementById('deleteDialog').close();
@@ -140,6 +153,11 @@ function deleteUpdate(name) {
   });
   document.getElementById('deleteDialog').addEventListener('cancel', function(event) {
     if (deletePending) event.preventDefault();
+  });
+  document.getElementById('deleteDialog').addEventListener('close', function() {
+    if (deletePending && !this.open) {
+      this.showModal();
+    }
   });
 }());
 </script>
@@ -245,12 +263,12 @@ function deleteUpdate(name) {
             <small id="upload-status" aria-live="polite"></small>
           </div>
 
-          <div id="upload-result" aria-live="polite" style="display:none;"></div>
+          <div class="dlg-status" id="upload-result" aria-live="polite" role="status" tabindex="-1" hidden></div>
         </form>
       </div>
       <div class="dlg-footer">
         <button class="dlg-btn dlg-btn-cancel" id="upload-cancel-btn" type="button">Cancel</button>
-        <button class="dlg-btn dlg-btn-upload" id="upload-btn" type="button" onclick="uploadUpdate()" disabled>Upload</button>
+        <button class="dlg-btn dlg-btn-upload" id="upload-btn" type="button" onclick="uploadUpdate()">Upload</button>
       </div>
     </article>
   </dialog>
@@ -262,16 +280,43 @@ function deleteUpdate(name) {
     const uploadDirBtn = document.getElementById('upload-dir-btn');
     const uploadDirStatus = document.getElementById('upload-file-summary');
     const uploadBtn = document.getElementById('upload-btn');
+    const uploadResult = document.getElementById('upload-result');
+
+    function setUploadResult(message, state) {
+      uploadResult.dataset.state = state || '';
+      uploadResult.setAttribute('role', state === 'error' ? 'alert' : 'status');
+      uploadResult.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');
+      uploadResult.textContent = message || '';
+      uploadResult.hidden = !message;
+      if (state === 'error') uploadResult.focus();
+    }
+
+    let summarizeRun = 0;
+    let summarizing = false;
+
+    // Some browsers fire no cancel event when the picker is dismissed.
+    function recoverPicker() {
+      setTimeout(() => {
+        if (uploading || summarizing || !uploadDirBtn.disabled) return;
+        uploadDirBtn.disabled = false;
+        uploadDirStatus.textContent = 'No selection detected. Choose the directory again.';
+      }, 500);
+    }
 
     uploadDirBtn.addEventListener('click', () => {
+      setUploadResult('');
       uploadBtn.disabled = true;
       uploadDirBtn.disabled = true;
       // The browser reports the selection only after enumerating the directory.
       uploadDirStatus.textContent = 'Calculating update size. This may take a while...';
+      window.addEventListener('focus', recoverPicker, { once: true });
       uploadDir.click();
     });
 
     async function summarizeDirectory() {
+      const run = ++summarizeRun;
+      summarizing = true;
+      setUploadResult('');
       uploadBtn.disabled = true;
       uploadDirBtn.disabled = true;
       const files = uploadDir.files;
@@ -282,18 +327,25 @@ function deleteUpdate(name) {
         for (let i = 0; i < files.length; i++) {
           // Yield so the pending status can paint even for large selections.
           if (i % 1000 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+          if (run !== summarizeRun) return;
           size += files[i].size;
         }
+        if (run !== summarizeRun) return;
         uploadDirStatus.textContent = directory + ': ' + files.length + ' files (' + formatBytes(size) + ').';
       } else {
         uploadDirStatus.textContent = 'No directory selected.';
       }
+      summarizing = false;
+      if (uploading) return;
       uploadDirBtn.disabled = false;
-      uploadBtn.disabled = files.length === 0;
+      uploadBtn.disabled = false;
     }
 
     uploadDir.addEventListener('change', summarizeDirectory);
     uploadDir.addEventListener('cancel', summarizeDirectory);
+    ['upload-tag', 'upload-name', 'upload-hardware-id'].forEach((id) => {
+      document.getElementById(id).addEventListener('input', () => setUploadResult(''));
+    });
 
     // Build a tar archive as a composite Blob.
     // File objects are Blobs referencing disk - the browser reads them on demand
@@ -444,7 +496,7 @@ function deleteUpdate(name) {
     let uploadXhr = null;
 
     async function uploadUpdate() {
-      if (uploadBtn.disabled) return;
+      if (uploading || uploadBtn.disabled) return;
       const tagEl = document.getElementById('upload-tag');
       const nameEl = document.getElementById('upload-name');
       const dirEl = document.getElementById('upload-dir');
@@ -460,17 +512,21 @@ function deleteUpdate(name) {
       const updateName = nameEl.value.trim();
 
       if (!tag || !updateName) {
-        alert('Please fill in all fields.');
+        tagEl.value = tag;
+        nameEl.value = updateName;
+        document.getElementById('upload-form').reportValidity();
         return;
       }
 
       const files = dirEl.files;
       if (!files || files.length === 0) {
-        alert('Please select a directory.');
+        setUploadResult('Please select a directory.', 'error');
+        uploadDirBtn.focus();
         return;
       }
 
-      const hardwareId = document.getElementById('upload-hardware-id').value.trim();
+      const hardwareIdEl = document.getElementById('upload-hardware-id');
+      const hardwareId = hardwareIdEl.value.trim();
 
       // When the chosen directory has no "ostree_repo" subdirectory, the
       // hardware id and target name cannot be derived from the update content
@@ -481,8 +537,8 @@ function deleteUpdate(name) {
       });
       if (!hasOstreeTree && !hardwareId) {
         document.getElementById('upload-advanced').open = true;
-        document.getElementById('upload-hardware-id').focus();
-        alert('The selected directory has no "ostree_repo" subdirectory. Please set "Hardware ID" in the advanced options.');
+        setUploadResult('The selected directory has no "ostree_repo" subdirectory. Please set "Hardware ID" in the advanced options.', 'error');
+        hardwareIdEl.focus();
         return;
       }
 
@@ -520,7 +576,7 @@ function deleteUpdate(name) {
       cancelBtn.textContent = 'Stop upload';
       closeBtn.disabled = true;
       progressDiv.style.display = 'block';
-      resultDiv.style.display = 'none';
+      setUploadResult('');
       progressBar.value = 0;
       statusEl.textContent = 'Building tar...';
 
@@ -572,8 +628,8 @@ function deleteUpdate(name) {
 
         progressBar.value = 100;
         statusEl.textContent = 'Upload complete: ' + formatBytes(tarBlob.size);
-        resultDiv.style.display = 'block';
-        resultDiv.textContent = '';
+        setUploadResult('', 'success');
+        resultDiv.hidden = false;
         const okMsg = document.createElement('p');
         okMsg.style.color = 'green';
         const okStrong = document.createElement('strong');
@@ -590,22 +646,15 @@ function deleteUpdate(name) {
         setTimeout(() => location.reload(), 1500);
 
       } catch (err) {
-        resultDiv.style.display = 'block';
-        resultDiv.textContent = '';
-        const errMsg = document.createElement('p');
         if (err.message === 'Upload cancelled') {
-          errMsg.textContent = 'Upload cancelled.';
+          setUploadResult('Upload cancelled.');
         } else {
-          errMsg.style.color = 'red';
-          const errStrong = document.createElement('strong');
-          errStrong.textContent = 'Error: ' + err.message;
-          errMsg.appendChild(errStrong);
+          setUploadResult('Error: ' + err.message, 'error');
         }
-        resultDiv.appendChild(errMsg);
       } finally {
         uploading = false;
         uploadXhr = null;
-        btn.disabled = dirEl.files.length === 0;
+        btn.disabled = false;
         uploadDirBtn.disabled = false;
         btn.textContent = 'Upload';
         cancelBtn.textContent = 'Cancel';
@@ -630,12 +679,14 @@ function deleteUpdate(name) {
       const fileSummary = document.getElementById('upload-file-summary');
 
       function openDialog() {
+        summarizeRun++;
+        summarizing = false;
         document.getElementById('upload-form').reset();
         fileSummary.textContent = 'No directory selected';
-        uploadBtn.disabled = true;
+        uploadBtn.disabled = false;
         uploadDirBtn.disabled = false;
         document.getElementById('upload-progress').style.display = 'none';
-        document.getElementById('upload-result').style.display = 'none';
+        setUploadResult('');
         dialog.showModal();
       }
 
@@ -668,6 +719,12 @@ function deleteUpdate(name) {
 
       dialog.addEventListener('close', function () {
         showBtn.focus();
+      });
+
+      dialog.addEventListener('close', function () {
+        if (uploading && !dialog.open) {
+          dialog.showModal();
+        }
       });
     })();
     </script>

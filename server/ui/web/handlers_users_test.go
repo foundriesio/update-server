@@ -398,6 +398,8 @@ func TestUserScopesDialogValidatesSelectionAndMatchesRolloutExitBehavior(t *test
 	assert.Contains(t, html, `scopesSubmit.textContent = submitting ? 'Saving access…' : 'Save access';`)
 	assert.Contains(t, html, `(state === 'error' || state === 'saving') && status.hasAttribute('tabindex')`)
 	assert.Contains(t, html, `scopeDialog.addEventListener('cancel', function (event) {`)
+	assert.Contains(t, html, "scopeDialog.addEventListener('close', function () {\n    if (scopesForm.getAttribute('aria-busy') === 'true' && !scopeDialog.open) scopeDialog.showModal();\n  });",
+		"a non-cancelable Escape must not close the dialog mid-request")
 	assert.Contains(t, html, `scopeDialog.addEventListener('click', function (event) {`)
 	assert.Contains(t, html, `if (event.target === scopeDialog) scopeDialog.close();`)
 	assert.Contains(t, html, `if (activeTrigger && document.contains(activeTrigger)) activeTrigger.focus();`)

@@ -21,7 +21,8 @@
         </dl>
         {{if .LocalAuth}}
         <div class="settings-ledger__account-actions">
-          <button class="settings-ledger__link" type="button" data-action="change-password">Change password</button>
+          <button class="settings-ledger__button" type="button" data-action="change-password">Change password</button>
+          <p class="settings-ledger__account-status" id="passwordStatus" role="status" aria-live="polite"></p>
         </div>
         {{end}}
       </section>
@@ -257,27 +258,40 @@
       </dialog>
 
       {{if .LocalAuth}}
-      <dialog class="settings-ledger__dialog" id="passwordModal" aria-labelledby="password-modal-title">
+      <dialog class="upload-dialog" id="passwordModal" aria-labelledby="password-modal-title">
         <article>
-          <header class="settings-ledger__dialog-head">
+          <div class="dlg-header">
             <h2 id="password-modal-title">Change password</h2>
-            <button class="settings-ledger__dialog-close" type="button" data-action="close-password" aria-label="Close password dialog">×</button>
-          </header>
+            <button class="dlg-close" type="button" data-action="close-password" aria-label="Close password dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
           <form id="passwordForm">
-            <div class="settings-ledger__dialog-body">
-              <label for="currentPassword">Current password</label>
-              <input type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
-              <label for="newPassword">New password</label>
-              <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" required>
-              <label for="confirmPassword">Confirm new password</label>
-              <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
-              <p class="settings-ledger__password-error" id="passwordError" role="alert" style="display: none;">Passwords do not match.</p>
+            <div class="dlg-body">
+              <div class="field-grid">
+                <div class="field-row">
+                  <label class="field-row__key" for="currentPassword">Current password</label>
+                  <input class="field-input" type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
+                </div>
+                <div class="field-row">
+                  <label class="field-row__key" for="newPassword">New password</label>
+                  <input class="field-input" type="password" id="newPassword" name="newPassword" autocomplete="new-password" required>
+                </div>
+                <div class="field-row">
+                  <label class="field-row__key" for="confirmPassword">Confirm new password</label>
+                  <input class="field-input" type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+                </div>
+              </div>
+              <p class="settings-ledger__password-error" id="passwordError" role="alert" aria-live="assertive" tabindex="-1" style="display: none;">Passwords do not match.</p>
             </div>
-            <footer class="settings-ledger__dialog-foot">
-              <button class="settings-ledger__button" type="button" data-action="close-password">Cancel</button>
-              <button class="settings-ledger__button settings-ledger__button--primary" type="submit">Change password</button>
-            </footer>
           </form>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-cancel" type="button" data-action="close-password">Cancel</button>
+            <button class="dlg-btn dlg-btn-upload" type="submit" form="passwordForm">Change password</button>
+          </div>
         </article>
       </dialog>
       {{template "password_change_script" .}}
@@ -377,8 +391,21 @@
 
         if (passwordModal) {
           document.querySelector('[data-action="change-password"]').addEventListener('click', function() {
+            document.getElementById('passwordStatus').textContent = '';
+            setPasswordError(document.getElementById('passwordError'), '', false);
+            document.getElementById('passwordForm').reset();
             passwordModal.showModal();
             document.getElementById('currentPassword').focus();
+          });
+          passwordModal.addEventListener('cancel', function(event) {
+            if (passwordPending) {
+              event.preventDefault();
+            }
+          });
+          passwordModal.addEventListener('close', function() {
+            if (passwordPending && !passwordModal.open) {
+              passwordModal.showModal();
+            }
           });
           document.querySelectorAll('[data-action="close-password"]').forEach(button => {
             button.addEventListener('click', () => passwordModal.close());
@@ -390,9 +417,22 @@
         }
       });
 
+      let tokenCreating = false;
+      let tokenUpdating = false;
+      let tokenRevoking = false;
+
+      function setTokenBusy(selector, busy) {
+        document.querySelector(selector).disabled = busy;
+      }
+
       function confirmRevoke() {
         if (!currentTokenId) return;
+        if (tokenRevoking) {
+          return;
+        }
 
+        tokenRevoking = true;
+        setTokenBusy('[data-action="confirm-revoke"]', true);
         fetch(`/users/{{.User.Username}}/tokens/${currentTokenId}`, {
           method: 'DELETE',
           headers: {
@@ -405,11 +445,18 @@
         })
         .catch(error => {
           document.getElementById('revokeStatus').textContent = 'Unable to revoke token: ' + error.message;
+        })
+        .finally(() => {
+          tokenRevoking = false;
+          setTokenBusy('[data-action="confirm-revoke"]', false);
         });
       }
 
       function updateToken() {
         if (!currentTokenId) return;
+        if (tokenUpdating) {
+          return;
+        }
 
         const description = document.getElementById('editDescription').value.trim();
         const scopes = Array.from(document.getElementsByName('editScopes'))
@@ -421,6 +468,8 @@
           return;
         }
 
+        tokenUpdating = true;
+        setTokenBusy('button[form="tokenEditForm"]', true);
         fetch(`/users/{{.User.Username}}/tokens/${currentTokenId}`, {
           method: 'PATCH',
           headers: {
@@ -436,10 +485,18 @@
         })
         .catch(error => {
           document.getElementById('tokenEditStatus').textContent = 'Unable to update token: ' + error.message;
+        })
+        .finally(() => {
+          tokenUpdating = false;
+          setTokenBusy('button[form="tokenEditForm"]', false);
         });
       }
 
       function createToken() {
+        if (tokenCreating) {
+          return;
+        }
+
         const description = document.getElementById('description').value.trim();
 
         // Get selected scopes from checkboxes
@@ -474,6 +531,8 @@
           expires: expiresISO
         };
 
+        tokenCreating = true;
+        setTokenBusy('button[form="tokenForm"]', true);
         let created = false;
         fetch('/users/{{.User.Username}}/tokens', {
           method: 'POST',
@@ -503,12 +562,11 @@
           document.getElementById('tokenStatus').textContent = 'Unable to create token: ' + error.message;
         })
         .finally(() => {
-          document.getElementById('description').value = '';
-          document.querySelectorAll('input[name="scopes"]').forEach(checkbox => {
-            checkbox.checked = false;
-          });
-          document.getElementById('expires').value = '';
-          if (created) document.getElementById('tokenModal').close();
+          tokenCreating = false;
+          setTokenBusy('button[form="tokenForm"]', false);
+          if (created) {
+            document.getElementById('tokenForm').reset();
+          }
         });
       }
 
@@ -551,11 +609,14 @@
         const newPassword = document.getElementById('newPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
 
-        submitPasswordChange(currentPassword, newPassword, confirmPassword, function() {
+        submitPasswordChange(currentPassword, newPassword, confirmPassword, 'passwordError', function() {
           document.getElementById('currentPassword').value = '';
           document.getElementById('newPassword').value = '';
           document.getElementById('confirmPassword').value = '';
+          // The close backstop reopens the dialog while a request is pending.
+          passwordPending = false;
           document.getElementById('passwordModal').close();
+          document.getElementById('passwordStatus').textContent = 'Password changed.';
         });
       }
       {{ end }}
