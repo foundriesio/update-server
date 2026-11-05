@@ -53,6 +53,26 @@
           </div>
         </article>
       </dialog>
+      <dialog id="OverwriteConfigFile" class="upload-dialog config-file-dialog config-file-delete-dialog" aria-labelledby="config-file-overwrite-title">
+        <article>
+          <div class="dlg-header">
+            <h2 id="config-file-overwrite-title">Overwrite Config File</h2>
+            <button class="dlg-close" id="config-file-overwrite-close-btn" type="button" aria-label="Close dialog">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="dlg-body">
+            <p class="upload-intro">A file named <strong data-config-file-overwrite-name></strong> already exists. Overwrite it?</p>
+          </div>
+          <div class="dlg-footer">
+            <button class="dlg-btn dlg-btn-cancel" id="config-file-overwrite-cancel-btn" type="button" autofocus>Cancel</button>
+            <button class="dlg-btn dlg-btn-delete" id="config-file-overwrite-confirm-btn" type="button">Overwrite</button>
+          </div>
+        </article>
+      </dialog>
       <script type="module">
         export const config = {
           'apiUrl': location.pathname, // PATCH usually sits at the same URL as the page itself.
@@ -73,8 +93,13 @@
               dialogReason = dialog.querySelector('input[name="Reason"]'),
               dialogSaveButton = dialog.querySelector('button[name="save"]'),
               dialogStatus = dialog.querySelector('[data-config-file-status]'),
-              dialogValue = dialog.querySelector('textarea[name="Value"]');
-        let saveInFlight = false;
+              dialogValue = dialog.querySelector('textarea[name="Value"]'),
+              overwriteDialog = document.querySelector('#OverwriteConfigFile'),
+              overwriteCancelButton = overwriteDialog.querySelector('#config-file-overwrite-cancel-btn'),
+              overwriteCloseButton = overwriteDialog.querySelector('#config-file-overwrite-close-btn'),
+              overwriteConfirmButton = overwriteDialog.querySelector('#config-file-overwrite-confirm-btn'),
+              overwriteFileName = overwriteDialog.querySelector('[data-config-file-overwrite-name]');
+        let saveInFlight = false, overwriteConfirmed = false;
 
         function setStatus(message, state) {
           dialogStatus.dataset.state = state || '';
@@ -175,19 +200,22 @@
           if (saveInFlight) {
             return
           }
+          const confirmedOverwrite = overwriteConfirmed;
+          overwriteConfirmed = false;
           const name = dialogFileName.value.trim();
           dialogFileName.setCustomValidity(name ? '' : 'Enter a file name.');
           if (!dialogForm.reportValidity()) {
             return
           }
           if ( dialog.dataset.mode === 'add' ) {
-            if (
+            const duplicate =
               [...document.querySelectorAll(`td[name="${config.fileNameCell}"]`)]
-              .some(el => el.textContent.trim() === name)
-            ) {
-              if ( !confirm(`A file with name "${name}" already exists. Do you want to overwrite it?`) ) {
-                return
-              }
+              .some(el => el.textContent.trim() === name);
+            if (duplicate && !confirmedOverwrite) {
+              setStatus('');
+              overwriteFileName.textContent = name;
+              overwriteDialog.showModal();
+              return
             }
           }
           setSubmitting(true);
@@ -208,8 +236,28 @@
             ev.preventDefault();
           }
         });
+        dialog.addEventListener('close', () => {
+          if (saveInFlight && !dialog.open) {
+            dialog.showModal();
+          }
+        });
         dialogCloseButton.addEventListener('click', () => { dialog.close() });
         dialogCancelButton.addEventListener('click', () => { dialog.close() });
+        overwriteDialog.addEventListener('close', () => {
+          if (!saveInFlight) {
+            dialogFileName.focus();
+          }
+        });
+        overwriteCloseButton.addEventListener('click', () => { overwriteDialog.close() });
+        overwriteCancelButton.addEventListener('click', () => { overwriteDialog.close() });
+        overwriteConfirmButton.addEventListener('click', () => {
+          if (saveInFlight) {
+            return
+          }
+          overwriteDialog.close();
+          overwriteConfirmed = true;
+          dialogSaveButton.click();
+        });
 
         document.querySelectorAll(`button[name="${config.editButtonName}"]`).forEach(el => {
           el.addEventListener('click', ev => { openEditDialog(ev) });

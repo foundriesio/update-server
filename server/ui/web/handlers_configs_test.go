@@ -62,6 +62,8 @@ func TestConfigFileEditorUsesSharedDialogContract(t *testing.T) {
 		`setAttribute('aria-busy'`,
 		`[data-config-file-status]`,
 		`dialog.addEventListener('cancel'`,
+		"dialog.addEventListener('close', () => {\n          if (saveInFlight && !dialog.open) {\n            dialog.showModal();\n          }",
+		"deleteDialog.addEventListener('close', () => {\n            if (deleteInFlight && !deleteDialog.open) {\n              deleteDialog.showModal();\n            }",
 		`id="DeleteConfigFile"`,
 		`aria-labelledby="config-file-delete-title"`,
 		`id="config-file-delete-form"`,
@@ -73,6 +75,21 @@ func TestConfigFileEditorUsesSharedDialogContract(t *testing.T) {
 		`deleteDialog.showModal()`,
 		`deleteForm.addEventListener('submit'`,
 		`deleteForm.setAttribute('aria-busy'`,
+		`id="OverwriteConfigFile"`,
+		`aria-labelledby="config-file-overwrite-title"`,
+		`data-config-file-overwrite-name`,
+		`overwriteFileName.textContent = name`,
+		`id="config-file-overwrite-cancel-btn"`,
+		`id="config-file-overwrite-confirm-btn"`,
+		`overwriteDialog.showModal()`,
+		`overwriteConfirmButton.addEventListener('click'`,
+		`overwriteCancelButton.addEventListener('click'`,
+		`overwriteDialog.addEventListener('close'`,
+		`setStatus('');
+              overwriteFileName.textContent = name`,
+		`if (!saveInFlight) {
+            dialogFileName.focus();
+          }`,
 	} {
 		assert.Contains(t, html, expected)
 	}
@@ -80,6 +97,7 @@ func TestConfigFileEditorUsesSharedDialogContract(t *testing.T) {
 	assert.NotContains(t, html, `>x</button>`)
 	assert.NotContains(t, html, `alert('Error saving config file:`)
 	assert.NotContains(t, html, `window.prompt(`)
+	assert.NotContains(t, html, `confirm(`)
 	assert.NotContains(t, html, `alert('Error deleting config file:`)
 }
 

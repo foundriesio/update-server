@@ -1475,6 +1475,19 @@ summary.user-badge::after {
     cursor: pointer;
     line-height: 1.5;
 }
+.dlg-status {
+    min-height: 1.5em;
+    margin: 12px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.dlg-status[data-state="error"] {
+    color: var(--danger);
+}
+.dlg-status:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
 .dlg-footer {
     padding: 16px 24px;
     display: flex;
@@ -3215,6 +3228,17 @@ pre.code-block {
     width: auto;
     flex: 0 0 auto;
 }
+#passwordModal > article {
+    width: min(460px, calc(100vw - 32px));
+    max-width: 460px;
+}
+#passwordModal .field-grid {
+    grid-template-columns: 1fr;
+}
+#passwordModal .dlg-btn {
+    width: auto;
+    flex: 0 0 auto;
+}
 .upload-dialog.config-file-dialog[data-mode="edit"] [data-mode="add"],
 .upload-dialog.config-file-dialog[data-mode="add"] [data-mode="edit"] {
     display: none !important;
@@ -3309,13 +3333,12 @@ pre.code-block {
     outline-offset: 2px;
 }
 .dlg-btn-config-save {
-    border: 1px solid var(--pico-primary-border);
-    background: var(--pico-primary-background);
-    color: var(--pico-primary-inverse);
+    background: var(--brand-primary);
+    color: #fff;
+    border: none;
 }
-.dlg-btn-config-save:hover {
-    border-color: var(--pico-primary-hover-border);
-    background: var(--pico-primary-hover-background);
+.dlg-btn-config-save:hover:not(:disabled) {
+    opacity: 0.9;
 }
 .upload-intro {
     max-width: 680px;
@@ -3661,7 +3684,7 @@ pre.code-block {
     color: #fff;
     border: none;
 }
-.dlg-btn-rollout:hover {
+.dlg-btn-rollout:hover:not(:disabled) {
     opacity: 0.9;
 }
 @media (max-width: 640px) {
@@ -4755,7 +4778,6 @@ pre.code-block {
 .settings-ledger__link:focus-visible,
 .settings-ledger__copy:focus-visible,
 .settings-ledger__button:focus-visible,
-.settings-ledger__dialog-close:focus-visible,
 .settings-ledger__token-value:focus-visible,
 .settings-ledger__scope-scroll:focus-visible,
 .settings-ledger__token-scroll:focus-visible {
@@ -4784,8 +4806,16 @@ pre.code-block {
 }
 .settings-ledger__account-actions {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 12px;
     padding-top: 10px;
+}
+.settings-ledger__account-status {
+    margin: 0;
+    color: var(--success-text);
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 .settings-ledger .settings-ledger__scope-scroll,
 .settings-ledger .settings-ledger__token-scroll {
@@ -4997,97 +5027,6 @@ pre.code-block {
 .settings-ledger__button--danger {
     color: var(--danger);
 }
-.settings-ledger .settings-ledger__dialog {
-    width: auto;
-    max-width: none;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--text-1);
-}
-.settings-ledger__dialog::backdrop {
-    background: rgba(0, 0, 0, 0.48);
-}
-.settings-ledger__dialog > article {
-    width: min(560px, calc(100vw - 32px));
-    max-width: 560px;
-    max-height: min(760px, calc(100vh - 32px));
-    margin: 0;
-    padding: 0;
-    overflow: auto;
-    border: 1px solid var(--border-2);
-    border-radius: 4px;
-    background: var(--surface-2);
-    color: var(--text-1);
-    box-shadow: none;
-}
-.settings-ledger__dialog form {
-    margin: 0;
-}
-.settings-ledger__dialog-head,
-.settings-ledger__dialog-foot {
-    display: flex;
-    align-items: center;
-    margin: 0;
-}
-.settings-ledger__dialog-head {
-    gap: 16px;
-    padding: 18px 24px 16px;
-}
-.settings-ledger__dialog-head h2 {
-    margin: 0;
-    color: var(--text-1);
-    font-size: 0.94rem;
-}
-.settings-ledger__dialog-close {
-    display: inline-flex;
-    min-width: 24px;
-    min-height: 24px;
-    align-items: center;
-    justify-content: center;
-    margin: 0 0 0 auto;
-    padding: 4px;
-    border: 0;
-    border-radius: 2px;
-    background: transparent;
-    color: var(--text-3);
-    font: inherit;
-    font-size: 1.1rem;
-    line-height: 1;
-    cursor: pointer;
-}
-.settings-ledger__dialog-close:hover {
-    color: var(--text-1);
-    background: var(--surface-hover);
-}
-.settings-ledger__dialog-body {
-    display: grid;
-    gap: 7px;
-    padding: 0 24px 20px;
-}
-.settings-ledger__dialog-body > p {
-    margin: 0 0 8px;
-    color: var(--text-2);
-    font-size: 0.8rem;
-    line-height: 1.5;
-}
-.settings-ledger__dialog-body > label {
-    color: var(--text-2);
-    font-size: 0.76rem;
-    font-weight: 600;
-}
-.settings-ledger__dialog-body input:not([type="checkbox"]) {
-    width: 100%;
-    min-height: 40px;
-    margin: 0 0 8px;
-    padding: 8px 10px;
-    border: 1px solid var(--border-2);
-    border-radius: 3px;
-    background: var(--surface-2);
-    color: var(--text-1);
-    font: inherit;
-    font-size: 0.85rem;
-}
 .settings-ledger__token-value {
     min-width: 0;
     max-height: 12rem;
@@ -5119,7 +5058,8 @@ pre.code-block {
 #tokenModal,
 #tokenEditModal,
 #tokenCreatedModal,
-#revokeModal {
+#revokeModal,
+#passwordModal {
     font-size: 1rem;
 }
 #tokenModal .dlg-btn,
@@ -5155,11 +5095,6 @@ pre.code-block {
     margin: 0;
     color: var(--danger);
     font-size: 0.76rem;
-}
-.settings-ledger__dialog-foot {
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 16px 24px;
 }
 #revokeModal .settings-ledger__rows {
     font-size: 0.85rem;
@@ -5197,29 +5132,12 @@ pre.code-block {
     }
 }
 
-@media (max-width: 480px) {
-    .settings-ledger__dialog > article {
-        width: calc(100vw - 16px);
-        max-height: calc(100vh - 16px);
-    }
-    .settings-ledger__dialog-head,
-    .settings-ledger__dialog-foot {
-        padding-right: 16px;
-        padding-left: 16px;
-    }
-    .settings-ledger__dialog-body {
-        padding-right: 16px;
-        padding-left: 16px;
-    }
-}
-
 @media (pointer: coarse) {
     .settings-ledger__link,
     .settings-ledger__copy,
     .settings-ledger__button,
     .settings-ledger__edit,
     .settings-ledger__revoke,
-    .settings-ledger__dialog-close,
     #tokenModal .dlg-close,
     #tokenModal .dlg-btn,
     #tokenEditModal .dlg-close,
@@ -5228,16 +5146,18 @@ pre.code-block {
     #tokenCreatedModal .dlg-btn,
     #revokeModal .dlg-close,
     #revokeModal .dlg-btn,
+    #passwordModal .dlg-close,
+    #passwordModal .dlg-btn,
     #tokenCreatedModal .btn-copy {
         min-height: 44px;
     }
-    .settings-ledger__dialog-close,
     .settings-ledger__edit,
     .settings-ledger__revoke,
     #tokenModal .dlg-close,
     #tokenEditModal .dlg-close,
     #tokenCreatedModal .dlg-close,
-    #revokeModal .dlg-close {
+    #revokeModal .dlg-close,
+    #passwordModal .dlg-close {
         min-width: 44px;
     }
 }

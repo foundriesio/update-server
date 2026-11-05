@@ -405,6 +405,10 @@
     if (scopesForm.getAttribute('aria-busy') === 'true') event.preventDefault();
   });
 
+  scopeDialog.addEventListener('close', function () {
+    if (scopesForm.getAttribute('aria-busy') === 'true' && !scopeDialog.open) scopeDialog.showModal();
+  });
+
   scopeDialog.addEventListener('click', function (event) {
     if (scopesForm.getAttribute('aria-busy') === 'true') return;
     if (event.target === scopeDialog) scopeDialog.close();

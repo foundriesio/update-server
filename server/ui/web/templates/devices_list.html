@@ -174,6 +174,7 @@
         <input type="checkbox" id="confirm-cb" aria-describedby="dlg-title">
         <label for="confirm-cb">I understand this action cannot be undone</label>
       </div>
+      <p class="dlg-status" id="delete-status" aria-live="polite" role="status" tabindex="-1"></p>
     </div>
     <div class="dlg-footer">
       <button class="dlg-btn dlg-btn-cancel" id="dlg-cancel-btn" type="button">Cancel</button>
@@ -183,9 +184,32 @@
 </dialog>
 
 <script>
-function showDeleteDialog(uuid, name) {
+var deletePending = false;
+
+function setDeleteStatus(message, state) {
+  var status = document.getElementById('delete-status');
+  status.dataset.state = state || '';
+  status.setAttribute('role', state === 'error' ? 'alert' : 'status');
+  status.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');
+  status.textContent = message || '';
+  if (state === 'error') status.focus();
+}
+
+function setDeletePending(pending) {
+  var dialog = document.getElementById('deleteDialog');
   var cb = document.getElementById('confirm-cb');
   var deleteBtn = document.getElementById('deleteConfirmBtn');
+  deletePending = pending;
+  dialog.setAttribute('aria-busy', String(pending));
+  cb.disabled = pending;
+  deleteBtn.disabled = pending || !cb.checked;
+  deleteBtn.setAttribute('aria-disabled', String(deleteBtn.disabled));
+  document.getElementById('dlg-close-btn').disabled = pending;
+  document.getElementById('dlg-cancel-btn').disabled = pending;
+}
+
+function showDeleteDialog(uuid, name) {
+  var cb = document.getElementById('confirm-cb');
   document.getElementById('deleteUuid').textContent = uuid;
   var nameRow = document.getElementById('deleteNameRow');
   if (name) {
@@ -195,41 +219,54 @@ function showDeleteDialog(uuid, name) {
     nameRow.style.display = 'none';
   }
   cb.checked = false;
-  deleteBtn.disabled = true;
-  deleteBtn.setAttribute('aria-disabled', 'true');
-  deleteBtn.onclick = function() { deleteDevice(uuid); };
+  setDeleteStatus('');
+  setDeletePending(false);
+  document.getElementById('deleteConfirmBtn').onclick = function() { deleteDevice(uuid); };
   document.getElementById('deleteDialog').showModal();
 }
 
 function deleteDevice(uuid) {
+  if (deletePending) return;
+  setDeleteStatus('');
+  setDeletePending(true);
   fetch('/v1/devices/' + uuid, { method: 'DELETE' })
     .then(function(response) {
-      document.getElementById('deleteDialog').close();
       if (response.ok) {
+        deletePending = false;
+        document.getElementById('deleteDialog').close();
         window.location.reload();
       } else {
-        response.text().then(function(errorText) {
-          alert('Error deleting device: ' + errorText);
+        return response.text().then(function(errorText) {
+          setDeletePending(false);
+          setDeleteStatus('Error deleting device: ' + errorText, 'error');
         });
       }
     })
     .catch(function(error) {
-      document.getElementById('deleteDialog').close();
-      alert('Error deleting device: ' + error.message);
+      setDeletePending(false);
+      setDeleteStatus('Error deleting device: ' + error.message, 'error');
     });
 }
 
 (function() {
   document.getElementById('confirm-cb').addEventListener('change', function() {
     var deleteBtn = document.getElementById('deleteConfirmBtn');
-    deleteBtn.disabled = !this.checked;
-    deleteBtn.setAttribute('aria-disabled', String(!this.checked));
+    deleteBtn.disabled = deletePending || !this.checked;
+    deleteBtn.setAttribute('aria-disabled', String(deleteBtn.disabled));
   });
   document.getElementById('dlg-close-btn').addEventListener('click', function() {
-    document.getElementById('deleteDialog').close();
+    if (!deletePending) document.getElementById('deleteDialog').close();
   });
   document.getElementById('dlg-cancel-btn').addEventListener('click', function() {
-    document.getElementById('deleteDialog').close();
+    if (!deletePending) document.getElementById('deleteDialog').close();
+  });
+  document.getElementById('deleteDialog').addEventListener('cancel', function(event) {
+    if (deletePending) event.preventDefault();
+  });
+  document.getElementById('deleteDialog').addEventListener('close', function() {
+    if (deletePending && !this.open) {
+      this.showModal();
+    }
   });
 }());
 </script>

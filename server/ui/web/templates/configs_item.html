@@ -159,6 +159,11 @@
           deleteDialog.addEventListener('cancel', ev => {
             if (deleteInFlight) ev.preventDefault();
           });
+          deleteDialog.addEventListener('close', () => {
+            if (deleteInFlight && !deleteDialog.open) {
+              deleteDialog.showModal();
+            }
+          });
           deleteForm.addEventListener('submit', async ev => {
             ev.preventDefault();
             if (deleteInFlight) return;

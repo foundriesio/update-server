@@ -43,6 +43,91 @@ func TestUpdatesTemplateDeleteEligibility(t *testing.T) {
 	}
 }
 
+func TestUpdatesTemplateDeleteFailureStaysInDialog(t *testing.T) {
+	ctx := struct {
+		baseCtx
+		Updates   []api.Update
+		CanDelete bool
+	}{
+		Updates:   []api.Update{{Name: "unused", DeviceCount: 0}},
+		CanDelete: true,
+	}
+	var buf bytes.Buffer
+	if err := templates.Templates.ExecuteTemplate(&buf, "updates.html", ctx); err != nil {
+		t.Fatal(err)
+	}
+	html := buf.String()
+	assert.Contains(t, html, `class="dlg-status" id="delete-status" aria-live="polite" role="status" tabindex="-1"`)
+	assert.Contains(t, html, "if (deletePending) return;\n  setDeleteStatus('');\n  setDeletePending(true);")
+	assert.Contains(t, html, `status.setAttribute('role', state === 'error' ? 'alert' : 'status');`)
+	assert.Contains(t, html, `status.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');`)
+	assert.Contains(t, html, `status.textContent = message || '';`)
+	assert.Contains(t, html, `if (state === 'error') status.focus();`)
+	assert.NotContains(t, html, `alert('Error deleting update:`)
+	assert.Contains(t, html, "addEventListener('close', function() {\n    if (deletePending && !this.open) {\n      this.showModal();\n    }",
+		"a non-cancelable Escape must not leave a pending delete in a closed dialog")
+	assert.Contains(t, html, "deletePending = false;\n        document.getElementById('deleteDialog').close();",
+		"success must clear the pending flag before closing")
+	assert.Contains(t, html, "dialog.addEventListener('close', function () {\n        if (uploading && !dialog.open) {\n          dialog.showModal();\n        }",
+		"a non-cancelable Escape must not close the dialog mid-upload")
+}
+
+func TestUpdatesTemplateUsesInlineUploadValidation(t *testing.T) {
+	ctx := struct {
+		baseCtx
+		Updates   []api.Update
+		CanDelete bool
+	}{}
+	var buf bytes.Buffer
+	if err := templates.Templates.ExecuteTemplate(&buf, "updates.html", ctx); err != nil {
+		t.Fatal(err)
+	}
+	html := buf.String()
+
+	assert.Contains(t, html, `class="dlg-status" id="upload-result" aria-live="polite" role="status" tabindex="-1"`)
+	assert.Contains(t, html, `if (!tag || !updateName) {
+        tagEl.value = tag;
+        nameEl.value = updateName;
+        document.getElementById('upload-form').reportValidity();`)
+	assert.Contains(t, html, `id="upload-btn" type="button" onclick="uploadUpdate()">Upload</button>`, "Upload must be reachable without a directory so the missing-directory error can show")
+	assert.NotContains(t, html, `uploadBtn.disabled = files.length === 0`)
+	assert.NotContains(t, html, `btn.disabled = dirEl.files.length === 0`)
+	assert.Contains(t, html, `setUploadResult('Please select a directory.', 'error');`)
+	assert.Contains(t, html, `uploadDirBtn.focus();`)
+	assert.Contains(t, html, `setUploadResult('The selected directory has no "ostree_repo" subdirectory. Please set "Hardware ID" in the advanced options.', 'error');`)
+	assert.Contains(t, html, `hardwareIdEl.focus();`)
+	assert.NotContains(t, html, `alert('Please fill in all fields.');`)
+	assert.NotContains(t, html, `alert('Please select a directory.');`)
+	assert.NotContains(t, html, `alert('The selected directory has no "ostree_repo" subdirectory. Please set "Hardware ID" in the advanced options.');`)
+}
+
+func TestUpdatesTemplateDirectoryPickerRecovers(t *testing.T) {
+	ctx := struct {
+		baseCtx
+		Updates   []api.Update
+		CanDelete bool
+	}{}
+	var buf bytes.Buffer
+	if err := templates.Templates.ExecuteTemplate(&buf, "updates.html", ctx); err != nil {
+		t.Fatal(err)
+	}
+	html := buf.String()
+
+	assert.Contains(t, html, `let summarizeRun = 0;`)
+	assert.Contains(t, html, `let summarizing = false;`)
+	assert.Contains(t, html, `const run = ++summarizeRun;`)
+	assert.Contains(t, html, `if (run !== summarizeRun) return;`)
+	assert.Equal(t, 2, strings.Count(html, `if (run !== summarizeRun) return;`), "stale run must bail inside the loop and before the final writes")
+	assert.Contains(t, html, `summarizeRun++;`, "openDialog must invalidate an in-flight summary")
+	assert.Contains(t, html, `summarizing = false;`)
+	assert.Contains(t, html, `window.addEventListener('focus', recoverPicker, { once: true });`)
+	assert.Contains(t, html, `if (uploading || summarizing || !uploadDirBtn.disabled) return;`)
+	assert.NotContains(t, html, "return;\n        summarizeDirectory();\n      }, 500);", "recovery must not summarize a stale FileList or unlock Upload")
+	assert.Contains(t, html, "uploadDirBtn.disabled = false;\n        uploadDirStatus.textContent = 'No selection detected. Choose the directory again.';\n      }, 500);")
+	assert.Contains(t, html, "async function uploadUpdate() {\n      if (uploading || uploadBtn.disabled) return;", "uploadUpdate must hold its own request lock")
+	assert.Contains(t, html, "summarizing = false;\n      if (uploading) return;\n      uploadDirBtn.disabled = false;", "a late summary must not unlock controls during an upload")
+}
+
 // updateDetailCtx mirrors the anonymous context struct updatesGet builds for
 // update.html, so tests can render the template with representative data.
 type updateDetailCtx struct {
@@ -372,16 +457,21 @@ func TestUpdateTemplateRolloutDialogSupportsRequestCancellation(t *testing.T) {
 	assert.Contains(t, html, `id="rollout-dlg-close-btn"`)
 	assert.Contains(t, html, `id="rollout-cancel-btn"`)
 	assert.Contains(t, html, `id="rollout-btn"`)
-	assert.Contains(t, html, `id="rollout-result" aria-live="polite" role="status"></div>`)
+	assert.Contains(t, html, `class="dlg-status" id="rollout-result" aria-live="polite" role="status" tabindex="-1"></div>`)
 	assert.Contains(t, html, `let creatingRollout = false;`)
 	assert.Contains(t, html, `let rolloutAbortController = null;`)
 	assert.Contains(t, html, `rolloutAbortController = new AbortController();`)
 	assert.Contains(t, html, `signal: rolloutAbortController.signal`)
 	assert.Contains(t, html, `rolloutAbortController.abort();`)
-	assert.Contains(t, html, `Rollout creation request cancelled.`)
+	assert.Contains(t, html, `Request cancelled. The rollout may still have been created; check Rollout history.`)
+	assert.NotContains(t, html, `Rollout creation request cancelled.`)
 	assert.Contains(t, html, `rolloutDialog.addEventListener('cancel'`)
 	assert.Contains(t, html, `rolloutDialog.addEventListener('click'`)
 	assert.Contains(t, html, `rolloutDialog.addEventListener('close'`)
+	assert.Contains(t, html, "rolloutDialog.addEventListener('close', function () {\n        if (creatingRollout && !rolloutDialog.open) {\n          rolloutDialog.showModal();\n        }",
+		"a non-cancelable Escape must not close the dialog mid-request")
+	assert.Contains(t, html, "creatingRollout = false;\n            rolloutDialog.close();",
+		"success must clear the in-flight flag before closing")
 
 	start := strings.Index(html, `<dialog id="rolloutModal"`)
 	if start == -1 {
@@ -393,6 +483,49 @@ func TestUpdateTemplateRolloutDialogSupportsRequestCancellation(t *testing.T) {
 	}
 	rolloutDialog := html[start : start+end]
 	assert.NotContains(t, rolloutDialog, `onclick="rolloutModal.close()"`)
+}
+
+func TestUpdateTemplateRolloutErrorsStayInDialog(t *testing.T) {
+	ctx := updateDetailCtx{Name: "148", TufMetadata: releaseTufMetadata(api.UpdateTufResp{})}
+	html := renderUpdateHTML(t, ctx)
+
+	assert.Contains(t, html, `class="dlg-status" id="rollout-result" aria-live="polite" role="status" tabindex="-1"></div>`)
+	assert.Contains(t, html, `rolloutResult.setAttribute('role', state === 'error' ? 'alert' : 'status');`)
+	assert.Contains(t, html, `rolloutResult.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');`)
+	assert.Contains(t, html, `if (state === 'error') rolloutResult.focus();`)
+	assert.Contains(t, html, `setRolloutResult('Please provide either UUIDs or device groups.', 'error');`)
+	assert.Contains(t, html, `setRolloutResult('Request cancelled. The rollout may still have been created; check Rollout history.');`)
+	assert.Contains(t, html, `setRolloutResult('Error creating rollout: ' + error.message, 'error');`)
+	assert.Contains(t, html, `const rolloutName = document.getElementById('rollout-name').value.trim();`)
+	assert.Contains(t, html, "if (!rolloutName) {\n          setRolloutResult('Enter a rollout name.', 'error');\n          return;\n        }")
+	assert.Contains(t, html, `'/v1/updates/148/rollouts/' + encodeURIComponent(rolloutName)`)
+	assert.Less(t, strings.Index(html, `setRolloutResult('Enter a rollout name.', 'error');`), strings.Index(html, `setRolloutCreating(true);`),
+		"name validation must run before the pending state")
+	assert.NotContains(t, html, `alert('Please provide either UUIDs or device groups.');`)
+	assert.NotContains(t, html, `alert('Error creating rollout: ' + error.message);`)
+}
+
+func TestUpdateTemplateNormalizesRolloutUUIDsBeforeValidation(t *testing.T) {
+	ctx := updateDetailCtx{Name: "148", TufMetadata: releaseTufMetadata(api.UpdateTufResp{})}
+	html := renderUpdateHTML(t, ctx)
+
+	assert.Contains(t, html, `const uuids = document.getElementById('rollout-uuids').value.split(',').map(s => s.trim()).filter(s => s);`)
+	assert.Contains(t, html, `if (uuids.length === 0 && selectedGroups.length === 0) {`)
+	assert.Contains(t, html, `uuids: uuids,`)
+}
+
+func TestUpdateTemplateDevicesFetchIgnoresStaleResponses(t *testing.T) {
+	ctx := updateDetailCtx{
+		Name:        "148",
+		Summary:     api.UpdateSummary{Status: map[string]int{"in-sync": 2}},
+		TufMetadata: releaseTufMetadata(api.UpdateTufResp{}),
+	}
+	html := renderUpdateHTML(t, ctx)
+
+	assert.Contains(t, html, `let devicesRun = 0;`)
+	assert.Contains(t, html, `const run = ++devicesRun;`)
+	assert.Contains(t, html, "if (run !== devicesRun) {\n              return;\n            }\n            const devicesList = data || [];")
+	assert.Contains(t, html, "if (run !== devicesRun) {\n              return;\n            }\n            console.error('Error fetching devices:', error);")
 }
 
 func TestUpdateTemplateDevicesDialogUsesModalFocus(t *testing.T) {

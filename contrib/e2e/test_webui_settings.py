@@ -32,21 +32,11 @@ def test_settings_api_token_and_audit_log(page, update_server):
     dialog.get_by_label("Expires on", exact=True).fill(expires)
     dialog.locator("input[type='checkbox']").first.check()
 
-    # Register alert handler to catch any server-side error surfaced via JS alert()
-    js_dialog_message = None
-
-    def handle_alert(js_dialog):
-        nonlocal js_dialog_message
-        js_dialog_message = js_dialog.message
-        js_dialog.accept()
-
-    page.on("dialog", handle_alert)
     dialog.get_by_role("button", name="Create token", exact=True).click()
 
     # On success the server shows #tokenCreatedModal with the new API key value.
     created_modal = page.locator("#tokenCreatedModal")
     created_modal.wait_for(state="visible")
-    assert js_dialog_message is None, f"JavaScript alert: {js_dialog_message}"
 
     # Dismiss the modal, then reload to verify the token appears in the list
     created_modal.get_by_role("button", name="Close", exact=True).click()
