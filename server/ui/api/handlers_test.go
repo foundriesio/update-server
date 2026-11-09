@@ -72,6 +72,8 @@ type testClient struct {
 	gw  *gatewayStorage.Storage
 	u   *users.User
 	e   *echo.Echo
+
+	users *users.Storage
 }
 
 func (c testClient) Do(req *http.Request) *httptest.ResponseRecorder {
@@ -364,6 +366,8 @@ func NewTestClientWithCA(t *testing.T, org string) *testClient {
 		gw:  gwS,
 		u:   u,
 		e:   e,
+
+		users: userS,
 	}
 	return &tc
 }
