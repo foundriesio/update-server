@@ -35,26 +35,34 @@
       </nav>
 
       <div class="device-page-inner">
-        {{ if or (and .RemoteActions .CanTrigger) .ActionSubmitted }}
+        {{ if or (and .RemoteActions .CanTrigger) .OutstandingActions }}
         <div class="remote-actions">
           {{ if and .RemoteActions .CanTrigger }}
           <button class="btn-solid" type="button" data-dialog-open="remote-action-dialog">Run remote action</button>
           {{ end }}
-          {{ if .ActionSubmitted }}
-          <p class="remote-action-progress" role="status">
-            Action submitted. Refresh the page to see the results.
-            <a class="remote-action-progress__refresh" href="/devices/{{.Device.Uuid}}/tests">
+          {{ if .OutstandingActions }}
+          <div class="remote-action-progress" role="status">
+            {{ range .OutstandingActions }}
+            <p>
+              <strong>{{.Action}}</strong> ({{.TestID}}):
+              {{ if eq .State "pending" }}Pending delivery to the device.
+              {{ else }}Queued on the device. Results have not been reported.{{ end }}
+            </p>
+            {{ end }}
+            <a class="remote-action-progress__refresh" href="/devices/{{.Device.Uuid}}/tests"
+               title="Refresh test results" aria-label="Refresh test results">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89L13.5 5.7M13.5 2.5v3.2h-3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <span>Refresh</span>
             </a>
-          </p>
+          </div>
           {{ end }}
         </div>
-        {{ else if .ActionsUnavailable }}
+        {{ end }}
+        {{ if .ActionsUnavailable }}
         <p class="remote-actions__hint">Remote actions are temporarily unavailable.</p>
-        {{ else if .RemoteActions }}
+        {{ else if and .RemoteActions (not .CanTrigger) }}
         <p class="remote-actions__hint">Your account cannot run remote actions.</p>
         {{ end }}
 
