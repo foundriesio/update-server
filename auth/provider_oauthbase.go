@@ -8,8 +8,10 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"html"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -21,7 +23,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const oauthStateCookie = "fioserver-oauthstate"
+const (
+	oauthStateCookie = "fioserver-oauthstate"
+	oauthNextCookie  = "fioserver-oauthnext"
+)
 
 type authConfigOauth2 struct {
 	ClientID     string
@@ -87,18 +92,21 @@ func (p oauth2BaseProvider) renderLoginPage(c echo.Context, reason string) error
 		// renders; it is not used for any auth decision.
 		ProviderKey string
 		Reason      string
+		Next        string
 	}{
 		Base:        p.pageCtx.Base(c, "Login", ""),
 		LoginTip:    p.loginTip,
 		Name:        p.displayName,
 		ProviderKey: p.name,
 		Reason:      reason,
+		Next:        loginNext(c),
 	}
 	return templates.Templates.ExecuteTemplate(c.Response(), "oauth2-login.html", context)
 }
 
 func (p oauth2BaseProvider) handleLogin(c echo.Context) error {
 	oauthState := generateStateOauthCookie(c)
+	setOauthNextCookie(c, loginRedirectTarget(c.QueryParam("next")))
 	u := p.oauthConfig.AuthCodeURL(oauthState, oauth2.AccessTypeOffline)
 	return c.Redirect(http.StatusTemporaryRedirect, u)
 }
@@ -149,10 +157,52 @@ func (p oauth2BaseProvider) handleOauthCallback(c echo.Context) error {
 	// a direct redirect. Browsers won't send SameSiteStrict cookies on a
 	// cross-site redirect (the OAuth callback is a cross-site navigation),
 	// but they will send them on a navigation initiated from the same site.
-	c.Response().Header().Set("Location", "/")
+	target := popOauthNext(c)
+	c.Response().Header().Set("Location", target)
 	c.Response().Header().Set("Cache-Control", "no-store")
 	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
-	return c.HTML(http.StatusOK, `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/"></head><body>Redirecting <a href="/">here</a>...</body></html>`)
+	return c.HTML(http.StatusOK, sameSiteRedirectPage(target))
+}
+
+func sameSiteRedirectPage(target string) string {
+	t := html.EscapeString(target)
+	return `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=` + t +
+		`"></head><body>Redirecting <a href="` + t + `">here</a>...</body></html>`
+}
+
+// The page that asked for the login has to survive the round trip through
+// the OAuth provider, which only hands back the state and code.
+func setOauthNextCookie(c echo.Context, next string) {
+	c.SetCookie(&http.Cookie{
+		Name:     oauthNextCookie,
+		Value:    url.QueryEscape(next),
+		Path:     AuthCallbackPath,
+		Expires:  time.Now().Add(1 * time.Hour),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func popOauthNext(c echo.Context) string {
+	cookie, err := c.Cookie(oauthNextCookie)
+	if err != nil {
+		return "/"
+	}
+	c.SetCookie(&http.Cookie{
+		Name:     oauthNextCookie,
+		Path:     AuthCallbackPath,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	next, err := url.QueryUnescape(cookie.Value)
+	if err != nil {
+		return "/"
+	}
+	// Validated again: the cookie comes back from the browser.
+	return loginRedirectTarget(next)
 }
 
 func generateStateOauthCookie(c echo.Context) string {

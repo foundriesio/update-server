@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -187,7 +188,34 @@ func (p *localProvider) handleLogin(c echo.Context) error {
 	c.SetCookie(&cookie)
 	SetCsrfCookie(c, expires, !p.authConfig.DevelopmentCookies)
 
-	return c.Redirect(http.StatusSeeOther, "/")
+	return c.Redirect(http.StatusSeeOther, loginRedirectTarget(c.FormValue("next")))
+}
+
+// loginRedirectTarget returns the page to show after a successful login: the
+// page that asked for it, when that is a path on this server, or "/".
+func loginRedirectTarget(next string) string {
+	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.HasPrefix(next, "/\\") {
+		return "/"
+	}
+	u, err := url.Parse(next)
+	if err != nil || u.Scheme != "" || u.Host != "" {
+		return "/"
+	}
+	// Going back to the logout page would end the session just created.
+	if u.Path == AuthLogoutPath {
+		return "/"
+	}
+	return next
+}
+
+// loginNext is the page the login form returns to: the page that rendered
+// it, or, when re-rendering after a failed attempt, the page it came from.
+func loginNext(c echo.Context) string {
+	next := c.FormValue("next")
+	if c.Request().Method == http.MethodGet {
+		next = c.Request().URL.RequestURI()
+	}
+	return loginRedirectTarget(next)
 }
 
 func (p localProvider) renderLoginPage(c echo.Context, reason string) error {
@@ -203,9 +231,11 @@ func (p localProvider) renderLoginPage(c echo.Context, reason string) error {
 	context := struct {
 		pagectx.Base
 		Reason string
+		Next   string
 	}{
 		Base:   p.pageCtx.Base(c, "Login", ""),
 		Reason: reason,
+		Next:   loginNext(c),
 	}
 	context.CsrfToken = csrfToken
 	return templates.Templates.ExecuteTemplate(c.Response(), localLoginTemplate, context)

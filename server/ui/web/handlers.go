@@ -67,7 +67,7 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	e.GET("/branding/:filename", h.brandingAsset)
 	e.GET("/favicon", h.favicon)
 
-	e.GET("/auth/logout", h.authLogout, h.requireSession)
+	e.GET(auth.AuthLogoutPath, h.authLogout, h.requireSession)
 	e.GET("/configs", h.configsList, h.requireSession, h.requireScope(users.ScopeDevicesR))
 
 	e.GET("/configs/device/:uuid", func(c echo.Context) error {
