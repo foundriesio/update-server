@@ -67,6 +67,7 @@
 
           <form method="post" action="/auth/login">
             {{ if .CsrfToken }}<input type="hidden" name="_csrf" value="{{.CsrfToken}}">{{ end }}
+            {{ if .Next }}<input type="hidden" name="next" value="{{.Next}}">{{ end }}
             <fieldset>
               <label for="username">Username</label>
               <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>

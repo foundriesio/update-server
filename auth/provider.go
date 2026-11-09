@@ -53,6 +53,7 @@ type Provider interface {
 const AuthCookieName = "fioserver-session"
 const AuthLoginPath = "/auth/login"
 const AuthCallbackPath = "/auth/callback"
+const AuthLogoutPath = "/auth/logout"
 
 var providers map[string]Provider
 
