@@ -144,6 +144,15 @@ There are two API resources for tailing updates. Both resources emit
 The CLI has an `updates tail` subcommand that allows you to tail the update
 or a specific rollout.
 
+To block until every device in a rollout has installed the update, for
+example in a script, add `--until-done`. The command prints the rollout's
+events as usual and exits once every device has finished. It exits with an
+error if a device fails or rolls back, or when its `--timeout` passes:
+
+```
+  fiocli updates tail <update> --rollout <rollout> --until-done --timeout 30m
+```
+
 ### Tracking via Web
 
 Click "Follow progress" on either the Update or Rollout to see details.

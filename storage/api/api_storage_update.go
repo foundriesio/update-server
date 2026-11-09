@@ -29,8 +29,8 @@ const RolledBackState = "Rolled back"
 
 // The statuses storage.DeviceUpdateEvent.ParseStatus gives an EcuInstallationCompleted event.
 const (
-	installationFailedState    = "Installation completed; failed"
-	installationSucceededState = "Installation completed; succeeded"
+	InstallationFailedState    = "Installation completed; failed"
+	InstallationSucceededState = "Installation completed; succeeded"
 )
 
 type UpdateSummary struct {
@@ -128,13 +128,13 @@ func (s Storage) lastKnownStates(name string, filterUuids map[string]any) (map[s
 		}
 		// A device reports other targets too, like the one it rolls back to after this update fails
 		if targets != nil && len(status.TargetName) > 0 && !targets[status.TargetName] {
-			if failed[status.Uuid] && status.Status == installationSucceededState {
+			if failed[status.Uuid] && status.Status == InstallationSucceededState {
 				lastStates[status.Uuid] = RolledBackState
 			}
 			continue
 		}
 		lastStates[status.Uuid] = status.Status
-		failed[status.Uuid] = status.Status == installationFailedState
+		failed[status.Uuid] = status.Status == InstallationFailedState
 	}
 
 	return lastStates, nil
