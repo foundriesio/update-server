@@ -310,6 +310,6 @@ func TestInstallationStatesMatchParseStatus(t *testing.T) {
 			EventType: storage.DeviceEventType{Id: "EcuInstallationCompleted"},
 		}.ParseStatus().Status
 	}
-	assert.Equal(t, installationFailedState, status(false))
-	assert.Equal(t, installationSucceededState, status(true))
+	assert.Equal(t, InstallationFailedState, status(false))
+	assert.Equal(t, InstallationSucceededState, status(true))
 }
