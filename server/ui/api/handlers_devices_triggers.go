@@ -6,8 +6,10 @@ package api
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -18,7 +20,14 @@ import (
 )
 
 type RemoteActions struct {
-	Actions []string `json:"actions"`
+	Actions     []string            `json:"actions"`
+	Outstanding []RemoteActionState `json:"outstanding,omitempty"`
+}
+
+type RemoteActionState struct {
+	Action string `json:"action"`
+	TestID string `json:"test_id"`
+	State  string `json:"state"`
 }
 
 type RemoteActionTrigger struct {
@@ -62,7 +71,23 @@ func (h *handlers) deviceRemoteActions(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-		return c.JSON(http.StatusOK, RemoteActions{Actions: remoteActions(configs)})
+		commands, err := remoteActionCommands(configs)
+		if err != nil {
+			return server.EchoError(c, err, http.StatusInternalServerError, "Failed to read remote action commands")
+		}
+		result := RemoteActions{Actions: remoteActions(configs)}
+		if len(commands) > 0 {
+			applied, err := h.storage.ReadAppliedConfigs(device.Uuid)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				return server.EchoError(c, err, http.StatusInternalServerError, "Failed to read delivered remote actions")
+			}
+			tests, err := device.GetTests()
+			if err != nil {
+				return server.EchoError(c, err, http.StatusInternalServerError, "Failed to read remote action tests")
+			}
+			result.Outstanding = outstandingRemoteActions(commands, configs, applied, tests)
+		}
+		return c.JSON(http.StatusOK, result)
 	})
 }
 
@@ -106,6 +131,57 @@ func (h *handlers) deviceRemoteActionTrigger(c echo.Context) error {
 		}
 		return c.JSON(http.StatusOK, RemoteActionTriggerResult{TestID: commandID})
 	})
+}
+
+func remoteActionCommands(configs map[string]storage.ConfigFile) ([]RemoteActionState, error) {
+	var names []string
+	for name := range configs {
+		if strings.HasPrefix(name, "fioconfig-oneshot-") {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	var commands []RemoteActionState
+	for _, name := range names {
+		action := strings.TrimPrefix(name, "fioconfig-oneshot-")
+		var id string
+		for line := range strings.SplitSeq(configs[name].Value, "\n") {
+			if value, ok := strings.CutPrefix(line, "COMMAND_ID="); ok {
+				id = value
+				break
+			}
+		}
+		if action == "" || !validRemoteAction(action) || !storage.TestIdRegex.MatchString(id) ||
+			!strings.HasPrefix(id, action+"_") || len(id) != len(action)+16 {
+			return nil, fmt.Errorf("invalid remote action command in %s", name)
+		}
+		commands = append(commands, RemoteActionState{Action: action, TestID: id})
+	}
+	return commands, nil
+}
+
+func outstandingRemoteActions(commands []RemoteActionState, configs map[string]storage.ConfigFile, applied *storage.AppliedConfigs, tests []storage.TargetTest) []RemoteActionState {
+	reported := make(map[string]bool, len(tests))
+	for _, test := range tests {
+		reported[test.Uuid] = true
+	}
+	var outstanding []RemoteActionState
+	for _, command := range commands {
+		// A reported test takes precedence even when delivery and test reads overlap.
+		if reported[command.TestID] {
+			continue
+		}
+		command.State = "pending"
+		if applied != nil {
+			name := "fioconfig-oneshot-" + command.Action
+			want, delivered := configs[name], applied.Files[name]
+			if want.Value == delivered.Value && want.Unencrypted == delivered.Unencrypted && slices.Equal(want.OnChanged, delivered.OnChanged) {
+				command.State = "queued"
+			}
+		}
+		outstanding = append(outstanding, command)
+	}
+	return outstanding
 }
 
 func (h *handlers) deviceConfigFiles(c echo.Context, uuid string) (map[string]storage.ConfigFile, error) {

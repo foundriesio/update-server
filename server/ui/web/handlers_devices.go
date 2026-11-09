@@ -406,6 +406,20 @@ func buildTestStats(tests []storage.TargetTest) (total, passed, failed int) {
 	return total, passed, failed
 }
 
+func unreportedRemoteActions(commands []api.RemoteActionState, tests []storage.TargetTest) []api.RemoteActionState {
+	reported := make(map[string]bool, len(tests))
+	for _, test := range tests {
+		reported[test.Uuid] = true
+	}
+	var outstanding []api.RemoteActionState
+	for _, command := range commands {
+		if !reported[command.TestID] {
+			outstanding = append(outstanding, command)
+		}
+	}
+	return outstanding
+}
+
 func (h handlers) devicesTests(c echo.Context) error {
 	var device api.Device
 	if err := getJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid"), &device); err != nil {
@@ -437,7 +451,7 @@ func (h handlers) devicesTests(c echo.Context) error {
 		RemoteActions      []string
 		ActionsUnavailable bool
 		CanTrigger         bool
-		ActionSubmitted    bool
+		OutstandingActions []api.RemoteActionState
 	}{
 		baseCtx:            h.baseCtx(c, "Device - "+c.Param("uuid")+" Tests", "devices"),
 		Device:             device,
@@ -448,7 +462,7 @@ func (h handlers) devicesTests(c echo.Context) error {
 		RemoteActions:      remoteActions.Actions,
 		ActionsUnavailable: actionsUnavailable,
 		CanTrigger:         CtxGetSession(c.Request().Context()).User.AllowedScopes.Has(users.ScopeDevicesRU | users.ScopeUpdatesRU),
-		ActionSubmitted:    c.QueryParam("remote-action-submitted") == "1",
+		OutstandingActions: unreportedRemoteActions(remoteActions.Outstanding, tests),
 	}
 	if total > 0 {
 		ctx.PassRate = passed * 100 / total
@@ -466,7 +480,7 @@ func (h handlers) devicesRemoteActionTrigger(c echo.Context) error {
 	if err := postJson(c.Request().Context(), "/v1/devices/"+c.Param("uuid")+"/remote-actions", req, &result); err != nil {
 		return h.handleUnexpected(c, err)
 	}
-	return c.Redirect(http.StatusSeeOther, "/devices/"+c.Param("uuid")+"/tests?remote-action-submitted=1")
+	return c.Redirect(http.StatusSeeOther, "/devices/"+c.Param("uuid")+"/tests")
 }
 
 func (h handlers) devicesTestGet(c echo.Context) error {

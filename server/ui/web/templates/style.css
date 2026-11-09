@@ -2934,6 +2934,7 @@ pre.code-block {
     font-size: 0.85rem;
     overflow-wrap: anywhere;
 }
+.remote-action-progress p { margin: 0 0 0.25rem; }
 .remote-action-progress__refresh {
     display: inline-flex;
     align-items: center;

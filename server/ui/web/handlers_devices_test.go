@@ -23,12 +23,119 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type remoteActionRenderCase struct {
+	name, state, testStatus string
+	canTrigger, removed     bool
+	unavailable, multiple   bool
+	want                    string
+}
+
+func newRemoteActionBackend(t *testing.T, test remoteActionRenderCase) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		var result any
+		switch r.URL.Path {
+		case "/v1/devices/device":
+			result = api.Device{Uuid: "device"}
+		case "/v1/devices/device/tests":
+			result = []storage.TargetTest{}
+			if test.testStatus != "" {
+				result = []storage.TargetTest{{Uuid: "diag_123456789abcdef", Status: test.testStatus}}
+			}
+		case "/v1/devices/device/remote-actions":
+			if test.unavailable {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			actions := api.RemoteActions{Actions: []string{"diag"}}
+			if test.removed {
+				actions.Actions = nil
+			}
+			if test.state != "" {
+				actions.Outstanding = []api.RemoteActionState{{Action: "diag", TestID: "diag_123456789abcdef", State: test.state}}
+			}
+			if test.multiple {
+				actions.Outstanding = append(actions.Outstanding, api.RemoteActionState{Action: "reboot", TestID: "reboot_123456789abcdef", State: "queued"})
+			}
+			result = actions
+		default:
+			t.Errorf("unexpected API request: %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		assert.NoError(t, json.NewEncoder(w).Encode(result))
+	}))
+}
+
 func serveDeviceRequest(e *echo.Echo, session *auth.Session, req *http.Request) *httptest.ResponseRecorder {
 	ctx := context.CtxWithLog(req.Context(), slog.New(slog.DiscardHandler))
 	req = req.WithContext(CtxWithSession(ctx, session))
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec
+}
+
+func TestDevicesTestsRemoteActionStates(t *testing.T) {
+	for _, test := range []remoteActionRenderCase{
+		{name: "pending", state: "pending", canTrigger: true, want: "Pending delivery to the device."},
+		{name: "read only pending", state: "pending", want: "Pending delivery to the device."},
+		{name: "queued", state: "queued", canTrigger: true, want: "Results have not been reported."},
+		{name: "mixed commands", state: "pending", multiple: true, want: "Pending delivery to the device."},
+		{name: "removed menu", state: "queued", removed: true, want: "Results have not been reported."},
+		{name: "running", state: "queued", testStatus: "RUNNING", canTrigger: true, want: "RUNNING"},
+		{name: "passed", state: "pending", testStatus: "PASSED", want: "PASSED"},
+		{name: "no commands", canTrigger: true},
+		{name: "unavailable", unavailable: true, want: "Remote actions are temporarily unavailable."},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			id := "diag_123456789abcdef"
+			backend := newRemoteActionBackend(t, test)
+			defer backend.Close()
+			scopes := users.ScopeDevicesR
+			if test.canTrigger {
+				scopes = users.ScopeDevicesRU | users.ScopeUpdatesRU
+			}
+			session := &auth.Session{BaseUrl: backend.URL, Client: backend.Client(), User: &users.User{AllowedScopes: scopes}}
+			e := echo.New()
+			h := handlers{templates: templates.Templates}
+			e.GET("/devices/:uuid/tests", h.devicesTests)
+			var plain string
+			for _, query := range []string{"", "?remote-action-submitted=1"} {
+				req := httptest.NewRequest(http.MethodGet, "/devices/device/tests"+query, nil)
+				req.AddCookie(&http.Cookie{Name: auth.CsrfCookieName, Value: "csrf-token"})
+				rec := serveDeviceRequest(e, session, req)
+				require.Equal(t, http.StatusOK, rec.Code)
+				html := rec.Body.String()
+				if query == "" {
+					plain = html
+				} else {
+					assert.Equal(t, plain, html)
+				}
+				if test.want != "" {
+					assert.Contains(t, html, test.want)
+				}
+				if test.multiple {
+					assert.Contains(t, html, "Results have not been reported.")
+					assert.Greater(t, strings.Index(html, "reboot_123456789abcdef"), strings.Index(html, id))
+				}
+				if test.testStatus != "" || test.state == "" {
+					assert.NotContains(t, html, `class="remote-action-progress"`)
+				} else {
+					assert.Contains(t, html, id)
+					assert.Contains(t, html, `<span>Refresh</span>`)
+					assert.Contains(t, html, `href="/devices/device/tests"`)
+					assert.Contains(t, html, `title="Refresh test results" aria-label="Refresh test results"`)
+				}
+				if test.canTrigger && !test.unavailable {
+					assert.Contains(t, html, `name="_csrf" value="csrf-token"`)
+					assert.Contains(t, html, `data-dialog-open="remote-action-dialog"`)
+				} else {
+					assert.NotContains(t, html, `data-dialog-open="remote-action-dialog"`)
+				}
+			}
+		})
+	}
 }
 
 func TestRemoteActionFormCsrfAndRedirect(t *testing.T) {
@@ -72,7 +179,7 @@ func TestRemoteActionFormCsrfAndRedirect(t *testing.T) {
 			rec := serveDeviceRequest(e, session, req)
 			require.Equal(t, test.status, rec.Code)
 			if test.status == 303 {
-				assert.Equal(t, "/devices/device/tests?remote-action-submitted=1", rec.Header().Get(echo.HeaderLocation))
+				assert.Equal(t, "/devices/device/tests", rec.Header().Get(echo.HeaderLocation))
 				assert.Equal(t, 1, calls)
 			} else {
 				assert.Zero(t, calls)
@@ -109,9 +216,21 @@ func TestRemoteActionDialogSafeguards(t *testing.T) {
 	} {
 		assert.Contains(t, html, expected)
 	}
-	for _, forbidden := range []string{"setInterval", "setTimeout", "remote-action-submitted", "checks in", "check-in"} {
+	for _, forbidden := range []string{"setInterval", "setTimeout", "remote-action-submitted", "checks in", "check-in", "Action submitted.", "Refresh the page to see the results."} {
 		assert.NotContains(t, html, forbidden)
 	}
+}
+
+func TestUnreportedRemoteActions(t *testing.T) {
+	commands := []api.RemoteActionState{
+		{Action: "diag", TestID: "diag_123456789abcdef", State: "pending"},
+		{Action: "reboot", TestID: "reboot_123456789abcdef", State: "queued"},
+	}
+	// An older invocation must not clear a newer command during overlapping reads.
+	tests := []storage.TargetTest{{Uuid: "diag_abcdef123456789", Status: "PASSED"}}
+	assert.Equal(t, commands, unreportedRemoteActions(commands, tests))
+	tests = append(tests, storage.TargetTest{Uuid: commands[0].TestID, Status: "RUNNING"})
+	assert.Equal(t, commands[1:], unreportedRemoteActions(commands, tests))
 }
 
 func TestRemoteActionFormBinding(t *testing.T) {
