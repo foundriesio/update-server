@@ -4,12 +4,130 @@
 package web
 
 import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
+	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/server/ui/api"
+	"github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/foundriesio/update-server/storage"
+	"github.com/foundriesio/update-server/storage/users"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+func serveDeviceRequest(e *echo.Echo, session *auth.Session, req *http.Request) *httptest.ResponseRecorder {
+	ctx := context.CtxWithLog(req.Context(), slog.New(slog.DiscardHandler))
+	req = req.WithContext(CtxWithSession(ctx, session))
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestRemoteActionFormCsrfAndRedirect(t *testing.T) {
+	calls := 0
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		assert.Equal(t, "/v1/devices/device/remote-actions", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "token", r.Header.Get(auth.CsrfHeaderName))
+		cookie, err := r.Cookie(auth.CsrfCookieName)
+		assert.NoError(t, err)
+		if cookie != nil {
+			assert.Equal(t, "token", cookie.Value)
+		}
+		var trigger api.RemoteActionTrigger
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&trigger))
+		assert.Equal(t, "diag", trigger.Action)
+		assert.NoError(t, json.NewEncoder(w).Encode(api.RemoteActionTriggerResult{TestID: "diag_123456789abcdef"}))
+	}))
+	defer backend.Close()
+	session := &auth.Session{BaseUrl: backend.URL, Client: backend.Client(), User: &users.User{AllowedScopes: users.ScopeDevicesRU | users.ScopeUpdatesRU}}
+	e := echo.New()
+	h := handlers{}
+	e.POST("/devices/:uuid/remote-actions", h.devicesRemoteActionTrigger, h.requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU), auth.CsrfCheck)
+	for _, test := range []struct {
+		name, cookie, token string
+		status              int
+	}{
+		{"missing cookie", "", "token", 403},
+		{"missing token", "token", "", 403},
+		{"mismatch", "token", "other", 403},
+		{"valid", "token", "token", 303},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			form := url.Values{"action": {"diag"}, "_csrf": {test.token}}
+			req := httptest.NewRequest(http.MethodPost, "/devices/device/remote-actions", strings.NewReader(form.Encode()))
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+			if test.cookie != "" {
+				req.AddCookie(&http.Cookie{Name: auth.CsrfCookieName, Value: test.cookie})
+			}
+			rec := serveDeviceRequest(e, session, req)
+			require.Equal(t, test.status, rec.Code)
+			if test.status == 303 {
+				assert.Equal(t, "/devices/device/tests?remote-action-submitted=1", rec.Header().Get(echo.HeaderLocation))
+				assert.Equal(t, 1, calls)
+			} else {
+				assert.Zero(t, calls)
+			}
+		})
+	}
+}
+
 func boolPtr(b bool) *bool { return &b }
+
+func TestRemoteActionDialogSafeguards(t *testing.T) {
+	asset, err := templates.Assets.ReadFile("device_tests.html")
+	require.NoError(t, err)
+	html := string(asset)
+	for _, expected := range []string{
+		`<script type="module">`,
+		`let submitInFlight = false;`,
+		`if (submitInFlight) {`,
+		`event.preventDefault();`,
+		`submitButton.disabled = true;`,
+		`submitButton.setAttribute('aria-busy', 'true');`,
+		`form.setAttribute('aria-busy', 'true');`,
+		`button.disabled = true;`,
+		`document.getElementById('remote-action-title').focus();`,
+		`activeTrigger.focus();`,
+		`window.addEventListener('pageshow', (event) => {`,
+		`submitButton.disabled = false;`,
+		`button.disabled = false;`,
+		`for="remote-action-value"`,
+		`<select class="field-input remote-action-select"`,
+		`name="_csrf" value="{{.CsrfToken}}"`,
+		`Actions run on the device and report results in the Tests view.`,
+		`<span>Refresh</span>`,
+	} {
+		assert.Contains(t, html, expected)
+	}
+	for _, forbidden := range []string{"setInterval", "setTimeout", "remote-action-submitted", "checks in", "check-in"} {
+		assert.NotContains(t, html, forbidden)
+	}
+}
+
+func TestRemoteActionFormBinding(t *testing.T) {
+	form := url.Values{"action": {"diag"}, "_csrf": {"token"}}
+	req := httptest.NewRequest(http.MethodPost, "/devices/device/remote-actions", strings.NewReader(form.Encode()))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	ctx := echo.New().NewContext(req, httptest.NewRecorder())
+
+	var trigger api.RemoteActionTrigger
+	if err := ctx.Bind(&trigger); err != nil {
+		t.Fatalf("Bind() error = %v", err)
+	}
+	if trigger.Action != "diag" {
+		t.Errorf("bound action = %q, want diag", trigger.Action)
+	}
+}
 
 func TestBuildUpdateStepsHappyPath(t *testing.T) {
 	events := []storage.DeviceUpdateEvent{

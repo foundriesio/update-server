@@ -2891,8 +2891,62 @@ pre.code-block {
 /* Device tests page — reuses .device-page-inner/.breadcrumb/.device-identity/
    .device-tabs/.layer-grid/.layer-card/.badge/.empty-state and existing tokens
    (--success, --success-text, --danger, --danger-text, --border-1, --text-*,
-   --mono, --focus-ring); only the tests-table/status-badge pieces below are new. */
+   --mono, --focus-ring); page-specific remote-action, table and status styles follow. */
 @layer device-detail {
+
+.remote-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1.5rem;
+}
+.remote-actions > button {
+    grid-column: 2;
+    grid-row: 1;
+}
+.remote-actions__hint {
+    margin-bottom: 1.5rem;
+    color: var(--text-2);
+    font-size: 0.85rem;
+}
+.remote-actions-dialog > article {
+    width: min(560px, calc(100vw - 32px));
+    max-width: 560px;
+}
+.remote-actions-dialog .dlg-body { padding-bottom: 8px; }
+.remote-actions-dialog .dlg-btn { width: auto; }
+.remote-actions-dialog .field-row { margin: 0; }
+.remote-actions-dialog .field-input { max-width: none; }
+.remote-action-select {
+    cursor: pointer;
+    padding-right: 2.5rem;
+    background-image: var(--pico-icon-chevron);
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+}
+.remote-action-progress {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+.remote-action-progress__refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+}
+@media (max-width: 640px) {
+    .remote-action-progress {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        text-align: right;
+    }
+}
 
 .tests-table {
     width: 100%;
