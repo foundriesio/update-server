@@ -209,3 +209,60 @@ func (h oauth2Handlers) oauth2DeviceToken(c echo.Context) error {
 		Scopes:      scopes.String(),
 	})
 }
+
+type DeviceApproveRequest struct {
+	UserCode    string `json:"user_code"`
+	Description string `json:"description"`
+}
+
+// @Summary Approve a pending device registration code
+// @Description Approves the user code printed by fio-device-register, as the
+// @Description browser confirmation page does, so enrollment can be scripted.
+// @Description The issued token only gets the devices:create scope.
+// @Accept json
+// @Param data body DeviceApproveRequest true "User code to approve"
+// @Success 200
+// @Router  /oauth2/device/approve [post]
+func (h handlers) oauth2DeviceApprove(c echo.Context) error {
+	var req DeviceApproveRequest
+	if err := c.Bind(&req); err != nil {
+		return EchoError(c, err, http.StatusBadRequest, "Invalid request body")
+	}
+	if req.UserCode == "" {
+		return EchoError(c, nil, http.StatusBadRequest, "user_code is required")
+	}
+
+	auth, err := h.users.GetDeviceAuthByUserCode(req.UserCode)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to get device authorization")
+	}
+	if auth == nil {
+		return EchoError(c, nil, http.StatusNotFound, "invalid user code")
+	}
+	if auth.ExpiresAt < time.Now().Unix() {
+		return EchoError(c, nil, http.StatusBadRequest, "authorization code expired")
+	}
+	if auth.Authorized || auth.Denied {
+		return EchoError(c, nil, http.StatusBadRequest, "this device has already been authorized or denied")
+	}
+
+	scopes, err := users.ScopesFromString(auth.Scopes)
+	if err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to parse requested scopes: "+auth.Scopes)
+	}
+	// The route requires devices:create, which is all a device registration
+	// needs, so other requested scopes (e.g. a fiocli login) are not granted.
+	if !scopes.Has(users.ScopeDevicesC) {
+		return EchoError(c, nil, http.StatusBadRequest, "user code is not for a device registration")
+	}
+
+	user := CtxGetUser(c.Request().Context())
+	description := req.Description
+	if description == "" {
+		description = "Approved by " + user.Username + " with user code " + req.UserCode
+	}
+	if err := user.ApproveAuthorization(auth.DeviceCode, description, users.ScopeDevicesC); err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to approve device authorization")
+	}
+	return c.NoContent(http.StatusOK)
+}

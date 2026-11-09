@@ -46,5 +46,13 @@ enroll with fio-device-register, run this on the device:
     --tag <tag>
 ```
 
+The command prints a user code. Approve it in the web UI, or from a
+computer where `fiocli` is logged in to this server with a token that holds
+the `devices:create` scope:
+
+```
+  fiocli devices approve <user-code>
+```
+
 To enroll a device without fio-device-register, see
 [Device Registration](./advanced.md#device-registration).

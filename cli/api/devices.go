@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 
+	ui "github.com/foundriesio/update-server/server/ui/api"
 	"github.com/foundriesio/update-server/storage"
 	models "github.com/foundriesio/update-server/storage/api"
 )
@@ -88,6 +89,12 @@ func (d DeviceApi) UpdateEvents(uuid, updateId string) ([]DeviceUpdateEvent, err
 
 func (d DeviceApi) Delete(uuid string) error {
 	return d.api.Delete(fmt.Sprintf("/v1/devices/%s", uuid))
+}
+
+// ApproveDevice approves the user code a device printed while registering.
+func (d DeviceApi) ApproveDevice(code, description string) error {
+	_, err := d.api.Post("/v1/oauth2/device/approve", ui.DeviceApproveRequest{UserCode: code, Description: description})
+	return err
 }
 
 // ListDenied returns all UUIDs on the denied list.
