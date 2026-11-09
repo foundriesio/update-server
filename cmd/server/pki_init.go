@@ -7,13 +7,16 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/foundriesio/update-server/storage"
 )
 
 type PkiInitCmd struct {
-	DnsName       string `arg:"required" help:"DNS host name devices address this gateway with"`
+	DnsName string `arg:"required" help:"DNS host name devices address this gateway with"`
+	// Set only by devserver-init --ip: production servers use a DNS name.
+	IpAddress     string `arg:"-"`
 	OU            string `default:"fio-update-server" help:"Organizational Unit for the CA"`
 	TlsExpiryDays int    `default:"365" help:"TLS certificate validity in days"`
 	CaExpiryDays  int    `default:"7300" help:"Root and device CA certificate validity in days"`
@@ -71,7 +74,13 @@ func (c PkiInitCmd) Run(args CommonArgs) error {
 	}
 
 	// 2. TLS keypair signed by the root CA (reusing the create-csr/sign-csr path)
-	tlsKey, csrBytes, err := buildCsr(c.DnsName, c.OU)
+	var ip net.IP
+	if c.IpAddress != "" {
+		if ip = net.ParseIP(c.IpAddress); ip == nil {
+			return fmt.Errorf("invalid IP address: %s", c.IpAddress)
+		}
+	}
+	tlsKey, csrBytes, err := buildCsr(c.DnsName, ip, c.OU)
 	if err != nil {
 		return err
 	}

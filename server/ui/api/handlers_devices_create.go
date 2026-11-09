@@ -81,11 +81,17 @@ func LoadDeviceCa(fs *storage.FsHandle, gatewayAddr string) (*DeviceCa, error) {
 		return nil, err
 	}
 
+	// A certificate issued with an IP address is for devices that can't
+	// resolve the DNS name, so they must be sent to the address.
+	dgHost := tlsCert.DNSNames[0]
+	if len(tlsCert.IPAddresses) > 0 {
+		dgHost = tlsCert.IPAddresses[0].String()
+	}
 	return &DeviceCa{
 		CaCert:   cert,
 		CaKey:    key,
 		RootCert: rootCrt,
-		DgUrl:    "https://" + tlsCert.DNSNames[0] + ":" + gatewayPort,
+		DgUrl:    "https://" + net.JoinHostPort(dgHost, gatewayPort),
 	}, nil
 }
 

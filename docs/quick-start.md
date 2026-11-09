@@ -20,6 +20,12 @@ This populates `datadir` with:
  * PKI root of trust for mTLS
  * A default `admin:admin` user
 
+Devices reach the server's device gateway by the host name in its TLS
+certificate, the system host name unless `--dnsname` sets another. When
+devices can't resolve that name, add `--ip <server-LAN-address>`: the
+certificate then also carries the address, and enrolled devices connect to
+it directly, with no DNS or `/etc/hosts` entry.
+
 ## Run the Server
 
 `./fioserver --datadir=./datadir serve`

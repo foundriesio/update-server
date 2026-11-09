@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"net"
 	"time"
 )
 
@@ -77,12 +78,14 @@ func tlsCertTemplate(csr *x509.CertificateRequest, caCrt *x509.Certificate, seri
 		KeyUsage:    x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		DNSNames:    csr.DNSNames,
+		IPAddresses: csr.IPAddresses,
 	}
 }
 
 // buildCsr generates a new EC key and a TLS certificate signing request for the
-// given DNS name and factory. It returns the key and the DER-encoded CSR bytes.
-func buildCsr(dnsName, ou string) (*ecdsa.PrivateKey, []byte, error) {
+// given DNS name, optional IP address, and factory. It returns the key and the
+// DER-encoded CSR bytes.
+func buildCsr(dnsName string, ip net.IP, ou string) (*ecdsa.PrivateKey, []byte, error) {
 	priv, err := generateEcKey()
 	if err != nil {
 		return nil, nil, err
@@ -95,6 +98,9 @@ func buildCsr(dnsName, ou string) (*ecdsa.PrivateKey, []byte, error) {
 		},
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		DNSNames:           []string{dnsName},
+	}
+	if ip != nil {
+		template.IPAddresses = []net.IP{ip}
 	}
 
 	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &template, priv)

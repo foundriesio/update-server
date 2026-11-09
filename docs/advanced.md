@@ -69,4 +69,5 @@ The generated `sota.toml` already points `tls.server`, `provision.server`,
 `pacman.compose_apps_proxy` at this server's device gateway; no hand-editing
 is needed. The gateway URL comes from the TLS certificate's DNS name plus
 the gateway port, so the `--dnsname` given to `pki-init` must be resolvable
-by devices.
+by devices. A server set up with `devserver-init --ip` uses that address
+instead.

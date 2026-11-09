@@ -24,7 +24,7 @@ func (c CsrCmd) Run(args CommonArgs) error {
 		return err
 	}
 
-	priv, csrBytes, err := buildCsr(c.DnsName, c.Factory)
+	priv, csrBytes, err := buildCsr(c.DnsName, nil, c.Factory)
 	if err != nil {
 		return err
 	}
