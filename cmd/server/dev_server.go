@@ -19,6 +19,7 @@ import (
 // metadata (tuf-init).
 type DevServerInitCmd struct {
 	DnsName       string `help:"DNS host name devices address this gateway with (default: system host name)"`
+	IpAddress     string `arg:"--ip" help:"IP address devices address this gateway with, so they need no DNS or /etc/hosts entry"`
 	AdminPassword string `arg:"--admin-password" default:"admin" help:"Password for the local admin user"`
 }
 
@@ -39,7 +40,7 @@ func (c DevServerInitCmd) Run(args CommonArgs) error {
 		}
 	}
 
-	pkiInit := PkiInitCmd{DnsName: dnsName, OU: "fio-update-server", TlsExpiryDays: 365, CaExpiryDays: 7300}
+	pkiInit := PkiInitCmd{DnsName: dnsName, IpAddress: c.IpAddress, OU: "fio-update-server", TlsExpiryDays: 365, CaExpiryDays: 7300}
 	if err := pkiInit.Run(args); err != nil {
 		return fmt.Errorf("pki-init: %w", err)
 	}
@@ -50,16 +51,24 @@ func (c DevServerInitCmd) Run(args CommonArgs) error {
 		displayPassword = "\033[1m" + c.AdminPassword + "\033[0m"
 	}
 	fmt.Println("# PKI initialized")
-	fmt.Println("device-gateway TLS DNS name:", displayDnsName)
-	fmt.Println("Devices must connect to this server with this name.")
-	if ip, err := outboundIP(); err == nil {
-		fmt.Println("If DNS resolution fails, edit /etc/hosts on devices with:")
-		fmt.Printf("| %s\t%s\n", ip, dnsName)
+	serverHost := dnsName
+	if c.IpAddress != "" {
+		serverHost = c.IpAddress
+		fmt.Println("device-gateway TLS address:", c.IpAddress)
+		fmt.Println("Devices connect to this server by IP address and need no DNS or /etc/hosts entry.")
 	} else {
-		fmt.Println("If DNS resolution fails, edit /etc/hosts on your devices.")
+		fmt.Println("device-gateway TLS DNS name:", displayDnsName)
+		fmt.Println("Devices must connect to this server with this name.")
+		if ip, err := outboundIP(); err == nil {
+			fmt.Println("If DNS resolution fails, edit /etc/hosts on devices with:")
+			fmt.Printf("| %s\t%s\n", ip, dnsName)
+			fmt.Println("or run devserver-init with --ip", ip, "instead.")
+		} else {
+			fmt.Println("If DNS resolution fails, edit /etc/hosts on your devices.")
+		}
 	}
 	fmt.Println("Device registration command will be:")
-	fmt.Printf(" fio-device-register --device-api=http://%s:8080/v1/devices --oauth-api=http://%s:8080/oauth2\n", dnsName, dnsName)
+	fmt.Printf(" fio-device-register --device-api=http://%s:8080/v1/devices --oauth-api=http://%s:8080/oauth2\n", serverHost, serverHost)
 	fmt.Println()
 
 	if err := (AuthInitCmd{Local: true}).Run(args); err != nil {
