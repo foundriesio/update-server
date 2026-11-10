@@ -92,8 +92,10 @@ func (d DeviceApi) Delete(uuid string) error {
 }
 
 // ApproveDevice approves the user code a device printed while registering.
+// The device's token only gets devices:create, all registration needs.
 func (d DeviceApi) ApproveDevice(code, description string) error {
-	_, err := d.api.Post("/v1/oauth2/device/approve", ui.DeviceApproveRequest{UserCode: code, Description: description})
+	req := ui.DeviceApproveRequest{UserCode: code, Description: description, Scopes: "devices:create"}
+	_, err := d.api.Post("/v1/oauth2/device/approve", req)
 	return err
 }
 

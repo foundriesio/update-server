@@ -24,6 +24,11 @@ func putJson(ctx context.Context, resource string, data, result any) error {
 	return err
 }
 
+func postJson(ctx context.Context, resource string, data, result any) error {
+	_, err := sendJsonWithHeaders(ctx, http.MethodPost, resource, data, result)
+	return err
+}
+
 func getJsonWithHeaders(ctx context.Context, resource string, result any) (http.Header, error) {
 	s := CtxGetSession(ctx)
 	req, err := http.NewRequest(http.MethodGet, s.BaseUrl+resource, nil)
@@ -34,12 +39,16 @@ func getJsonWithHeaders(ctx context.Context, resource string, result any) (http.
 }
 
 func putJsonWithHeaders(ctx context.Context, resource string, data, result any) (http.Header, error) {
+	return sendJsonWithHeaders(ctx, http.MethodPut, resource, data, result)
+}
+
+func sendJsonWithHeaders(ctx context.Context, method, resource string, data, result any) (http.Header, error) {
 	s := CtxGetSession(ctx)
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(data); err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest(http.MethodPut, s.BaseUrl+resource, &body)
+	req, err := http.NewRequest(method, s.BaseUrl+resource, &body)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +81,27 @@ func reqJsonWithHeaders(ctx context.Context, req *http.Request, result any) (htt
 		return resp.Header, nil
 	default:
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("unexpected status code: HTTP_%d: %s", resp.StatusCode, string(body))
+		return nil, &apiStatusError{Status: resp.StatusCode, Body: body}
 	}
+}
+
+// apiStatusError lets a handler show the API's own status and message.
+type apiStatusError struct {
+	Status int
+	Body   []byte
+}
+
+func (e *apiStatusError) Error() string {
+	return fmt.Sprintf("unexpected status code: HTTP_%d: %s", e.Status, string(e.Body))
+}
+
+// Message is the API's error message, or the raw body if it isn't JSON.
+func (e *apiStatusError) Message() string {
+	var msg struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(e.Body, &msg) == nil && msg.Message != "" {
+		return msg.Message
+	}
+	return string(e.Body)
 }
