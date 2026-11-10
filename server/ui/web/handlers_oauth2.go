@@ -5,13 +5,12 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"time"
+	"net/url"
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/foundriesio/update-server/storage/users"
+	"github.com/foundriesio/update-server/server/ui/api"
 )
 
 func (h handlers) authDevice(c echo.Context) error {
@@ -28,44 +27,24 @@ func (h handlers) authDevice(c echo.Context) error {
 	return c.Render(http.StatusOK, "device_auth.html", data)
 }
 
-var errDeviceAuthInvalidCode = errors.New("invalid user code")
-var errDeviceAuthExpired = errors.New("authorization code expired")
-var errDeviceAuthAlreadyHandled = errors.New("this device has already been authorized or denied")
+// deviceAuthError shows the API's status and message, such as an expired code.
+func (h handlers) deviceAuthError(c echo.Context, err error) error {
+	var apiErr *apiStatusError
+	if errors.As(err, &apiErr) {
+		return h.handleError(c, apiErr.Status, errors.New(apiErr.Message()))
+	}
+	return h.handleUnexpected(c, err)
+}
 
 func (h handlers) authDeviceConfirm(c echo.Context) error {
 	userCode := c.QueryParam("user_code")
 	if userCode == "" {
-		return EchoError(c, nil, http.StatusBadRequest, "user_code is required")
+		return h.handleError(c, http.StatusBadRequest, errors.New("user_code is required"))
 	}
 
-	auth, err := h.users.GetDeviceAuthByUserCode(userCode)
-	if err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to get device authorization")
-	}
-	if auth == nil {
-		return EchoError(c, errDeviceAuthInvalidCode, http.StatusNotFound, errDeviceAuthInvalidCode.Error())
-	}
-
-	if auth.ExpiresAt < time.Now().Unix() {
-		return EchoError(c, errDeviceAuthExpired, http.StatusBadRequest, errDeviceAuthExpired.Error())
-	}
-	if auth.Authorized || auth.Denied {
-		return EchoError(c, errDeviceAuthAlreadyHandled, http.StatusBadRequest, errDeviceAuthAlreadyHandled.Error())
-	}
-
-	// Get the current user from session to intersect scopes
-	session := CtxGetSession(c.Request().Context())
-	if session == nil || session.User == nil {
-		return EchoError(c, nil, http.StatusUnauthorized, "Not authenticated")
-	}
-
-	scopes, err := users.ScopesFromString(auth.Scopes)
-	if err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to parse requested scopes: "+auth.Scopes)
-	}
-	allowedScopes := scopes & session.User.AllowedScopes
-	if allowedScopes == 0 {
-		return EchoError(c, nil, http.StatusForbidden, fmt.Sprintf("user is missing required scope(s): %s", scopes))
+	var info api.DeviceAuthInfo
+	if err := getJson(c.Request().Context(), "/v1/oauth2/device/"+url.PathEscape(userCode), &info); err != nil {
+		return h.deviceAuthError(c, err)
 	}
 
 	data := struct {
@@ -75,47 +54,21 @@ func (h handlers) authDeviceConfirm(c echo.Context) error {
 		TokenExpires int64
 	}{
 		baseCtx:      h.baseCtx(c, "API Activation", "settings"),
-		UserCode:     userCode,
-		Scopes:       allowedScopes.String(),
-		TokenExpires: auth.TokenExpires,
+		UserCode:     info.UserCode,
+		Scopes:       info.Scopes,
+		TokenExpires: info.TokenExpires,
 	}
 
 	return c.Render(http.StatusOK, "device_auth_confirm.html", data)
 }
 
 func (h handlers) authDeviceAuthorize(c echo.Context) error {
-	userCode := c.FormValue("user_code")
-	if userCode == "" {
-		return EchoError(c, nil, http.StatusBadRequest, "user_code is required")
+	req := api.DeviceApproveRequest{
+		UserCode:    c.FormValue("user_code"),
+		Description: c.FormValue("token_description"),
 	}
-	description := c.FormValue("token_description")
-
-	auth, err := h.users.GetDeviceAuthByUserCode(userCode)
-	if err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to get device authorization")
-	}
-	if auth == nil {
-		return EchoError(c, errDeviceAuthInvalidCode, http.StatusNotFound, errDeviceAuthInvalidCode.Error())
-	}
-
-	if auth.ExpiresAt < time.Now().Unix() {
-		return EchoError(c, errDeviceAuthExpired, http.StatusBadRequest, errDeviceAuthExpired.Error())
-	}
-
-	if auth.Authorized || auth.Denied {
-		return EchoError(c, errDeviceAuthAlreadyHandled, http.StatusBadRequest, errDeviceAuthAlreadyHandled.Error())
-	}
-
-	session := CtxGetSession(c.Request().Context())
-
-	scopes, err := users.ScopesFromString(auth.Scopes)
-	if err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to parse requested scopes: "+auth.Scopes)
-	}
-	allowedScopes := scopes & session.User.AllowedScopes
-
-	if err := session.User.ApproveAuthorization(auth.DeviceCode, description, allowedScopes); err != nil {
-		return h.handleUnexpected(c, err)
+	if err := postJson(c.Request().Context(), "/v1/oauth2/device/approve", req, nil); err != nil {
+		return h.deviceAuthError(c, err)
 	}
 
 	data := struct {
@@ -131,30 +84,9 @@ func (h handlers) authDeviceAuthorize(c echo.Context) error {
 // authDeviceDeny handles the user denying the device authorization
 // POST /auth/device/deny
 func (h handlers) authDeviceDeny(c echo.Context) error {
-	userCode := c.FormValue("user_code")
-	if userCode == "" {
-		return EchoError(c, nil, http.StatusBadRequest, "user_code is required")
-	}
-
-	auth, err := h.users.GetDeviceAuthByUserCode(userCode)
-	if err != nil {
-		return h.handleError(c, http.StatusInternalServerError, errors.New("failed to get device authorization"))
-	}
-	if auth == nil {
-		return h.handleError(c, http.StatusNotFound, errDeviceAuthInvalidCode)
-	}
-
-	if auth.ExpiresAt < time.Now().Unix() {
-		return h.handleError(c, http.StatusBadRequest, errDeviceAuthExpired)
-	}
-
-	if auth.Authorized || auth.Denied {
-		return h.handleError(c, http.StatusBadRequest, errDeviceAuthAlreadyHandled)
-	}
-
-	session := CtxGetSession(c.Request().Context())
-	if err := session.User.DenyDeviceAuth(auth.DeviceCode); err != nil {
-		return h.handleUnexpected(c, err)
+	req := api.DeviceDenyRequest{UserCode: c.FormValue("user_code")}
+	if err := postJson(c.Request().Context(), "/v1/oauth2/device/deny", req, nil); err != nil {
+		return h.deviceAuthError(c, err)
 	}
 
 	data := struct {

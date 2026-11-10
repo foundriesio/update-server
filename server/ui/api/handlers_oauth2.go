@@ -213,12 +213,85 @@ func (h oauth2Handlers) oauth2DeviceToken(c echo.Context) error {
 type DeviceApproveRequest struct {
 	UserCode    string `json:"user_code"`
 	Description string `json:"description"`
+	// Scopes, when set, narrows the grant further, e.g. to devices:create.
+	Scopes string `json:"scopes,omitempty"`
 }
 
-// @Summary Approve a pending device registration code
-// @Description Approves the user code printed by fio-device-register, as the
-// @Description browser confirmation page does, so enrollment can be scripted.
-// @Description The issued token only gets the devices:create scope.
+const noScopeLimit = ^users.Scopes(0)
+
+type DeviceDenyRequest struct {
+	UserCode string `json:"user_code"`
+}
+
+type DeviceAuthInfo struct {
+	UserCode     string `json:"user_code"`
+	Scopes       string `json:"scopes"` // the scopes approving would grant
+	TokenExpires int64  `json:"token_expires"`
+}
+
+// pendingDeviceAuth looks up a user code that can still be approved or denied.
+func (h handlers) pendingDeviceAuth(c echo.Context, userCode string) (*users.OAuth2DeviceAuth, error) {
+	if userCode == "" {
+		return nil, EchoError(c, nil, http.StatusBadRequest, "user_code is required")
+	}
+	auth, err := h.users.GetDeviceAuthByUserCode(userCode)
+	if err != nil {
+		return nil, EchoError(c, err, http.StatusInternalServerError, "Failed to get device authorization")
+	}
+	if auth == nil {
+		return nil, EchoError(c, nil, http.StatusNotFound, "invalid user code")
+	}
+	if auth.ExpiresAt < time.Now().Unix() {
+		return nil, EchoError(c, nil, http.StatusBadRequest, "authorization code expired")
+	}
+	if auth.Authorized || auth.Denied {
+		return nil, EchoError(c, nil, http.StatusBadRequest, "this device has already been authorized or denied")
+	}
+	return auth, nil
+}
+
+// grantableScopes are the requested scopes the caller holds, so approving
+// never grants more than the caller could use itself.
+func grantableScopes(c echo.Context, auth *users.OAuth2DeviceAuth, limit users.Scopes) (users.Scopes, error) {
+	scopes, err := users.ScopesFromString(auth.Scopes)
+	if err != nil {
+		return 0, EchoError(c, err, http.StatusInternalServerError, "Failed to parse requested scopes: "+auth.Scopes)
+	}
+	held := scopes & CtxGetUser(c.Request().Context()).AllowedScopes
+	if held == 0 {
+		return 0, EchoError(c, nil, http.StatusForbidden, fmt.Sprintf("user is missing required scope(s): %s", scopes))
+	}
+	if held&limit == 0 {
+		return 0, EchoError(c, nil, http.StatusBadRequest, fmt.Sprintf("user code does not request scope(s): %s", limit))
+	}
+	return held & limit, nil
+}
+
+// @Summary Show a pending OAuth2 device authorization
+// @Param user_code path string true "User code"
+// @Produce json
+// @Success 200 {object} DeviceAuthInfo
+// @Router  /oauth2/device/{user_code} [get]
+func (h handlers) oauth2DeviceGet(c echo.Context) error {
+	auth, err := h.pendingDeviceAuth(c, c.Param("user_code"))
+	if err != nil {
+		return err
+	}
+	granted, err := grantableScopes(c, auth, noScopeLimit)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, DeviceAuthInfo{
+		UserCode:     auth.UserCode,
+		Scopes:       granted.String(),
+		TokenExpires: auth.TokenExpires,
+	})
+}
+
+// @Summary Approve a pending OAuth2 device authorization
+// @Description Approves a user code, as the browser confirmation page does.
+// @Description The issued token gets the requested scopes the caller also
+// @Description holds, narrowed to the request's scopes when it sets them.
 // @Accept json
 // @Param data body DeviceApproveRequest true "User code to approve"
 // @Success 200
@@ -228,41 +301,46 @@ func (h handlers) oauth2DeviceApprove(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return EchoError(c, err, http.StatusBadRequest, "Invalid request body")
 	}
-	if req.UserCode == "" {
-		return EchoError(c, nil, http.StatusBadRequest, "user_code is required")
+	limit := noScopeLimit
+	if req.Scopes != "" {
+		var err error
+		if limit, err = users.ScopesFromString(req.Scopes); err != nil {
+			return EchoError(c, err, http.StatusBadRequest, "Invalid scopes: "+req.Scopes)
+		}
 	}
-
-	auth, err := h.users.GetDeviceAuthByUserCode(req.UserCode)
+	auth, err := h.pendingDeviceAuth(c, req.UserCode)
 	if err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to get device authorization")
+		return err
 	}
-	if auth == nil {
-		return EchoError(c, nil, http.StatusNotFound, "invalid user code")
-	}
-	if auth.ExpiresAt < time.Now().Unix() {
-		return EchoError(c, nil, http.StatusBadRequest, "authorization code expired")
-	}
-	if auth.Authorized || auth.Denied {
-		return EchoError(c, nil, http.StatusBadRequest, "this device has already been authorized or denied")
-	}
-
-	scopes, err := users.ScopesFromString(auth.Scopes)
+	granted, err := grantableScopes(c, auth, limit)
 	if err != nil {
-		return EchoError(c, err, http.StatusInternalServerError, "Failed to parse requested scopes: "+auth.Scopes)
-	}
-	// The route requires devices:create, which is all a device registration
-	// needs, so other requested scopes (e.g. a fiocli login) are not granted.
-	if !scopes.Has(users.ScopeDevicesC) {
-		return EchoError(c, nil, http.StatusBadRequest, "user code is not for a device registration")
+		return err
 	}
 
 	user := CtxGetUser(c.Request().Context())
-	description := req.Description
-	if description == "" {
-		description = "Approved by " + user.Username + " with user code " + req.UserCode
-	}
-	if err := user.ApproveAuthorization(auth.DeviceCode, description, users.ScopeDevicesC); err != nil {
+	if err := user.ApproveAuthorization(auth.DeviceCode, req.Description, granted); err != nil {
 		return EchoError(c, err, http.StatusInternalServerError, "Failed to approve device authorization")
+	}
+	return c.NoContent(http.StatusOK)
+}
+
+// @Summary Deny a pending OAuth2 device authorization
+// @Accept json
+// @Param data body DeviceDenyRequest true "User code to deny"
+// @Success 200
+// @Router  /oauth2/device/deny [post]
+func (h handlers) oauth2DeviceDeny(c echo.Context) error {
+	var req DeviceDenyRequest
+	if err := c.Bind(&req); err != nil {
+		return EchoError(c, err, http.StatusBadRequest, "Invalid request body")
+	}
+	auth, err := h.pendingDeviceAuth(c, req.UserCode)
+	if err != nil {
+		return err
+	}
+	user := CtxGetUser(c.Request().Context())
+	if err := user.DenyDeviceAuth(auth.DeviceCode); err != nil {
+		return EchoError(c, err, http.StatusInternalServerError, "Failed to deny device authorization")
 	}
 	return c.NoContent(http.StatusOK)
 }

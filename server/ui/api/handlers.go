@@ -37,7 +37,9 @@ func RegisterHandlers(e *echo.Echo, ca *DeviceCa, storage *storage.Storage, user
 	g := e.Group("/v1")
 	g.Use(authUser(a))
 
-	g.POST("/oauth2/device/approve", h.oauth2DeviceApprove, requireScope(users.ScopeDevicesC), a.GetRateLimiterMiddleware())
+	g.GET("/oauth2/device/:user_code", h.oauth2DeviceGet, a.GetRateLimiterMiddleware())
+	g.POST("/oauth2/device/approve", h.oauth2DeviceApprove, a.GetRateLimiterMiddleware())
+	g.POST("/oauth2/device/deny", h.oauth2DeviceDeny, a.GetRateLimiterMiddleware())
 
 	g.PUT("/configs", h.configsUpload, requireScope(users.ScopeDevicesRU|users.ScopeUpdatesRU),
 		gzipContentTypeAsContentEncoding, middleware.Decompress())
