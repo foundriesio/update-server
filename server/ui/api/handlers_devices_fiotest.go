@@ -77,6 +77,9 @@ func (h *handlers) deviceTestArtifact(c echo.Context) error {
 		if !storage.TestIdRegex.MatchString(testid) {
 			return echo.NewHTTPError(http.StatusNotFound, "Test not found")
 		}
+		if artifact == "." || artifact == ".." || !storage.TestArtifactNameRegex.MatchString(artifact) {
+			return echo.NewHTTPError(http.StatusNotFound, "Artifact not found")
+		}
 
 		fd, err := device.GetTestArtifact(testid, artifact)
 		if err != nil {

@@ -67,8 +67,9 @@ var (
 
 	DbFile = storage.DbFile
 
-	ValidCorrelationId = storage.ValidCorrelationId
-	TestIdRegex        = storage.TestIdRegex
+	ValidCorrelationId    = storage.ValidCorrelationId
+	TestIdRegex           = storage.TestIdRegex
+	TestArtifactNameRegex = storage.TestArtifactNameRegex
 
 	ValidConfigsReasonRegex = storage.ValidConfigsReasonRegex
 
