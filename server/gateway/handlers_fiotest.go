@@ -108,6 +108,9 @@ func (h handlers) testArtifact(c echo.Context) error {
 	d := CtxGetDevice(ctx)
 	testid := c.Param("testid")
 	path := c.Param("path")
+	if path == "." || path == ".." || !storage.TestArtifactNameRegex.MatchString(path) {
+		return EchoError(c, nil, http.StatusBadRequest, "Invalid artifact filename")
+	}
 
 	log := CtxGetLog(ctx)
 	log = log.With("testid", testid)
