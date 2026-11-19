@@ -903,6 +903,11 @@ func TestOstree(t *testing.T) {
 	}
 
 	// A few negative tests
+	t.Run("Path traversal", func(t *testing.T) {
+		require.NoError(t, tcCi42.fs.Certs.WriteFile("test-escape", []byte("42")))
+		tcCi42.t = t
+		_ = tcCi42.GET("/ostree/../../../certs/test-escape", 404)
+	})
 	t.Run("Wrong endpoint", func(t *testing.T) {
 		tcCi42.t = t
 		_ = tcCi42.GET("/ostree/foo", 404)
