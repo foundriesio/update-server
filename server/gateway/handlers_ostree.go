@@ -40,7 +40,7 @@ func (handlers) ostreeFileStream(c echo.Context) error {
 	req := c.Request()
 	ctx := req.Context()
 	filePath := req.URL.Path[len("/ostree/"):]
-	if filepath.Clean(filePath) != filePath {
+	if !filepath.IsLocal(filePath) || filepath.Clean(filePath) != filePath {
 		return c.String(http.StatusNotFound, "Not Found")
 	}
 	log := CtxGetLog(ctx).With("file", filePath)
