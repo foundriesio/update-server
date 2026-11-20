@@ -22,6 +22,16 @@ Choose and configure the option that best fits your needs:
    managed users. This mode assumes no internet access, so advanced features
    like password reset (email) and MFA (via SMS) are not available.
 
+SSO accounts are identified by Google's `sub` or GitHub's numeric account ID.
+Changing a provider username or email retains the same local account and
+permissions. Local usernames are assigned at first login and remain fixed;
+name collisions receive a numeric suffix. A different provider account cannot
+claim an existing local account by matching its username or email. Deleting a
+local SSO account blocks subsequent logins for that provider identity.
+
+This identity storage requires a newly initialized database. Existing databases
+are not migrated, and existing users are not linked by username or email.
+
 ## Configuring Google SSO
 
 Assume your update server is hosted at `dg.example.com`. First go

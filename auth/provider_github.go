@@ -5,11 +5,13 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/foundriesio/update-server/storage"
@@ -50,6 +52,7 @@ func (p *ghProvider) Configure(e *echo.Echo, users *users.Storage, cfg *storage.
 }
 
 type ghProfile struct {
+	ID    int64  `json:"id"`
 	Login string `json:"login"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
@@ -77,6 +80,9 @@ func (p *ghProvider) userFromToken(c echo.Context, token *oauth2.Token) (*users.
 	var profile ghProfile
 	if err := json.NewDecoder(resp.Body).Decode(&profile); err != nil {
 		return nil, c.String(resp.StatusCode, "Unable to unmarshall user profile: "+err.Error())
+	}
+	if profile.ID <= 0 {
+		return nil, c.String(http.StatusUnauthorized, "Missing or invalid GitHub account ID")
 	}
 
 	// Check organization membership
@@ -107,7 +113,10 @@ func (p *ghProvider) userFromToken(c echo.Context, token *oauth2.Token) (*users.
 		return nil, c.String(http.StatusUnauthorized, "Unauthorized organization")
 	}
 
-	user, err := p.users.Upsert(profile.Login, profile.Email, p.newUserScopes)
+	user, err := p.users.UpsertIdentity("github", strconv.FormatInt(profile.ID, 10), profile.Login, profile.Email, p.newUserScopes)
+	if errors.Is(err, users.ErrIdentityDeleted) {
+		return nil, c.String(http.StatusForbidden, "Account is deleted")
+	}
 	if err != nil {
 		return nil, c.String(http.StatusInternalServerError, "Unexpected error retrieving user")
 	}

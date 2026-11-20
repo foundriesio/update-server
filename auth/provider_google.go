@@ -5,6 +5,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -46,6 +47,7 @@ func (p *googleProvider) Configure(e *echo.Echo, userStorage *users.Storage, cfg
 }
 
 type googleUser struct {
+	Subject      string `json:"sub"`
 	Email        string `json:"email"`
 	FirstName    string `json:"given_name"`
 	LastName     string `json:"family_name"`
@@ -58,7 +60,10 @@ func (u googleUser) Username() string {
 }
 
 func (p *googleProvider) userFromToken(c echo.Context, token *oauth2.Token) (*users.User, error) {
-	idTok := token.Extra("id_token").(string)
+	idTok, ok := token.Extra("id_token").(string)
+	if !ok || idTok == "" {
+		return nil, c.String(http.StatusUnauthorized, "Missing Google ID token")
+	}
 
 	tok, err := jwt.ParseSigned(idTok)
 	if err != nil {
@@ -69,12 +74,18 @@ func (p *googleProvider) userFromToken(c echo.Context, token *oauth2.Token) (*us
 	if err := tok.UnsafeClaimsWithoutVerification(&profile); err != nil {
 		return nil, c.String(http.StatusBadRequest, fmt.Sprintf("Could not unmarshall oauth token: %v", err))
 	}
+	if strings.TrimSpace(profile.Subject) == "" {
+		return nil, c.String(http.StatusUnauthorized, "Missing Google account subject")
+	}
 
 	if !slices.Contains(p.AllowedDomains, profile.HostedDomain) {
 		return nil, c.String(http.StatusUnauthorized, fmt.Sprintf("Unauthorized domain: %s", profile.HostedDomain))
 	}
 
-	user, err := p.users.Upsert(profile.Username(), profile.Email, p.newUserScopes)
+	user, err := p.users.UpsertIdentity("google", profile.Subject, profile.Username(), profile.Email, p.newUserScopes)
+	if errors.Is(err, users.ErrIdentityDeleted) {
+		return nil, c.String(http.StatusForbidden, "Account is deleted")
+	}
 	if err != nil {
 		return nil, c.String(http.StatusInternalServerError, fmt.Sprintf("Unexpected error retrieving user: %v", err))
 	}
