@@ -302,6 +302,9 @@ func NewStorage(db *storage.DbHandle, fs *storage.FsHandle) (*Storage, error) {
 }
 
 func (s Storage) DeviceCreate(uuid, cert string) (*Device, error) {
+	if !storage.ValidDeviceUUID(uuid) {
+		return nil, fmt.Errorf("invalid device UUID: %q", uuid)
+	}
 	now := time.Now().Unix()
 	if err := s.stmtDeviceCreate.run(uuid, cert, now, now); err != nil {
 		return nil, err

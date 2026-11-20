@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	files "github.com/foundriesio/update-server/storage"
 	"github.com/labstack/echo/v4"
 
 	storage "github.com/foundriesio/update-server/storage/api"
@@ -132,6 +133,9 @@ func (h *handlers) deviceGet(c echo.Context) error {
 // @Param   uuid path string true "Device UUID"
 // @Router  /devices/{uuid} [delete]
 func (h *handlers) deviceDelete(c echo.Context) error {
+	if !files.ValidDeviceUUID(c.Param("uuid")) {
+		return c.JSON(http.StatusBadRequest, "Invalid device UUID")
+	}
 	return h.handleDevice(c, func(device *Device) error {
 		if err := device.Delete(); err != nil {
 			return EchoError(c, err, http.StatusInternalServerError, "Failed to delete device")

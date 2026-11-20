@@ -9,14 +9,21 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 )
+
+// Device UUIDs also serve as directory names.
+var ValidDeviceUUID = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`).MatchString
 
 type DevicesFsHandle struct {
 	baseFsHandle
 }
 
 func (s DevicesFsHandle) Delete(uuid string) error {
-	h, _ := s.deviceLocalHandle(uuid, false)
+	h, err := s.deviceLocalHandle(uuid, false)
+	if err != nil {
+		return err
+	}
 	if err := os.RemoveAll(h.root); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -27,13 +34,19 @@ func (s DevicesFsHandle) Delete(uuid string) error {
 }
 
 func (s DevicesFsHandle) ReadFileStream(uuid string, name string) (io.ReadCloser, error) {
-	h, _ := s.deviceLocalHandle(uuid, false)
+	h, err := s.deviceLocalHandle(uuid, false)
+	if err != nil {
+		return nil, err
+	}
 	path := filepath.Join(h.root, name)
 	return os.Open(path)
 }
 
 func (s DevicesFsHandle) ReadFile(uuid, name string) (string, error) {
-	h, _ := s.deviceLocalHandle(uuid, false)
+	h, err := s.deviceLocalHandle(uuid, false)
+	if err != nil {
+		return "", err
+	}
 	content, err := h.readFile(name, true)
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading file %s for device %s: %w", name, uuid, err)
@@ -71,7 +84,10 @@ func (s DevicesFsHandle) AppendFile(uuid, name, content string) error {
 }
 
 func (s DevicesFsHandle) ListFiles(uuid, prefix string, sortByModTime bool) ([]string, error) {
-	h, _ := s.deviceLocalHandle(uuid, false)
+	h, err := s.deviceLocalHandle(uuid, false)
+	if err != nil {
+		return nil, err
+	}
 	names, err := h.matchFiles(prefix, sortByModTime)
 	if err != nil {
 		err = fmt.Errorf("error listing %s files for device %s: %w", prefix, uuid, err)
@@ -89,6 +105,9 @@ func (s DevicesFsHandle) RolloverFiles(uuid, prefix string, max int) error {
 }
 
 func (s DevicesFsHandle) deviceLocalHandle(uuid string, forUpdate bool) (h baseFsHandle, err error) {
+	if !ValidDeviceUUID(uuid) {
+		return h, fmt.Errorf("invalid device UUID: %q", uuid)
+	}
 	h.root = filepath.Join(s.root, uuid)
 	if forUpdate {
 		if err = h.mkdirs(defaultDirAccess, true); err != nil {

@@ -149,8 +149,8 @@ func (h handlers) deviceCreate(c echo.Context) error {
 		return EchoError(c, err, http.StatusBadRequest, "Bad JSON body")
 	}
 
-	if len(req.Uuid) == 0 {
-		return c.JSON(http.StatusBadRequest, "Uuid is required")
+	if !storage.ValidDeviceUUID(req.Uuid) {
+		return c.JSON(http.StatusBadRequest, "Invalid device UUID: use only letters, digits, underscores, and hyphens")
 	}
 
 	cert, _, err := genCert(req.Uuid, req.Csr, h.ca)
