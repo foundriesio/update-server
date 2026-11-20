@@ -142,8 +142,11 @@ func createTables(db *sql.DB) error {
 			created_at     INT DEFAULT 0,
 			deleted        BOOL DEFAULT 0,
 			allowed_scopes TEXT DEFAULT '',
+			auth_provider  TEXT,
+			auth_subject   TEXT,
 
-			auth_provider_data JSONB NOT NULL DEFAULT '{}'
+			auth_provider_data JSONB NOT NULL DEFAULT '{}',
+			UNIQUE(auth_provider, auth_subject)
 		);
 
 		CREATE TABLE tokens (
