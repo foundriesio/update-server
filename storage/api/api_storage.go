@@ -148,6 +148,9 @@ type Storage struct {
 // events, apps-states). The filesystem data destroyed here is NOT recovered
 // if the device is later allowed back via UndenyDevice.
 func (d Device) Delete() error {
+	if !storage.ValidDeviceUUID(d.Uuid) {
+		return fmt.Errorf("invalid device UUID: %q", d.Uuid)
+	}
 	err1 := d.storage.stmtDeviceDelete.run(d.Uuid)
 	err2 := d.storage.fs.Devices.Delete(d.Uuid)
 	return errors.Join(err1, err2)
@@ -371,6 +374,9 @@ func (s Storage) ListUpdates(tag string) ([]Update, error) {
 }
 
 func (s Storage) DeviceCreate(uuid, cert string, labels Labels) error {
+	if !storage.ValidDeviceUUID(uuid) {
+		return fmt.Errorf("invalid device UUID: %q", uuid)
+	}
 	return s.stmtDevicePut.run(uuid, cert, labels)
 }
 
