@@ -8,6 +8,7 @@ import (
 	"mime"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"uuid"
 
 	"github.com/foundriesio/update-server/storage"
@@ -103,11 +104,16 @@ func (h handlers) testComplete(c echo.Context) error {
 	return c.JSON(http.StatusOK, urls)
 }
 
+var testArtifactNameRegex = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+
 func (h handlers) testArtifact(c echo.Context) error {
 	ctx := c.Request().Context()
 	d := CtxGetDevice(ctx)
 	testid := c.Param("testid")
 	path := c.Param("path")
+	if path == "." || path == ".." || !testArtifactNameRegex.MatchString(path) {
+		return EchoError(c, nil, http.StatusBadRequest, "Invalid artifact filename")
+	}
 
 	log := CtxGetLog(ctx)
 	log = log.With("testid", testid)

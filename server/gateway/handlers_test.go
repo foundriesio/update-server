@@ -903,6 +903,11 @@ func TestOstree(t *testing.T) {
 	}
 
 	// A few negative tests
+	t.Run("Path traversal", func(t *testing.T) {
+		require.NoError(t, tcCi42.fs.Certs.WriteFile("test-escape", []byte("42")))
+		tcCi42.t = t
+		_ = tcCi42.GET("/ostree/../../../certs/test-escape", 404)
+	})
 	t.Run("Wrong endpoint", func(t *testing.T) {
 		tcCi42.t = t
 		_ = tcCi42.GET("/ostree/foo", 404)
@@ -937,6 +942,45 @@ func TestOstree(t *testing.T) {
 		tcCi42.t = t
 		_ = tcCi42.GET("/ostree/summary.sig", 404)
 	})
+}
+
+func TestArtifactFilename(t *testing.T) {
+	tc := NewTestClient(t)
+	testid := string(tc.POST("/tests", 201, testCreateBody{Name: "filename-test"}))
+	d, err := tc.gw.DeviceGet(tc.uuid)
+	require.NoError(t, err)
+	prefix := baseStorage.TestArtifactsPrefix + "-" + testid + "_"
+
+	for _, name := range []string{
+		"", ".", "..", "../..", "../../escape", "subdir/file.txt",
+		"/absolute.txt", `subdir\file.txt`, "file name.txt", "file:stream",
+		"file\n", "file\x00", "café.txt", "%2e%2e%2fescape", "file?.txt",
+	} {
+		t.Run("invalid/"+name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPut, "/", strings.NewReader("artifact"))
+			ctx := CtxWithDevice(CtxWithLog(req.Context(), tc.log), d)
+			c := tc.e.NewContext(req.WithContext(ctx), httptest.NewRecorder()) //nolint:unqueryvet // HTTP context setup does not start a transaction.
+			c.SetParamNames("testid", "path")
+			c.SetParamValues(testid, name)
+			err := (handlers{}).testArtifact(c)
+			var httpErr *echo.HTTPError
+			require.ErrorAs(t, err, &httpErr)
+			require.Equal(t, http.StatusBadRequest, httpErr.Code)
+		})
+	}
+	files, err := tc.fs.Devices.ListFiles(tc.uuid, prefix, true)
+	require.NoError(t, err)
+	require.Empty(t, files)
+
+	for _, name := range []string{"Az09-_.log", "a", ".hidden", "file..txt"} {
+		t.Run("valid/"+name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPut, "/tests/"+testid+"/"+name, strings.NewReader("artifact"))
+			require.Equal(t, http.StatusOK, tc.Do(req).Code)
+			content, err := tc.fs.Devices.ReadFile(tc.uuid, prefix+name)
+			require.NoError(t, err)
+			require.Equal(t, "artifact", content)
+		})
+	}
 }
 
 func TestApiFiotest(t *testing.T) {
