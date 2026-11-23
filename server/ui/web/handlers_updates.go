@@ -23,13 +23,12 @@ type releaseApplication struct {
 }
 
 type latestTarget struct {
-	Name         string
-	Version      string
-	Sha256       string
-	Architecture string
-	HardwareIDs  []string
-	Tags         []string
-	Apps         []releaseApplication
+	Name        string
+	Version     string
+	Sha256      string
+	HardwareIDs []string
+	Tags        []string
+	Apps        []releaseApplication
 }
 
 func findLatestTarget(tuf api.UpdateTufResp) *latestTarget {
@@ -78,8 +77,6 @@ func findLatestTarget(tuf api.UpdateTufResp) *latestTarget {
 			}
 		}
 
-		arch, _ := custom["arch"].(string)
-
 		var apps []releaseApplication
 		if dockerApps, ok := custom["docker_compose_apps"].(map[string]any); ok {
 			for appName, appVal := range dockerApps {
@@ -93,13 +90,12 @@ func findLatestTarget(tuf api.UpdateTufResp) *latestTarget {
 		slices.SortFunc(apps, func(a, b releaseApplication) int { return strings.Compare(a.Name, b.Name) })
 
 		latest = &latestTarget{
-			Name:         name,
-			Version:      versionStr,
-			Sha256:       sha256,
-			Architecture: arch,
-			HardwareIDs:  customStrings(custom, "hardwareIds"),
-			Tags:         customStrings(custom, "tags"),
-			Apps:         apps,
+			Name:        name,
+			Version:     versionStr,
+			Sha256:      sha256,
+			HardwareIDs: customStrings(custom, "hardwareIds"),
+			Tags:        customStrings(custom, "tags"),
+			Apps:        apps,
 		}
 	}
 
