@@ -2193,6 +2193,25 @@ pre.code-block {
     padding: 7px 10px;
     margin-bottom: 0;
 }
+.field-row--stacked {
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    margin-bottom: 0;
+    border-left: 0;
+}
+/* Native arrow is lost once background/border are restyled; draw a caret that follows the theme. */
+select.field-input {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-inline-end: 30px;
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--text-2) 50%),
+        linear-gradient(135deg, var(--text-2) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
 .field-input:disabled {
     color: var(--text-3);
     background: var(--surface-hover);
@@ -5065,9 +5084,12 @@ pre.code-block {
 .settings-ledger__copy {
     padding: 5px;
 }
-.settings-ledger__button:hover {
+.settings-ledger__button:not(.settings-ledger__button--primary):hover {
     border-color: var(--border-2);
     background: var(--surface-hover);
+}
+.settings-ledger__button--primary:hover {
+    opacity: 0.88;
 }
 .settings-ledger__button--primary {
     border-color: var(--brand-primary);

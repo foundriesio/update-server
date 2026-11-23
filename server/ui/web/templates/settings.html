@@ -27,6 +27,26 @@
         {{end}}
       </section>
 
+      <section class="settings-ledger__section meta-section" aria-labelledby="settings-language-title">
+        <div class="settings-ledger__section-head heading-group heading-group--section heading-row heading-row--split">
+          <h2 class="heading heading--section" id="settings-language-title">{{.L.T "Language"}}</h2>
+        </div>
+        <form method="post" action="/settings/locale">
+          {{ if .CsrfToken }}<input type="hidden" name="_csrf" value="{{.CsrfToken}}">{{ end }}
+          <div class="field-row field-row--stacked">
+            <label class="field-row__key" for="localeSelect">{{.L.T "Display language"}}</label>
+            <select class="field-input" id="localeSelect" name="locale"{{if and (not .StoredLocale) .EffectiveLanguage}} aria-describedby="localeEffective"{{end}}>
+              <option value=""{{if eq .StoredLocale ""}} selected{{end}}>{{.L.T "Automatic (browser language)"}}</option>
+              {{range .Languages}}<option value="{{.Tag}}"{{if eq .Tag $.StoredLocale}} selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+          </div>
+          {{if and (not .StoredLocale) .EffectiveLanguage}}<p class="field-row__caption" id="localeEffective">{{.L.T "Currently using %[1]s" .EffectiveLanguage}}</p>{{end}}
+          <div class="settings-ledger__account-actions">
+            <button class="settings-ledger__button settings-ledger__button--primary" type="submit">{{.L.T "Save language"}}</button>
+          </div>
+        </form>
+      </section>
+
       <section class="settings-ledger__section meta-section" aria-labelledby="settings-scopes-title">
         <div class="settings-ledger__section-head heading-group heading-group--section heading-row heading-row--split">
           <h2 class="heading heading--section" id="settings-scopes-title">Allowed scopes</h2>

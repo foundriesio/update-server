@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/foundriesio/update-server/server/ui/i18n"
 	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
 )
@@ -133,24 +134,42 @@ func (h handlers) settings(c echo.Context) error {
 	}
 
 	scopes := session.User.AllowedScopes.ToSlice()
+	base := h.baseCtx(c, "Settings", "settings")
+	storedLocale := session.User.Locale
+	if _, ok := i18n.Valid(storedLocale); !ok {
+		storedLocale = ""
+	}
+	effectiveLanguage := ""
+	for _, lang := range i18n.Languages() {
+		if lang.Tag == base.L.Tag() {
+			effectiveLanguage = lang.Name
+			break
+		}
+	}
 	ctx := struct {
 		baseCtx
-		Tokens          []users.Token
-		ScopesList      []string
-		GrantableScopes []string
-		ScopeGroups     []settingsScopeGroup
-		LocalAuth       bool
-		DeviceApiUrl    string
-		Oauth2ApiUrl    string
+		Tokens            []users.Token
+		ScopesList        []string
+		GrantableScopes   []string
+		ScopeGroups       []settingsScopeGroup
+		LocalAuth         bool
+		DeviceApiUrl      string
+		Oauth2ApiUrl      string
+		Languages         []i18n.Language
+		StoredLocale      string
+		EffectiveLanguage string
 	}{
-		baseCtx:         h.baseCtx(c, "Settings", "settings"),
-		Tokens:          tokens,
-		ScopesList:      scopes,
-		GrantableScopes: session.User.AllowedScopes.Grantable(),
-		ScopeGroups:     groupSettingsScopes(scopes),
-		LocalAuth:       h.provider.Name() == "local",
-		DeviceApiUrl:    c.Scheme() + "://" + c.Request().Host + "/v1/devices",
-		Oauth2ApiUrl:    c.Scheme() + "://" + c.Request().Host + "/oauth2",
+		baseCtx:           base,
+		Tokens:            tokens,
+		ScopesList:        scopes,
+		GrantableScopes:   session.User.AllowedScopes.Grantable(),
+		ScopeGroups:       groupSettingsScopes(scopes),
+		LocalAuth:         h.provider.Name() == "local",
+		DeviceApiUrl:      c.Scheme() + "://" + c.Request().Host + "/v1/devices",
+		Oauth2ApiUrl:      c.Scheme() + "://" + c.Request().Host + "/oauth2",
+		Languages:         i18n.Languages(),
+		StoredLocale:      storedLocale,
+		EffectiveLanguage: effectiveLanguage,
 	}
 	return c.Render(http.StatusOK, "settings.html", ctx)
 }

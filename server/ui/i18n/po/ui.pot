@@ -6,3 +6,24 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: \n"
 "X-Generator: i18nscan\n"
+
+#: server/ui/web/templates/settings.html:39
+msgid "Automatic (browser language)"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:43
+#, go-format
+msgid "Currently using %[1]s"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:37
+msgid "Display language"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:32
+msgid "Language"
+msgstr ""
+
+#: server/ui/web/templates/settings.html:45
+msgid "Save language"
+msgstr ""

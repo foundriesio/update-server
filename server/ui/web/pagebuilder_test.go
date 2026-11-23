@@ -39,9 +39,12 @@ func TestBasePrinterLocale(t *testing.T) {
 		acceptLanguage string
 		want           string
 	}{
-		{"stored en wins over unsupported header", &users.User{Locale: "en"}, "it", "en"},
+		{"no session follows header it", nil, "it", "it"},
+		{"stored it wins over header en", &users.User{Locale: "it"}, "en", "it"},
+		{"stored en wins over header it", &users.User{Locale: "en"}, "it", "en"},
+		{"empty stored locale follows header it", &users.User{}, "it", "it"},
 		{"empty stored locale follows header en", &users.User{}, "en", "en"},
-		{"invalid stored locale falls back to en", &users.User{Locale: "xx"}, "en", "en"},
+		{"invalid stored locale falls through to header it", &users.User{Locale: "xx"}, "it", "it"},
 		{"no session and no header is english", nil, "", "en"},
 	}
 

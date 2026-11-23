@@ -16,23 +16,28 @@ import (
 
 	"github.com/foundriesio/update-server/auth"
 	"github.com/foundriesio/update-server/context"
+	"github.com/foundriesio/update-server/server/ui/i18n"
 	webtemplates "github.com/foundriesio/update-server/server/ui/web/templates"
 	"github.com/foundriesio/update-server/storage"
 	"github.com/foundriesio/update-server/storage/users"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/language"
 )
 
 type settingsTemplateCtx struct {
 	baseCtx
-	Tokens          []users.Token
-	ScopesList      []string
-	GrantableScopes []string
-	ScopeGroups     []settingsScopeTemplateGroup
-	LocalAuth       bool
-	DeviceApiUrl    string
-	Oauth2ApiUrl    string
+	Tokens            []users.Token
+	ScopesList        []string
+	GrantableScopes   []string
+	ScopeGroups       []settingsScopeTemplateGroup
+	LocalAuth         bool
+	DeviceApiUrl      string
+	Oauth2ApiUrl      string
+	Languages         []i18n.Language
+	StoredLocale      string
+	EffectiveLanguage string
 }
 
 type settingsScopeTemplateGroup struct {
@@ -55,6 +60,7 @@ func TestSettingsTemplateRendersLedgerAndPreservesActions(t *testing.T) {
 	ctx := settingsTemplateCtx{
 		baseCtx: baseCtx{
 			Title: "Settings",
+			L:     i18n.For(language.English),
 			User: &users.User{
 				Username:      "operator",
 				Email:         "operator@example.test",
@@ -166,7 +172,7 @@ func TestSettingsTemplateRendersLedgerAndPreservesActions(t *testing.T) {
 
 func TestSettingsTemplateRendersGroupedScopesAndOutlinedControls(t *testing.T) {
 	html := renderSettingsHTML(t, settingsTemplateCtx{
-		baseCtx:    baseCtx{Title: "Settings", User: &users.User{Username: "operator"}},
+		baseCtx:    baseCtx{Title: "Settings", L: i18n.For(language.English), User: &users.User{Username: "operator"}},
 		ScopesList: []string{"devices:read-update", "future:manage-all", "malformed"},
 		ScopeGroups: []settingsScopeTemplateGroup{
 			{Resource: "devices", Operations: "Read or update", ScopeNames: []string{"devices:read-update"}},
@@ -223,6 +229,7 @@ func TestSettingsTemplateHidesLocalPasswordDialogForExternalAuth(t *testing.T) {
 	html := renderSettingsHTML(t, settingsTemplateCtx{
 		baseCtx: baseCtx{
 			Title: "Settings",
+			L:     i18n.For(language.English),
 			User:  &users.User{Username: "operator"},
 		},
 		ScopesList: []string{"devices:read"},

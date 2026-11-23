@@ -1,0 +1,34 @@
+# Italian catalog for the Web UI.
+# machine-drafted, needs human review
+msgid ""
+msgstr ""
+"Project-Id-Version: update-server\n"
+"PO-Revision-Date: 2026-10-23 12:00+0000\n"
+"Last-Translator: machine-drafted\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: server/ui/web/templates/settings.html:39
+msgid "Automatic (browser language)"
+msgstr "Automatica (lingua del browser)"
+
+#: server/ui/web/templates/settings.html:43
+#, go-format
+msgid "Currently using %[1]s"
+msgstr "Attualmente in uso: %[1]s"
+
+#: server/ui/web/templates/settings.html:37
+msgid "Display language"
+msgstr "Lingua di visualizzazione"
+
+#: server/ui/web/templates/settings.html:32
+msgid "Language"
+msgstr "Lingua"
+
+#: server/ui/web/templates/settings.html:45
+msgid "Save language"
+msgstr "Salva lingua"
