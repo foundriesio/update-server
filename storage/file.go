@@ -141,7 +141,6 @@ type FsHandle struct {
 
 func NewFs(root string) (*FsHandle, error) {
 	fs := &FsHandle{Config: FsConfig(root)}
-	fs.Audit.root = fs.Config.AuditDir()
 	fs.Auth.root = fs.Config.AuthDir()
 	fs.Certs.root = fs.Config.CertsDir()
 	fs.Configs.root = fs.Config.ConfigsDir()
@@ -150,7 +149,6 @@ func NewFs(root string) (*FsHandle, error) {
 	fs.Tuf.init(fs.Config.TufDir(), fs.Auth, fs.Updates)
 
 	for _, h := range []baseFsHandle{
-		fs.Audit.baseFsHandle,
 		fs.Auth.baseFsHandle,
 		fs.Certs.baseFsHandle,
 		fs.Configs.baseFsHandle,
@@ -161,7 +159,60 @@ func NewFs(root string) (*FsHandle, error) {
 			return nil, fmt.Errorf("unable to initialize file storage: %w", err)
 		}
 	}
+
+	for _, entry := range []struct {
+		path   string
+		handle *osRootHandle
+	}{
+		{fs.Config.AuditDir(), &fs.Audit.osRootHandle},
+	} {
+		err := os.MkdirAll(entry.path, defaultDirAccess)
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize file storage: %w", err)
+		}
+		entry.handle.root, err = os.OpenRoot(entry.path)
+		if err != nil {
+			return nil, fmt.Errorf("unable to open file storage root: %w", err)
+		}
+	}
+
 	return fs, nil
+}
+
+func (f *FsHandle) Close() {
+	f.Audit.Close()
+}
+
+type osRootHandle struct {
+	root *os.Root
+}
+
+func (h osRootHandle) Close() {
+	_ = h.root.Close()
+}
+
+func (h osRootHandle) appendFile(name, content string, mode os.FileMode) error { //nolint:unparam
+	// O_APPEND + O_SYNC on Linux warrants that concurrent file appends up to 1MB are serialized.
+	fd, err := h.root.OpenFile(name, os.O_CREATE|os.O_APPEND|syscall.O_SYNC|os.O_WRONLY, mode)
+	if err == nil {
+		_, err = fd.Write([]byte(content))
+		if err != nil {
+			_ = fd.Close()
+		} else {
+			err = fd.Close()
+		}
+	}
+	return err
+}
+
+func (h osRootHandle) readFile(name string, ignoreNotExist bool) (string, error) {
+	if content, err := h.root.ReadFile(name); err == nil {
+		return string(content), nil
+	} else if ignoreNotExist && errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	} else {
+		return "", err
+	}
 }
 
 type baseFsHandle struct {
