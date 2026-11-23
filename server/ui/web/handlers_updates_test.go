@@ -290,12 +290,11 @@ func assertDevicesDialogUsesModalFocus(t *testing.T, html string) {
 
 func TestUpdateTemplatePopulated(t *testing.T) {
 	target := &latestTarget{
-		Name:         "main/148",
-		Version:      "148",
-		Sha256:       "aaa111",
-		Architecture: "amd64",
-		HardwareIDs:  []string{"intel-corei7-64"},
-		Tags:         []string{"main"},
+		Name:        "main/148",
+		Version:     "148",
+		Sha256:      "aaa111",
+		HardwareIDs: []string{"intel-corei7-64"},
+		Tags:        []string{"main"},
 		Apps: []releaseApplication{
 			{Name: "nginx", URI: "registry/nginx@sha256:bbb"},
 			{Name: "shellhttpd", URI: "registry/shellhttpd@sha256:aaa"},
@@ -713,7 +712,6 @@ func TestFindLatestTargetComplete(t *testing.T) {
 			"hashes": map[string]any{"sha256": "aaa"},
 			"custom": map[string]any{
 				"version":     "148",
-				"arch":        "amd64",
 				"hardwareIds": []any{"intel-corei7-64"},
 				"tags":        []any{"main"},
 				"docker_compose_apps": map[string]any{
@@ -727,9 +725,6 @@ func TestFindLatestTargetComplete(t *testing.T) {
 	got := findLatestTarget(tuf)
 	if got == nil {
 		t.Fatal("findLatestTarget() = nil, want a target")
-	}
-	if got.Architecture != "amd64" {
-		t.Errorf("Architecture = %q, want amd64", got.Architecture)
 	}
 	if !reflect.DeepEqual(got.HardwareIDs, []string{"intel-corei7-64"}) {
 		t.Errorf("HardwareIDs = %#v, want [intel-corei7-64]", got.HardwareIDs)

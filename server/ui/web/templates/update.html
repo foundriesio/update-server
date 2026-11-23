@@ -62,13 +62,9 @@
           <h2 class="heading heading--section">Release manifest</h2>
           {{ if .LatestTarget }}
           <div class="meta-grid">
-            <div class="meta-row">
+            <div class="meta-row meta-row--full">
               <span class="meta-label">Target</span>
               <span class="meta-value is-mono">{{.LatestTarget.Name}}</span>
-            </div>
-            <div class="meta-row">
-              <span class="meta-label">Architecture</span>
-              <span class="meta-value">{{ if .LatestTarget.Architecture }}{{.LatestTarget.Architecture}}{{ else }}<span class="cell-empty">&mdash;</span>{{ end }}</span>
             </div>
             <div class="meta-row meta-row--full">
               <span class="meta-label">OSTree hash</span>
