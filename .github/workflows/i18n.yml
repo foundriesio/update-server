@@ -1,0 +1,38 @@
+name: i18n
+
+on:
+  pull_request:
+    paths:
+      - 'server/ui/**'
+      - 'internal/tools/i18nscan/**'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/i18n.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  i18n:
+    name: i18n-check
+    runs-on: ubuntu-latest
+    container: ubuntu:26.10@sha256:262df65c0ec6bf8d9dcc87454f4330a05fae4b97825f45854af3b136666584c2
+    steps:
+      - name: Install gettext
+        run: apt-get update && apt-get install -y gettext git make ca-certificates
+      - name: Clone the code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up golang
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+      # Without this git reports dubious ownership, which empties "git status" and breaks "git diff".
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Check translations
+        run: make i18n-check
+      - name: Check the xgettext extractor
+        run: |
+          make i18n-extract I18N_EXTRACTOR=xgettext
+          git diff --exit-code -- server/ui/i18n

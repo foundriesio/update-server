@@ -1,1 +1,2 @@
 server/ui/web/templates/pico_min_211.css filter=lfs diff=lfs merge=lfs -text
+*.mo binary
