@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/foundriesio/update-server/auth"
+	"github.com/foundriesio/update-server/server/ui/i18n"
 	"github.com/foundriesio/update-server/server/ui/pagectx"
 	"github.com/foundriesio/update-server/storage/users"
 	"github.com/foundriesio/update-server/version"
@@ -45,12 +46,19 @@ func (b PageBuilder) Base(c echo.Context, title, selected string) pagectx.Base {
 	}
 	var user *users.User
 	var navItems []navItem
+	var storedLocale string
 	if session, ok := c.Request().Context().Value(ctxKeySession).(*auth.Session); ok && session != nil {
 		user = session.User
 		navItems = b.genNavItems(selected)
+		// Anonymous pages (login) have no stored locale; fall back to Accept-Language.
+		if user != nil {
+			storedLocale = user.Locale
+		}
 	}
+	printer := i18n.For(i18n.Resolve(storedLocale, c.Request().Header.Get("Accept-Language")))
 	return pagectx.Base{
 		User:      user,
+		L:         printer,
 		Title:     title,
 		BrandName: b.branding.Title,
 		LogoPath:  logoPath,

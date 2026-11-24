@@ -1,13 +1,15 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-// Package pagectx holds the shared "base" page context types used to render
-// HTML pages that extend base.html. It lives in a dependency-free leaf package
-// so both the web handlers and the auth providers can build the same base
-// context without creating an import cycle.
+// Package pagectx holds the shared base page context for pages that extend
+// base.html. It sits below both web and auth so each can build it without an
+// import cycle.
 package pagectx
 
-import "github.com/foundriesio/update-server/storage/users"
+import (
+	"github.com/foundriesio/update-server/server/ui/i18n"
+	"github.com/foundriesio/update-server/storage/users"
+)
 
 // NavItem is a single entry in the top navigation bar.
 type NavItem struct {
@@ -18,7 +20,9 @@ type NavItem struct {
 
 // Base holds the fields every page that extends base.html needs.
 type Base struct {
-	User      *users.User
+	User *users.User
+	// L renders translated strings and locale-aware formatting for the request.
+	L         i18n.Printer
 	Title     string
 	BrandName string
 	LogoPath  string

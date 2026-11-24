@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	sqllite "github.com/mattn/go-sqlite3"
 )
@@ -52,7 +53,29 @@ func NewDb(dbfile string) (*DbHandle, error) {
 			return nil, err
 		}
 	}
+	if err := upgradeSchema(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &DbHandle{db: db}, nil
+}
+
+// upgradeSchema adds columns missing from databases created by older versions.
+func upgradeSchema(db *sql.DB) error {
+	var n int
+	err := db.QueryRow(`SELECT count(*) FROM pragma_table_info('users') WHERE name = 'locale'`).Scan(&n)
+	if err != nil {
+		return fmt.Errorf("unable to read users schema: %w", err)
+	}
+	if n > 0 {
+		return nil
+	}
+	_, err = db.Exec("ALTER TABLE users ADD COLUMN locale TEXT NOT NULL DEFAULT ''")
+	// Another process may have added the column between the check and the ALTER.
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return fmt.Errorf("unable to add users.locale column: %w", err)
+	}
+	return nil
 }
 
 func (d DbHandle) Close() error {
@@ -142,6 +165,7 @@ func createTables(db *sql.DB) error {
 			created_at     INT DEFAULT 0,
 			deleted        BOOL DEFAULT 0,
 			allowed_scopes TEXT DEFAULT '',
+			locale         TEXT NOT NULL DEFAULT '',
 
 			auth_provider_data JSONB NOT NULL DEFAULT '{}'
 		);

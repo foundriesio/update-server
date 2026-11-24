@@ -8,6 +8,7 @@ require (
 	github.com/go-pkgz/expirable-cache/v3 v3.1.0
 	github.com/labstack/echo/v4 v4.16.3
 	github.com/labstack/gommon v0.5.0
+	github.com/leonelquinteros/gotext v1.8.0
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/pelletier/go-toml v1.9.5
 	github.com/secure-systems-lab/go-securesystemslib v0.11.0
@@ -16,6 +17,7 @@ require (
 	golang.org/x/crypto v0.57.0
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/term v0.46.0
+	golang.org/x/text v0.42.0
 	golang.org/x/time v0.15.0
 	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	gopkg.in/yaml.v3 v3.0.1
@@ -35,5 +37,4 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
 )

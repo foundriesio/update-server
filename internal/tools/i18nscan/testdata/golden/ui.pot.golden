@@ -1,0 +1,68 @@
+msgid ""
+msgstr ""
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: \n"
+"X-Generator: i18nscan\n"
+
+#: go/extras.go:8 templates/extras.html:2 templates/page.html:4
+#, go-format
+msgid "%[1]s device"
+msgid_plural "%[1]s devices"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/extras.html:4
+#, go-format
+msgid "%d%% done"
+msgstr ""
+
+#: templates/extras.html:3
+msgid "100% sure"
+msgstr ""
+
+#: templates/page.html:2
+#, go-format
+msgid "Delete device %s?"
+msgstr ""
+
+#: go/extras.go:9
+msgid "From Go"
+msgstr ""
+
+#: templates/extras.html:8
+msgid ""
+"Line one\n"
+"Line two"
+msgstr ""
+
+#: templates/extras.html:6
+msgid "Multi-line action"
+msgstr ""
+
+#: templates/page.html:7
+#, go-format
+msgid "Raw \\n %s"
+msgstr ""
+
+#: go/extras.go:7 templates/extras.html:1
+msgid "Save"
+msgstr ""
+
+#: templates/page.html:1 templates/page.html:3
+msgid "Save changes"
+msgstr ""
+
+#: templates/page.html:6
+msgid "Say \"hi\""
+msgstr ""
+
+#: templates/extras.html:5
+msgid "Say \"hi\"\ttab"
+msgstr ""
+
+#: templates/extras.html:9
+msgid "café · →"
+msgstr ""
