@@ -7,11 +7,10 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 )
 
 type AuthFsHandle struct {
-	baseFsHandle
+	osRootHandle
 }
 
 type RateLimitConfig struct {
@@ -32,8 +31,7 @@ type AuthConfig struct {
 
 func (h AuthFsHandle) InitHmacSecret() error {
 	if _, err := h.readFile(HmacFile, false); err == nil {
-		path := filepath.Join(h.root, HmacFile)
-		return fmt.Errorf("hmac secret exists at: %s", path)
+		return fmt.Errorf("hmac secret exists")
 	}
 
 	secret := make([]byte, 64)
@@ -54,8 +52,7 @@ func (h AuthFsHandle) GetHmacSecret() ([]byte, error) {
 // GetAuthConfig returns the settings for how authorization is configured.
 func (h AuthFsHandle) GetAuthConfig() (*AuthConfig, error) {
 	var cfg AuthConfig
-	handle := baseFsHandle{root: h.root}
-	contents, err := handle.readFile(AuthConfigFile, false)
+	contents, err := h.readFile(AuthConfigFile, false)
 	if err != nil {
 		return nil, err
 	}

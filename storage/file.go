@@ -141,15 +141,12 @@ type FsHandle struct {
 
 func NewFs(root string) (*FsHandle, error) {
 	fs := &FsHandle{Config: FsConfig(root)}
-	fs.Auth.root = fs.Config.AuthDir()
 	fs.Certs.root = fs.Config.CertsDir()
 	fs.Configs.root = fs.Config.ConfigsDir()
 	fs.Devices.root = fs.Config.DevicesDir()
 	fs.Updates.init(fs.Config.UpdatesDir())
-	fs.Tuf.init(fs.Config.TufDir(), fs.Auth, fs.Updates)
 
 	for _, h := range []baseFsHandle{
-		fs.Auth.baseFsHandle,
 		fs.Certs.baseFsHandle,
 		fs.Configs.baseFsHandle,
 		fs.Devices.baseFsHandle,
@@ -165,6 +162,7 @@ func NewFs(root string) (*FsHandle, error) {
 		handle *osRootHandle
 	}{
 		{fs.Config.AuditDir(), &fs.Audit.osRootHandle},
+		{fs.Config.AuthDir(), &fs.Auth.osRootHandle},
 	} {
 		err := os.MkdirAll(entry.path, defaultDirAccess)
 		if err != nil {
@@ -176,11 +174,13 @@ func NewFs(root string) (*FsHandle, error) {
 		}
 	}
 
+	fs.Tuf.init(fs.Config.TufDir(), fs.Auth, fs.Updates)
 	return fs, nil
 }
 
 func (f *FsHandle) Close() {
 	f.Audit.Close()
+	f.Auth.Close()
 }
 
 type osRootHandle struct {
@@ -212,6 +212,23 @@ func (h osRootHandle) readFile(name string, ignoreNotExist bool) (string, error)
 		return "", nil
 	} else {
 		return "", err
+	}
+}
+
+func (h osRootHandle) writeFile(name, content string, mode os.FileMode) error {
+	partial := name + partialFileSuffix
+	if fd, err := h.root.OpenFile(partial, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode); err != nil {
+		return err
+	} else if _, err = fd.WriteString(content); err != nil {
+		_ = fd.Close()
+		return err
+	} else if err = fd.Sync(); err != nil {
+		_ = fd.Close()
+		return err
+	} else if err = fd.Close(); err != nil {
+		return err
+	} else {
+		return h.root.Rename(partial, name)
 	}
 }
 
