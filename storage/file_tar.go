@@ -337,26 +337,8 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 				return fmt.Errorf("failed to unpack file '%s': unsupported file type %d", hdr.Name, hdr.Typeflag)
 			}
 
-			if len(hdr.Name) == 0 {
-				return errors.New("failed to unpack file with empty name")
-			}
-			relFilePath, curDiskSize, err := _createDirForTarItem(h.root, hdr, cfg.dirAccess, checkDeclaredSize, checkRealSize)
-			if err != nil {
-				return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-			}
-			if file, err := h.root.OpenFile(relFilePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
-				return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-			} else {
-				// Allow to read exactly one byte too much to know if limit was exceeded.
-				limit := 1 + min(cfg.maxItemSize, cfg.maxDiskSize-curDiskSize)
-				limitReader := &io.LimitedReader{R: tarReader, N: limit}
-				err = _copyAndCloseOut(file, limitReader)
-				if err == nil {
-					_, err = checkRealSize(relFilePath, limit-limitReader.N)
-				}
-				if err != nil {
-					return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-				}
+			if err := h._unpackTarFile(tarReader, hdr, cfg, checkDeclaredSize, checkRealSize); err != nil {
+				return err
 			}
 		}
 		if cfg.events.onUnpackComplete != nil {
@@ -366,6 +348,32 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 		}
 		return nil
 	})
+}
+
+func (s osRootHandle) _unpackTarFile(src io.Reader, hdr *tar.Header, cfg tarUnpackConfig, checkDeclaredSize, checkRealSize _diskSizeLimiterFunc,
+) error {
+	if len(hdr.Name) == 0 {
+		return errors.New("failed to unpack file with empty name")
+	}
+	relFilePath, curDiskSize, err := _createDirForTarItem(s.root, hdr, cfg.dirAccess, checkDeclaredSize, checkRealSize)
+	if err != nil {
+		return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+	}
+	file, err := s.root.OpenFile(relFilePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess)
+	if err != nil {
+		return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+	}
+	// Allow to read exactly one byte too much to know if limit was exceeded.
+	limit := 1 + min(cfg.maxItemSize, cfg.maxDiskSize-curDiskSize)
+	limitReader := &io.LimitedReader{R: src, N: limit}
+	err = _copyAndCloseOut(file, limitReader)
+	if err == nil {
+		_, err = checkRealSize(relFilePath, limit-limitReader.N)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+	}
+	return nil
 }
 
 func (s tarFsHandle) withHandle(dir string, fn func(osRootHandle) error) error {
