@@ -24,6 +24,7 @@ func newTufTestFs(t *testing.T) *FsHandle {
 	t.Helper()
 	fs, err := NewFs(t.TempDir())
 	require.NoError(t, err)
+	t.Cleanup(fs.Close)
 	require.NoError(t, fs.Auth.InitHmacSecret())
 	return fs
 }
@@ -37,7 +38,7 @@ func TestInitTuf(t *testing.T) {
 
 	// All four role key files exist with secure permissions.
 	for _, role := range tufRoles {
-		info, err := os.Stat(fs.Tuf.keyPath(role))
+		info, err := fs.Tuf.root.Stat(fs.Tuf.keyPath(role))
 		require.NoError(t, err, "key for role %s", role)
 		require.Equal(t, secureFileAccess, info.Mode().Perm())
 	}
@@ -70,7 +71,7 @@ func TestKeysAreEncryptedOnDisk(t *testing.T) {
 
 	// The raw key file must not contain any of the public key hex (which would
 	// indicate the AtsKey JSON was stored unencrypted).
-	raw, err := os.ReadFile(fs.Tuf.keyPath(tuf.RoleRoot))
+	raw, err := fs.Tuf.root.ReadFile(fs.Tuf.keyPath(tuf.RoleRoot))
 	require.NoError(t, err)
 	for _, key := range roots[0].Signed.Keys {
 		require.NotContains(t, string(raw), key.KeyValue.Public)
@@ -232,4 +233,72 @@ func TestInitTufDefaultMeta(t *testing.T) {
 	fs := newTufTestFs(t)
 	require.NoError(t, fs.Tuf.InitTuf())
 	requireValidDefaultMeta(t, fs)
+}
+
+func TestTufWriteMeta(t *testing.T) {
+	fs := newTufTestFs(t)
+	require.NoError(t, fs.Tuf.InitTuf())
+	dest := filepath.Join(t.TempDir(), "tuf")
+	require.NoError(t, fs.Tuf.WriteMeta(dest, []byte("targets"), []byte("snapshot"), []byte("timestamp")))
+	for name, want := range map[string]string{
+		TufTargetsFile: "targets", TufSnapshotFile: "snapshot", TufTimestampFile: "timestamp",
+	} {
+		got, err := os.ReadFile(filepath.Join(dest, name))
+		require.NoError(t, err)
+		require.Equal(t, want, string(got))
+	}
+	srcInfo, err := fs.Tuf.root.Stat("1.root.json")
+	require.NoError(t, err)
+	dstInfo, err := os.Stat(filepath.Join(dest, "1.root.json"))
+	require.NoError(t, err)
+	require.True(t, os.SameFile(srcInfo, dstInfo))
+}
+
+func TestTufRootLifecycle(t *testing.T) {
+	fs := newTufTestFs(t)
+	_, err := fs.Tuf.ReadRoot(0)
+	require.ErrorIs(t, err, os.ErrNotExist)
+	_, err = fs.Tuf.ReadDefaultMeta(TufTargetsFile)
+	require.ErrorIs(t, err, os.ErrNotExist)
+	require.NoError(t, fs.Tuf.InitTuf())
+	for _, name := range []string{"1.root.json", TufTargetsFile, TufSnapshotFile, TufTimestampFile} {
+		content, err := fs.Tuf.ReadDefaultMeta(name)
+		require.NoError(t, err)
+		require.True(t, json.Valid([]byte(content)))
+	}
+	fs.Close()
+	_, err = fs.Tuf.ReadRoot(1)
+	require.Error(t, err)
+	_, err = fs.Tuf.GetRoots()
+	require.Error(t, err)
+}
+
+func TestTufRejectRootEscape(t *testing.T) {
+	fs := newTufTestFs(t)
+	require.NoError(t, fs.Tuf.InitTuf())
+	outside := t.TempDir()
+	sentinel := filepath.Join(outside, "outside.root.json")
+	require.NoError(t, os.WriteFile(sentinel, []byte("keep"), defaultFileAccess))
+	require.NoError(t, os.Symlink(sentinel, filepath.Join(fs.Config.TufDir(), "2.root.json")))
+	_, err := fs.Tuf.ReadRoot(2)
+	require.Error(t, err)
+	_, err = fs.Tuf.GetRoots()
+	require.Error(t, err)
+	for _, name := range []string{sentinel, "../../outside.root.json", "../keys/root.key"} {
+		_, err := fs.Tuf.ReadDefaultMeta(name)
+		require.Error(t, err)
+	}
+	keyPath := fs.Tuf.keyPath(tuf.RoleTargets)
+	require.NoError(t, fs.Tuf.root.Remove(keyPath))
+	require.NoError(t, os.Symlink(sentinel, filepath.Join(fs.Config.TufDir(), keyPath)))
+	require.Error(t, fs.Tuf.LoadTuf())
+	require.NoError(t, os.Symlink(sentinel, filepath.Join(fs.Config.TufDir(), keyPath+partialFileSuffix)))
+	secret, err := fs.Auth.GetHmacSecret()
+	require.NoError(t, err)
+	signer, err := tuf.NewSigner()
+	require.NoError(t, err)
+	require.Error(t, fs.Tuf.writeKey(secret, tuf.RoleTargets, signer))
+	content, err := os.ReadFile(sentinel)
+	require.NoError(t, err)
+	require.Equal(t, "keep", string(content))
 }

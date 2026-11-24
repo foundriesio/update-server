@@ -161,6 +161,7 @@ func NewFs(root string) (*FsHandle, error) {
 		{fs.Config.CertsDir(), &fs.Certs.osRootHandle},
 		{fs.Config.ConfigsDir(), &fs.Configs.osRootHandle},
 		{fs.Config.UpdatesDir(), &fs.Updates.osRootHandle},
+		{fs.Config.TufDir(), &fs.Tuf.osRootHandle},
 	} {
 		err := os.MkdirAll(entry.path, defaultDirAccess)
 		if err != nil {
@@ -173,7 +174,7 @@ func NewFs(root string) (*FsHandle, error) {
 	}
 
 	fs.Updates.init()
-	fs.Tuf.init(fs.Config.TufDir(), fs.Auth, fs.Updates)
+	fs.Tuf.init(fs.Auth, fs.Updates)
 	return fs, nil
 }
 
@@ -182,6 +183,7 @@ func (f *FsHandle) Close() {
 	f.Auth.Close()
 	f.Certs.Close()
 	f.Configs.Close()
+	f.Tuf.Close()
 	f.Updates.Close()
 }
 
