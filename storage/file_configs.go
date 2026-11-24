@@ -142,8 +142,13 @@ func (s *ConfigsFsHandle) WriteDeviceConfig(uuid, content, username, reason stri
 func (s *ConfigsFsHandle) SaveUpload(payload io.Reader, onCleanupFailure func(error)) error {
 	txDir := ".configs-upload-" + rand.Text()[:10]
 	root, destDir := filepath.Split(s.root.Name())
-	h := tarFsHandle{root: root}
-	err := h.unpackTar(payload, destDir,
+	tarRoot, err := os.OpenRoot(root)
+	if err != nil {
+		return fmt.Errorf("unable to open upload storage: %w", err)
+	}
+	h := tarFsHandle{osRootHandle{root: tarRoot}}
+	defer h.Close()
+	err = h.unpackTar(payload, destDir,
 		TarUnpackReplaceDest(true),
 		TarUnpackUseTmpFile("configs.tar"),
 		TarUnpackUseTmpDir(txDir),
@@ -153,7 +158,7 @@ func (s *ConfigsFsHandle) SaveUpload(payload io.Reader, onCleanupFailure func(er
 				return true, ErrConfigUploadBroken{
 					err:         fmt.Errorf("failed to make uploaded config active: %w", err),
 					ConfigsPath: s.root.Name(), // not h.root
-					UploadPath:  filepath.Join(h.root, txDir),
+					UploadPath:  filepath.Join(h.root.Name(), txDir),
 				}
 			},
 		}),

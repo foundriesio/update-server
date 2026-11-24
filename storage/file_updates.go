@@ -113,7 +113,12 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 	txDir := ".update-upload-" + rand.Text()[:10]
 	root, destDir := filepath.Split(s.root.Name())
 	destDir = filepath.Join(destDir, update)
-	h := tarFsHandle{root: root}
+	tarRoot, err := os.OpenRoot(root)
+	if err != nil {
+		return fmt.Errorf("unable to open upload storage: %w", err)
+	}
+	h := tarFsHandle{osRootHandle{root: tarRoot}}
+	defer h.Close()
 	return h.unpackTar(payload, destDir,
 		TarUnpackReplaceDest(true), // Replace updates with the same name - uniqueness is checked on the database level.
 		TarUnpackUseTmpFile("update.tar"),
