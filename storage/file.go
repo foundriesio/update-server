@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"iter"
 	"os"
 	"path/filepath"
@@ -143,12 +144,10 @@ func NewFs(root string) (*FsHandle, error) {
 	fs := &FsHandle{Config: FsConfig(root)}
 	fs.Configs.root = fs.Config.ConfigsDir()
 	fs.Devices.root = fs.Config.DevicesDir()
-	fs.Updates.init(fs.Config.UpdatesDir())
 
 	for _, h := range []baseFsHandle{
 		fs.Configs.baseFsHandle,
 		fs.Devices.baseFsHandle,
-		fs.Updates.baseFsHandle,
 	} {
 		if err := h.mkdirs(defaultDirAccess, true); err != nil {
 			return nil, fmt.Errorf("unable to initialize file storage: %w", err)
@@ -162,6 +161,7 @@ func NewFs(root string) (*FsHandle, error) {
 		{fs.Config.AuditDir(), &fs.Audit.osRootHandle},
 		{fs.Config.AuthDir(), &fs.Auth.osRootHandle},
 		{fs.Config.CertsDir(), &fs.Certs.osRootHandle},
+		{fs.Config.UpdatesDir(), &fs.Updates.osRootHandle},
 	} {
 		err := os.MkdirAll(entry.path, defaultDirAccess)
 		if err != nil {
@@ -173,6 +173,7 @@ func NewFs(root string) (*FsHandle, error) {
 		}
 	}
 
+	fs.Updates.init()
 	fs.Tuf.init(fs.Config.TufDir(), fs.Auth, fs.Updates)
 	return fs, nil
 }
@@ -181,6 +182,7 @@ func (f *FsHandle) Close() {
 	f.Audit.Close()
 	f.Auth.Close()
 	f.Certs.Close()
+	f.Updates.Close()
 }
 
 type osRootHandle struct {
@@ -356,6 +358,75 @@ func (s baseFsHandle) rolloverFiles(prefix string, max int) error {
 
 func (s baseFsHandle) matchFiles(prefix string, sortByModTime bool) ([]string, error) {
 	entries, err := os.ReadDir(s.root)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return []string{}, nil
+		}
+		return nil, err
+	}
+	infos := make([]os.FileInfo, 0, len(entries))
+	for _, entry := range entries {
+		if info, err := entry.Info(); err != nil {
+			return nil, err
+		} else {
+			name := info.Name()
+			if strings.HasSuffix(name, partialFileSuffix) {
+				// Filter out partial files - uploads in progress or data corruptions
+				continue
+			} else if len(prefix) == 0 || strings.HasPrefix(name, prefix) {
+				infos = append(infos, info)
+			}
+		}
+	}
+	if sortByModTime {
+		slices.SortFunc(infos, func(a, b os.FileInfo) int {
+			// UnixMilli is int64, but in our universe UnixMilli difference of two events files of the same device is int.
+			return int(a.ModTime().UnixMilli() - b.ModTime().UnixMilli())
+		})
+	}
+	names := make([]string, 0, len(infos))
+	for _, info := range infos {
+		names = append(names, info.Name())
+	}
+	return names, nil
+}
+
+func (s osRootHandle) readFileLines(name string, ignoreNotExist bool, infinityStop DoneChan) iter.Seq2[string, error] {
+	// memory efficient way to read lines from a potentially large file
+	return func(yield func(string, error) bool) {
+		if fd, err := s.root.Open(name); err != nil {
+			if !ignoreNotExist || !errors.Is(err, os.ErrNotExist) {
+				yield("", err)
+			}
+		} else {
+			defer fd.Close() //nolint:errcheck
+		TAIL:
+			scanner := bufio.NewScanner(fd) // line reader
+			for scanner.Scan() {
+				if !yield(scanner.Text(), nil) {
+					return
+				}
+			}
+			if err = scanner.Err(); err != nil {
+				yield("", err)
+				return
+			}
+			if infinityStop != nil {
+				// Tail functionality - simply re-create the scanner with the same fd after some time.
+				// File position remains the same, so a new scanner continues from it.
+				select {
+				case <-infinityStop:
+					return
+				case <-time.After(5 * time.Millisecond):
+					goto TAIL
+				}
+			}
+		}
+	}
+}
+
+func (s osRootHandle) matchFiles(prefix string, sortByModTime bool) ([]string, error) {
+	entries, err := fs.ReadDir(s.root.FS(), ".")
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return []string{}, nil
