@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -39,38 +40,40 @@ func (e ErrConfigUploadBroken) Error() string {
 }
 
 type ConfigsFsHandle struct {
-	baseFsHandle
+	osRootHandle
 }
 
-func (s ConfigsFsHandle) ReadFactoryConfigHistory(latest int, withFiles bool) (history []*ConfigFileSet, err error) {
-	h, _ := s.factoryLocalHandle(false)
-	history, err = h.readHistory(latest, withFiles)
+func (s *ConfigsFsHandle) ReadFactoryConfigHistory(latest int, withFiles bool) (history []*ConfigFileSet, err error) {
+	err = s.withHandle(ConfigsFactoryDir, false, func(h configsFsHandle) error {
+		history, err = h.readHistory(latest, withFiles)
+		return err
+	})
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading factory config history: %w", err)
 	}
 	return
 }
 
-func (s ConfigsFsHandle) WriteFactoryConfig(content, username, reason string) error {
-	if h, err := s.factoryLocalHandle(true); err != nil {
-		return err
-	} else if err = h.writeConfig(content, username, reason); err != nil {
-		return fmt.Errorf("unexpected error writing factory config: %w", err)
-	}
-	return nil
+func (s *ConfigsFsHandle) WriteFactoryConfig(content, username, reason string) error {
+	return s.withHandle(ConfigsFactoryDir, true, func(h configsFsHandle) error {
+		if err := h.writeConfig(content, username, reason); err != nil {
+			return fmt.Errorf("unexpected error writing factory config: %w", err)
+		}
+		return nil
+	})
 }
 
-func (s ConfigsFsHandle) PurgeFactoryConfigHistory(keepLatest int) error {
-	if h, err := s.factoryLocalHandle(true); err != nil {
-		return err
-	} else if err = h.purgeHistory(keepLatest); err != nil {
-		return fmt.Errorf("unexpected error purging factory config history: %w", err)
-	}
-	return nil
+func (s *ConfigsFsHandle) PurgeFactoryConfigHistory(keepLatest int) error {
+	return s.withHandle(ConfigsFactoryDir, true, func(h configsFsHandle) error {
+		if err := h.purgeHistory(keepLatest); err != nil {
+			return fmt.Errorf("unexpected error purging factory config history: %w", err)
+		}
+		return nil
+	})
 }
 
-func (s ConfigsFsHandle) ReadGroupNames() ([]string, error) {
-	if entries, err := os.ReadDir(filepath.Join(s.root, ConfigsGroupDir)); err != nil {
+func (s *ConfigsFsHandle) ReadGroupNames() ([]string, error) {
+	if entries, err := fs.ReadDir(s.root.FS(), ConfigsGroupDir); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return []string{}, nil
 		}
@@ -87,56 +90,65 @@ func (s ConfigsFsHandle) ReadGroupNames() ([]string, error) {
 	}
 }
 
-func (s ConfigsFsHandle) ReadGroupConfigHistory(name string, latest int, withFiles bool) (history []*ConfigFileSet, err error) {
-	h, _ := s.groupLocalHandle(name, false)
-	history, err = h.readHistory(latest, withFiles)
+func (s *ConfigsFsHandle) ReadGroupConfigHistory(name string, latest int, withFiles bool) (history []*ConfigFileSet, err error) {
+	err = s.withHandle(filepath.Join(ConfigsGroupDir, name), false, func(h configsFsHandle) error {
+		history, err = h.readHistory(latest, withFiles)
+		return err
+	})
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading group config history for %s: %w", name, err)
 	}
 	return
 }
 
-func (s ConfigsFsHandle) WriteGroupConfig(name, content, username, reason string) error {
-	if h, err := s.groupLocalHandle(name, true); err != nil {
-		return err
-	} else if err = h.writeConfig(content, username, reason); err != nil {
-		return fmt.Errorf("unexpected error writing group config for %s: %w", name, err)
-	}
-	return nil
+func (s *ConfigsFsHandle) WriteGroupConfig(name, content, username, reason string) error {
+	return s.withHandle(filepath.Join(ConfigsGroupDir, name), true, func(h configsFsHandle) error {
+		if err := h.writeConfig(content, username, reason); err != nil {
+			return fmt.Errorf("unexpected error writing group config for %s: %w", name, err)
+		}
+		return nil
+	})
 }
 
-func (s ConfigsFsHandle) PurgeGroupConfigHistory(name string, keepLatest int) error {
-	if h, err := s.groupLocalHandle(name, true); err != nil {
-		return err
-	} else if err = h.purgeHistory(keepLatest); err != nil {
-		return fmt.Errorf("unexpected error purging group config history for %s: %w", name, err)
-	}
-	return nil
+func (s *ConfigsFsHandle) PurgeGroupConfigHistory(name string, keepLatest int) error {
+	return s.withHandle(filepath.Join(ConfigsGroupDir, name), true, func(h configsFsHandle) error {
+		if err := h.purgeHistory(keepLatest); err != nil {
+			return fmt.Errorf("unexpected error purging group config history for %s: %w", name, err)
+		}
+		return nil
+	})
 }
 
-func (s ConfigsFsHandle) ReadDeviceConfigHistory(uuid string, latest int, withFiles bool) (history []*ConfigFileSet, err error) {
-	h, _ := s.deviceLocalHandle(uuid, false)
-	history, err = h.readHistory(latest, withFiles)
+func (s *ConfigsFsHandle) ReadDeviceConfigHistory(uuid string, latest int, withFiles bool) (history []*ConfigFileSet, err error) {
+	err = s.withHandle(filepath.Join(ConfigsDeviceDir, uuid), false, func(h configsFsHandle) error {
+		history, err = h.readHistory(latest, withFiles)
+		return err
+	})
 	if err != nil {
 		err = fmt.Errorf("unexpected error reading device config history for %s: %w", uuid, err)
 	}
 	return
 }
 
-func (s ConfigsFsHandle) WriteDeviceConfig(uuid, content, username, reason string) error {
-	if h, err := s.deviceLocalHandle(uuid, true); err != nil {
-		return err
-	} else if err = h.writeConfig(content, username, reason); err != nil {
-		return fmt.Errorf("unexpected error writing device config for %s: %w", uuid, err)
-	}
-	return nil
+func (s *ConfigsFsHandle) WriteDeviceConfig(uuid, content, username, reason string) error {
+	return s.withHandle(filepath.Join(ConfigsDeviceDir, uuid), true, func(h configsFsHandle) error {
+		if err := h.writeConfig(content, username, reason); err != nil {
+			return fmt.Errorf("unexpected error writing device config for %s: %w", uuid, err)
+		}
+		return nil
+	})
 }
 
-func (s ConfigsFsHandle) SaveUpload(payload io.Reader, onCleanupFailure func(error)) error {
+func (s *ConfigsFsHandle) SaveUpload(payload io.Reader, onCleanupFailure func(error)) error {
 	txDir := ".configs-upload-" + rand.Text()[:10]
-	root, destDir := filepath.Split(s.root)
-	h := tarFsHandle{root: root}
-	return h.unpackTar(payload, destDir,
+	root, destDir := filepath.Split(s.root.Name())
+	tarRoot, err := os.OpenRoot(root)
+	if err != nil {
+		return fmt.Errorf("unable to open upload storage: %w", err)
+	}
+	h := tarFsHandle{osRootHandle{root: tarRoot}}
+	defer h.Close()
+	err = h.unpackTar(payload, destDir,
 		TarUnpackReplaceDest(true),
 		TarUnpackUseTmpFile("configs.tar"),
 		TarUnpackUseTmpDir(txDir),
@@ -145,55 +157,52 @@ func (s ConfigsFsHandle) SaveUpload(payload io.Reader, onCleanupFailure func(err
 			onTmpRenameError: func(err error) (bool, error) {
 				return true, ErrConfigUploadBroken{
 					err:         fmt.Errorf("failed to make uploaded config active: %w", err),
-					ConfigsPath: s.root, // not h.root
-					UploadPath:  filepath.Join(h.root, txDir),
+					ConfigsPath: s.root.Name(), // not h.root
+					UploadPath:  filepath.Join(h.root.Name(), txDir),
 				}
 			},
 		}),
 	)
+	// Uploads replace the directory, leaving the old root attached to its backup.
+	// This is racey. However, we should probably remove this function from the project.
+	// We don't have a documented way to use it and its causing this complexity
+	newRoot, openErr := os.OpenRoot(s.root.Name())
+	if openErr != nil {
+		return errors.Join(err, fmt.Errorf("unable to reopen config storage: %w", openErr))
+	}
+	s.Close()
+	s.root = newRoot
+	return err
 }
 
-func (s ConfigsFsHandle) PurgeDeviceConfigHistory(uuid string, keepLatest int) error {
-	if h, err := s.deviceLocalHandle(uuid, true); err != nil {
+func (s *ConfigsFsHandle) PurgeDeviceConfigHistory(uuid string, keepLatest int) error {
+	return s.withHandle(filepath.Join(ConfigsDeviceDir, uuid), true, func(h configsFsHandle) error {
+		if err := h.purgeHistory(keepLatest); err != nil {
+			return fmt.Errorf("unexpected error purging device config history for %s: %w", uuid, err)
+		}
+		return nil
+	})
+}
+
+func (s *ConfigsFsHandle) withHandle(dir string, forUpdate bool, fn func(configsFsHandle) error) error {
+	if forUpdate {
+		if err := s.root.MkdirAll(dir, defaultDirAccess); err != nil {
+			return fmt.Errorf("unable to create file storage for config %s: %w", dir, err)
+		}
+	}
+	root, err := s.root.OpenRoot(dir)
+	if !forUpdate && errors.Is(err, os.ErrNotExist) {
+		return nil
+	} else if err != nil {
 		return err
-	} else if err = h.purgeHistory(keepLatest); err != nil {
-		return fmt.Errorf("unexpected error purging device config history for %s: %w", uuid, err)
 	}
-	return nil
-}
-
-func (s ConfigsFsHandle) factoryLocalHandle(forUpdate bool) (h configsFsHandle, err error) {
-	h.root = filepath.Join(s.root, ConfigsFactoryDir)
-	if forUpdate {
-		if err = h.mkdirs(defaultDirAccess, true); err != nil {
-			err = fmt.Errorf("unable to create file storage for factory config: %w", err)
-		}
-	}
-	return
-}
-
-func (s ConfigsFsHandle) groupLocalHandle(name string, forUpdate bool) (h configsFsHandle, err error) {
-	h.root = filepath.Join(s.root, ConfigsGroupDir, name)
-	if forUpdate {
-		if err = h.mkdirs(defaultDirAccess, true); err != nil {
-			err = fmt.Errorf("unable to create file storage for group config %s: %w", name, err)
-		}
-	}
-	return
-}
-
-func (s ConfigsFsHandle) deviceLocalHandle(uuid string, forUpdate bool) (h configsFsHandle, err error) {
-	h.root = filepath.Join(s.root, ConfigsDeviceDir, uuid)
-	if forUpdate {
-		if err = h.mkdirs(defaultDirAccess, true); err != nil {
-			err = fmt.Errorf("unable to create file storage for device config %s: %w", uuid, err)
-		}
-	}
-	return
+	h := configsFsHandle{osRootHandle{root: root}}
+	defer h.Close()
+	return fn(h)
 }
 
 type configsFsHandle struct {
-	baseFsHandle
+	osRootHandle
 }
 
 type configJournalItem struct {

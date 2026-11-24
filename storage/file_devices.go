@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"regexp"
 )
 
@@ -16,15 +15,14 @@ import (
 var ValidDeviceUUID = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`).MatchString
 
 type DevicesFsHandle struct {
-	baseFsHandle
+	osRootHandle
 }
 
 func (s DevicesFsHandle) Delete(uuid string) error {
-	h, err := s.deviceLocalHandle(uuid, false)
-	if err != nil {
-		return err
+	if !ValidDeviceUUID(uuid) {
+		return fmt.Errorf("invalid device UUID: %q", uuid)
 	}
-	if err := os.RemoveAll(h.root); err != nil {
+	if err := s.root.RemoveAll(uuid); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
@@ -34,85 +32,98 @@ func (s DevicesFsHandle) Delete(uuid string) error {
 }
 
 func (s DevicesFsHandle) ReadFileStream(uuid string, name string) (io.ReadCloser, error) {
-	h, err := s.deviceLocalHandle(uuid, false)
+	var file *os.File
+	err := s.withHandle(uuid, false, func(h osRootHandle) error {
+		var err error
+		file, err = h.root.Open(name)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
-	path := filepath.Join(h.root, name)
-	return os.Open(path)
+	return file, nil
 }
 
 func (s DevicesFsHandle) ReadFile(uuid, name string) (string, error) {
-	h, err := s.deviceLocalHandle(uuid, false)
-	if err != nil {
-		return "", err
-	}
-	content, err := h.readFile(name, true)
-	if err != nil {
+	var content string
+	err := s.withHandle(uuid, false, func(h osRootHandle) error {
+		var err error
+		content, err = h.readFile(name, true)
+		return err
+	})
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	} else if err != nil {
 		err = fmt.Errorf("unexpected error reading file %s for device %s: %w", name, uuid, err)
 	}
 	return content, err
 }
 
 func (s DevicesFsHandle) WriteFile(uuid, name, content string) error {
-	if h, err := s.deviceLocalHandle(uuid, true); err != nil {
-		return err
-	} else if err = h.writeFile(name, content, defaultFileAccess); err != nil {
-		return fmt.Errorf("error writing file %s for device %s: %w", name, uuid, err)
-	}
-	return nil
+	return s.withHandle(uuid, true, func(h osRootHandle) error {
+		if err := h.writeFile(name, content, defaultFileAccess); err != nil {
+			return fmt.Errorf("error writing file %s for device %s: %w", name, uuid, err)
+		}
+		return nil
+	})
 }
 
 func (s DevicesFsHandle) WriteFileStream(uuid, name string, src io.Reader) error {
-	if h, err := s.deviceLocalHandle(uuid, true); err != nil {
-		return err
-	} else {
+	return s.withHandle(uuid, true, func(h osRootHandle) error {
 		if err := h.writeFileStream(name, src, 0o644); err != nil {
 			return fmt.Errorf("error writing file stream %s for device %s: %w", name, uuid, err)
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func (s DevicesFsHandle) AppendFile(uuid, name, content string) error {
-	if h, err := s.deviceLocalHandle(uuid, true); err != nil {
-		return err
-	} else if err = h.appendFile(name, content, defaultFileAccess); err != nil {
-		return fmt.Errorf("error writing file %s for device %s: %w", name, uuid, err)
-	}
-	return nil
+	return s.withHandle(uuid, true, func(h osRootHandle) error {
+		if err := h.appendFile(name, content, defaultFileAccess); err != nil {
+			return fmt.Errorf("error writing file %s for device %s: %w", name, uuid, err)
+		}
+		return nil
+	})
 }
 
 func (s DevicesFsHandle) ListFiles(uuid, prefix string, sortByModTime bool) ([]string, error) {
-	h, err := s.deviceLocalHandle(uuid, false)
-	if err != nil {
-		return nil, err
-	}
-	names, err := h.matchFiles(prefix, sortByModTime)
-	if err != nil {
+	var names []string
+	err := s.withHandle(uuid, false, func(h osRootHandle) error {
+		var err error
+		names, err = h.matchFiles(prefix, sortByModTime)
+		return err
+	})
+	if errors.Is(err, os.ErrNotExist) {
+		return []string{}, nil
+	} else if err != nil {
 		err = fmt.Errorf("error listing %s files for device %s: %w", prefix, uuid, err)
 	}
 	return names, err
 }
 
 func (s DevicesFsHandle) RolloverFiles(uuid, prefix string, max int) error {
-	if h, err := s.deviceLocalHandle(uuid, true); err != nil {
-		return err
-	} else if err = h.rolloverFiles(prefix, max); err != nil {
-		return fmt.Errorf("error rolling over %s files for device %s: %w", prefix, uuid, err)
-	}
-	return nil
+	return s.withHandle(uuid, true, func(h osRootHandle) error {
+		if err := h.rolloverFiles(prefix, max); err != nil {
+			return fmt.Errorf("error rolling over %s files for device %s: %w", prefix, uuid, err)
+		}
+		return nil
+	})
 }
 
-func (s DevicesFsHandle) deviceLocalHandle(uuid string, forUpdate bool) (h baseFsHandle, err error) {
+func (s DevicesFsHandle) withHandle(uuid string, forUpdate bool, fn func(osRootHandle) error) error {
 	if !ValidDeviceUUID(uuid) {
-		return h, fmt.Errorf("invalid device UUID: %q", uuid)
+		return fmt.Errorf("invalid device UUID: %q", uuid)
 	}
-	h.root = filepath.Join(s.root, uuid)
 	if forUpdate {
-		if err = h.mkdirs(defaultDirAccess, true); err != nil {
-			err = fmt.Errorf("unable to create file storage for device %s: %w", uuid, err)
+		if err := s.root.MkdirAll(uuid, defaultDirAccess); err != nil {
+			return fmt.Errorf("unable to create file storage for device %s: %w", uuid, err)
 		}
 	}
-	return
+	root, err := s.root.OpenRoot(uuid)
+	if err != nil {
+		return err
+	}
+	h := osRootHandle{root: root}
+	defer h.Close()
+	return fn(h)
 }

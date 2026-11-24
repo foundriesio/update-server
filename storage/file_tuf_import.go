@@ -6,7 +6,6 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"strconv"
 	"time"
@@ -96,7 +95,7 @@ func (h TufFsHandle) importTuf(roots []importedRoot, candidateKeys []tuf.AtsKey)
 		return err
 	}
 
-	if err := os.MkdirAll(h.keysDir(), defaultDirAccess); err != nil {
+	if err := h.root.MkdirAll(tufKeysDir, defaultDirAccess); err != nil {
 		return fmt.Errorf("unable to create TUF keys directory: %w", err)
 	}
 
@@ -146,9 +145,6 @@ func (h TufFsHandle) importTuf(roots []importedRoot, candidateKeys []tuf.AtsKey)
 	newRoot.Signatures = []tuf.Signature{newSigned, oldSigned}
 
 	// Persist every imported root verbatim, then the newly generated root.
-	if err := h.mkdirs(defaultDirAccess, true); err != nil {
-		return fmt.Errorf("unable to create TUF directory: %w", err)
-	}
 	for _, imp := range roots {
 		name := strconv.Itoa(imp.root.Signed.Version) + rootJsonSuffix
 		if err := h.writeFile(name, string(imp.raw), defaultFileAccess); err != nil {

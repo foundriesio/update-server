@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -49,7 +50,7 @@ var tufRoles = []tuf.RoleName{tuf.RoleRoot, tuf.RoleTargets, tuf.RoleSnapshot, t
 
 // TufFsHandle manages TUF keys and metadata stored under <datadir>/tuf.
 type TufFsHandle struct {
-	baseFsHandle
+	osRootHandle
 
 	// auth provides access to the HMAC secret used to encrypt key files.
 	auth AuthFsHandle
@@ -68,8 +69,7 @@ type TufFsHandle struct {
 	signers map[tuf.RoleName]*tuf.Signer
 }
 
-func (h *TufFsHandle) init(root string, auth AuthFsHandle, updates updatesFsHandleWrap) {
-	h.root = root
+func (h *TufFsHandle) init(auth AuthFsHandle, updates updatesFsHandleWrap) {
 	h.auth = auth
 	h.updates = updates
 	h.RootExpiration = 20 * 365 * 24 * time.Hour
@@ -77,17 +77,13 @@ func (h *TufFsHandle) init(root string, auth AuthFsHandle, updates updatesFsHand
 	h.TargetsExpiration = 90 * 24 * time.Hour
 }
 
-func (h TufFsHandle) keysDir() string {
-	return filepath.Join(h.root, tufKeysDir)
-}
-
 func (h TufFsHandle) keyPath(role tuf.RoleName) string {
-	return filepath.Join(h.keysDir(), string(role)+".key")
+	return filepath.Join(tufKeysDir, string(role)+".key")
 }
 
 // isInitialized reports whether TUF metadata and keys have been created.
 func (h TufFsHandle) isInitialized() bool {
-	if _, err := os.Stat(h.keyPath(tuf.RoleRoot)); err != nil {
+	if _, err := h.root.Stat(h.keyPath(tuf.RoleRoot)); err != nil {
 		return false
 	}
 	names, err := h.rootMetaNames()
@@ -109,7 +105,7 @@ func (h TufFsHandle) InitTuf() error {
 		return fmt.Errorf("HMAC secret is empty; run auth-init first")
 	}
 
-	if err := os.MkdirAll(h.keysDir(), defaultDirAccess); err != nil {
+	if err := h.root.MkdirAll(tufKeysDir, defaultDirAccess); err != nil {
 		return fmt.Errorf("unable to create TUF keys directory: %w", err)
 	}
 
@@ -231,7 +227,13 @@ func (h TufFsHandle) ReadDefaultMeta(name string) (string, error) {
 	if strings.HasSuffix(name, rootJsonSuffix) {
 		return h.readFile(name, false)
 	}
-	return baseFsHandle{root: filepath.Join(h.root, tufDefaultDir)}.readFile(name, false)
+	var content string
+	err := h.withHandle(tufDefaultDir, false, func(handle osRootHandle) error {
+		var err error
+		content, err = handle.readFile(name, false)
+		return err
+	})
+	return content, err
 }
 
 // ReadTufMeta reads and unmarshals a TUF metadata file from an update.
@@ -264,18 +266,24 @@ func (h TufFsHandle) Enabled() bool {
 }
 
 func (h TufFsHandle) WriteMeta(tufDir string, targets, snapshot, timestamp []byte) error {
-	handle := baseFsHandle{root: tufDir}
-	if err := handle.mkdirs(defaultDirAccess, true); err != nil {
+	if err := os.MkdirAll(tufDir, defaultDirAccess); err != nil {
 		return fmt.Errorf("unable to create TUF directory: %w", err)
 	}
 
-	// link root metadata into the update directory
+	root, err := os.OpenRoot(tufDir)
+	if err != nil {
+		return fmt.Errorf("unable to open TUF directory: %w", err)
+	}
+	handle := osRootHandle{root: root}
+	defer handle.Close()
+
+	// os.Root.Link cannot link between the TUF root and the upload directory.
 	names, err := h.rootMetaNames()
 	if err != nil {
 		return fmt.Errorf("unable to list root metadata: %w", err)
 	}
 	for _, name := range names {
-		src := filepath.Join(h.root, name)
+		src := filepath.Join(h.root.Name(), name)
 		dst := filepath.Join(tufDir, name)
 		if err := os.Link(src, dst); err != nil {
 			return fmt.Errorf("unable to link %s into update directory: %w", name, err)
@@ -363,20 +371,33 @@ func (h TufFsHandle) writeDefaultMeta(signers map[tuf.RoleName]*tuf.Signer, expi
 		return fmt.Errorf("unable to marshal default timestamp metadata: %w", err)
 	}
 
-	handle := baseFsHandle{root: filepath.Join(h.root, tufDefaultDir)}
-	if err := handle.mkdirs(defaultDirAccess, true); err != nil {
-		return fmt.Errorf("unable to create default TUF directory: %w", err)
-	}
-	for _, pair := range [][2]string{
-		{TufTargetsFile, string(targetsBytes)},
-		{TufSnapshotFile, string(ssBytes)},
-		{TufTimestampFile, string(tsBytes)},
-	} {
-		if err := handle.writeFile(pair[0], pair[1], defaultFileAccess); err != nil {
-			return fmt.Errorf("unable to write default %s: %w", pair[0], err)
+	return h.withHandle(tufDefaultDir, true, func(handle osRootHandle) error {
+		for _, pair := range [][2]string{
+			{TufTargetsFile, string(targetsBytes)},
+			{TufSnapshotFile, string(ssBytes)},
+			{TufTimestampFile, string(tsBytes)},
+		} {
+			if err := handle.writeFile(pair[0], pair[1], defaultFileAccess); err != nil {
+				return fmt.Errorf("unable to write default %s: %w", pair[0], err)
+			}
+		}
+		return nil
+	})
+}
+
+func (h TufFsHandle) withHandle(dir string, forUpdate bool, fn func(osRootHandle) error) error {
+	if forUpdate {
+		if err := h.root.MkdirAll(dir, defaultDirAccess); err != nil {
+			return fmt.Errorf("unable to create TUF directory %s: %w", dir, err)
 		}
 	}
-	return nil
+	root, err := h.root.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	handle := osRootHandle{root: root}
+	defer handle.Close()
+	return fn(handle)
 }
 
 // writeRoot persists a root metadata file as <version>.root.json.
@@ -386,9 +407,6 @@ func (h TufFsHandle) writeRoot(root tuf.AtsTufRoot) error {
 		return fmt.Errorf("unable to marshal root metadata: %w", err)
 	}
 	name := strconv.Itoa(root.Signed.Version) + rootJsonSuffix
-	if err := h.mkdirs(defaultDirAccess, true); err != nil {
-		return fmt.Errorf("unable to create TUF directory: %w", err)
-	}
 	if err := h.writeFile(name, string(data), defaultFileAccess); err != nil {
 		return fmt.Errorf("unable to write %s: %w", name, err)
 	}
@@ -398,7 +416,7 @@ func (h TufFsHandle) writeRoot(root tuf.AtsTufRoot) error {
 // rootMetaNames returns the names of all root metadata files, ordered by
 // ascending version.
 func (h TufFsHandle) rootMetaNames() ([]string, error) {
-	entries, err := os.ReadDir(h.root)
+	entries, err := fs.ReadDir(h.root.FS(), ".")
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil
@@ -443,8 +461,7 @@ func (h TufFsHandle) writeKey(hmacSecret []byte, role tuf.RoleName, signer *tuf.
 	if err != nil {
 		return fmt.Errorf("unable to encrypt %s key: %w", role, err)
 	}
-	keys := baseFsHandle{root: h.keysDir()}
-	if err := keys.writeFile(string(role)+".key", string(ciphertext), secureFileAccess); err != nil {
+	if err := h.writeFile(h.keyPath(role), string(ciphertext), secureFileAccess); err != nil {
 		return fmt.Errorf("unable to store %s key: %w", role, err)
 	}
 	return nil
@@ -452,8 +469,7 @@ func (h TufFsHandle) writeKey(hmacSecret []byte, role tuf.RoleName, signer *tuf.
 
 // readKey loads and decrypts a role's private key.
 func (h TufFsHandle) readKey(hmacSecret []byte, role tuf.RoleName) (*tuf.Signer, error) {
-	keys := baseFsHandle{root: h.keysDir()}
-	ciphertext, err := keys.readFile(string(role)+".key", false)
+	ciphertext, err := h.readFile(h.keyPath(role), false)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read %s key: %w", role, err)
 	}

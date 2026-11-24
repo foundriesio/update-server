@@ -147,7 +147,7 @@ func writeFixtureOstreeContent(fs *storage.FsHandle, updateName string) (hexHash
 	}
 	// WriteFile does not create intermediate subdirectories (it only
 	// mkdirs the category root, e.g. .../ostree_repo — see
-	// UpdatesFsHandle.updateLocalHandle), so objects/<aa>/ and refs/heads/
+	// UpdatesFsHandle.withHandle), so objects/<aa>/ and refs/heads/
 	// must be created explicitly before writing into them.
 	objRel := filepath.Join("objects", hexHash[:2], hexHash[2:]+".filez")
 	if err := os.MkdirAll(filepath.Dir(fs.Updates.Ostree.FilePath(updateName, objRel)), 0o755); err != nil {

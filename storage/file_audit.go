@@ -10,7 +10,7 @@ import (
 )
 
 type AuditLogsFsHandle struct {
-	baseFsHandle
+	osRootHandle
 }
 
 func (h AuditLogsFsHandle) AppendEvent(userid int64, event string) {

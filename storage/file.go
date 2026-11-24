@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"iter"
 	"os"
 	"path/filepath"
@@ -141,43 +142,67 @@ type FsHandle struct {
 
 func NewFs(root string) (*FsHandle, error) {
 	fs := &FsHandle{Config: FsConfig(root)}
-	fs.Audit.root = fs.Config.AuditDir()
-	fs.Auth.root = fs.Config.AuthDir()
-	fs.Certs.root = fs.Config.CertsDir()
-	fs.Configs.root = fs.Config.ConfigsDir()
-	fs.Devices.root = fs.Config.DevicesDir()
-	fs.Updates.init(fs.Config.UpdatesDir())
-	fs.Tuf.init(fs.Config.TufDir(), fs.Auth, fs.Updates)
-
-	for _, h := range []baseFsHandle{
-		fs.Audit.baseFsHandle,
-		fs.Auth.baseFsHandle,
-		fs.Certs.baseFsHandle,
-		fs.Configs.baseFsHandle,
-		fs.Devices.baseFsHandle,
-		fs.Updates.baseFsHandle,
+	for _, entry := range []struct {
+		path   string
+		handle *osRootHandle
+	}{
+		{fs.Config.AuditDir(), &fs.Audit.osRootHandle},
+		{fs.Config.AuthDir(), &fs.Auth.osRootHandle},
+		{fs.Config.CertsDir(), &fs.Certs.osRootHandle},
+		{fs.Config.ConfigsDir(), &fs.Configs.osRootHandle},
+		{fs.Config.DevicesDir(), &fs.Devices.osRootHandle},
+		{fs.Config.UpdatesDir(), &fs.Updates.osRootHandle},
+		{fs.Config.TufDir(), &fs.Tuf.osRootHandle},
 	} {
-		if err := h.mkdirs(defaultDirAccess, true); err != nil {
+		err := os.MkdirAll(entry.path, defaultDirAccess)
+		if err != nil {
 			return nil, fmt.Errorf("unable to initialize file storage: %w", err)
 		}
+		entry.handle.root, err = os.OpenRoot(entry.path)
+		if err != nil {
+			return nil, fmt.Errorf("unable to open file storage root: %w", err)
+		}
 	}
+
+	fs.Updates.init()
+	fs.Tuf.init(fs.Auth, fs.Updates)
 	return fs, nil
 }
 
-type baseFsHandle struct {
-	root string
+func (f *FsHandle) Close() {
+	f.Audit.Close()
+	f.Auth.Close()
+	f.Certs.Close()
+	f.Configs.Close()
+	f.Devices.Close()
+	f.Tuf.Close()
+	f.Updates.Close()
 }
 
-func (s baseFsHandle) mkdirs(mode os.FileMode, ignoreExists bool) error { //nolint:unparam
-	if ignoreExists {
-		return os.MkdirAll(s.root, mode)
-	} else {
-		return os.Mkdir(s.root, mode)
+type osRootHandle struct {
+	root *os.Root
+}
+
+func (h osRootHandle) Close() {
+	_ = h.root.Close()
+}
+
+func (h osRootHandle) appendFile(name, content string, mode os.FileMode) error { //nolint:unparam
+	// O_APPEND + O_SYNC on Linux warrants that concurrent file appends up to 1MB are serialized.
+	fd, err := h.root.OpenFile(name, os.O_CREATE|os.O_APPEND|syscall.O_SYNC|os.O_WRONLY, mode)
+	if err == nil {
+		_, err = fd.Write([]byte(content))
+		if err != nil {
+			_ = fd.Close()
+		} else {
+			err = fd.Close()
+		}
 	}
+	return err
 }
 
-func (s baseFsHandle) readFile(name string, ignoreNotExist bool) (string, error) {
-	if content, err := os.ReadFile(filepath.Join(s.root, name)); err == nil {
+func (h osRootHandle) readFile(name string, ignoreNotExist bool) (string, error) {
+	if content, err := h.root.ReadFile(name); err == nil {
 		return string(content), nil
 	} else if ignoreNotExist && errors.Is(err, os.ErrNotExist) {
 		return "", nil
@@ -186,10 +211,27 @@ func (s baseFsHandle) readFile(name string, ignoreNotExist bool) (string, error)
 	}
 }
 
-func (s baseFsHandle) readFileLines(name string, ignoreNotExist bool, infinityStop DoneChan) iter.Seq2[string, error] {
+func (h osRootHandle) writeFile(name, content string, mode os.FileMode) error {
+	partial := name + partialFileSuffix
+	if fd, err := h.root.OpenFile(partial, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode); err != nil {
+		return err
+	} else if _, err = fd.WriteString(content); err != nil {
+		_ = fd.Close()
+		return err
+	} else if err = fd.Sync(); err != nil {
+		_ = fd.Close()
+		return err
+	} else if err = fd.Close(); err != nil {
+		return err
+	} else {
+		return h.root.Rename(partial, name)
+	}
+}
+
+func (s osRootHandle) readFileLines(name string, ignoreNotExist bool, infinityStop DoneChan) iter.Seq2[string, error] {
 	// memory efficient way to read lines from a potentially large file
 	return func(yield func(string, error) bool) {
-		if fd, err := os.OpenFile(filepath.Join(s.root, name), os.O_RDONLY, 0); err != nil {
+		if fd, err := s.root.Open(name); err != nil {
 			if !ignoreNotExist || !errors.Is(err, os.ErrNotExist) {
 				yield("", err)
 			}
@@ -220,74 +262,8 @@ func (s baseFsHandle) readFileLines(name string, ignoreNotExist bool, infinitySt
 	}
 }
 
-func (s baseFsHandle) writeFile(name, content string, mode os.FileMode) error {
-	path := filepath.Join(s.root, name)
-	partial := filepath.Join(s.root, name+partialFileSuffix)
-	if fd, err := os.OpenFile(partial, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode); err != nil {
-		return err
-	} else if _, err = fd.WriteString(content); err != nil {
-		_ = fd.Close()
-		return err
-	} else if err = fd.Sync(); err != nil {
-		_ = fd.Close()
-		return err
-	} else if err = fd.Close(); err != nil {
-		return err
-	} else {
-		return os.Rename(partial, path)
-	}
-}
-
-func (s baseFsHandle) writeFileStream(name string, src io.Reader, mode os.FileMode) error {
-	path := filepath.Join(s.root, name)
-	dst, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
-	if err != nil {
-		return err
-	}
-	if _, err = io.Copy(dst, src); err != nil {
-		_ = dst.Close()
-		return err
-	}
-	return dst.Close()
-}
-
-func (s baseFsHandle) appendFile(name, content string, mode os.FileMode) error { //nolint:unparam
-	// O_APPEND + O_SYNC on Linux warrants that concurrent file appends up to 1MB are serialized.
-	fd, err := os.OpenFile(filepath.Join(s.root, name),
-		os.O_CREATE|os.O_APPEND|syscall.O_SYNC|os.O_WRONLY, mode)
-	if err == nil {
-		_, err = fd.Write([]byte(content))
-		if err != nil {
-			_ = fd.Close()
-		} else {
-			err = fd.Close()
-		}
-	}
-	return err
-}
-
-func (s baseFsHandle) deleteFile(name string, ignoreNotExist bool) error {
-	err := os.Remove(filepath.Join(s.root, name))
-	if err != nil && ignoreNotExist && errors.Is(err, os.ErrNotExist) {
-		err = nil
-	}
-	return err
-}
-
-func (s baseFsHandle) rolloverFiles(prefix string, max int) error {
-	names, err := s.matchFiles(prefix, true)
-	if err == nil {
-		for i := 0; i < len(names)-max; i++ {
-			if err = s.deleteFile(names[i], false); err != nil {
-				break
-			}
-		}
-	}
-	return err
-}
-
-func (s baseFsHandle) matchFiles(prefix string, sortByModTime bool) ([]string, error) {
-	entries, err := os.ReadDir(s.root)
+func (s osRootHandle) matchFiles(prefix string, sortByModTime bool) ([]string, error) {
+	entries, err := fs.ReadDir(s.root.FS(), ".")
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return []string{}, nil
@@ -319,4 +295,36 @@ func (s baseFsHandle) matchFiles(prefix string, sortByModTime bool) ([]string, e
 		names = append(names, info.Name())
 	}
 	return names, nil
+}
+
+func (s osRootHandle) deleteFile(name string, ignoreNotExist bool) error {
+	err := s.root.Remove(name)
+	if err != nil && ignoreNotExist && errors.Is(err, os.ErrNotExist) {
+		err = nil
+	}
+	return err
+}
+
+func (s osRootHandle) writeFileStream(name string, src io.Reader, mode os.FileMode) error {
+	dst, err := s.root.OpenFile(name, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+	if err != nil {
+		return err
+	}
+	if _, err = io.Copy(dst, src); err != nil {
+		_ = dst.Close()
+		return err
+	}
+	return dst.Close()
+}
+
+func (s osRootHandle) rolloverFiles(prefix string, max int) error {
+	names, err := s.matchFiles(prefix, true)
+	if err == nil {
+		for i := 0; i < len(names)-max; i++ {
+			if err = s.deleteFile(names[i], false); err != nil {
+				break
+			}
+		}
+	}
+	return err
 }

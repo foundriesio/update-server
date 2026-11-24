@@ -33,3 +33,17 @@ func LoadPemFile[T any](path string, parse func([]byte) (T, error)) (T, error) {
 	}
 	return obj, nil
 }
+
+func LoadCertPem[T any](certs CertsFsHandle, name string, parse func([]byte) (T, error)) (T, error) {
+	pemBytes, err := certs.ReadFile(name)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	obj, err := PemBytesToObject(pemBytes, parse)
+	if err != nil {
+		var zero T
+		return zero, fmt.Errorf("%w for %s", err, name)
+	}
+	return obj, nil
+}

@@ -36,11 +36,11 @@ func TestPkiInit(t *testing.T) {
 		storage.CertsDeviceCaKeyFile, storage.CertsDeviceCaPemFile,
 		storage.CertsCasPemFile,
 	} {
-		_, err := os.Stat(fs.Certs.FilePath(name))
+		_, err := fs.Certs.ReadFile(name)
 		require.NoError(t, err, "missing file %s", name)
 	}
 
-	rootCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsRootPemFile), x509.ParseCertificate)
+	rootCrt, err := storage.LoadCertPem(fs.Certs, storage.CertsRootPemFile, x509.ParseCertificate)
 	require.NoError(t, err)
 	require.True(t, rootCrt.IsCA)
 	require.Equal(t, []string{"example"}, rootCrt.Subject.OrganizationalUnit)
@@ -49,7 +49,7 @@ func TestPkiInit(t *testing.T) {
 	roots.AddCert(rootCrt)
 
 	// TLS cert chains to the root and carries the expected subject.
-	tlsCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsPemFile), x509.ParseCertificate)
+	tlsCrt, err := storage.LoadCertPem(fs.Certs, storage.CertsTlsPemFile, x509.ParseCertificate)
 	require.NoError(t, err)
 	require.Equal(t, "example.com", tlsCrt.Subject.CommonName)
 	require.Equal(t, []string{"example"}, tlsCrt.Subject.OrganizationalUnit)
@@ -62,7 +62,7 @@ func TestPkiInit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Device CA is a CA that chains to the root.
-	deviceCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsDeviceCaPemFile), x509.ParseCertificate)
+	deviceCrt, err := storage.LoadCertPem(fs.Certs, storage.CertsDeviceCaPemFile, x509.ParseCertificate)
 	require.NoError(t, err)
 	require.True(t, deviceCrt.IsCA)
 	_, err = deviceCrt.Verify(x509.VerifyOptions{
@@ -98,13 +98,13 @@ func TestPkiInitWithIp(t *testing.T) {
 
 	fs, err := storage.NewFs(common.DataDir)
 	require.NoError(t, err)
-	rootCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsRootPemFile), x509.ParseCertificate)
+	rootCrt, err := storage.LoadCertPem(fs.Certs, storage.CertsRootPemFile, x509.ParseCertificate)
 	require.NoError(t, err)
 	roots := x509.NewCertPool()
 	roots.AddCert(rootCrt)
 
 	// The TLS cert is valid for both the name and the address.
-	tlsCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsPemFile), x509.ParseCertificate)
+	tlsCrt, err := storage.LoadCertPem(fs.Certs, storage.CertsTlsPemFile, x509.ParseCertificate)
 	require.NoError(t, err)
 	for _, host := range []string{"example.com", "192.0.2.10"} {
 		_, err = tlsCrt.Verify(x509.VerifyOptions{

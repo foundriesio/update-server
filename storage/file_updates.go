@@ -35,7 +35,7 @@ type Update struct {
 }
 
 type updatesFsHandleWrap struct {
-	baseFsHandle
+	osRootHandle
 	Apps     UpdatesFsHandle
 	Ostree   UpdatesFsHandle
 	Tuf      UpdatesFsHandle
@@ -43,8 +43,8 @@ type updatesFsHandleWrap struct {
 	Logs     UpdatesFsHandle
 }
 
-func (s *updatesFsHandleWrap) init(root string) {
-	s.root = root
+func (s *updatesFsHandleWrap) init() {
+	root := s.root
 	s.Apps.root = root
 	s.Apps.category = UpdatesAppsDir
 	s.Ostree.root = root
@@ -60,8 +60,7 @@ func (s *updatesFsHandleWrap) init(root string) {
 // Delete removes the entire on-disk directory for an update (all categories:
 // tuf, ostree_repo, apps, rollouts, logs). A missing directory is not an error.
 func (s updatesFsHandleWrap) Delete(update string) error {
-	dir := filepath.Join(s.root, update)
-	if err := os.RemoveAll(dir); err != nil {
+	if err := s.root.RemoveAll(update); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
@@ -112,9 +111,14 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 	)
 	var sawTuf, sawOstree, sawApps bool
 	txDir := ".update-upload-" + rand.Text()[:10]
-	root, destDir := filepath.Split(s.root)
+	root, destDir := filepath.Split(s.root.Name())
 	destDir = filepath.Join(destDir, update)
-	h := tarFsHandle{root: root}
+	tarRoot, err := os.OpenRoot(root)
+	if err != nil {
+		return fmt.Errorf("unable to open upload storage: %w", err)
+	}
+	h := tarFsHandle{osRootHandle{root: tarRoot}}
+	defer h.Close()
 	return h.unpackTar(payload, destDir,
 		TarUnpackReplaceDest(true), // Replace updates with the same name - uniqueness is checked on the database level.
 		TarUnpackUseTmpFile("update.tar"),
@@ -159,17 +163,21 @@ func (s updatesFsHandleWrap) SaveUpload(tag, update string, payload io.Reader, t
 }
 
 type UpdatesFsHandle struct {
-	baseFsHandle
+	osRootHandle
 	category string
 }
 
 func (s UpdatesFsHandle) FilePath(update, name string) string {
-	return filepath.Join(s.root, update, s.category, name)
+	return filepath.Join(s.root.Name(), update, s.category, name)
 }
 
 func (s UpdatesFsHandle) ReadFile(update, name string) (string, error) {
-	h, _ := s.updateLocalHandle(update, false)
-	content, err := h.readFile(name, false)
+	var content string
+	err := s.withHandle(update, false, func(h osRootHandle) error {
+		var err error
+		content, err = h.readFile(name, false)
+		return err
+	})
 	if err != nil {
 		err = fmt.Errorf("error reading %s file for update %s: %w", s.category, update, err)
 	}
@@ -177,8 +185,7 @@ func (s UpdatesFsHandle) ReadFile(update, name string) (string, error) {
 }
 
 func (s UpdatesFsHandle) LatestRootMetaName(update string) (string, error) {
-	h, _ := s.updateLocalHandle(update, false)
-	files, err := h.matchFiles("", false)
+	files, err := s.listFiles(update, false)
 	if err != nil {
 		return "", fmt.Errorf("error find latest root metadata: %w", err)
 	} else if len(files) == 0 {
@@ -204,36 +211,62 @@ func (s UpdatesFsHandle) LatestRootMetaName(update string) (string, error) {
 }
 
 func (s UpdatesFsHandle) TailFileLines(update, name string, stop DoneChan) iter.Seq2[string, error] {
-	h, _ := s.updateLocalHandle(update, false)
-	return h.readFileLines(name, false, stop)
+	return func(yield func(string, error) bool) {
+		err := s.withHandle(update, false, func(h osRootHandle) error {
+			h.readFileLines(name, false, stop)(yield)
+			return nil
+		})
+		if err != nil {
+			yield("", err)
+		}
+	}
 }
 
 func (s UpdatesFsHandle) WriteFile(update, name, content string) error {
-	if h, err := s.updateLocalHandle(update, true); err != nil {
-		return err
-	} else if err = h.writeFile(name, content, defaultFileAccess); err != nil {
-		return fmt.Errorf("error writing %s file for update %s: %w", s.category, update, err)
-	}
-	return nil
+	return s.withHandle(update, true, func(h osRootHandle) error {
+		if err := h.writeFile(name, content, defaultFileAccess); err != nil {
+			return fmt.Errorf("error writing %s file for update %s: %w", s.category, update, err)
+		}
+		return nil
+	})
 }
 
 func (s UpdatesFsHandle) AppendFile(update, name, content string) error {
-	if h, err := s.updateLocalHandle(update, true); err != nil {
-		return err
-	} else if err = h.appendFile(name, content, defaultFileAccess); err != nil {
-		return fmt.Errorf("error appending %s file for update %s: %w", s.category, update, err)
-	}
-	return nil
+	return s.withHandle(update, true, func(h osRootHandle) error {
+		if err := h.appendFile(name, content, defaultFileAccess); err != nil {
+			return fmt.Errorf("error appending %s file for update %s: %w", s.category, update, err)
+		}
+		return nil
+	})
 }
 
-func (s UpdatesFsHandle) updateLocalHandle(update string, forUpdate bool) (h baseFsHandle, err error) {
-	h.root = filepath.Join(s.root, update, s.category)
+func (s UpdatesFsHandle) withHandle(update string, forUpdate bool, fn func(osRootHandle) error) error {
+	dir := filepath.Join(update, s.category)
 	if forUpdate {
-		if err = h.mkdirs(defaultDirAccess, true); err != nil {
-			err = fmt.Errorf("unable to create %s file storage for update %s: %w", s.category, update, err)
+		if err := s.root.MkdirAll(dir, defaultDirAccess); err != nil {
+			return fmt.Errorf("unable to create %s file storage for update %s: %w", s.category, update, err)
 		}
 	}
-	return
+	root, err := s.root.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	h := osRootHandle{root: root}
+	defer h.Close()
+	return fn(h)
+}
+
+func (s UpdatesFsHandle) listFiles(update string, sortByModTime bool) ([]string, error) {
+	var files []string
+	err := s.withHandle(update, false, func(h osRootHandle) error {
+		var err error
+		files, err = h.matchFiles("", sortByModTime)
+		return err
+	})
+	if errors.Is(err, os.ErrNotExist) {
+		return []string{}, nil
+	}
+	return files, err
 }
 
 type RolloutsFsHandle struct {
@@ -241,8 +274,7 @@ type RolloutsFsHandle struct {
 }
 
 func (s RolloutsFsHandle) ListFiles(update string) ([]string, error) {
-	h, _ := s.updateLocalHandle(update, false)
-	return h.matchFiles("", true)
+	return s.listFiles(update, true)
 }
 
 func (s RolloutsFsHandle) AppendJournal(content string) error {
@@ -250,9 +282,7 @@ func (s RolloutsFsHandle) AppendJournal(content string) error {
 }
 
 func (s RolloutsFsHandle) RolloverJournal() (err error) {
-	from := filepath.Join(s.root, rolloutJournalFile+partialFileSuffix)
-	to := filepath.Join(s.root, rolloutJournalFile)
-	if err = os.Rename(from, to); err != nil {
+	if err = s.root.Rename(rolloutJournalFile+partialFileSuffix, rolloutJournalFile); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			// No new writes into a journal since the last rollover - that's just fine.
 			err = nil

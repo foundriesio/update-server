@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -142,7 +143,9 @@ func TarUnpackOnEvents(val tarUnpackEvents) TarUnpackOption {
 	}
 }
 
-type tarFsHandle baseFsHandle
+type tarFsHandle struct {
+	osRootHandle
+}
 
 func (s tarFsHandle) unpackTar(srcReader io.Reader, destDir string, opts ...TarUnpackOption) error {
 	cfg := tarUnpackConfig{
@@ -161,8 +164,7 @@ func (s tarFsHandle) unpackTar(srcReader io.Reader, destDir string, opts ...TarU
 		cfg = opt(cfg)
 	}
 
-	// A filepath.Join warrants that destDirPath is clean, so that we can use absPathNoEscape freely below.
-	destDirPath := filepath.Join(s.root, destDir)
+	destDirPath := filepath.Clean(destDir)
 	if err := s._checkDestDir(destDir, destDirPath, cfg); err != nil {
 		return err
 	}
@@ -189,7 +191,7 @@ func (s tarFsHandle) unpackTar(srcReader io.Reader, destDir string, opts ...TarU
 
 func (s tarFsHandle) _checkDestDir(destDir, destDirPath string, cfg tarUnpackConfig) error {
 	var destExists, destEmpty bool
-	if destItems, err := os.ReadDir(destDirPath); err != nil {
+	if destItems, err := fs.ReadDir(s.root.FS(), filepath.ToSlash(destDirPath)); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("failed to check if destination '%s' exists: %w", destDir, err)
 		}
@@ -201,16 +203,16 @@ func (s tarFsHandle) _checkDestDir(destDir, destDirPath string, cfg tarUnpackCon
 	switch {
 	case !destExists:
 		if cfg.createDest {
-			if err := os.MkdirAll(destDirPath, cfg.dirAccess); err != nil {
+			if err := s.root.MkdirAll(destDirPath, cfg.dirAccess); err != nil {
 				return fmt.Errorf("failed to create destination '%s': %w", destDir, err)
 			}
 		}
 	case !destEmpty:
 		if cfg.replaceDest {
-			if err := os.RemoveAll(destDirPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			if err := s.root.RemoveAll(destDirPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("failed to clean destination '%s': %w", destDir, err)
 			}
-			if err := os.MkdirAll(destDirPath, cfg.dirAccess); err != nil {
+			if err := s.root.MkdirAll(destDirPath, cfg.dirAccess); err != nil {
 				return fmt.Errorf("failed to create destination '%s': %w", destDir, err)
 			}
 		} else if !cfg.mergeDest {
@@ -221,24 +223,24 @@ func (s tarFsHandle) _checkDestDir(destDir, destDirPath string, cfg tarUnpackCon
 }
 
 func (s tarFsHandle) _handleTmpDir(destDirPath string, cfg tarUnpackConfig, unpacker func(string) error) error {
-	txDirPath := filepath.Join(s.root, cfg.tmpDir)
+	txDirPath := filepath.Clean(cfg.tmpDir)
 	unpackDirPath := filepath.Join(txDirPath, "unpacked")
 	backupDirPath := filepath.Join(txDirPath, "backup")
 
-	if err := os.MkdirAll(txDirPath, cfg.dirAccess); err != nil {
+	if err := s.root.MkdirAll(txDirPath, cfg.dirAccess); err != nil {
 		return fmt.Errorf("failed to create a temporary directory: %w", err)
 	}
 	var isDestCorrupted bool
 	defer func() {
 		if !isDestCorrupted {
-			if err := os.RemoveAll(txDirPath); err != nil && cfg.events.onTmpCleanupError != nil {
+			if err := s.root.RemoveAll(txDirPath); err != nil && cfg.events.onTmpCleanupError != nil {
 				cfg.events.onTmpCleanupError(err)
 			}
 		}
 	}()
 
 	if cfg.mergeDest {
-		if err := os.CopyFS(unpackDirPath, os.DirFS(destDirPath)); err != nil {
+		if err := s._copyDir(destDirPath, unpackDirPath); err != nil {
 			return fmt.Errorf("failed to copy original directory files for merging: %w", err)
 		}
 	}
@@ -249,12 +251,12 @@ func (s tarFsHandle) _handleTmpDir(destDirPath string, cfg tarUnpackConfig, unpa
 	// Two-phase commit below: move current directory to backup, and then new directory to current directory.
 	// Both operations are atomic on Linux; but there is a tiny chance to fail in the middle.
 	// See comments below if/when/how this is recoverable.
-	if err := os.Rename(destDirPath, backupDirPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := s.root.Rename(destDirPath, backupDirPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		// Linux warrants that the rename is atomic i.e. if it failed - there was no rename.
 		// Source directory is intact here... unless there was a hard power failure, in which case this process is dead too.
 		return fmt.Errorf("failed to backup existing directory: %w", err)
 	}
-	if err := os.Rename(unpackDirPath, destDirPath); err != nil {
+	if err := s.root.Rename(unpackDirPath, destDirPath); err != nil {
 		// If the second phase fails, source directory is moved to backup, while unpacked directory is not yet moved.
 		// Although the destination directory does not exist in this case - this is a potential data corruption.
 		// Let the caller decide what to do in this case. By default do nothing.
@@ -273,8 +275,8 @@ func (s tarFsHandle) _handleTmpFile(srcReader io.Reader, cfg tarUnpackConfig) (i
 	// Allow 1 byte overhead to check if the limit was hit.
 	limitReader := &io.LimitedReader{R: srcReader, N: 1 + cfg.maxDiskSize}
 	// Write tarball to a temporary file and close, so that it is flushed to disk.
-	tmpFilePath := filepath.Join(s.root, cfg.tmpDir, cfg.tmpFile)
-	file, err := os.OpenFile(tmpFilePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, cfg.fileAccess)
+	tmpFilePath := filepath.Join(cfg.tmpDir, cfg.tmpFile)
+	file, err := s.root.OpenFile(tmpFilePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, cfg.fileAccess)
 	if err == nil {
 		err = _copyAndCloseOut(file, limitReader)
 	}
@@ -285,7 +287,7 @@ func (s tarFsHandle) _handleTmpFile(srcReader io.Reader, cfg tarUnpackConfig) (i
 		return nil, fmt.Errorf("failed to save tarball to '%s': %w", cfg.tmpFile, err)
 	}
 	// Read tarball from that temporary file and return descriptor for processing.
-	file, err = os.OpenFile(tmpFilePath, os.O_RDONLY, 0)
+	file, err = s.root.OpenFile(tmpFilePath, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read tarball from '%s': %w", cfg.tmpFile, err)
 	}
@@ -298,67 +300,125 @@ func (s tarFsHandle) _unpackTar(srcReader io.Reader, destDirPath string, cfg tar
 			return err
 		}
 	}
-	// Unpack config upload tarball; if it fails - halt.
-	tarReader := tar.NewReader(srcReader)
-	checkDeclaredSize := _diskSizeLimiter(cfg)
-	checkRealSize := _diskSizeLimiter(cfg)
-	for {
-		hdr, err := tarReader.Next()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break // Success
-			}
-			return fmt.Errorf("failed to unpack tarball header: %w", err)
-		}
-		if cfg.events.onTarHeaderSeen != nil {
-			if skip, err := cfg.events.onTarHeaderSeen(hdr); err != nil {
-				return err
-			} else if skip {
-				continue
-			}
-		}
-
-		switch hdr.Typeflag {
-		case tar.TypeReg:
-			// Logic continues after the switch.
-		case tar.TypeDir:
-			_, _, _, err := _createDirForTarItem(destDirPath, hdr, cfg.dirAccess, checkDeclaredSize, checkRealSize)
-			if err != nil {
-				return fmt.Errorf("failed to unpack directory '%s': %w", hdr.Name, err)
-			}
-			continue
-		default:
-			return fmt.Errorf("failed to unpack file '%s': unsupported file type %d", hdr.Name, hdr.Typeflag)
-		}
-
-		if len(hdr.Name) == 0 {
-			return errors.New("failed to unpack file with empty name")
-		}
-		absFilePath, relFilePath, curDiskSize, err := _createDirForTarItem(destDirPath, hdr, cfg.dirAccess, checkDeclaredSize, checkRealSize)
-		if err != nil {
-			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-		}
-		if file, err := os.OpenFile(absFilePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess); err != nil {
-			return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-		} else {
-			// Allow to read exactly one byte too much to know if limit was exceeded.
-			limit := 1 + min(cfg.maxItemSize, cfg.maxDiskSize-curDiskSize)
-			limitReader := &io.LimitedReader{R: tarReader, N: limit}
-			err = _copyAndCloseOut(file, limitReader)
-			if err == nil {
-				_, err = checkRealSize(relFilePath, limit-limitReader.N)
-			}
-			if err != nil {
-				return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
-			}
-		}
+	if err := s.root.MkdirAll(destDirPath, cfg.dirAccess); err != nil {
+		return fmt.Errorf("failed to create unpack directory: %w", err)
 	}
-	if cfg.events.onUnpackComplete != nil {
-		if err := cfg.events.onUnpackComplete(); err != nil {
-			return err
+	return s.withHandle(destDirPath, func(h osRootHandle) error {
+		// Unpack config upload tarball; if it fails - halt.
+		tarReader := tar.NewReader(srcReader)
+		checkDeclaredSize := _diskSizeLimiter(cfg)
+		checkRealSize := _diskSizeLimiter(cfg)
+		for {
+			hdr, err := tarReader.Next()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break // Success
+				}
+				return fmt.Errorf("failed to unpack tarball header: %w", err)
+			}
+			if cfg.events.onTarHeaderSeen != nil {
+				if skip, err := cfg.events.onTarHeaderSeen(hdr); err != nil {
+					return err
+				} else if skip {
+					continue
+				}
+			}
+
+			switch hdr.Typeflag {
+			case tar.TypeReg:
+				// Logic continues after the switch.
+			case tar.TypeDir:
+				_, _, err := _createDirForTarItem(h.root, hdr, cfg.dirAccess, checkDeclaredSize, checkRealSize)
+				if err != nil {
+					return fmt.Errorf("failed to unpack directory '%s': %w", hdr.Name, err)
+				}
+				continue
+			default:
+				return fmt.Errorf("failed to unpack file '%s': unsupported file type %d", hdr.Name, hdr.Typeflag)
+			}
+
+			if err := h._unpackTarFile(tarReader, hdr, cfg, checkDeclaredSize, checkRealSize); err != nil {
+				return err
+			}
 		}
+		if cfg.events.onUnpackComplete != nil {
+			if err := cfg.events.onUnpackComplete(); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s osRootHandle) _unpackTarFile(src io.Reader, hdr *tar.Header, cfg tarUnpackConfig, checkDeclaredSize, checkRealSize _diskSizeLimiterFunc,
+) error {
+	if len(hdr.Name) == 0 {
+		return errors.New("failed to unpack file with empty name")
+	}
+	relFilePath, curDiskSize, err := _createDirForTarItem(s.root, hdr, cfg.dirAccess, checkDeclaredSize, checkRealSize)
+	if err != nil {
+		return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+	}
+	file, err := s.root.OpenFile(relFilePath, os.O_CREATE|os.O_WRONLY, cfg.fileAccess)
+	if err != nil {
+		return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
+	}
+	// Allow to read exactly one byte too much to know if limit was exceeded.
+	limit := 1 + min(cfg.maxItemSize, cfg.maxDiskSize-curDiskSize)
+	limitReader := &io.LimitedReader{R: src, N: limit}
+	err = _copyAndCloseOut(file, limitReader)
+	if err == nil {
+		_, err = checkRealSize(relFilePath, limit-limitReader.N)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to unpack file '%s': %w", hdr.Name, err)
 	}
 	return nil
+}
+
+func (s tarFsHandle) withHandle(dir string, fn func(osRootHandle) error) error {
+	root, err := s.root.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	h := osRootHandle{root: root}
+	defer h.Close()
+	return fn(h)
+}
+
+func (s tarFsHandle) _copyDir(src, dst string) error {
+	return s.withHandle(src, func(source osRootHandle) error {
+		if err := s.root.MkdirAll(dst, 0o777); err != nil {
+			return err
+		}
+		return s.withHandle(dst, func(dest osRootHandle) error {
+			return fs.WalkDir(source.root.FS(), ".", func(name string, entry fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if entry.IsDir() {
+					return dest.root.MkdirAll(name, 0o777)
+				}
+				if !entry.Type().IsRegular() {
+					return fmt.Errorf("cannot copy non-regular file %s", name)
+				}
+				info, err := entry.Info()
+				if err != nil {
+					return err
+				}
+				in, err := source.root.Open(name)
+				if err != nil {
+					return err
+				}
+				defer in.Close() //nolint:errcheck
+				out, err := dest.root.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666|info.Mode()&0o111)
+				if err != nil {
+					return err
+				}
+				return _copyAndCloseOut(out, in)
+			})
+		})
+	})
 }
 
 func _copyAndCloseOut(out io.WriteCloser, in io.Reader) (err error) {
@@ -375,24 +435,22 @@ func _copyAndCloseOut(out io.WriteCloser, in io.Reader) (err error) {
 type _diskSizeLimiterFunc func(path string, size int64) (int64, error)
 
 func _createDirForTarItem(
-	destDirPath string, hdr *tar.Header, dirAccess os.FileMode, checkDeclaredSize, checkRealSize _diskSizeLimiterFunc,
-) (absPath, relPath string, diskSize int64, err error) {
-	absPath, err = AbsPathNoEscape(destDirPath, hdr.Name)
-	if err == nil {
-		relPath, err = filepath.Rel(destDirPath, absPath)
+	root *os.Root, hdr *tar.Header, dirAccess os.FileMode, checkDeclaredSize, checkRealSize _diskSizeLimiterFunc,
+) (relPath string, diskSize int64, err error) {
+	if !filepath.IsLocal(hdr.Name) {
+		return "", 0, errors.New("directory escape attempt")
 	}
-	if err == nil {
-		_, err = checkDeclaredSize(relPath, hdr.Size)
-	}
+	relPath = filepath.Clean(hdr.Name)
+	_, err = checkDeclaredSize(relPath, hdr.Size)
 	if err == nil {
 		diskSize, err = checkRealSize(relPath, 0)
 	}
 	if err == nil {
-		dirPath := absPath
+		dirPath := relPath
 		if hdr.Typeflag != tar.TypeDir {
 			dirPath = filepath.Dir(dirPath)
 		}
-		err = os.MkdirAll(dirPath, dirAccess)
+		err = root.MkdirAll(dirPath, dirAccess)
 	}
 	return
 }

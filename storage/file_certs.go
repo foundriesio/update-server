@@ -7,24 +7,19 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
 type CertsFsHandle struct {
-	baseFsHandle
-}
-
-func (s CertsFsHandle) FilePath(name string) string {
-	return filepath.Join(s.root, name)
+	osRootHandle
 }
 
 func (s CertsFsHandle) ReadFile(name string) ([]byte, error) {
-	content, err := s.readFile(name, false)
+	content, err := s.root.ReadFile(name)
 	if err != nil {
 		err = fmt.Errorf("error reading file %s: %w", name, err)
 	}
-	return []byte(content), err
+	return content, err
 }
 
 func (s CertsFsHandle) WriteFile(name string, content []byte) error {
@@ -55,7 +50,7 @@ func (s CertsFsHandle) AssertCleanPki() error {
 
 func (s CertsFsHandle) assertClean(names []string) error {
 	for _, name := range names {
-		if _, err := os.Stat(filepath.Join(s.root, name)); err == nil {
+		if _, err := s.root.Stat(name); err == nil {
 			return fmt.Errorf("a certificate file %s already exists: %w", name, os.ErrExist)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("failed to check if a certificate file %s exists: %w", name, err)
