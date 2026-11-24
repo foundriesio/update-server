@@ -142,16 +142,6 @@ type FsHandle struct {
 
 func NewFs(root string) (*FsHandle, error) {
 	fs := &FsHandle{Config: FsConfig(root)}
-	fs.Devices.root = fs.Config.DevicesDir()
-
-	for _, h := range []baseFsHandle{
-		fs.Devices.baseFsHandle,
-	} {
-		if err := h.mkdirs(defaultDirAccess, true); err != nil {
-			return nil, fmt.Errorf("unable to initialize file storage: %w", err)
-		}
-	}
-
 	for _, entry := range []struct {
 		path   string
 		handle *osRootHandle
@@ -160,6 +150,7 @@ func NewFs(root string) (*FsHandle, error) {
 		{fs.Config.AuthDir(), &fs.Auth.osRootHandle},
 		{fs.Config.CertsDir(), &fs.Certs.osRootHandle},
 		{fs.Config.ConfigsDir(), &fs.Configs.osRootHandle},
+		{fs.Config.DevicesDir(), &fs.Devices.osRootHandle},
 		{fs.Config.UpdatesDir(), &fs.Updates.osRootHandle},
 		{fs.Config.TufDir(), &fs.Tuf.osRootHandle},
 	} {
@@ -183,6 +174,7 @@ func (f *FsHandle) Close() {
 	f.Auth.Close()
 	f.Certs.Close()
 	f.Configs.Close()
+	f.Devices.Close()
 	f.Tuf.Close()
 	f.Updates.Close()
 }
@@ -466,6 +458,30 @@ func (s osRootHandle) deleteFile(name string, ignoreNotExist bool) error {
 	err := s.root.Remove(name)
 	if err != nil && ignoreNotExist && errors.Is(err, os.ErrNotExist) {
 		err = nil
+	}
+	return err
+}
+
+func (s osRootHandle) writeFileStream(name string, src io.Reader, mode os.FileMode) error {
+	dst, err := s.root.OpenFile(name, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+	if err != nil {
+		return err
+	}
+	if _, err = io.Copy(dst, src); err != nil {
+		_ = dst.Close()
+		return err
+	}
+	return dst.Close()
+}
+
+func (s osRootHandle) rolloverFiles(prefix string, max int) error {
+	names, err := s.matchFiles(prefix, true)
+	if err == nil {
+		for i := 0; i < len(names)-max; i++ {
+			if err = s.deleteFile(names[i], false); err != nil {
+				break
+			}
+		}
 	}
 	return err
 }
