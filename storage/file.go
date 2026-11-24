@@ -142,11 +142,9 @@ type FsHandle struct {
 
 func NewFs(root string) (*FsHandle, error) {
 	fs := &FsHandle{Config: FsConfig(root)}
-	fs.Configs.root = fs.Config.ConfigsDir()
 	fs.Devices.root = fs.Config.DevicesDir()
 
 	for _, h := range []baseFsHandle{
-		fs.Configs.baseFsHandle,
 		fs.Devices.baseFsHandle,
 	} {
 		if err := h.mkdirs(defaultDirAccess, true); err != nil {
@@ -161,6 +159,7 @@ func NewFs(root string) (*FsHandle, error) {
 		{fs.Config.AuditDir(), &fs.Audit.osRootHandle},
 		{fs.Config.AuthDir(), &fs.Auth.osRootHandle},
 		{fs.Config.CertsDir(), &fs.Certs.osRootHandle},
+		{fs.Config.ConfigsDir(), &fs.Configs.osRootHandle},
 		{fs.Config.UpdatesDir(), &fs.Updates.osRootHandle},
 	} {
 		err := os.MkdirAll(entry.path, defaultDirAccess)
@@ -182,6 +181,7 @@ func (f *FsHandle) Close() {
 	f.Audit.Close()
 	f.Auth.Close()
 	f.Certs.Close()
+	f.Configs.Close()
 	f.Updates.Close()
 }
 
@@ -458,4 +458,12 @@ func (s osRootHandle) matchFiles(prefix string, sortByModTime bool) ([]string, e
 		names = append(names, info.Name())
 	}
 	return names, nil
+}
+
+func (s osRootHandle) deleteFile(name string, ignoreNotExist bool) error {
+	err := s.root.Remove(name)
+	if err != nil && ignoreNotExist && errors.Is(err, os.ErrNotExist) {
+		err = nil
+	}
+	return err
 }
