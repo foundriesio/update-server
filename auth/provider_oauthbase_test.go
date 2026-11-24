@@ -12,7 +12,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
+	"golang.org/x/text/language"
 
+	"github.com/foundriesio/update-server/server/ui/i18n"
 	"github.com/foundriesio/update-server/server/ui/pagectx"
 	"github.com/foundriesio/update-server/server/ui/web/templates"
 )
@@ -66,7 +68,7 @@ func TestOauthLoginPageLinkCarriesNext(t *testing.T) {
 		ProviderKey string
 		Reason      string
 		Next        string
-	}{Name: "GitHub", ProviderKey: "github", Next: "/auth/activate?user_code=ABCD-1234"}
+	}{Base: pagectx.Base{L: i18n.For(language.English)}, Name: "GitHub", ProviderKey: "github", Next: "/auth/activate?user_code=ABCD-1234"}
 	var out bytes.Buffer
 	require.NoError(t, templates.Templates.ExecuteTemplate(&out, "oauth2-login.html", ctx))
 	require.Contains(t, out.String(), `href="/auth/login?next=%2fauth%2factivate%3fuser_code%3dABCD-1234"`)

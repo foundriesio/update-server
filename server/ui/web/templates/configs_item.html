@@ -1,5 +1,5 @@
 {{ define "configs-item-files" }}
-      <h3 class="heading heading--subsection">Files</h3>
+      <h3 class="heading heading--subsection">{{ $.L.T "Files" }}</h3>
       {{ with .Configs.Files }}
       <table class="files-table">
          <tbody>
@@ -9,11 +9,11 @@
              <td class="file-name" style="min-width: 20em;" name="FileName">{{ $name }}</td>
              <td style="min-width: 5em; text-align: right;">
                {{ if gt (len .OnChanged) 0 }}
-               <i class="icontip ocr-fork" aria-label="On-change triggers:{{ range .OnChanged }}&#xa;{{.}}{{ end }}"></i>
+               <i class="icontip ocr-fork" aria-label="{{ $.L.T "On-change triggers:" }}{{ range .OnChanged }}&#xa;{{.}}{{ end }}"></i>
                {{ end }}
                {{ if .Unencrypted }}
                {{ if $.CanEdit }}
-               <button type="button" class="icontip icon-view" name="EditFile" aria-label="Edit file content"><i class="edit" aria-hidden="true"></i></button>
+               <button type="button" class="icontip icon-view" name="EditFile" aria-label="{{ $.L.T "Edit file content" }}"><i class="edit" aria-hidden="true"></i></button>
                <template class="config-file-edit-source">
                  <span data-config-file-name>{{ $name }}</span>
                  <ul data-config-file-on-changed>
@@ -24,37 +24,37 @@
                  <span data-config-file-value>{{ .Value }}</span>
                </template>
                {{ else }}
-               <button type="button" class="icontip icon-view" aria-label="View file content"
+               <button type="button" class="icontip icon-view" aria-label="{{ $.L.T "View file content" }}"
                   onclick="this.nextElementSibling.showModal()"><i class="gear"></i></button>
                <dialog class="file-content">
                  <article>
                    <header>
-                     <h3>File "<span>{{ $name }}</span>"</h3>
-                     <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()">x</button>
+                     <h3>{{ $.L.T "File" }} "<span>{{ $name }}</span>"</h3>
+                     <button aria-label="{{ $.L.T "Close" }}" rel="prev" onclick="this.closest('dialog').close()">x</button>
                    </header>
                    <section>
                      {{ if gt (len .OnChanged) 0 }}
-                     <label><b>On Change Handlers:</b></label>
+                     <label><b>{{ $.L.T "On Change Handlers:" }}</b></label>
                      <ul>
                        {{ range .OnChanged }}
                        <li>{{ . }}</li>
                        {{ end }}
                      </ul>
                      {{ end }}
-                     <label><b>Content:</b></label>
+                     <label><b>{{ $.L.T "Content:" }}</b></label>
                      <p name="Value">{{ .Value }}</p>
                    </section>
                    <footer>
-                     <button autofocus onclick="this.closest('dialog').close()">Close</button>
+                     <button autofocus onclick="this.closest('dialog').close()">{{ $.L.T "Close" }}</button>
                    </footer>
                  </article>
                </dialog>
                {{ end }}
                {{ else }}
-               <i class="icontip lock-closed" role="img" aria-label="File content is encrypted"></i>
+               <i class="icontip lock-closed" role="img" aria-label="{{ $.L.T "File content is encrypted" }}"></i>
                {{ end }}
                {{ if $.CanEdit }}
-               <button type="button" class="icontip icon-delete" aria-label="Delete file"><i class="trash" aria-hidden="true"></i></button>
+               <button type="button" class="icontip icon-delete" aria-label="{{ $.L.T "Delete file" }}"><i class="trash" aria-hidden="true"></i></button>
                {{ end }}
              </td>
            </tr>
@@ -62,15 +62,17 @@
          </tbody>
       </table>
       {{ else }}
-      <p class="history-empty-note"><i>No files yet.</i></p>
+      <p class="history-empty-note"><i>{{ $.L.T "No files yet." }}</i></p>
       {{ end }}
       {{ if .CanEdit }}
         {{ template "configs-item-edit-dialog" $ }}
-        <dialog id="DeleteConfigFile" class="upload-dialog config-file-dialog config-file-delete-dialog" aria-labelledby="config-file-delete-title">
+        <dialog id="DeleteConfigFile" class="upload-dialog config-file-dialog config-file-delete-dialog" aria-labelledby="config-file-delete-title"
+          data-deleting-message="{{ $.L.T "Deleting config file…" }}"
+          data-delete-failed-message="{{ $.L.T "Unable to delete config file." }}">
           <article>
             <div class="dlg-header">
-              <h2 id="config-file-delete-title">Delete Config File</h2>
-              <button class="dlg-close" id="config-file-delete-close-btn" type="button" aria-label="Close dialog">
+              <h2 id="config-file-delete-title">{{ $.L.T "Delete Config File" }}</h2>
+              <button class="dlg-close" id="config-file-delete-close-btn" type="button" aria-label="{{ $.L.T "Close dialog" }}">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                   <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                   <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -79,17 +81,17 @@
             </div>
             <form id="config-file-delete-form" autocomplete="off">
               <div class="dlg-body">
-                <p class="upload-intro">Delete <strong data-config-file-delete-name></strong>? This action cannot be undone.</p>
+                <p class="upload-intro">{{ $.L.T "Delete" }} <strong data-config-file-delete-name></strong>? {{ $.L.T "This action cannot be undone." }}</p>
                 <div class="field-row">
-                  <label class="field-row__key" for="config-file-delete-reason">Reason</label>
+                  <label class="field-row__key" for="config-file-delete-reason">{{ $.L.T "Reason" }}</label>
                   <input class="field-input" id="config-file-delete-reason" name="Reason" />
                 </div>
                 <p class="config-file-dialog__status" data-config-file-delete-status aria-live="polite" role="status" tabindex="-1"></p>
               </div>
             </form>
             <div class="dlg-footer">
-              <button class="dlg-btn dlg-btn-cancel" id="config-file-delete-cancel-btn" type="button" autofocus>Cancel</button>
-              <button class="dlg-btn dlg-btn-delete" type="submit" form="config-file-delete-form">Delete</button>
+              <button class="dlg-btn dlg-btn-cancel" id="config-file-delete-cancel-btn" type="button" autofocus>{{ $.L.T "Cancel" }}</button>
+              <button class="dlg-btn dlg-btn-delete" type="submit" form="config-file-delete-form">{{ $.L.T "Delete" }}</button>
             </div>
           </article>
         </dialog>
@@ -147,7 +149,7 @@
                 const payload = JSON.parse(message);
                 if (payload && payload.message) message = payload.message;
               } catch (_) {}
-              throw new Error(message || 'Unable to delete config file.');
+              throw new Error(message || deleteDialog.dataset.deleteFailedMessage);
             }
           }
 
@@ -168,13 +170,13 @@
             ev.preventDefault();
             if (deleteInFlight) return;
             setDeleteSubmitting(true);
-            setDeleteStatus('Deleting config file…', 'saving');
+            setDeleteStatus(deleteDialog.dataset.deletingMessage, 'saving');
             try {
               await deleteConfigFile();
               location.reload();
             } catch (error) {
               console.error('Error:', error);
-              setDeleteStatus(error.message || 'Unable to delete config file.', 'error');
+              setDeleteStatus(error.message || deleteDialog.dataset.deleteFailedMessage, 'error');
               setDeleteSubmitting(false);
             }
           });
@@ -187,15 +189,15 @@
       <div class="meta-section">
         <div class="meta-grid">
           <div class="meta-row">
-            <span class="meta-label">Reason</span>
+            <span class="meta-label">{{ $.L.T "Reason" }}</span>
             <span class="meta-value">{{.Reason}}</span>
           </div>
           <div class="meta-row">
-            <span class="meta-label">Created on</span>
+            <span class="meta-label">{{ $.L.T "Created on" }}</span>
             <span class="meta-value is-mono">{{tsToDate .CreatedAt}}</span>
           </div>
           <div class="meta-row meta-row--full">
-            <span class="meta-label">Created by</span>
+            <span class="meta-label">{{ $.L.T "Created by" }}</span>
             <span class="meta-value">{{.CreatedBy}}</span>
           </div>
         </div>
@@ -204,7 +206,7 @@
       {{ end }}
 {{ end}}
 
-{{ define "configs-add-button" }}<button type="button" name="AddFile" class="btn-ghost btn-sm">Add</button>{{ end }}
+{{ define "configs-add-button" }}<button type="button" name="AddFile" class="btn-ghost btn-sm">{{ .L.T "Add" }}</button>{{ end }}
 
 {{ define "configs-history-list" }}
       <div class="history-list">
@@ -213,14 +215,14 @@
           <summary>
             <div class="summary-row">
               <div class="history-summary-row__main">
-                <span class="history-reason">{{.Reason}}{{ if .Current }} <span class="badge badge-good">Current</span>{{ end }}</span>
-                <span class="history-summary-row__by">by {{.CreatedBy}}</span>
+                <span class="history-reason">{{.Reason}}{{ if .Current }} <span class="badge badge-good">{{ $.L.T "Current" }}</span>{{ end }}</span>
+                <span class="history-summary-row__by">{{ $.L.T "by %[1]s" .CreatedBy }}</span>
               </div>
               <div class="history-summary-row__right">
                 <span class="history-summary-row__meta">{{tsToDate .CreatedAt}}</span>
                 <span class="collapsible-toggle">
-                  <span class="toggle-show">Show</span>
-                  <span class="toggle-hide">Hide</span>
+                  <span class="toggle-show">{{ $.L.T "Show" }}</span>
+                  <span class="toggle-hide">{{ $.L.T "Hide" }}</span>
                 </span>
               </div>
             </div>
@@ -229,7 +231,7 @@
             {{ range $name, $file := .Files }}
             <div class="file-name">{{ $name }}</div>
             {{ else }}
-            <p class="history-empty-note"><i>No files in this revision.</i></p>
+            <p class="history-empty-note"><i>{{ $.L.T "No files in this revision." }}</i></p>
             {{ end }}
           </div>
         </details>
@@ -240,27 +242,27 @@
 {{ template "header" .}}
 <div class="configs-page">
 
-  <nav class="breadcrumb" aria-label="Breadcrumb">
-    <a href="/configs">Configs</a>
+  <nav class="breadcrumb" aria-label="{{ .L.T "Breadcrumb" }}">
+    <a href="/configs">{{ .L.T "Configs" }}</a>
     <span class="breadcrumb__sep">/</span>
     <span class="breadcrumb__current">{{.Group}}</span>
   </nav>
 
   <header class="entity-header heading-group heading-group--page heading-row">
     <h1 class="heading heading--page">{{.Group}}</h1>
-    <span class="chip chip-group">group</span>
+    <span class="chip chip-group">{{ .L.T "group" }}</span>
   </header>
 
   <div class="meta-section">
-    <h2 class="heading heading--section">Current Configuration</h2>
+    <h2 class="heading heading--section">{{ .L.T "Current Configuration" }}</h2>
     {{ template "configs-item" . }}
     {{ if .CanEdit }}
-    {{ template "configs-add-button" }}
+    {{ template "configs-add-button" . }}
     {{ end }}
   </div>
 
   <div class="meta-section">
-    <h2 class="heading heading--section">Revision History ({{len .History}})</h2>
+    <h2 class="heading heading--section">{{ .L.T "Revision History (%[1]d)" (len .History) }}</h2>
     {{ template "configs-history-list" . }}
   </div>
 

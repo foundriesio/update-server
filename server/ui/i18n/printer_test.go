@@ -13,10 +13,10 @@ import (
 	"golang.org/x/text/language"
 )
 
-func TestItalianTranslatesSaveChanges(t *testing.T) {
+func TestItalianTranslatesLanguage(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "Salva le modifiche", For(language.Italian).T("Save changes"))
+	assert.Equal(t, "Lingua", For(language.Italian).T("Language"))
 }
 
 func TestUnknownMessageReturnsKey(t *testing.T) {
@@ -52,8 +52,8 @@ func TestNCountlessFormIsReported(t *testing.T) {
 func TestTFormatsArgsPerLocale(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "Delete device dev-1?", For(language.English).T("Delete device %s?", "dev-1"))
-	assert.Equal(t, "Eliminare il dispositivo dev-1?", For(language.Italian).T("Delete device %s?", "dev-1"))
+	assert.Equal(t, "Currently using English", For(language.English).T("Currently using %[1]s", "English"))
+	assert.Equal(t, "Attualmente in uso: English", For(language.Italian).T("Currently using %[1]s", "English"))
 }
 
 func TestEnglishKeyWithoutArgsIsNotFormatted(t *testing.T) {
@@ -76,9 +76,6 @@ func TestNPluralizesPerLocale(t *testing.T) {
 		{language.English, 0, "0 devices"},
 		{language.English, 1, "1 device"},
 		{language.English, 2, "2 devices"},
-		{language.Italian, 0, "0 dispositivi"},
-		{language.Italian, 1, "1 dispositivo"},
-		{language.Italian, 2, "2 dispositivi"},
 	}
 
 	for _, tt := range tests {
@@ -95,7 +92,7 @@ func TestForUnknownTagFallsBackToEnglish(t *testing.T) {
 
 	p := For(language.French)
 	assert.Equal(t, "en", p.Tag())
-	assert.Equal(t, "Save changes", p.T("Save changes"))
+	assert.Equal(t, "Language", p.T("Language"))
 }
 
 func TestTagAndDir(t *testing.T) {
@@ -114,15 +111,54 @@ func TestPrintersConcurrentUse(t *testing.T) {
 
 	for i := range 50 {
 		wg.Go(func() {
-			p, want := For(language.English), "Save changes"
+			p, want := For(language.English), "Language"
 			if i%2 == 1 {
-				p, want = For(language.Italian), "Salva le modifiche"
+				p, want = For(language.Italian), "Lingua"
 			}
 
-			assert.Equal(t, want, p.T("Save changes"))
+			assert.Equal(t, want, p.T("Language"))
 			assert.NotEmpty(t, p.N("%[1]s device", "%[1]s devices", i))
 		})
 	}
 
 	wg.Wait()
+}
+
+func TestMessageMissingFromCatalogRendersEnglish(t *testing.T) {
+	t.Parallel()
+
+	// Throwaway catalog that lacks "Sign in", as after a msgid is removed or renamed.
+	const po = `msgid ""
+msgstr ""
+"Language: it\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Other"
+msgstr "Altro"
+`
+
+	p := printer{tag: language.Italian, dir: dirLTR, loc: poLocale("it", po)}
+	assert.Equal(t, "Sign in", p.T("Sign in"))
+}
+
+func TestNPluralizesItalianThroughCatalog(t *testing.T) {
+	t.Parallel()
+
+	// Throwaway catalog: the shipped it.po carries no plural entry, so the plural path is tested here.
+	const po = `msgid ""
+msgstr ""
+"Language: it\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "%[1]s device"
+msgid_plural "%[1]s devices"
+msgstr[0] "%[1]s dispositivo"
+msgstr[1] "%[1]s dispositivi"
+`
+
+	p := printer{tag: language.Italian, dir: dirLTR, loc: poLocale("it", po)}
+	assert.Equal(t, "0 dispositivi", p.N("%[1]s device", "%[1]s devices", 0))
+	assert.Equal(t, "1 dispositivo", p.N("%[1]s device", "%[1]s devices", 1))
+	assert.Equal(t, "2 dispositivi", p.N("%[1]s device", "%[1]s devices", 2))
 }

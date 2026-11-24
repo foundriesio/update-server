@@ -45,17 +45,20 @@ func (b PageBuilder) Base(c echo.Context, title, selected string) pagectx.Base {
 		logoPath = "/branding/" + b.branding.Logo
 	}
 	var user *users.User
-	var navItems []navItem
 	var storedLocale string
-	if session, ok := c.Request().Context().Value(ctxKeySession).(*auth.Session); ok && session != nil {
+	session, _ := c.Request().Context().Value(ctxKeySession).(*auth.Session)
+	if session != nil {
 		user = session.User
-		navItems = b.genNavItems(selected)
 		// Anonymous pages (login) have no stored locale; fall back to Accept-Language.
 		if user != nil {
 			storedLocale = user.Locale
 		}
 	}
 	printer := i18n.For(i18n.Resolve(storedLocale, c.Request().Header.Get("Accept-Language")))
+	var navItems []navItem
+	if session != nil {
+		navItems = b.genNavItems(selected, printer)
+	}
 	return pagectx.Base{
 		User:      user,
 		L:         printer,
@@ -68,13 +71,14 @@ func (b PageBuilder) Base(c echo.Context, title, selected string) pagectx.Base {
 	}
 }
 
-func (b PageBuilder) genNavItems(selected string) []navItem {
+// Literal T calls are required: the i18nscan tool extracts messages from Go source by pattern.
+func (b PageBuilder) genNavItems(selected string, L i18n.Printer) []navItem {
 	navItems := []navItem{
-		{Title: devicesLabel, Href: "/devices", Selected: selected == "devices"},
-		{Title: "Configs", Href: "/configs", Selected: selected == "configs"},
-		{Title: updatesLabel, Href: "/updates", Selected: selected == "updates"},
-		{Title: usersLabel, Href: "/users", Selected: selected == "users"},
-		{Title: "PKI", Href: "/pki", Selected: selected == "pki"},
+		{Title: L.T("Devices"), Href: "/devices", Selected: selected == "devices"},
+		{Title: L.T("Configs"), Href: "/configs", Selected: selected == "configs"},
+		{Title: L.T("Updates"), Href: "/updates", Selected: selected == "updates"},
+		{Title: L.T("Users"), Href: "/users", Selected: selected == "users"},
+		{Title: L.T("PKI"), Href: "/pki", Selected: selected == "pki"},
 	}
 	return navItems
 }

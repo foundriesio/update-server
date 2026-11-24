@@ -53,9 +53,11 @@ type userDirectoryEntry struct {
 }
 
 const (
-	scopeOperationCreate = "create"
-	scopeOperationDelete = "delete"
-	scopeOperationRead   = "read"
+	scopeOperationCreate       = "create"
+	scopeOperationDelete       = "delete"
+	scopeOperationRead         = "read"
+	scopeOperationUpdate       = "update"
+	scopeOperationUnrecognized = "unrecognized"
 )
 
 func (h handlers) usersList(c echo.Context) error {

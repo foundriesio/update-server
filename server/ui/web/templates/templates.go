@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/foundriesio/update-server/clock"
+	"github.com/foundriesio/update-server/server/ui/i18n"
 )
 
 //go:embed *.html *.css favicon.svg
@@ -51,6 +52,28 @@ func RelativeTime(now time.Time, ts int64) string {
 		return pluralize(int(age/time.Hour), "%d hour ago", "%d hours ago")
 	default:
 		return pluralize(int(age/day), "%d day ago", "%d days ago")
+	}
+}
+
+// relativeTimeIn is RelativeTime through a Printer, so the text and the
+// fallback date follow the page language.
+func relativeTimeIn(l i18n.Printer, now time.Time, ts int64) string {
+	if ts <= 0 {
+		return l.T("Never")
+	}
+
+	age := now.Sub(time.Unix(ts, 0))
+	switch {
+	case age >= maxRelativeAge:
+		return l.Date(time.Unix(ts, 0).UTC())
+	case age < time.Minute:
+		return l.T("just now")
+	case age < time.Hour:
+		return l.N("%[1]s minute ago", "%[1]s minutes ago", int(age/time.Minute))
+	case age < day:
+		return l.N("%[1]s hour ago", "%[1]s hours ago", int(age/time.Hour))
+	default:
+		return l.N("%[1]s day ago", "%[1]s days ago", int(age/day))
 	}
 }
 
@@ -147,8 +170,14 @@ func init() {
 			return time.Unix(ts, 0).UTC().Format(time.RFC3339)
 		},
 		"tsToDate": FormatDate,
+		"tsTime": func(ts int64) time.Time {
+			return time.Unix(ts, 0).UTC()
+		},
 		"tsToAgo": func(ts int64) string {
 			return RelativeTime(clock.Now(), ts)
+		},
+		"tsAgo": func(l i18n.Printer, ts int64) string {
+			return relativeTimeIn(l, clock.Now(), ts)
 		},
 		"isExpired": func(expires any) bool {
 			s, ok := expires.(string)

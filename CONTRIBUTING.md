@@ -64,9 +64,22 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 ## Translations
 
-UI strings are translated with GNU gettext. No string is marked yet and only
-`en` is enabled. `docs/i18n.md` has how it works and the steps to enable and
-ship the first translation.
+UI strings are translated with GNU gettext 1.0 or later: `brew install gettext`
+on macOS, `sudo apt-get install gettext` on Debian and Ubuntu. `docs/i18n.md`
+has the full flow.
 
-`make i18n-check` regenerates the translation files and fails when committed
-ones are stale. It needs GNU gettext 1.0 or later once a language is enabled.
+To add or change a message:
+
+1. Wrap the text in a template with `{{.L.T "message"}}`, or for plurals
+   `{{.L.N "singular" "plural" .Count}}`.
+1. Run `make i18n-extract` to regenerate `server/ui/i18n/po/ui.pot`.
+1. Run `make i18n-merge` to update each `server/ui/i18n/po/<lang>.po`, then
+   translate the new entries.
+1. Run `make i18n-compile`, then commit the `.pot`, `.po` and `.mo` files.
+
+Only direct `.T(` and `.N(` calls are extracted: method values and template
+aliases such as `$l := .L` are not.
+
+`make i18n-check` runs extract, merge and compile, fails if the committed files
+differ or any translation is untranslated or fuzzy, then runs the i18n Go
+tests. Commit before running it.

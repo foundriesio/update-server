@@ -15,9 +15,8 @@ import (
 )
 
 // Embedded from locale/ only; PO sources stay outside the binary.
-// all: keeps locale/.gitkeep, so the directory exists before any catalog ships.
 //
-//go:embed all:locale
+//go:embed locale
 var catalogFS embed.FS
 
 const (
@@ -25,7 +24,7 @@ const (
 	catalogDomain = "ui"
 
 	// Present in every shipped catalog; a catalog that lacks it is treated as absent.
-	probeKey = "Save changes"
+	probeKey = "Language"
 )
 
 var printers map[string]Printer

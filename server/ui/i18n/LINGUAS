@@ -1,3 +1,4 @@
 # Supported UI locales, one BCP 47 tag per line. `_` is accepted for `-`.
 # en is the source language and the final fallback, so it must stay first.
 en
+it

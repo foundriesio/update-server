@@ -1,12 +1,16 @@
 {{ define "configs-item-edit-dialog" }}
-      <dialog id="EditConfigsFile" class="upload-dialog config-file-dialog" data-mode="add" aria-labelledby="config-file-dialog-title">
+      <dialog id="EditConfigsFile" class="upload-dialog config-file-dialog" data-mode="add" aria-labelledby="config-file-dialog-title"
+        data-name-required="{{ .L.T "Enter a file name." }}"
+        data-overwrite-format="{{ .L.T "A file with name \"%[1]s\" already exists. Do you want to overwrite it?" "{name}" }}"
+        data-saving-message="{{ .L.T "Saving config file…" }}"
+        data-save-failed-message="{{ .L.T "Unable to save config file." }}">
         <article>
           <div class="dlg-header">
             <h2 id="config-file-dialog-title">
-              <span data-mode="add">Add New Config File</span>
-              <span data-mode="edit">Edit Config File</span>
+              <span data-mode="add">{{ .L.T "Add New Config File" }}</span>
+              <span data-mode="edit">{{ .L.T "Edit Config File" }}</span>
             </h2>
-            <button class="dlg-close" id="config-file-close-btn" type="button" aria-label="Close dialog">
+            <button class="dlg-close" id="config-file-close-btn" type="button" aria-label="{{ .L.T "Close dialog" }}">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -17,38 +21,38 @@
             <form autocomplete="off">
               <div class="field-grid config-file-grid">
                 <div class="field-row">
-                  <label class="field-row__key" for="config-file-name">File name</label>
+                  <label class="field-row__key" for="config-file-name">{{ .L.T "File name" }}</label>
                   <input class="field-input" id="config-file-name" name="FileName" required />
                 </div>
                 <div class="field-row">
-                  <label class="field-row__key" for="config-file-reason">Reason</label>
+                  <label class="field-row__key" for="config-file-reason">{{ .L.T "Reason" }}</label>
                   <input class="field-input" id="config-file-reason" name="Reason" />
                 </div>
               </div>
               <div class="field-row config-file-field">
-                <label class="field-row__key" for="config-file-on-changed">On Change Handlers</label>
+                <label class="field-row__key" for="config-file-on-changed">{{ .L.T "On Change Handlers" }}</label>
                 <textarea class="field-input config-file-textarea config-file-textarea--handlers" id="config-file-on-changed" name="OnChanged" aria-describedby="config-file-on-changed-hint"></textarea>
-                <p class="field-row__caption" id="config-file-on-changed-hint">Handlers must be defined in <code translate="no">/usr/share/fioconfig/handlers/</code> on devices.</p>
+                <p class="field-row__caption" id="config-file-on-changed-hint">{{ .L.T "Handlers must be defined in" }} <code translate="no">/usr/share/fioconfig/handlers/</code> {{ .L.T "on devices." }}</p>
               </div>
               <fieldset class="field-row config-file-encryption" data-mode="add"{{ if not .PubKey}} hidden{{ end }}>
                 <label class="config-file-checkbox" for="config-file-encrypted">
                   <input id="config-file-encrypted" type="checkbox" name="Encrypted" aria-describedby="config-file-encrypted-hint" />
-                  <span>Encrypt file content</span>
+                  <span>{{ .L.T "Encrypt file content" }}</span>
                 </label>
-                <p class="field-row__caption" id="config-file-encrypted-hint">Encrypted files cannot be edited; remove and re-add them instead.</p>
+                <p class="field-row__caption" id="config-file-encrypted-hint">{{ .L.T "Encrypted files cannot be edited; remove and re-add them instead." }}</p>
               </fieldset>
               <div class="field-row config-file-field">
-                <label class="field-row__key" for="config-file-value">Content</label>
+                <label class="field-row__key" for="config-file-value">{{ .L.T "Content" }}</label>
                 <textarea class="field-input config-file-textarea config-file-textarea--content" id="config-file-value" name="Value"></textarea>
               </div>
             </form>
             <p class="config-file-dialog__status" data-config-file-status aria-live="polite" role="status" tabindex="-1"></p>
           </div>
           <div class="dlg-footer">
-            <button class="dlg-btn dlg-btn-cancel" id="config-file-cancel-btn" type="button">Cancel</button>
+            <button class="dlg-btn dlg-btn-cancel" id="config-file-cancel-btn" type="button">{{ .L.T "Cancel" }}</button>
             <button class="dlg-btn dlg-btn-config-save" type="button" name="save">
-              <span data-mode="add">Add Config File</span>
-              <span data-mode="edit">Save Changes</span>
+              <span data-mode="add">{{ .L.T "Add Config File" }}</span>
+              <span data-mode="edit">{{ .L.T "Save Changes" }}</span>
             </button>
           </div>
         </article>
@@ -56,8 +60,8 @@
       <dialog id="OverwriteConfigFile" class="upload-dialog config-file-dialog config-file-delete-dialog" aria-labelledby="config-file-overwrite-title">
         <article>
           <div class="dlg-header">
-            <h2 id="config-file-overwrite-title">Overwrite Config File</h2>
-            <button class="dlg-close" id="config-file-overwrite-close-btn" type="button" aria-label="Close dialog">
+            <h2 id="config-file-overwrite-title">{{ .L.T "Overwrite Config File" }}</h2>
+            <button class="dlg-close" id="config-file-overwrite-close-btn" type="button" aria-label="{{ .L.T "Close dialog" }}">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 <line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -65,11 +69,11 @@
             </button>
           </div>
           <div class="dlg-body">
-            <p class="upload-intro">A file named <strong data-config-file-overwrite-name></strong> already exists. Overwrite it?</p>
+            <p class="upload-intro" data-config-file-overwrite-name></p>
           </div>
           <div class="dlg-footer">
-            <button class="dlg-btn dlg-btn-cancel" id="config-file-overwrite-cancel-btn" type="button" autofocus>Cancel</button>
-            <button class="dlg-btn dlg-btn-delete" id="config-file-overwrite-confirm-btn" type="button">Overwrite</button>
+            <button class="dlg-btn dlg-btn-cancel" id="config-file-overwrite-cancel-btn" type="button" autofocus>{{ .L.T "Cancel" }}</button>
+            <button class="dlg-btn dlg-btn-delete" id="config-file-overwrite-confirm-btn" type="button">{{ .L.T "Overwrite" }}</button>
           </div>
         </article>
       </dialog>
@@ -191,7 +195,7 @@
                 message = payload.message;
               }
             } catch (_) {}
-            throw new Error(message || 'Unable to save config file.');
+            throw new Error(message || dialog.dataset.saveFailedMessage);
           }
         }
 
@@ -203,7 +207,7 @@
           const confirmedOverwrite = overwriteConfirmed;
           overwriteConfirmed = false;
           const name = dialogFileName.value.trim();
-          dialogFileName.setCustomValidity(name ? '' : 'Enter a file name.');
+          dialogFileName.setCustomValidity(name ? '' : dialog.dataset.nameRequired);
           if (!dialogForm.reportValidity()) {
             return
           }
@@ -213,19 +217,19 @@
               .some(el => el.textContent.trim() === name);
             if (duplicate && !confirmedOverwrite) {
               setStatus('');
-              overwriteFileName.textContent = name;
+              overwriteFileName.textContent = dialog.dataset.overwriteFormat.split('{name}').join(name);
               overwriteDialog.showModal();
               return
             }
           }
           setSubmitting(true);
-          setStatus('Saving config file…', 'saving');
+          setStatus(dialog.dataset.savingMessage, 'saving');
           try {
             await saveConfigFile();
             location.reload(); // refresh the page to get updated data.
           } catch (error) {
             console.error('Error:', error);
-            setStatus(error.message || 'Unable to save config file.', 'error');
+            setStatus(error.message || dialog.dataset.saveFailedMessage, 'error');
             setSubmitting(false);
           }
         });

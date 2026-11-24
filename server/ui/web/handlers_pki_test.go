@@ -16,7 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/foundriesio/update-server/server/ui/i18n"
 	"github.com/foundriesio/update-server/server/ui/web/templates"
+	"golang.org/x/text/language"
 )
 
 func TestBuildPkiRegistryDataBuildsConfiguredAndPlaceholderRecords(t *testing.T) {
@@ -134,6 +136,7 @@ func TestPkiTemplateRendersRegistryCards(t *testing.T) {
 	}
 
 	var rendered bytes.Buffer
+	ctx.L = i18n.For(language.English)
 	if err := templates.Templates.ExecuteTemplate(&rendered, "pki.html", ctx); err != nil {
 		t.Fatalf("ExecuteTemplate() error = %v", err)
 	}

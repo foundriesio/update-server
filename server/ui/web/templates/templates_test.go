@@ -153,9 +153,9 @@ var headingAuditExpectations = map[string]headingAuditExpectation{
 	"configs_global_history.html:11": {role: "heading--page", owner: headingAuditPageGroupOwner},
 	"configs_history.html:3":         {role: "heading--page", owner: headingAuditStandaloneOwner},
 	"configs_item.html:2":            {role: "heading--subsection", owner: headingAuditStandaloneOwner},
-	"configs_item.html:250":          {role: "heading--page", owner: headingAuditPageGroupOwner},
-	"configs_item.html:255":          {role: "heading--section", owner: headingAuditStandaloneOwner},
-	"configs_item.html:263":          {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_item.html:252":          {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"configs_item.html:257":          {role: "heading--section", owner: headingAuditStandaloneOwner},
+	"configs_item.html:265":          {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"configs_list.html:5":            {role: "heading--page", owner: headingAuditPageGroupOwner},
 	"configs_list.html:11":           {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"configs_list.html:45":           {role: "heading--section", owner: headingAuditSectionGroupOwner},
@@ -195,11 +195,12 @@ var headingAuditExpectations = map[string]headingAuditExpectation{
 	"pki.html:27":                    {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"pki.html:35":                    {role: "heading--entity", owner: headingAuditComponentOwner, componentClass: "heading-stack"},
 	"rollout_tail.html:16":           {role: "heading--page", owner: headingAuditPageGroupOwner},
-	"settings.html:4":                {role: "heading--page", owner: headingAuditPageGroupOwner},
-	"settings.html:9":                {role: "heading--section", owner: headingAuditSectionGroupOwner},
-	"settings.html:32":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
-	"settings.html:51":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
-	"settings.html:86":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:16":               {role: "heading--page", owner: headingAuditPageGroupOwner},
+	"settings.html:21":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:44":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:64":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:83":               {role: "heading--section", owner: headingAuditSectionGroupOwner},
+	"settings.html:118":              {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"tail_stream.html:3":             {role: "heading--section", owner: headingAuditStandaloneOwner},
 	"tail_stream.html:29":            {role: "heading--section", owner: headingAuditSectionGroupOwner},
 	"update.html:14":                 {role: "heading--page", owner: headingAuditPageGroupOwner},
@@ -281,8 +282,8 @@ func TestNonDialogHeadingsUseGenericContract(t *testing.T) {
 			}
 		}
 	}
-	if headingCount != 74 || len(headingAuditExpectations) != headingCount {
-		t.Errorf("non-dialog heading inventory = %d headings and %d entries, want 74 each", headingCount, len(headingAuditExpectations))
+	if headingCount != 75 || len(headingAuditExpectations) != headingCount {
+		t.Errorf("non-dialog heading inventory = %d headings and %d entries, want 75 each", headingCount, len(headingAuditExpectations))
 	}
 	headingAuditLegacySelectors(t)
 }

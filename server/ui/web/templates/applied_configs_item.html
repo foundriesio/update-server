@@ -109,7 +109,7 @@
           </div>
         </div>
 
-        {{ template "configs-item-files" (map "Configs" . "CanEdit" false) }}
+        {{ template "configs-item-files" (map "Configs" . "CanEdit" false "L" $.L) }}
         {{ end }}
         {{ end }}
       </div>

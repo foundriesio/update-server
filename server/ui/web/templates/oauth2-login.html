@@ -1,6 +1,6 @@
 {{/* Used by the auth package's oauth2BaseProvider implementation, shared by GitHub and Google */}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{.L.Tag}}" dir="{{.L.Dir}}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -21,14 +21,14 @@
         {{ if .LogoPath }}<img src="{{.LogoPath}}" alt="{{.BrandName}}" class="login-brand-logo">{{ end }}
         <span class="login-brand-lockup">{{.BrandName}}</span>
         <div class="login-panel-body heading-group heading-stack">
-          <h1 class="heading heading--page">Fleet updates,<br>under control.</h1>
-          <p class="login-tagline heading-support">The management console for over-the-air updates across your embedded and IoT device fleet.</p>
+          <h1 class="heading heading--page">{{.L.T "Fleet updates, under control."}}</h1>
+          <p class="login-tagline heading-support">{{.L.T "The management console for over-the-air updates across your embedded and IoT device fleet."}}</p>
         </div>
         <span class="login-panel-footer">{{.Version}}</span>
       </section>
 
       <main id="login" class="login-form-panel">
-        <button id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <button id="theme-toggle" type="button" aria-label="{{.L.T "Switch to dark mode"}}" title="{{.L.T "Switch to dark mode"}}" data-label-dark="{{.L.T "Switch to dark mode"}}" data-label-light="{{.L.T "Switch to light mode"}}">
           <svg class="icon-light" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.3"/>
             <g stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
@@ -49,9 +49,9 @@
 
         <div class="login-form-wrap">
           <div class="heading-group heading-group--section heading-stack">
-            <p class="login-eyebrow heading-support">Single sign-on</p>
-            <h2 class="heading heading--section">Sign in</h2>
-            <p class="login-sub heading-support">Authenticate with your {{.Name}} account.</p>
+            <p class="login-eyebrow heading-support">{{.L.T "Single sign-on"}}</p>
+            <h2 class="heading heading--section">{{.L.T "Sign in"}}</h2>
+            <p class="login-sub heading-support"><bdi>{{.L.T "Authenticate with your %[1]s account" .Name}}</bdi></p>
           </div>
 
           {{ if .Reason }}
@@ -79,7 +79,7 @@
               <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58Z"/>
             </svg>
             {{ end }}
-            Continue with {{.Name}}
+            <bdi>{{.L.T "Continue with %[1]s" .Name}}</bdi>
           </a>
 
           {{ if .LoginTip }}
@@ -103,12 +103,12 @@
       function setTheme(theme) {
         if (theme === 'dark') {
           html.setAttribute('data-theme', 'dark');
-          themeToggle.setAttribute('aria-label', 'Switch to light mode');
-          themeToggle.setAttribute('title', 'Switch to light mode');
+          themeToggle.setAttribute('aria-label', themeToggle.dataset.labelLight);
+          themeToggle.setAttribute('title', themeToggle.dataset.labelLight);
         } else {
           html.removeAttribute('data-theme');
-          themeToggle.setAttribute('aria-label', 'Switch to dark mode');
-          themeToggle.setAttribute('title', 'Switch to dark mode');
+          themeToggle.setAttribute('aria-label', themeToggle.dataset.labelDark);
+          themeToggle.setAttribute('title', themeToggle.dataset.labelDark);
         }
       }
 

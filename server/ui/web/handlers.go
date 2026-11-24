@@ -112,6 +112,7 @@ func RegisterHandlers(e *echo.Echo, storage *users.Storage, authProvider auth.Pr
 	e.GET("/devices/:uuid/configs/apps", h.configsDeviceItemApps, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/devices/:uuid/configs/history", h.configsDeviceItemHistory, h.requireSession, h.requireScope(users.ScopeDevicesR))
 	e.GET("/settings", h.settings, h.requireSession)
+	e.POST("/settings/locale", h.localeUpdate, h.requireSession, auth.CsrfCheck)
 	e.GET("/updates", h.updatesList, h.requireSession, h.requireScope(users.ScopeUpdatesR))
 	e.GET("/updates/:name", h.updatesGet, h.requireSession, h.requireScope(users.ScopeUpdatesR))
 	e.GET("/updates/:name/tail", h.updatesTail, h.requireSession, h.requireScope(users.ScopeUpdatesR))

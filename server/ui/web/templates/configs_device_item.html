@@ -40,7 +40,7 @@
           <h2 class="heading heading--section">Current Configuration</h2>
           {{ template "configs-item" . }}
           {{ if .CanEdit }}
-          {{ template "configs-add-button" }}
+          {{ template "configs-add-button" . }}
           {{ end }}
         </div>
 

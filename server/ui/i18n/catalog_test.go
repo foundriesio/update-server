@@ -25,10 +25,10 @@ func TestLoadPrintersFailsWithoutCatalog(t *testing.T) {
 	assert.ErrorContains(t, err, "i18n catalog it")
 }
 
-func TestLoadPrintersPassesFixtureCatalog(t *testing.T) {
+func TestLoadPrintersPassesEmbeddedCatalog(t *testing.T) {
 	t.Parallel()
 
-	_, err := loadPrinters(os.DirFS("testdata"))
+	_, err := loadPrinters(catalogFS)
 	assert.NoError(t, err)
 }
 
@@ -50,10 +50,10 @@ func TestEmbeddedCatalogHasNoPo(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestFixtureCatalogMatchesPo(t *testing.T) {
+func TestCommittedCatalogMatchesPo(t *testing.T) {
 	t.Parallel()
 
-	data, err := os.ReadFile("testdata/it.po")
+	data, err := os.ReadFile("po/it.po")
 	require.NoError(t, err)
 
 	// gotext does not expose the fuzzy flag, so fail on it rather than skip the entry.
@@ -71,16 +71,21 @@ func TestFixtureCatalogMatchesPo(t *testing.T) {
 			continue
 		}
 
+		// Italian equals English for some words (PKI, Password); nothing to compare.
+		if tr.Get() == tr.ID {
+			continue
+		}
+
 		got := p.T(tr.ID)
 		if tr.PluralID != "" {
 			got = p.N(tr.ID, tr.PluralID, 1)
 		}
 
 		checked++
-		assert.NotEqual(t, tr.ID, got, "msgid %q missing from fixture ui.mo", tr.ID)
+		assert.NotEqual(t, tr.ID, got, "msgid %q missing from committed ui.mo", tr.ID)
 	}
 
-	require.NotZero(t, checked, "no translated entries parsed from testdata/it.po")
+	require.NotZero(t, checked, "no translated entries parsed from po/it.po")
 }
 
 // Throwaway catalogs, not shipped: they exercise gotext's plural selection
