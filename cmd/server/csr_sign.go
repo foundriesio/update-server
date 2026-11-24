@@ -32,11 +32,11 @@ func (c CsrSignCmd) Run(args CommonArgs) error {
 		return err
 	}
 
-	csr, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsCsrFile), x509.ParseCertificateRequest)
+	csr, err := storage.LoadCertPem(fs.Certs, storage.CertsTlsCsrFile, x509.ParseCertificateRequest)
 	if err != nil {
 		return err
 	}
-	tlsKey, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsKeyFile), x509.ParseECPrivateKey)
+	tlsKey, err := storage.LoadCertPem(fs.Certs, storage.CertsTlsKeyFile, x509.ParseECPrivateKey)
 	if err != nil {
 		return err
 	}

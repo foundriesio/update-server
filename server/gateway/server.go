@@ -79,7 +79,13 @@ func loadCas(fs *storage.FsHandle) (*x509.CertPool, error) {
 }
 
 func loadTlsKeyPair(fs *storage.FsHandle) (tls.Certificate, error) {
-	keyFile := fs.Certs.FilePath(storage.CertsTlsKeyFile)
-	certFile := fs.Certs.FilePath(storage.CertsTlsPemFile)
-	return tls.LoadX509KeyPair(certFile, keyFile)
+	certPem, err := fs.Certs.ReadFile(storage.CertsTlsPemFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	keyPem, err := fs.Certs.ReadFile(storage.CertsTlsKeyFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	return tls.X509KeyPair(certPem, keyPem)
 }

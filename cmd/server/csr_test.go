@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"math/big"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -42,7 +43,7 @@ func TestCsr(t *testing.T) {
 	}
 	require.NoError(t, sign.Run(common))
 
-	cert, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsTlsPemFile), x509.ParseCertificate)
+	cert, err := storage.LoadCertPem(fs.Certs, storage.CertsTlsPemFile, x509.ParseCertificate)
 	require.NoError(t, err)
 	require.Equal(t, "example.com", cert.Subject.CommonName)
 
@@ -54,9 +55,14 @@ func TestCsr(t *testing.T) {
 
 func createSelfSignedRoot(t *testing.T, fs *storage.FsHandle) (string, string) {
 	t.Helper()
-	caKeyFile := fs.Certs.FilePath(storage.CertsTlsKeyFile) // reuse the key we already generated
-	key, err := storage.LoadPemFile(caKeyFile, x509.ParseECPrivateKey)
+	// Reuse the generated key, but exercise external CA paths for signing.
+	keyPem, err := fs.Certs.ReadFile(storage.CertsTlsKeyFile)
 	require.NoError(t, err)
+	key, err := storage.PemBytesToObject(keyPem, x509.ParseECPrivateKey)
+	require.NoError(t, err)
+	caDir := t.TempDir()
+	caKeyFile := filepath.Join(caDir, "ca.key")
+	require.NoError(t, os.WriteFile(caKeyFile, keyPem, 0o600))
 
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
@@ -77,7 +83,7 @@ func createSelfSignedRoot(t *testing.T, fs *storage.FsHandle) (string, string) {
 			Bytes: caDer,
 		},
 	)
-	caFile := fs.Certs.FilePath("ca.pem")
+	caFile := filepath.Join(caDir, "ca.pem")
 	require.NoError(t, os.WriteFile(caFile, caPem, 0o640))
 	return caKeyFile, caFile
 }

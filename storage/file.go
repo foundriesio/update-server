@@ -141,13 +141,11 @@ type FsHandle struct {
 
 func NewFs(root string) (*FsHandle, error) {
 	fs := &FsHandle{Config: FsConfig(root)}
-	fs.Certs.root = fs.Config.CertsDir()
 	fs.Configs.root = fs.Config.ConfigsDir()
 	fs.Devices.root = fs.Config.DevicesDir()
 	fs.Updates.init(fs.Config.UpdatesDir())
 
 	for _, h := range []baseFsHandle{
-		fs.Certs.baseFsHandle,
 		fs.Configs.baseFsHandle,
 		fs.Devices.baseFsHandle,
 		fs.Updates.baseFsHandle,
@@ -163,6 +161,7 @@ func NewFs(root string) (*FsHandle, error) {
 	}{
 		{fs.Config.AuditDir(), &fs.Audit.osRootHandle},
 		{fs.Config.AuthDir(), &fs.Auth.osRootHandle},
+		{fs.Config.CertsDir(), &fs.Certs.osRootHandle},
 	} {
 		err := os.MkdirAll(entry.path, defaultDirAccess)
 		if err != nil {
@@ -181,6 +180,7 @@ func NewFs(root string) (*FsHandle, error) {
 func (f *FsHandle) Close() {
 	f.Audit.Close()
 	f.Auth.Close()
+	f.Certs.Close()
 }
 
 type osRootHandle struct {

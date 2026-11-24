@@ -27,7 +27,7 @@ func TestDevServerInit(t *testing.T) {
 	require.NoError(t, err)
 
 	// PKI was created.
-	rootCrt, err := storage.LoadPemFile(fs.Certs.FilePath(storage.CertsRootPemFile), x509.ParseCertificate)
+	rootCrt, err := storage.LoadCertPem(fs.Certs, storage.CertsRootPemFile, x509.ParseCertificate)
 	require.NoError(t, err)
 	require.Equal(t, []string{"fio-update-server"}, rootCrt.Subject.OrganizationalUnit)
 
